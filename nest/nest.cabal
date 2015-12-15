@@ -1,0 +1,37 @@
+name:                hkc
+version:             0.1.0.0
+-- synopsis:
+-- description:
+license:             BSD3
+license-file:        LICENSE
+author:              Gabriel Anderson
+maintainer:          ganderson@go.shoreline.edu
+copyright:           Copyight (C) 2015 Gabriel Anderson
+category:            Text
+build-type:          Custom
+-- extra-source-files:
+cabal-version:       >=1.10
+
+--source-repository     head
+--  type:               git
+--  location:
+
+library
+  default-language:     Haskell2010
+
+  build-depends:        base < 5 && >= 4
+                        , containers >= 0.5 && < 0.6
+                        , text >= 1 && < 2
+                        , filepath >= 1.4 && < 1.5
+                        , yaml >= 0.8 && < 0.9
+                        , optparse-applicative == 0.12.0.0
+
+  ghc-options:          -Wall
+                        -fno-warn-unused-binds
+                        -fno-warn-unused-do-bind
+                        -fno-warn-unused-imports
+                        -fno-warn-type-defaults
+
+  hs-source-dirs:       src
+
+  exposed-modules:      Main
