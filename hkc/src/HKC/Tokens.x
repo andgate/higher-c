@@ -3,6 +3,8 @@ module HKC.Tokens where
 
 import Prelude hiding (lex)
 import Control.Monad ( liftM )
+import qualified Data.ByteString.Lazy as B
+
 }
 
 %wrapper "monadUserState"
@@ -81,21 +83,21 @@ hawk :-
 -- 0 is the toplevel parser
 <0> {
   "--".*                        ;
-  ^\s*\<                        { lex' TokenExport `andBegin` modulelist }
-  ^\s*\>                        { lex' TokenImport `andBegin` modulelist }
-  ^\s*@varid                    { lex TokenVarid   `andBegin` startvar }
+  ^\s*\<                        { lex' TokenExport `andEnter` modulelist }
+  ^\s*\>                        { lex' TokenImport `andEnter` modulelist }
+  ^\s*@varid                    { lex  TokenVarid  `andEnter` startvar }
   .                             ;
 }
 
 <modulelist> {
   $white_no_nl+                 ;
   @modid                        { lex TokenModId }
-  $white+                       { begin 0 }
+  $white+                       { exitStartCode }
 }
 
 <startvar> {
   $white+                       ;
-  \=                            { lex' TokenVarDef `andBegin` statements }
+  \=                            { lex' TokenVarDef `andEnter` statements }
   @varid                        { lex TokenVaridP }
 }
 
@@ -108,6 +110,7 @@ hawk :-
   \*                            { lex' TokenTimes }
   \/                            { lex' TokenDiv }
   $white+                       { begin 0 }
+  \"                            { enterStartCode string }
 }
 
 <old> {
@@ -134,13 +137,15 @@ hawk :-
 
 <char> {
   [^\']                         { lex TokenChar }
-  \'                            { begin 0 }
+  \'                            { exitStartCode }
 }
 
 <string> {
   [^\"]                         { lex TokenString }
-  \"                            { pop }
+  \"                            { exitStartCode }
 }
+
+
 {
 
 data AlexUserState
@@ -151,51 +156,60 @@ data AlexUserState
   }
 
 alexInitUserState :: AlexUserState
-alexInitUserState = AlexUserState "<unknown>" [] []
+alexInitUserState = AlexUserState "<unknown>" [] [0]
 
 alexGetFilePath :: Alex FilePath
 alexGetFilePath = liftM filePath alexGetUserState
 
 alexSetFilePath :: FilePath -> Alex ()
 alexSetFilePath f = do
-  s <- alexGetUserState
-  alexSetUserState (s { filePath = f })
-
-peekScope :: Alex Int
-peekScope = liftM (head . scopes) alexGetUserState
-
-pushScope :: Int -> Alex ()
-pushScope s' = do
   aus <- alexGetUserState
-  let s   = scopes aus
-      s'' = s':s
-  alexSetUserState (aus { scopes = s'' })
+  alexSetUserState (aus { filePath = f } )
 
-popScope :: Alex Int
-popScope = do
+
+alexPeekScope :: Alex Int
+alexPeekScope = liftM (head . scopes) alexGetUserState
+
+alexPushScope :: Int -> Alex ()
+alexPushScope s = do
   aus <- alexGetUserState
-  let s  = scopes aus
-      s' = tail s
-  alexSetUserState (aus { scopes = s' })
-  return $ head s
+  let ss = scopes aus
+      ss' = s : ss
+  alexSetUserState (aus { scopes = ss' })
 
-peekStartCode :: Alex Int
-peekStartCode = liftM (head . startCodes) alexGetUserState
-
-pushStartCode :: Int -> Alex ()
-pushStartCode sc' = do
+alexPopScope :: Alex Int
+alexPopScope = do
   aus <- alexGetUserState
-  let sc  = startCodes aus
-      sc'' = sc' : sc
-  alexSetUserState (aus { startCodes = sc'' })
+  let ss  = scopes aus
+      ss' = tail ss
+  alexSetUserState (aus { scopes = ss' })
+  return $ head ss
 
-popStartCode :: Alex Int
-popStartCode = do
+alexPeekStartCode :: Alex Int
+alexPeekStartCode = liftM (head . startCodes) alexGetUserState
+
+alexPushStartCode :: Int -> Alex ()
+alexPushStartCode sc = do
   aus <- alexGetUserState
-  let sc  = startCodes aus
-      sc' = tail sc
-  alexSetUserState (aus { startCodes = sc' })
-  return (head sc)
+  let scs  = startCodes aus
+      scs' = sc : scs
+  alexSetUserState (aus { startCodes = scs' })
+  alexSetStartCode sc
+
+alexPopStartCode :: Alex Int
+alexPopStartCode = do
+  aus <- alexGetUserState
+  let scs  = startCodes aus
+      scs' = tail scs
+      sc   = headOrZero scs
+      sc'  = headOrZero scs'
+  alexSetUserState (aus { startCodes = scs' })
+  alexSetStartCode sc'
+  return sc
+
+headOrZero :: [Int] -> Int
+headOrZero (x:_) = x
+headOrZero [] = 0
 
 getLineNum :: AlexPosn -> Int
 getLineNum (AlexPn _ lineNum _) = lineNum
@@ -244,23 +258,32 @@ lex f = \(p,_,_,s) i -> return $ Token p (f (take i s))
 lex' :: TokenClass -> AlexAction Token
 lex' = lex . const
 
+
+
 enterStartCode :: Int -> AlexAction Token
 enterStartCode code input len = do
-  alexSetStartCode code
-  pushStartCode code
+  alexPushStartCode code
   alexMonadScan'
 
-exitStartCode :: Action
+exitStartCode :: AlexAction Token
 exitStartCode input len = do
-  popStartCode
-  sc <- alexPeekStartCode
-  alexSetStartCode sc
+  alexPopStartCode
   alexMonadScan'
+
+andEnter :: AlexAction Token -> Int -> AlexAction Token
+andEnter act code input len = do
+  alexPushStartCode code
+  act input len
+
+andExit :: AlexAction Token -> AlexAction Token
+andExit act input len = do
+  alexPopStartCode
+  act input len
 
 enterBOL :: Int -> AlexAction Token
 enterBOL s' input len = do
-  s <- peekScope
-  pushScope s'
+  s <- alexPeekScope
+  alexPushScope s'
   alexMonadScan'
 
 alexMonadScan' :: Alex Token
@@ -280,10 +303,10 @@ alexMonadScan' = do
 
 alexError' :: AlexPosn -> String -> Alex a
 alexError' (AlexPn _ l c) msg = do
-  fp <- getFilePath
+  fp <- alexGetFilePath
   alexError (fp ++ ": " ++ show l ++ ": " ++ show c ++ ": " ++ msg)
 
 runAlex' :: Alex a -> FilePath -> String -> Either String a
-runAlex' a fp input = runAlex input (setFilePath fp >> a)
+runAlex' a fp input = runAlex input (alexSetFilePath fp >> a)
 
 }
