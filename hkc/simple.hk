@@ -1,1 +1,7 @@
-x = 1
+< Math.Base
+
+> Imports absolutely.nothing
+
+dbl x = x + x
+
+sqr x =  x * x

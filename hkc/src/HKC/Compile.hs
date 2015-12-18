@@ -11,11 +11,5 @@ compile :: Build -> IO ()
 compile build = do
   let p = srcPath build
   s <- readFile p
-  print p
-  print $ s ++ "\n"
-
-  let ts = scanTokens s
-  putStrLn . show $ ts
-
-  let ast = parseSrc ts
-  putStrLn . show $ ast
+  let result = parse p s
+  print result
