@@ -80,25 +80,36 @@ hawk :-
 -- -----------------------------------------------------------------------------
 -- Alex "Rules"
 
+-- Skip whitespace everywhere
+$white_no_nl+                   ;
+"--".*                          ;
+
+
 -- 0 is the toplevel parser
 <0> {
-  "--".*                        ;
-  ^\s*\<                        { lex' TokenExport `andEnter` modulelist }
-  ^\s*\>                        { lex' TokenImport `andEnter` modulelist }
-  ^\s*@varid                    { lex  TokenVarid  `andEnter` startvar }
-  .                             ;
+  \<                            { lex' TokenExport `andEnter` modulelist }
+  \>                            { lex' TokenImport `andEnter` modulelist }
+  @varid                        { lex  TokenVarid  `andEnter` start_var }
+  @typid                        { lex  TokenTypid  `andEnter` start_type }
 }
 
 <modulelist> {
-  $white_no_nl+                 ;
+  \x0A $white*                  { enterBOL }
   @modid                        { lex TokenModId }
-  $white+                       { exitStartCode }
 }
 
-<startvar> {
-  $white+                       ;
-  \=                            { lex' TokenVarDef `andEnter` statements }
+<start_var> {
+  \@                            ;
+  \:                            ;
+  \=                            { exitAfter (lex' TokenVarDef `andEnter` statements) }
   @varid                        { lex TokenVaridP }
+}
+
+<start_type> {
+  \@                            ;
+  \:                            ;
+  \=                            { exitAfter (lex' TokenVarDef `andEnter` statements) }
+  @typid                       { lex TokenVaridP }
 }
 
 <statements> {
@@ -109,7 +120,7 @@ hawk :-
   \-                            { lex' TokenMinus }
   \*                            { lex' TokenTimes }
   \/                            { lex' TokenDiv }
-  $white+                       { begin 0 }
+  $white+                       { exitStartCode }
   \"                            { enterStartCode string }
 }
 
@@ -156,7 +167,7 @@ data AlexUserState
   }
 
 alexInitUserState :: AlexUserState
-alexInitUserState = AlexUserState "<unknown>" [] [0]
+alexInitUserState = AlexUserState "<unknown>" [0] [0]
 
 alexGetFilePath :: Alex FilePath
 alexGetFilePath = liftM filePath alexGetUserState
@@ -182,8 +193,23 @@ alexPopScope = do
   aus <- alexGetUserState
   let ss  = scopes aus
       ss' = tail ss
+      s   = headOrZero ss
+      --s'  = headOrZero ss'
   alexSetUserState (aus { scopes = ss' })
-  return $ head ss
+  return s
+
+alexUpdateScope :: Int -> Alex ()
+alexUpdateScope s' = do
+  s <- alexPeekScope
+  if s' > s
+    then alexPushScope s'
+    else if s' < s
+      then do alexPopScope
+              -- If new scope is less, pop current startcode
+              alexPopStartCode
+              alexUpdateScope s'
+      else return ()
+
 
 alexPeekStartCode :: Alex Int
 alexPeekStartCode = liftM (head . startCodes) alexGetUserState
@@ -228,6 +254,7 @@ data TokenClass = TokenExport
            | TokenVarid String
            | TokenVaridP String
            | TokenVarDef
+           | TokenTypid String
            | TokenOption
            | TokenType
            | TokenTo
@@ -258,8 +285,6 @@ lex f = \(p,_,_,s) i -> return $ Token p (f (take i s))
 lex' :: TokenClass -> AlexAction Token
 lex' = lex . const
 
-
-
 enterStartCode :: Int -> AlexAction Token
 enterStartCode code input len = do
   alexPushStartCode code
@@ -275,16 +300,17 @@ andEnter act code input len = do
   alexPushStartCode code
   act input len
 
-andExit :: AlexAction Token -> AlexAction Token
-andExit act input len = do
+exitAfter :: AlexAction Token -> AlexAction Token
+exitAfter act input len = do
   alexPopStartCode
   act input len
 
-enterBOL :: Int -> AlexAction Token
-enterBOL s' input len = do
-  s <- alexPeekScope
-  alexPushScope s'
+enterBOL :: AlexAction Token
+enterBOL (_,_,_,istr) len = do
+  let s' = length $ take len istr
+  alexUpdateScope s'
   alexMonadScan'
+
 
 alexMonadScan' :: Alex Token
 alexMonadScan' = do

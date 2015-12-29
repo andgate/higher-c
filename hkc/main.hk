@@ -1,4 +1,4 @@
-< Main
+< Main -- comment
 
 f : Int -> Int
 f (x) = { x * x }
