@@ -38,10 +38,12 @@ library
 
   exposed-modules:      Hawk.Compile
                         Hawk.Build
+                        Hawk.Grammar
+                        Hawk.Tokens
 
   build-tools:          alex, happy
-  other-modules:        Hawk.Grammar,
-                        Hawk.Tokens
+  --other-modules:        Hawk.Grammar,
+  --                      Hawk.Tokens
 
 executable              hkc
   main-is:              Main.hs
@@ -76,3 +78,13 @@ test-suite spec
                         , hawk
   ghc-options:          -threaded -rtsopts -with-rtsopts=-N
   default-language:     Haskell2010
+  
+benchmark crit
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   bench
+  main-is:          MainBenchmarkSuite.hs
+  build-depends:    base,
+                    criterion,
+                    random
+  ghc-options:      -Wall
+                    -O2

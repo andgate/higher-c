@@ -5,11 +5,12 @@ import SpecHelper
 spec :: Spec
 spec = do
     describe "Hawk.Grammar" $ do
-        context "Simple program" $ do
-            it "parses exactly as-is" $ do
-                let content = "f x : Int -> Int := x + 1"
+        context "AST Generation" $ do
+            it "A simple function that adds 1 to the input." $ do
+                let content = "f x : Int -> Int := { x + 1; }"
+                    result = []
 
-                parse "" content `shouldBe` Right [TString content]
+                parse "example.hs" content `shouldBe` Right result
 
 main :: IO ()
 main = hspec spec

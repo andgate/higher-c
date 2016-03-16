@@ -101,6 +101,26 @@ data Exp
    | PrimStr String
    | Var String
    deriving (Eq,Show)
+   
+data Primitive
+  = PrimInt Integer
+  | PrimDecimal Float
+  | PrimString String
+  deriving (Eq,Show)
+   
+data Expr
+  = Module String [Expr]
+  | Submodule String [Expr]
+  | Import String
+  | IdRef String
+  | Prim Primitive
+  | FunctionCall String [Expr]
+  | Assignment String Expr
+  | Return Expr
+  | Record String [Expr]
+  | Variable String Expr
+  | Function String [String] Expr
+  deriving (Eq,Show)
 
 lexwrap :: (Token -> Alex a) -> Alex a
 lexwrap = (alexMonadScan' >>=)
