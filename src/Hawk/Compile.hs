@@ -1,9 +1,9 @@
-module HKC.Compile where
+module Hawk.Compile where
 
-import HKC.Build
+import Hawk.Build
 
-import HKC.Tokens
-import HKC.Grammar
+import Hawk.Tokens
+import Hawk.Grammar
 
 import System.IO
 

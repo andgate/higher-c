@@ -1,7 +1,7 @@
 {
-module HKC.Grammar where
+module Hawk.Grammar where
 
-import HKC.Tokens
+import Hawk.Tokens
 }
 
 %name parseSrc

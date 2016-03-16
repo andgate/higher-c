@@ -1,4 +1,4 @@
-module HKC.Build where
+module Hawk.Build where
 
 --import Data.Yaml
 
