@@ -1,9 +1,19 @@
-# Hawk Compiler Toolchain
+Hawk Compiler Toolchain
+=====================
 
-# Setup
-Hawk requires some dependencies, like the haskell toolchain and llvm 3.5. If developed on Nixos, a nix-shell can be opened in the root directory of Hawk, and will pull in these dependencies. Once the environment is setup, the commands to build are
-	cabal sandbox init
-	cabal install --dependencies-only
-	cabal build
+Building with Stack
+-------
 
-This will build a hawk program in a sandboxed environment.
+Using the LLVM-3.5 toolchain requires several system libraries:
+
+```bash
+$ apt-get install llvm-3.5
+$ apt-get install libedit-dev
+```
+
+The hawk compiler, hkc, can then be built and run.
+
+```bash
+$ stack build
+$ stack exec hkc
+```
