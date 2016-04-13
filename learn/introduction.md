@@ -10,7 +10,8 @@ main: Void :=
   print "Hello World"
 ```
 
-This is a very simple program, but let's take it line by line. The first line defines the current module as "HelloWorld" using the ```.:``` symbol, which means ```module```. Hawk is big on using symbols whenever it can. This may seem harder to remember at first, but you will become accustom to them.
+This is a very simple program, but let's take it line by line. The first line defines the current module as "HelloWorld" using the ```.:``` symbol, which means ```module``` or ```export```. Hawk is big on using symbols whenever it can. This may seem harder to remember at first, but you will become accustom to them.
 
-Now that you've 
+The second line import the ```System.Print``` module using the ```:.``` symbol, which stands for ```import```. It was chosen because it is the reverse of the ```.:``` used to export the name of the module.
 
+The third line declares the name and type of a function. The function's name is ```main``` and has a type ```Void```. The name and type are seperated with the ```:``` symbol. Finally, the function declaration 
