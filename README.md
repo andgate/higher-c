@@ -19,4 +19,3 @@ $ stack exec hkc
 ## Learn
 
 Learn Hawk [here](learn).
-
