@@ -3,7 +3,7 @@
 Let's dive into Hawk! A good way to get a feel for the basic langauge is to write
 some code. First, let's look at what a hello world in Hawk looks like.
 
-hello.hk
+**hello.hk**
 ```
 .: HelloWorld
 
