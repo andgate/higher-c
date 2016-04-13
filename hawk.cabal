@@ -10,6 +10,7 @@ copyright:           Copyight (C) 2015 Gabriel Anderson
 category:            Compilers
 build-type:          Simple
 -- extra-source-files:
+default-language:     Haskell2010
 cabal-version:       >=1.10
 Bug-Reports:         https://github.com/andgate/hawk/issues
 
@@ -70,6 +71,7 @@ executable              hkc
                         -fno-warn-type-defaults
 
 test-suite spec
+  default-language:     Haskell2010
   type:                 exitcode-stdio-1.0
   hs-source-dirs:       test
   main-is:              Spec.hs
@@ -80,11 +82,12 @@ test-suite spec
   default-language:     Haskell2010
   
 benchmark crit
-  type:             exitcode-stdio-1.0
-  hs-source-dirs:   bench
-  main-is:          MainBenchmarkSuite.hs
-  build-depends:    base,
-                    criterion,
-                    random
-  ghc-options:      -Wall
-                    -O2
+  default-language:     Haskell2010
+  type:                 exitcode-stdio-1.0
+  hs-source-dirs:       bench
+  main-is:              MainBenchmarkSuite.hs
+  build-depends:        base,
+                        criterion,
+                        random
+  ghc-options:          -Wall
+                       -O2

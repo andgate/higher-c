@@ -11,34 +11,64 @@ import Hawk.Tokens
 %error { happyError }
 
 %token
-    import { Token _ TokenImport }
-    export { Token _ TokenExport }
-    modid { Token _ (TokenModId $$) }
-    varid { Token _ (TokenVarid $$) }
-    varidp { Token _ (TokenVaridP $$) }
-    vardef { Token _ TokenVarDef }
-    int { Token _ (TokenInt $$) }
-    prim_str { Token _ (TokenString $$) }
-    var { Token _ (TokenSym $$) }
-    '@' { Token _ TokenOption }
-    '=' { Token _ TokenEq }
-    '>' { Token _ TokenGT }
-    '<' { Token _ TokenLT }
-    '+' { Token _ TokenPlus }
-    '-' { Token _ TokenMinus }
-    '*' { Token _ TokenTimes }
-    '/' { Token _ TokenDiv }
-    '(' { Token _ TokenLParen }
-    ')' { Token _ TokenRParen }
-
-%right in
-%nonassoc '>' '<'
-%left '+' '-'
-%left '*' '/'
-%left NEG
+    ID      { Token _ (TokenId  $$) }
+    INT     { Token _ (TokenInteger  $$) }
+    DECIMAL { Token _ (TokenDecimal  $$) }
+    CHAR    { Token _ (TokenChar  $$) }
+    STRING  { Token _ (TokenString  $$) }
+    
+    '.:'    { Token _ TokenPColon }
+    ':.'    { Token _ TokenColonP }
+    '::'    { Token _ TokenCColon }
+    
+    ':='    { Token _ TokenFuncDec }
+    ':-'    { Token _ TokenTypeDec }
+    ':~'    { Token _ TokenTypeClass }
+    ':+'    { Token _ TokenImplement }
+    
+    '<-'    { Token _ TokenLArrow }
+    '<='    { Token _ TokenLLArrow }
+    '->'    { Token _ TokenRArrow }
+    '=>'    { Token _ TokenRRArrow }
+    '<:'    { Token _ TokenSubtype }
+    
+    '`'     { Token _ TokenGrave }
+    '~'     { Token _ TokenTilde }
+    '!'     { Token _ TokenExclaim }
+    '?'     { Token _ TokenQuestion }
+    '@'     { Token _ TokenAt }
+    '#'     { Token _ TokenPound }
+    '$'     { Token _ TokenDollar }
+    '%'     { Token _ TokenPercent }
+    '^'     { Token _ TokenCaret }
+    '&'     { Token _ TokenAmpersand }
+    
+    '{'     { Token _ TokenLParen }
+    '}'     { Token _ TokenRParen }
+    '['     { Token _ TokenLBracket }
+    ']'     { Token _ TokenRBracket }
+    '|'     { Token _ TokenBar }
+    
+    ':'     { Token _ TokenColon }
+    ';'     { Token _ TokenSemicolon }
+    '.'     { Token _ TokenPeriod }
+    ','     { Token _ TokenComma }
+    '<'     { Token _ TokenLesser }
+    '>'     { Token _ TokenGreater }
+    
+    '*'     { Token _ TokenStar }
+    '/'     { Token _ TokenSlash }
+    '+'     { Token _ TokenPlus }
+    '-'     { Token _ TokenMinus }
+    '='     { Token _ TokenEquals }
+    
+    OPEN_BLOCK    { Token _ TokenOpenBlock }
+    CLOSE_BLOCK   { Token _ TokenCloseBlock }
+    OPEN_STMT     { Token _ TokenOpenStmt }
+    CLOSE_STMT    { Token _ TokenCloseStmt }
 
 %%
-ast :: { Ast }
+ast :: { Expr }
   : tlf                     { [$1] }
   | ast tlf                 { $2 : $1 }
 

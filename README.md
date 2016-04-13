@@ -1,8 +1,6 @@
-Hawk Compiler Toolchain
-=====================
+# Hawk Compiler Toolchain
 
-Building with Stack
--------
+## Building with Stack
 
 Using the LLVM-3.5 toolchain requires several system libraries:
 
@@ -17,3 +15,8 @@ The hawk compiler, hkc, can then be built and run.
 $ stack build
 $ stack exec hkc
 ```
+
+## Learn
+
+Learn Hawk [here](learn).
+

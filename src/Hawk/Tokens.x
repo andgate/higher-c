@@ -249,29 +249,59 @@ data Token = Token AlexPosn TokenClass
 
 -- The token type:
 data TokenClass = TokenExport
-           | TokenImport
-           | TokenModId String
-           | TokenVarid String
-           | TokenVaridP String
-           | TokenVarDef
-           | TokenTypid String
-           | TokenOption
-           | TokenType
-           | TokenTo
-           | TokenInt Int
+           | TokenId String
+           | TokenInteger Int
+           | TokenDecimal Float
            | TokenChar String
            | TokenString String
-           | TokenSym String
-           | TokenEq
-           | TokenGT
-           | TokenLT
-           | TokenPlus
-           | TokenMinus
-           | TokenTimes
-           | TokenDiv
+           
+           | TokenPColon
+           | TokenColonP
+           | TokenCColon
+           
+           | TokenFuncDec
+           | TokenTypeDec
+           | TokenTypeClass
+           | TokenImplement
+           
+           | TokenLArrow
+           | TokenLLArrow
+           | TokenRArrow
+           | TokenRRArrow
+           | TokenSubtype
+           
+           | TokenGrave
+           | TokenTilde
+           | TokenExclaim
+           | TokenQuestion
+           | TokenAt
+           | TokenPound
+           | TokenDollar
+           | TokenPercent
+           | TokenCaret
+           | TokenAmpersand
+           
            | TokenLParen
            | TokenRParen
-           | TokenEof
+           | TokenLBracket
+           | TokenRBracket
+           | TokenBar
+           
+           | TokenColon
+           | TokenSemicolon
+           | TokenPeriod
+           | TokenComma
+           | TokenLesser
+           | TokenGreater
+           | TokenStar
+           | TokenSlash
+           | TokenPlus
+           | TokenMinus
+           | TokenEquals
+           | TokenOpenBlock
+           | TokenCloseBlock
+           | TokenOpenStmt
+           | TokenCloseStmt
            deriving ( Eq, Show )
 
 alexEOF :: Alex Token
