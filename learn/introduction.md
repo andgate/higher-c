@@ -17,3 +17,5 @@ defines the current module as "HelloWorld" using the ```.:``` symbol, which mean
 ```module```. Hawk is big on using symbols whenever it can. This may seem harder to
 remember at first, but you will get accustom to them.
 
+Now that you've 
+
