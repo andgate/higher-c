@@ -14,4 +14,8 @@ This is a very simple program, but let's take it line by line. The first line de
 
 The second line import the ```System.Print``` module using the ```:.``` symbol, which stands for ```import```. It was chosen because it is the reverse of the ```.:``` used to export the name of the module.
 
-The third line declares the name and type of a function. The function's name is ```main``` and has a type ```Void```. The name and type are seperated with the ```:``` symbol. Finally, the function declaration 
+The third line declares the name and type of a function. The function's name is ```main``` and has a type ```Void```. The name and type are seperated with the ```:``` symbol. Finally, the function declaration is ended with ```:=```, which marks the end of the function delcaration and beginning of the function definition. Like in other langauges, the function name ```main``` has special meaning to the compiler, and is used as the entry point for an executable.
+
+The first statement in a function definition has to begin on a new line, and must begin with an indent of at least one space or tab. Hawk is a white-space sensitive language, and uses the offside rule to define statement blocks, similar to Python or Haskell. How this works will be discussed later.
+
+The first and only statement in this ```main``` function simply prints a the string ```"Hello World"```.
