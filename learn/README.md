@@ -5,8 +5,9 @@ These pages also serve as the standard specification for Hawk. If you notice tha
 some of the pages do not match up with the language, please submit a bug report.
 
 1. [Introduction](introduction.md)
-2. [Modules](modules.md)
-3. [Variables](variables.md)
-4. [Functions](functions.md)
-5. [Records](records.md)
-6. [Whitespace Layout](whitespace_layout.md)
+2. [Introduction](introduction.md)
+3. [Modules](modules.md)
+4. [Variables](variables.md)
+5. [Functions](functions.md)
+6. [Records](records.md)
+7. [Whitespace Layout](whitespace_layout.md)
