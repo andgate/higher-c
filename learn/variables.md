@@ -4,5 +4,4 @@ Variables are a core part of every programming langauge. They are an essential a
 ```
 $foo: Int = 1
 ```
-
-Hawk uses the `$` to mark the start of a variable declaration. 
+This statement creates a variable named `foo`. Similar to Bash, Hawk uses the `$` to mark the start of a variable declaration. The name and type is seperated using `:`, and the initial value is assigned using the `=` operator.
