@@ -5,7 +5,7 @@ These pages also serve as the standard specification for Hawk. If you notice tha
 some of the pages do not match up with the language, please submit a bug report.
 
 1. [Introduction](introduction.md)
-2. [Introduction](introduction.md)
+2. [Comments](comments.md)
 3. [Modules](modules.md)
 4. [Variables](variables.md)
 5. [Functions](functions.md)
