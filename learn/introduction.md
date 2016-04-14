@@ -1,12 +1,13 @@
 # Introduction to Hawk
 
+### Hello World!
 Let's dive into Hawk! A good way to get a feel for the basic langauge is to write some code. First, let's look at what a hello world in Hawk looks like. In a file named `hello.hk`, write the following
 ```
 HelloWorld ::
   :> System.IO.print
   
   main: Void :=
-    print "Hello World"
+    print "Hello World!"
 ```
 This is a very simple program, but let's take it line by line. The first line defines the current module as `HelloWorld` using the `::` operator to seperate the declaration from the definition. Hawk is big on using symbols whenever it can. This may seem hard to remember at first, but you will become accustom to them.
 
