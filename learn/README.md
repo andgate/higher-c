@@ -9,3 +9,4 @@ some of the pages do not match up with the language, please submit a bug report.
 3. [Variables](variables.md)
 4. [Functions](functions.md)
 5. [Records](records.md)
+6. [Whitespace Layout](whitespace_layout.md)
