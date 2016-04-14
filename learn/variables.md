@@ -19,5 +19,4 @@ $ x : Int = 1
 x = 7
 x = x + 1
 ```
-
-
+This all works very much like other languages. The first line declares a variable named `x`, which is an `Int` that is initialized with the value `1`. The second line assigns `x` the value `7`, and the variable no longers represents `1`. In the third line, the expression `x + 1` is evaluated to `7 + 1`, since `x` represents `7`. Finally, `7 + 1` is evaluated to `8`, which is then assigned to `x`.
