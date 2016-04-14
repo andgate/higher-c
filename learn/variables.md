@@ -24,7 +24,7 @@ $ x : Int = 1
 ```
 This time I inserted spaces between the symbols and the variable. You are free to do either.
 
-Another caveat of immutable variables is that they **must** be initialized when they are declared. Mutable variables, on the other hand, will be implicitly initialized if an initialization is omitted from their declaration.
+One caveat of immutable variables is that they **must** be initialized when they are declared. Mutable variables, on the other hand, will be implicitly initialized if an initialization is omitted from their declaration.
 ```
 $ x: Int    // Implicitly Initialized to the default value for Int, which is 0.
 x = 3       // Assigned to x 
