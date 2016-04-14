@@ -11,3 +11,4 @@ Most programming languages support mutable and immutable variables. Mutables var
 $ x : Int = 1
 # a : Int = 2
 ```
+Notice, this time I inserted spaces between the symbols and the variable.
