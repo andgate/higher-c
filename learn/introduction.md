@@ -12,7 +12,7 @@ This is a very simple program, but let's take it line by line. The first line de
 
 The body of a module must begin on a new line and must begin with an indent of at least one space or tab. Hawk is a white-space sensitive language, and uses it's own flavor of the offside rule to establish codeblocks, similar to Python or Haskell. See the [whitespace layout](whitespace_layout.md) for more information.
 
-The second line imports the `System.IO.print` module using the `:>` symbol, which stands for `import`. This is a system module that comes with Hawk's standard library. This is a very simple import statement, and there is a lot more to the import statement than shown here.
+The second line imports the `System.IO.print` module using the `:>` symbol, which stands for `import`. This is a system module that comes with Hawk's standard library. This is a very simple import statement, and there is a lot more to `:>` statement than shown here. I encourage you to read the section on [modules](modules.md).
 
 The third line declares the name and type of a function. The function's name is `main` and has a type `Void`. The name and type are seperated with the `:` symbol. Finally, the function declaration is ended with `:=`, which marks the end of the function delcaration and beginning of the function definition. Like in other langauges, the function name `main` has special meaning to the compiler, and is used as the entry point for an executable.
 
