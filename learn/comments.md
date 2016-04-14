@@ -1,5 +1,5 @@
 # Comments
-Comments are the same as in languages like C, Java, C#, and CSS.
+This section is simple. Comments are the same as in languages like C, Java, C#, and CSS.
 
 ### Single Line Comments
 Single line comments are marked with `//`.
