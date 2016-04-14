@@ -11,4 +11,13 @@ Most programming languages support mutable and immutable variables. Mutables var
 $ x : Int = 1
 # a : Int = 2
 ```
-Notice, this time I inserted spaces between the symbols and the variable.
+Notice, this time I inserted spaces between the symbols and the variable. You are free to do either.
+
+Similar to many languages, mutable variables can be reassigned with the `=` operator.
+```
+$ x : Int = 1
+x = 7
+x = x + 1
+```
+
+
