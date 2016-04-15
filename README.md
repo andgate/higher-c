@@ -18,4 +18,4 @@ $ stack exec hkc
 
 ## Learn
 
-Learn Hawk [here](learn).
+Learn Hawk [here](http://github.com/andgate/hawk/wiki).
