@@ -17,9 +17,7 @@ import Hawk.Tokens
     CHAR    { Token _ (TokenChar  $$) }
     STRING  { Token _ (TokenString  $$) }
     
-    '.:'    { Token _ TokenPColon }
-    ':.'    { Token _ TokenColonP }
-    '::'    { Token _ TokenCColon }
+    '::'    { Token _ TokenDblColon }
     
     ':='    { Token _ TokenFuncDec }
     ':-'    { Token _ TokenTypeDec }
@@ -68,23 +66,39 @@ import Hawk.Tokens
     CLOSE_STMT    { Token _ TokenCloseStmt }
 
 %%
-ast :: { Expr }
-  : tlf                     { [$1] }
-  | ast tlf                 { $2 : $1 }
+ast :: { Ast }
+  : tl_smts { $1 }
 
 
-tlf :: { TopLevelForm }
-  : export ModuleList       { TLExport $2 }
-  | import ModuleList       { TLImport $2 }
+tl_smt :: { TopLevelStmt }
+  : ModStmt                 { $1 }
+  | ImportStmt              { TLImport $2 }
   | ExpDef                  { TLExpDef $1 }
+  
+tl_smts :: { [TopLevelStmt] }
+  : tl_smt                  { [$1] }
+  | tl_smts tl_smt          { $2 : $1 }
 
-ModuleList :: { [String] }
-  : modid                   { [$1] }
-  | ModuleList modid        { $2 : $1 }
+id :: { String }
+  : ID  { $1 }
 
-ExpDef :: { ExpDef }
-  : varid vardef Exp        { ExpDef $1 [] $3 }
-  | varid params vardef Exp { ExpDef $1 $2 $4 }
+ids :: { [String] }
+  : id      { [$1] }
+  | ids id  { $2 : $1 }
+
+ModId :: { [String] }
+  : ID                      { [$1] }
+  | ModId "." ID            { $2 : $1 }
+
+ModStmt :: { TopLevelStmt }
+  : ModId "::" tl_smts      { TLModule $1 $3 }
+
+ImportStmt :: { TopLevelStmt }
+  : "->" ModId              { TLImport  $2 }
+  | "=>" ModId              { TLImportQ $2 }
+  
+Func :: { HkFun }
+  : ID 
 
 params :: { [String] }
   : varidp                   { [$1]}
@@ -104,38 +118,42 @@ Exp :: { Exp }
 
 {
 
-type Ast = [TopLevelForm]
+type Ast = [TopLevelStmt]
 
-data TopLevelForm
-  = TLExport [String]
-  | TLImport [String]
-  | TLOptDef [String]
-  | TLTypDef
-  | TLExpDef ExpDef
+data TopLevelStmt
+  = TLModule  [String] [TopLevelStmt]
+  | TLImport  [String]
+  | TLImportQ [String]
+  | TLFunction HkFun
+  | TLVar HkVar
+  | TLRec HkRec
   | TLEmpty
   deriving(Eq,Show)
 
+data HkFun
+  = HkFun {
+    hkFunName       :: String
+  , hkFunParams     :: [String]
+  , hkFunTypeSig    :: HkTypeSig
+  , hkFunExp        :: HkExp
+  }
 
-data ExpDef = ExpDef String [String] Exp
-  deriving (Eq,Show)
-
-data Exp
-  = Exp String Exp
-   | Plus Exp Exp
-   | Minus Exp Exp
-   | Times Exp Exp
-   | Div Exp Exp
-   | Negate Exp
-   | Brack Exp
-   | Int Int
-   | PrimStr String
-   | Var String
+data HkExp
+  =  HkExpPrim    HkPrim
+   | HkExpVar     String HkExp
+   | HkExpVal     String HkExp
+   | HkExpDo      [HkExp]
+   | HkExpPlus    HkExp HkExp
+   | HkExpMinus   HkExp HkExp
+   | HkExpTimes   HkExp HkExp
+   | HkExpDiv     HkExp HkExp
+   | HkExpNegate  HkExp
    deriving (Eq,Show)
    
-data Primitive
-  = PrimInt Integer
-  | PrimDecimal Float
-  | PrimString String
+data HkPrim
+  = HkPrimInt Integer
+  | HkPrimDecimal Float
+  | HkPrimString String
   deriving (Eq,Show)
    
 data Expr

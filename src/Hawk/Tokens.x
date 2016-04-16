@@ -9,7 +9,7 @@ import qualified Data.ByteString.Lazy as B
 
 %wrapper "monadUserState"
 
--- A lot of this is based on GHC's Lexer.
+
 -- -----------------------------------------------------------------------------
 -- Alex "Character set macros"
 
@@ -24,7 +24,6 @@ $tab         = \t
 
 $ascdigit  = 0-9
 $unidigit  = \x03 -- Trick Alex into handling Unicode. See alexGetByte.
-$decdigit  = $ascdigit -- for now, should really be $digit (ToDo)
 $digit     = [$ascdigit $unidigit]
 
 $special   = [\(\)\,\;\[\]\`\{\}]
@@ -39,38 +38,18 @@ $ascsmall  = [a-z]
 $small     = [$ascsmall $unismall \_]
 $unigraphic = \x06 -- Trick Alex into handling Unicode. See alexGetByte.
 $graphic   = [$small $large $symbol $digit $special $unigraphic \"\']
-$binit     = 0-1
-$octit     = 0-7
-$hexit     = [$decdigit A-F a-f]
-$suffix    = \x07 -- Trick Alex into handling Unicode. See alexGetByte.
 -- TODO #10196. Only allow modifier letters in the suffix of an identifier.
-$idchar    = [$small $large $digit $suffix \']
-$pragmachar = [$small $large $digit]
-$docsym    = [\| \^ \* \$]
+$idchar    = [$small $large]
 
 -- -----------------------------------------------------------------------------
 -- Alex "Regular expression macros"
 
-@varid     = $small $idchar*          -- variable identifiers
-@typid     = $large $idchar*          -- constructor identifiers
-@modid     = $idchar+ (\. $idchar+)*
-@varsym    = ($symbol # \:) $symbol*  -- variable (operator) symbol
-@consym    = \: $symbol*              -- constructor (operator) symbol
-@decimal     = $decdigit+
-@binary      = $binit+
-@octal       = $octit+
-@hexadecimal = $hexit+
+@id          = $idchar*          -- variable identifiers
+@negative    = \-
+@digits      = $digit+
+@integer     = @negative? @digits
 @exponent    = [eE] [\-\+]? @decimal
-@qual = (@typid \.)+
-@qvarid = @qual @varid
-@qtyid = @qual @typid
-@qvarsym = @qual @varsym
-@qconsym = @qual @consym
-@floating_point = @decimal \. @decimal @exponent? | @decimal @exponent
--- normal signed numerical literals can only be explicitly negative,
--- not explicitly positive (contrast @exponent)
-@negative = \-
-@signed = @negative ?
+@floating_point = @integer \. @integer @exponent? | @integer @exponent
 
 -- -----------------------------------------------------------------------------
 -- Alex "Identifier"
@@ -87,53 +66,20 @@ $white_no_nl+                   ;
 
 -- 0 is the toplevel parser
 <0> {
-  \<                            { lex' TokenExport `andEnter` modulelist }
-  \>                            { lex' TokenImport `andEnter` modulelist }
-  @varid                        { lex  TokenVarid  `andEnter` start_var }
-  @typid                        { lex  TokenTypid  `andEnter` start_type }
-}
-
-<modulelist> {
-  \x0A $white*                  { enterBOL }
-  @modid                        { lex TokenModId }
-}
-
-<start_var> {
-  \@                            ;
-  \:                            ;
-  \=                            { exitAfter (lex' TokenVarDef `andEnter` statements) }
-  @varid                        { lex TokenVaridP }
-}
-
-<start_type> {
-  \@                            ;
-  \:                            ;
-  \=                            { exitAfter (lex' TokenVarDef `andEnter` statements) }
-  @typid                       { lex TokenVaridP }
-}
-
-<statements> {
-  $white_no_nl+                 ;
-  $digit+                       { lex (TokenInt . read) }
-  @varid                        { lex TokenSym }
-  \+                            { lex' TokenPlus }
-  \-                            { lex' TokenMinus }
-  \*                            { lex' TokenTimes }
-  \/                            { lex' TokenDiv }
-  $white+                       { exitStartCode }
-  \"                            { enterStartCode string }
-}
-
-<old> {
   $white+                       ;
-  $digit+                       { lex (TokenInt . read) }
-  ^\<                           { lex' TokenExport }
-  ^\>                           { lex' TokenImport }
+  
+  "do"                          { lex' TokenDo }
+  "let"                         { lex' TokenLet }
+  
+  @id                           { lex TokenId }
+  @integer                      { lex (TokenInt . read) }
+  
+  \:\:                          { lex' TokenDblColon }
   \<                            { lex' TokenGT }
   \>                            { lex' TokenLT }
-  \@                            { lex' TokenOption }
-  \-\>                          { lex' TokenTo }
-  \:                            { lex' TokenType }
+  \-\>                          { lex' TokenRArrow }
+  \=\>                          { lex' TokenThickRArrow }
+  \:                            { lex' TokenColon }
   \=                            { lex' TokenEq }
   \+                            { lex' TokenPlus }
   \-                            { lex' TokenMinus }
@@ -141,7 +87,6 @@ $white_no_nl+                   ;
   \/                            { lex' TokenDiv }
   \(                            { lex' TokenLParen }
   \)                            { lex' TokenRParen }
-  @varid                        { lex TokenSym }
   \"                            { begin string }
   \'                            { begin char }
 }
@@ -255,9 +200,11 @@ data TokenClass = TokenExport
            | TokenChar String
            | TokenString String
            
-           | TokenPColon
-           | TokenColonP
-           | TokenCColon
+           | TokenDo
+           | TokenLet
+           
+           | TokenColon
+           | TokenDblColon
            
            | TokenFuncDec
            | TokenTypeDec
@@ -265,9 +212,9 @@ data TokenClass = TokenExport
            | TokenImplement
            
            | TokenLArrow
-           | TokenLLArrow
+           | TokenThickLArrow
            | TokenRArrow
-           | TokenRRArrow
+           | TokenThickRArrow
            | TokenSubtype
            
            | TokenGrave
