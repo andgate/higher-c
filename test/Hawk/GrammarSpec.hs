@@ -13,7 +13,7 @@ spec = do
                 putStr "\nAST Generated: "
                 print ast
                     
-                let result = Right (ModuleExpr [] [ModuleExpr ["foo"] [FuncExpr "bar" ["x"] ["Unit","Int"] (PlusExpr (IntExpr 1) (IntExpr 1))]])
+                let result = Right (ModuleExpr [] [ModuleExpr ["Foo"] [FuncDecExpr "baz" [] ["Int"] (TimesExpr (IntExpr 3) (IntExpr 2)),FuncDecExpr "bar" ["x"] ["Int","Int"] (DoExpr [ReturnExpr (VarExpr "sum"),ValDecExpr "sum" ["Int"] (PlusExpr (VarExpr "x") (VarExpr "x"))])]])
                 ast `shouldBe` result
 
 main :: IO ()

@@ -67,12 +67,23 @@ $white+                   ;
 -- 0 is the toplevel parser
 <0> {
   "do"                          { lex' TokenDo }
-  "let"                         { lex' TokenLet }
+  "val"                         { lex' TokenVal }
+  "var"                         { lex' TokenVar }
+  "return"                      { lex' TokenReturn }
+  "if"                          { lex' TokenIf }
+  "then"                        { lex' TokenThen }
+  "else"                        { lex' TokenElse }
+  "elif"                        { lex' TokenElif }
+  "while"                       { lex' TokenWhile }
   
   @id                           { lex TokenId }
   @integer                      { lex (TokenInt . read) }
   
   \:\=                          { lex' TokenFuncDef }
+  \=                            { lex' TokenEquals }
+  
+  \#                            { lex' TokenPound  }
+  \$                            { lex' TokenDollar }
   
   \:\:                          { lex' TokenDblColon }
   \:                            { lex' TokenColon }
@@ -81,7 +92,6 @@ $white+                   ;
   \-\>                          { lex' TokenRArrow }
   \=\>                          { lex' TokenThickRArrow }
   \:                            { lex' TokenColon }
-  \=                            { lex' TokenEquals }
   \+                            { lex' TokenPlus }
   \-                            { lex' TokenMinus }
   \*                            { lex' TokenStar }
@@ -203,8 +213,16 @@ data TokenClass = TokenExport
            | TokenChar String
            | TokenString String
            
+           | TokenVal
+           | TokenVar
+           
            | TokenDo
-           | TokenLet
+           | TokenReturn
+           | TokenIf
+           | TokenThen
+           | TokenElse
+           | TokenElif
+           | TokenWhile
            
            | TokenDblColon
            

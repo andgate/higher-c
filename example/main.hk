@@ -1,3 +1,11 @@
-foo :: {
-    bar x : Int -> Unit := 1 + 1
-}
+{Foo :: {
+  
+  {bar x
+   : Int -> Int := {
+     { val sum: Int = x + x }
+     { return sum }
+  }}
+  
+  {baz
+  : Int = 3 * 2}
+}}
