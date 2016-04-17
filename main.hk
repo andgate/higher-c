@@ -1,9 +1,0 @@
-< Main -- comment
-
-f : Int -> Int
-f (x) = { x * x }
-
-main @ program="hawk-test"
-main : ()
-main =
-  print (f 8)

@@ -10,7 +10,6 @@ copyright:           Copyight (C) 2015 Gabriel Anderson
 category:            Compilers
 build-type:          Simple
 -- extra-source-files:
-default-language:     Haskell2010
 cabal-version:       >=1.10
 Bug-Reports:         https://github.com/andgate/hawk/issues
 
@@ -41,6 +40,14 @@ library
                         Hawk.Build
                         Hawk.Grammar
                         Hawk.Tokens
+                        
+  default-extensions:   OverloadedStrings
+                        PostfixOperators
+                        TupleSections
+                        PackageImports
+                        RecursiveDo
+                        LambdaCase
+                        MultiWayIf
 
   build-tools:          alex, happy
   --other-modules:        Hawk.Grammar,
@@ -54,14 +61,12 @@ executable              hkc
                         , hawk
 
   default-extensions:   OverloadedStrings
-                        UnicodeSyntax
                         PostfixOperators
                         TupleSections
                         PackageImports
                         RecursiveDo
                         LambdaCase
                         MultiWayIf
-                        TemplateHaskell
 
   ghc-options:          -Wall
                         -fwarn-tabs
@@ -75,10 +80,15 @@ test-suite spec
   type:                 exitcode-stdio-1.0
   hs-source-dirs:       test
   main-is:              Spec.hs
+  
   build-depends:        base
                         , hspec ==2.2.2
                         , hawk
-  ghc-options:          -threaded -rtsopts -with-rtsopts=-N
+  
+  ghc-options:          -threaded
+                        -rtsopts
+                        -with-rtsopts=-N
+  
   default-language:     Haskell2010
   
 benchmark crit
@@ -86,8 +96,10 @@ benchmark crit
   type:                 exitcode-stdio-1.0
   hs-source-dirs:       bench
   main-is:              MainBenchmarkSuite.hs
+  
   build-depends:        base,
                         criterion,
                         random
+  
   ghc-options:          -Wall
-                       -O2
+                        -O2

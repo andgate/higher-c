@@ -6,4 +6,4 @@ import Hawk.Build
 main :: IO ()
 main = compile build_conf
   where
-    build_conf = Build "main.hk"
+    build_conf = Build "example/main.hk"

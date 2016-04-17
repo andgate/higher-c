@@ -1,9 +1,0 @@
-< Math.Base
-
-> Imports absolutely.nothing
-
-name = "a"
-
-dbl x = x + x
-
-sqr x =  x * x

@@ -44,12 +44,12 @@ $idchar    = [$small $large]
 -- -----------------------------------------------------------------------------
 -- Alex "Regular expression macros"
 
-@id          = $idchar*          -- variable identifiers
+@id          = $idchar+          -- variable identifiers
 @negative    = \-
-@digits      = $digit+
-@integer     = @negative? @digits
+@decimal      = $digit+
+@integer     = @negative? @decimal
 @exponent    = [eE] [\-\+]? @decimal
-@floating_point = @integer \. @integer @exponent? | @integer @exponent
+@floating_point = @decimal \. @decimal @exponent? | @decimal @exponent
 
 -- -----------------------------------------------------------------------------
 -- Alex "Identifier"
@@ -60,33 +60,36 @@ hawk :-
 -- Alex "Rules"
 
 -- Skip whitespace everywhere
-$white_no_nl+                   ;
+$white+                   ;
 "--".*                          ;
 
 
 -- 0 is the toplevel parser
 <0> {
-  $white+                       ;
-  
   "do"                          { lex' TokenDo }
   "let"                         { lex' TokenLet }
   
   @id                           { lex TokenId }
   @integer                      { lex (TokenInt . read) }
   
+  \:\=                          { lex' TokenFuncDef }
+  
   \:\:                          { lex' TokenDblColon }
-  \<                            { lex' TokenGT }
-  \>                            { lex' TokenLT }
+  \:                            { lex' TokenColon }
+  \<                            { lex' TokenGreater }
+  \>                            { lex' TokenLesser }
   \-\>                          { lex' TokenRArrow }
   \=\>                          { lex' TokenThickRArrow }
   \:                            { lex' TokenColon }
-  \=                            { lex' TokenEq }
+  \=                            { lex' TokenEquals }
   \+                            { lex' TokenPlus }
   \-                            { lex' TokenMinus }
-  \*                            { lex' TokenTimes }
-  \/                            { lex' TokenDiv }
+  \*                            { lex' TokenStar }
+  \/                            { lex' TokenSlash }
   \(                            { lex' TokenLParen }
   \)                            { lex' TokenRParen }
+  \{                            { lex' TokenLCurlyBrace }
+  \}                            { lex' TokenRCurlyBrace }
   \"                            { begin string }
   \'                            { begin char }
 }
@@ -195,18 +198,17 @@ data Token = Token AlexPosn TokenClass
 -- The token type:
 data TokenClass = TokenExport
            | TokenId String
-           | TokenInteger Int
-           | TokenDecimal Float
+           | TokenInt Int
+           | TokenFloat Float
            | TokenChar String
            | TokenString String
            
            | TokenDo
            | TokenLet
            
-           | TokenColon
            | TokenDblColon
            
-           | TokenFuncDec
+           | TokenFuncDef
            | TokenTypeDec
            | TokenTypeClass
            | TokenImplement
@@ -232,6 +234,8 @@ data TokenClass = TokenExport
            | TokenRParen
            | TokenLBracket
            | TokenRBracket
+           | TokenLCurlyBrace
+           | TokenRCurlyBrace
            | TokenBar
            
            | TokenColon
@@ -249,6 +253,8 @@ data TokenClass = TokenExport
            | TokenCloseBlock
            | TokenOpenStmt
            | TokenCloseStmt
+           
+           | TokenEof
            deriving ( Eq, Show )
 
 alexEOF :: Alex Token
