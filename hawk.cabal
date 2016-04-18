@@ -27,6 +27,7 @@ library
                         , llvm-general         >= 3.5.0.0
                         , llvm-general-pure    >= 3.5.0
                         , text >= 1 && < 2
+                        , mtl >= 2.2 && < 2.3
 
   ghc-options:         -Wall
                        -fno-warn-unused-binds
@@ -38,8 +39,11 @@ library
 
   exposed-modules:      Hawk.Compile
                         Hawk.Build
+                        Hawk.AST
                         Hawk.Grammar
                         Hawk.Tokens
+                        Hawk.Codegen
+                        Hawk.Emit
                         
   default-extensions:   OverloadedStrings
                         PostfixOperators
@@ -84,6 +88,7 @@ test-suite spec
   build-depends:        base
                         , hspec ==2.2.2
                         , hawk
+                        , containers >= 0.5 && < 0.6
   
   ghc-options:          -threaded
                         -rtsopts

@@ -2,6 +2,8 @@
 module Hawk.Grammar where
 
 import Hawk.Tokens
+import Hawk.AST
+
 }
 
 %name parseHk
@@ -16,6 +18,8 @@ import Hawk.Tokens
     FLOAT   { Token _ (TokenFloat  $$) }
     CHAR    { Token _ (TokenChar  $$) }
     STRING  { Token _ (TokenString  $$) }
+    
+    EXTERN  { Token _ TokenExtern }
     
     VAL     { Token _ TokenVal }
     VAR     { Token _ TokenVar }
@@ -83,9 +87,9 @@ ast :: { Expr }
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "General"  
 
-ids :: { [String] }
+ids :: { Ids }
   : ID            { [$1] }
-  | ids ID        { $2 : $1 }
+  | ids ID        { $2:$1 }
   
   
 -- -----------------------------------------------------------------------------
@@ -94,23 +98,24 @@ ids :: { [String] }
 mod_stmt :: { Expr }
   : mod_dec       { $1 }
   | import        { $1 }
-  | func_dec      { $1 }
+  | func          { $1 }
+  | extern_func   { $1 }
   | elem          { $1 }
   
-mod_stmts :: { [Expr] }
+mod_stmts :: { Exprs }
   : '{' mod_stmt '}'                { [$2] }
-  | mod_stmts '{' mod_stmt '}'      { $3 : $1 }
+  | mod_stmts '{' mod_stmt '}'      { $3:$1 }
   
-mod_stmt_block :: { [Expr] }
+mod_stmt_block :: { Exprs }
   : '{' '}'                     { [] }
-  | '{' mod_stmts '}'           { $2 }
+  | '{' mod_stmts '}'           { reverse $2 }
 
-mod_id :: { [String] }
+mod_id :: { ModId }
   : ID                          { [$1] }
-  | mod_id '.' ID               { $3 : $1 }
+  | mod_id '.' ID               { $3:$1 }
 
 mod_dec :: { Expr }
-  : mod_id '::' mod_stmt_block  { ModuleExpr $1 $3 }
+  : mod_id '::' mod_stmt_block  { ModuleExpr (reverse $1) $3 }
   
 import :: { Expr }
   : '->' mod_id              { ImportExpr $2 False }
@@ -128,45 +133,56 @@ expr :: { Expr }
   | DO stmt_block           { DoExpr $2 }
   | RETURN expr             { ReturnExpr $2 }
   
-  | expr '+' expr           { PlusExpr $1 $3 }
-  | expr '-' expr           { MinusExpr $1 $3 }
-  | expr '*' expr           { TimesExpr $1 $3 }
-  | expr '/' expr           { DivExpr $1 $3 }
+  | expr '+' expr           { BinaryOpExpr "+" $1 $3 }
+  | expr '-' expr           { BinaryOpExpr "-" $1 $3 }
+  | expr '*' expr           { BinaryOpExpr "*" $1 $3 }
+  | expr '/' expr           { BinaryOpExpr "/" $1 $3 }
   | '(' expr ')'            { $2 }
   
 
-exprs :: { [Expr] }
+exprs :: { Exprs }
   : expr              { [$1] }
-  | exprs expr        { $2 : $1 }
+  | exprs expr        { $2:$1 }
   
 stmt :: { Expr }
   : expr    { $1 }
   | elem    { $1 }
   
-stmts :: { [Expr] }
+stmts :: { Exprs }
   : '{' stmt '}'            { [$2] }
-  | stmts '{' stmt '}'      { $3 : $1 }
+  | stmts '{' stmt '}'      { $3:$1 }
 
-stmt_block :: { [Expr] }
+stmt_block :: { Exprs }
   : '{' '}'             { [] }
-  | '{' stmts '}'       { $2 }
+  | '{' stmts '}'       { reverse $2 }
 
 
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Function"
   
-func_dec :: { Expr }
-  : ID params ':' typesig '=' expr        { FuncDecExpr $1 $2 $4 $6 }
-  | ID params ':' typesig ':=' stmt_block { FuncDecExpr $1 $2 $4 (DoExpr $6) }
-
-params :: { [String] }
-  : {- empty -}    { [] }
-  | ids            { $1 }
+func :: { Expr }
+  : func_dec func_def { mkFuncExpr $1 $2 }
   
-typesig :: { [String] }
-  : ID                  { [$1] }
-  | typesig '->' ID     { $3:$1 }
+func_dec :: { (Name, Params, Types) }
+  : ID params typesig { ($1, $2, $3) }
+  
+func_def :: { Expr }
+  : '=' expr { $2 }
+  | ':=' stmt_block { DoExpr $2 }
 
+params :: { Params }
+  : {- empty -}    { [] }
+  | ids            { reverse $1 }
+  
+types :: { Types }
+  : ID                { [$1] }
+  | types '->' ID     { $3:$1 }
+  
+typesig :: { Types }
+  : ':' types         { reverse $2 }
+
+extern_func :: { Expr }
+  : EXTERN func_dec { mkExternExpr $2 }
 
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Varibles and Values"
@@ -176,46 +192,12 @@ elem :: { Expr }
   | var { $1 }
 
 val :: { Expr }
-  : VAL ID ':' typesig '=' expr { ValDecExpr $2 $4 $6 }
+  : VAL ID typesig '=' expr { ValDecExpr $2 $3 $5 }
   
 var :: { Expr }
-  : VAR ID ':' typesig '=' expr { VarDecExpr $2 $4 $6 }
+  : VAR ID typesig '=' expr { VarDecExpr $2 $3 $5 }
 
 {
-
-type Name = String
-type Params = [String]
-type TypeSig = [String]
-
-data Expr
-  = IntExpr Int
-  | FloatExpr Double
-  | StringExpr String
-  | VarExpr String
-  
-  | ModuleExpr [String] [Expr]
-  | ImportExpr [String] Bool
-  
-  | VarDecExpr Name TypeSig Expr
-  | ValDecExpr Name TypeSig Expr
-  
-  | FuncDecExpr Name Params TypeSig Expr
-  | ExternExpr Name Params TypeSig
-  
-  | LetExpr Name Expr Expr
-  | CallExpr Name [Expr]
-  
-  | DoExpr [Expr]
-  | ReturnExpr Expr
-  | IfExpr Expr Expr Expr
-  | WhileExpr Expr Expr
-  
-  | PlusExpr     Expr Expr
-  | MinusExpr    Expr Expr
-  | TimesExpr    Expr Expr
-  | DivExpr      Expr Expr
-  | NegateExpr   Expr
-  deriving (Eq, Show)
 
 lexwrap :: (Token -> Alex a) -> Alex a
 lexwrap = (alexMonadScan' >>=)

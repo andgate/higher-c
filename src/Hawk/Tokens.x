@@ -66,10 +66,15 @@ $white+                   ;
 
 -- 0 is the toplevel parser
 <0> {
-  "do"                          { lex' TokenDo }
+  
+  "extern"                      { lex' TokenExtern } 
+  
   "val"                         { lex' TokenVal }
   "var"                         { lex' TokenVar }
+  
+  "do"                          { lex' TokenDo }
   "return"                      { lex' TokenReturn }
+  
   "if"                          { lex' TokenIf }
   "then"                        { lex' TokenThen }
   "else"                        { lex' TokenElse }
@@ -206,12 +211,15 @@ data Token = Token AlexPosn TokenClass
   deriving (Eq, Show)
 
 -- The token type:
-data TokenClass = TokenExport
+data TokenClass
+           = TokenExport
            | TokenId String
            | TokenInt Int
            | TokenFloat Float
            | TokenChar String
            | TokenString String
+           
+           | TokenExtern
            
            | TokenVal
            | TokenVar
