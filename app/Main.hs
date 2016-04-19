@@ -1,9 +1,9 @@
 module Main where
 
-import Hawk.Compile
-import Hawk.Build
+import Compile
+import BuildInfo
 
 main :: IO ()
 main = compile build_conf
   where
-    build_conf = Build "example/main.hk"
+    build_conf = BuildInfo "example/main.hk"

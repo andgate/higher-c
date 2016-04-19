@@ -1,15 +1,15 @@
 module SpecHelper
     ( module Test.Hspec
-    , module Hawk.Grammar
-    , module Hawk.Tokens
-    , module Hawk.AST
-    , module Hawk.Codegen
-    , module Hawk.Emit
+    , module Language.Hawk.Parse.Parser
+    , module Language.Hawk.Parse.Lexer
+    , module Language.Hawk.Syntax.AST
+    , module Language.Hawk.Codegen.LLVM.Codegen
+    , module Language.Hawk.Codegen.LLVM.Emit
     ) where
 
 import Test.Hspec
-import Hawk.Tokens
-import Hawk.Grammar
-import Hawk.AST
-import Hawk.Codegen
-import Hawk.Emit
+import Language.Hawk.Parse.Lexer
+import Language.Hawk.Parse.Parser
+import Language.Hawk.Syntax.AST
+import Language.Hawk.Codegen.LLVM.Codegen
+import Language.Hawk.Codegen.LLVM.Emit

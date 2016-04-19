@@ -3,11 +3,13 @@
   {extern print str : String -> Unit}
   
   {bar x y
-   : Int -> Int -> Int := {
+     : Int -> Int -> Int
+     := {
      { val sum: Int = x + y }
      { return sum }
   }}
   
   {baz
-  : Int = 3 * 2}
+   : Int =
+     3 * 2}
 }}

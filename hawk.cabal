@@ -24,10 +24,12 @@ library
                         , array >= 0.5 && < 1
                         , bytestring >= 0.10 && < 0.11
                         , containers >= 0.5 && < 0.6
+                        , lens
                         , llvm-general         >= 3.5.0.0
                         , llvm-general-pure    >= 3.5.0
-                        , text >= 1 && < 2
                         , mtl >= 2.2 && < 2.3
+                        , syb
+                        , text >= 1 && < 2
 
   ghc-options:         -Wall
                        -fno-warn-unused-binds
@@ -37,21 +39,14 @@ library
 
   hs-source-dirs:       src
 
-  exposed-modules:      Hawk.Compile
-                        Hawk.Build
-                        Hawk.AST
-                        Hawk.Grammar
-                        Hawk.Tokens
-                        Hawk.Codegen
-                        Hawk.Emit
-                        
-  default-extensions:   OverloadedStrings
-                        PostfixOperators
-                        TupleSections
-                        PackageImports
-                        RecursiveDo
-                        LambdaCase
-                        MultiWayIf
+  exposed-modules:      Language.Hawk.Syntax.AST
+                        Language.Hawk.Parse.Parser
+                        Language.Hawk.Parse.Lexer
+                        Language.Hawk.Codegen.LLVM.Codegen
+                        Language.Hawk.Codegen.LLVM.Emit
+                        Language.Hawk.Data.Node
+                        Language.Hawk.Data.Name
+                        Language.Hawk.Data.Position
 
   build-tools:          alex, happy
   --other-modules:        Hawk.Grammar,
@@ -64,13 +59,8 @@ executable              hkc
   build-depends:        base < 5 && >= 4
                         , hawk
 
-  default-extensions:   OverloadedStrings
-                        PostfixOperators
-                        TupleSections
-                        PackageImports
-                        RecursiveDo
-                        LambdaCase
-                        MultiWayIf
+  other-modules:        Compile,
+                        BuildInfo
 
   ghc-options:          -Wall
                         -fwarn-tabs

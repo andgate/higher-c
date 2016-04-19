@@ -1,8 +1,8 @@
 {
-module Hawk.Grammar where
+module Language.Hawk.Parse.Parser where
 
-import Hawk.Tokens
-import Hawk.AST
+import Language.Hawk.Parse.Lexer
+import Language.Hawk.Syntax.AST
 
 }
 

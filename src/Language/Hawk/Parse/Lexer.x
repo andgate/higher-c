@@ -1,5 +1,5 @@
 {
-module Hawk.Tokens where
+module Language.Hawk.Parse.Lexer where
 
 import Prelude hiding (lex)
 import Control.Monad ( liftM )

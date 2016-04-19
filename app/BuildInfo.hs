@@ -1,9 +1,9 @@
-module Hawk.Build where
+module BuildInfo where
 
 --import Data.Yaml
 
 
-data Build = Build
+data BuildInfo = BuildInfo
   { srcPath :: String
   }
 

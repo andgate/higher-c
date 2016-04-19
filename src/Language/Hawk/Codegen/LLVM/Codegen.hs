@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Hawk.Codegen where
+module Language.Hawk.Codegen.LLVM.Codegen where
 
 import Data.Word
 import Data.String
