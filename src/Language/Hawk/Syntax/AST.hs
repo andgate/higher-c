@@ -114,7 +114,7 @@ data HkExtStmt a
 -- Import items are provided an ident that can overrides their current qualified alias.
 -- This can be useful for shorthanded qualified names. An empty alias override will be ignored.
 data HkImportItems a
-  = HkImportItems [HkDottedIdent a] HkIdent a
+  = HkImportItems [HkDottedIdent a] (HkIdent a) a
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
 
 -- | Hawk Type Signature
@@ -311,12 +311,15 @@ data HkVarDef a
 -- | Hawk Record Definition
 --
 -- Records in hawk contain variables and values.
-type HkRecordNode = HkRecord NodeInfo
-data HkRecord a
-  = HkRecord
-    { rec_name  :: Ident a
-    , rec_mems  :: [HkRecordMember a]
-    , rec_annot :: a
+type HkRecordDefNode = HkRecordDef NodeInfo
+data HkRecordDef a
+  = HkRecordDef
+    { rec_name    :: HkIdent a
+    , rec_tyvars  :: [HkIdent a]
+    , rec_ctx     :: HkTypeContext a
+    , rec_supers  :: [HkRecordType a]
+    , rec_mems    :: [HkRecordMember a]
+    , rec_annot   :: a
     }
 
 -- | Hawk Record member
@@ -339,12 +342,12 @@ data HkRecordMember a
 -- Unions in hawk are classified as tagged unions. Each element of these unions
 -- have a tag, which are enormously helpful for typesafety and pattern matching.
 -- It's a minor, minor overhead, and they perform as well as tagless unions.
-type HkUnionNode = HkUnion NodeInfo
-data HkUnion a
+type HkUnionDefNode = HkUnionDef NodeInfo
+data HkUnionDef a
   = HkUnion
-  { union_name    :: HkIdent
-  , union_tyvars  :: [HkIdent]
-  , union_ctx     :: HkTypeContext
+  { union_name    :: HkIdent a
+  , union_ctx     :: HkTypeContext a
+  , union_tyvars  :: [HkIdent a]
   , union_elems   :: [HkUnionElement a]
   , union_annot   :: a
   }
@@ -355,8 +358,45 @@ type HkUnionElementNode = HkUnionElement NodeInfo
 data HkUnionElement a
   = HkUnionElement (HkIdent a) [HkType a] a
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
+  
+  
+-- | Hawk Class
+--
+-- A class in hawk is a named list of functions that operate on a generalized type.
+type HkClassDefNode = HkClassDef NodeInfo
+data HkClassDef a
+  = HkClassDef
+  { class_name      :: HkIdent a
+  , class_tyctx     :: HkTypeContext a
+  , class_tyvars    :: [HkIdent a]  
+  , class_body      :: [HkClassMember a]
+  , class_annot     :: a
+  }
+  deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
 
--- | Hawk Statement Block
+-- A class member is a function that is either declared, or defined.
+-- If defined, that function serves as the default unless overriden.
+type HkClassMemberNode = HkClassMember NodeInfo
+data HkClassMember a
+  = HkClassMemberDec (HkVisibilityTag a) (HkFnDec a) a
+  | HkClassMemberDef (HkVisibilityTag a) (HkFnDef a) a
+  deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
+
+-- | Hawk Class Instance
+-- 
+-- A class instance is implements the class for the given type.
+-- This allows that type to match a class constraint.
+type HkClassInstanceNode = HkClassInstance NodeInfo
+data HkClassInstance a
+  = HkClassInstance
+  { inst_class       :: HkIdent a
+  , inst_tyargs      :: [HkType a]
+  , inst_body        :: [HkFnDef a]
+  , inst_annot       :: a
+  }
+  deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
+
+-- | Hawk Block
 --
 -- A block is a list of statements, which are internal to functions.
 type HkBlockNode = HkBlock NodeInfo 
@@ -364,6 +404,9 @@ data HkBlock a
   = HkBlock [HkBlockStmt a] a
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
 
+-- | Hawk Block Statement
+--
+-- These are the valid statements that a block may contain.
 type HkBlockStmtNode = HkBlockStmt NodeInfo
 data HkBlockStmt a
   = HkBlkStmt (HkBlockStmt a) a
@@ -373,7 +416,9 @@ data HkBlockStmt a
   | While (HkExpr a) (HkBlock a) a
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
   
-  
+-- | Hawk Expression
+--
+-- These are the valid expressions that Hawk can evaluate during runtime.
 type HkExprNode = HkExpr NodeInfo
 data HkExpr a
   = HkExprAdd (HkExpr a) (HkExpr a) a
