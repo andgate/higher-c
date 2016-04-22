@@ -45,7 +45,6 @@ library
                         Language.Hawk.Codegen.LLVM.Codegen
                         Language.Hawk.Codegen.LLVM.Emit
                         Language.Hawk.Data.Node
-                        Language.Hawk.Data.Name
                         Language.Hawk.Data.Position
 
   build-tools:          alex, happy

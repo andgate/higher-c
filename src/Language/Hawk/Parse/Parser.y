@@ -3,6 +3,7 @@ module Language.Hawk.Parse.Parser where
 
 import Language.Hawk.Parse.Lexer
 import Language.Hawk.Syntax.AST
+import Language.Hawk.Data.Node
 
 }
 
@@ -13,11 +14,11 @@ import Language.Hawk.Syntax.AST
 %error { happyError }
 
 %token
-    ID      { Token _ (TokenId  $$) }
-    INT     { Token _ (TokenInt  $$) }
-    FLOAT   { Token _ (TokenFloat  $$) }
-    CHAR    { Token _ (TokenChar  $$) }
-    STRING  { Token _ (TokenString  $$) }
+    ID      { Token _ (TokenId  _) }
+    INT     { Token _ (TokenInt  _) }
+    FLOAT   { Token _ (TokenFloat  _) }
+    CHAR    { Token _ (TokenChar  _) }
+    STRING  { Token _ (TokenString  _) }
     
     EXTERN  { Token _ TokenExtern }
     
@@ -88,8 +89,8 @@ ast :: { Expr }
 -- Hawk Parser "General"  
 
 ids :: { Ids }
-  : ID            { [$1] }
-  | ids ID        { $2:$1 }
+  : ID            { [getTokId $1] }
+  | ids ID        { (getTokId $2) : $1 }
   
   
 -- -----------------------------------------------------------------------------
@@ -111,8 +112,8 @@ mod_stmt_block :: { Exprs }
   | '{' mod_stmts '}'           { reverse $2 }
 
 mod_id :: { ModId }
-  : ID                          { [$1] }
-  | mod_id '.' ID               { $3:$1 }
+  : ID                          { [getTokId $1] }
+  | mod_id '.' ID               { (getTokId $3):$1 }
 
 mod_dec :: { Expr }
   : mod_id '::' mod_stmt_block  { ModuleExpr (reverse $1) $3 }
@@ -126,9 +127,9 @@ import :: { Expr }
 -- Hawk Parser "Expressions and statements"
 
 expr :: { Expr }
-  : INT                     { IntExpr $1 }
-  | STRING                  { StringExpr $1 }
-  | ID                      { VarExpr $1 }
+  : INT                     { IntExpr (getTokInt $1) }
+  | STRING                  { StringExpr (getTokString $1) }
+  | ID                      { VarExpr (getTokId $1) }
   
   | DO stmt_block           { DoExpr $2 }
   | RETURN expr             { ReturnExpr $2 }
@@ -164,7 +165,7 @@ func :: { Expr }
   : func_dec func_def { mkFuncExpr $1 $2 }
   
 func_dec :: { (Name, Params, Types) }
-  : ID params typesig { ($1, $2, $3) }
+  : ID params typesig { (getTokId $1, $2, $3) }
   
 func_def :: { Expr }
   : '=' expr { $2 }
@@ -175,8 +176,8 @@ params :: { Params }
   | ids            { reverse $1 }
   
 types :: { Types }
-  : ID                { [$1] }
-  | types '->' ID     { $3:$1 }
+  : ID                { [getTokId $1] }
+  | types '->' ID     { (getTokId $3) : $1 }
   
 typesig :: { Types }
   : ':' types         { reverse $2 }
@@ -185,25 +186,30 @@ extern_func :: { Expr }
   : EXTERN func_dec { mkExternExpr $2 }
 
 -- -----------------------------------------------------------------------------
--- Hawk Parser "Varibles and Values"
+-- Hawk Parser "Variables and Values"
 
 elem :: { Expr }
   : val { $1 }
   | var { $1 }
 
 val :: { Expr }
-  : VAL ID typesig '=' expr { ValDecExpr $2 $3 $5 }
+  : VAL ID typesig '=' expr { ValDecExpr (getTokId $2) $3 $5 }
   
 var :: { Expr }
-  : VAR ID typesig '=' expr { VarDecExpr $2 $3 $5 }
+  : VAR ID typesig '=' expr { VarDecExpr (getTokId $2) $3 $5 }
 
 {
+
+
+getTokId      (Token _ (TokenId s))     = s
+getTokInt     (Token _ (TokenInt s))    = s
+getTokString  (Token _ (TokenString s)) = s
 
 lexwrap :: (Token -> Alex a) -> Alex a
 lexwrap = (alexMonadScan' >>=)
 
 happyError :: Token -> Alex a
-happyError tok@(Token p t) =
+happyError tok@(Token (TokenInfo p n) t) =
   alexError' p ("parse error at token '" ++ show t ++ "'" ++ "\n" ++ show tok)
 
 parse :: FilePath -> String -> Either String Expr

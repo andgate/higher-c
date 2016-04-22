@@ -5,6 +5,8 @@ import Prelude hiding (lex)
 import Control.Monad ( liftM )
 import qualified Data.ByteString.Lazy as B
 
+import Language.Hawk.Data.Node
+
 }
 
 %wrapper "monadUserState"
@@ -66,6 +68,8 @@ $white+                   ;
 
 -- 0 is the toplevel parser
 <0> {
+  
+  "module"                      { lex' TokenModule }
   
   "extern"                      { lex' TokenExtern } 
   
@@ -206,13 +210,16 @@ getLineNum (AlexPn _ lineNum _) = lineNum
 getColumnNum :: AlexPosn -> Int
 getColumnNum (AlexPn _ _ colNum) = colNum
 
-
-data Token = Token AlexPosn TokenClass
+data Token = Token TokenInfo TokenClass
+  deriving (Eq, Show)
+  
+data TokenInfo = TokenInfo AlexPosn String
   deriving (Eq, Show)
 
 -- The token type:
 data TokenClass
-           = TokenExport
+           = TokenModule
+           | TokenExport
            | TokenId String
            | TokenInt Int
            | TokenFloat Float
@@ -283,13 +290,39 @@ data TokenClass
            | TokenEof
            deriving ( Eq, Show )
 
+
+tokPos :: Token -> AlexPosn
+tokPos (Token (TokenInfo p _) _) = p
+
+tokLineNum :: Token -> Int
+tokLineNum = getLineNum . tokPos
+
+tokColumnNum :: Token -> Int
+tokColumnNum = getColumnNum . tokPos
+
+tokFilePath :: Token -> String
+tokFilePath (Token (TokenInfo _ n) _) = n
+
+posFromTok :: Token -> Position
+posFromTok (Token (TokenInfo p n) _)
+  = Position n (getLineNum p) (getColumnNum p)
+  
+nodeFromTok :: Token -> String -> NodeInfo
+nodeFromTok t n = NodeSingle (posFromTok t) n
+
+nodeFromToks :: Token -> Token -> String -> NodeInfo
+nodeFromToks a b n = NodeSpan (posFromTok a) (posFromTok b) n
+
 alexEOF :: Alex Token
 alexEOF = do
   (p,_,_,_) <- alexGetInput
-  return $ Token p TokenEof
+  n <- alexGetFilePath
+  return $ Token (TokenInfo p n) TokenEof
 
 lex :: (String -> TokenClass) -> AlexAction Token
-lex f = \(p,_,_,s) i -> return $ Token p (f (take i s))
+lex f = \(p,_,_,s) i -> do
+  n <- alexGetFilePath
+  return $ Token (TokenInfo p n) (f (take i s))
 
 lex' :: TokenClass -> AlexAction Token
 lex' = lex . const

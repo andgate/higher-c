@@ -2,7 +2,6 @@
 module Language.Hawk.Syntax.AST where
 
 import Language.Hawk.Data.Node
-import Language.Hawk.Data.Position
 
 import Data.Int
 import Data.Word
