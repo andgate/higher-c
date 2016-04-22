@@ -3,7 +3,12 @@ module Language.Hawk.Syntax.AST where
 
 import Language.Hawk.Data.Node
 import Language.Hawk.Data.Position
+
+import Data.Int
+import Data.Word
 import Data.Generics
+
+
 
 type Name = String
 type Ids  = [String]
@@ -137,6 +142,7 @@ data HkTypeSig a
 type HkTypeNode = HkType NodeInfo
 data HkType a
   = HkTyPrimType    (HkPrimType a) a
+  | HkTyConst       (HkType a) a
   | HkTyRefType     (HkRefType a) a
   | HkTyRecordType  (HkRecordType a) a
   | HkTyTypeSig     (HkTypeSig a) a
@@ -147,14 +153,19 @@ data HkType a
 -- The primitive types in Hawk. 
 type HkPrimTypeNode = HkPrimType NodeInfo
 data HkPrimType a
-  = HkUnitTy a
-  | HkBitTy a
-  | HkI16Ty a
-  | HkI32Ty a
-  | HkI64Ty a
-  | HkF32Ty a
-  | HkF64Ty a
-  | HkCharTy a
+  = HkTyUnit a
+  | HkTyBit a
+  | HkTyW8 a
+  | HkTyW16 a
+  | HkTyW32 a
+  | HkTyW64 a
+  | HkTyI8 a
+  | HkTyI16 a
+  | HkTyI32 a
+  | HkTyI64 a
+  | HkTyF32 a
+  | HkTyF64 a
+  | HkTyChar a
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
 
 -- | Hawk Reference Type
@@ -164,6 +175,7 @@ type HkRefTypeNode = HkRefType NodeInfo
 data HkRefType a
   = HkRefType (HkType a) a
   | HkArrayType (HkType a) a
+  | HkTupleType [HkType a] a
   | HkTypeVariable (HkIdent a) a
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
 
@@ -208,10 +220,9 @@ data HkClassCons a
 type HkFnDecNode = HkFnDec NodeInfo
 data HkFnDec a
   = HkFnDec
-    { fn_name         :: (HkIdent a)
-    , fn_args         :: [HkIdent a]
-    , fn_typesig      :: HkTypeSig a
-    , fn_annot        :: a
+    { fn_symbol   :: HkFnSymbol a
+    , fn_typesig  :: HkTypeSig a
+    , fn_annot    :: a
     }
     deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
 
@@ -221,7 +232,41 @@ data HkFnDec a
 -- A function definition consists of a function declarations along with a block that serves as the body.
 type HkFnDefNode = HkFnDef NodeInfo
 data HkFnDef a
-  = HkFnDef (HkFnDec a) (HkBlock a) a
+  = HkFnDef (HkFnDec a) [HkBinding a] a
+  deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
+  
+  
+type HkFnSymbolNode = HkFnSymbol NodeInfo
+data HkFnSymbol a
+  = HkSymIdent     (HkIdent a) a
+  | HkSymPreOp  (HkIdent a) Int a
+  | HkSymOp   (HkIdent a) Int a
+  | HkSymPostOp (HkIdent a) Int a
+  deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
+  
+type HkBindingNode = HkBinding NodeInfo
+data HkBinding a
+  = HkBinding
+  { binding_params  :: [HkPattern a]
+  , binding_blocks  :: [(HkGuard a, HkBlock a)]
+  , binding_annot   :: a
+  }
+  deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
+
+type HkPatternNode = HkPattern NodeInfo
+data HkPattern a
+  = HkPatIdent  (HkIdent a) a
+  | HkPatConst  (HkConst a) a
+  | HkPatRec    (HkIdent a) [HkPattern a] a
+  | HkPatTyple  [HkPattern a] a
+  | HkPatAlias  (HkIdent a) (HkPattern a) a
+  | HkPatAny    a
+  deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
+
+type HkGuardNode = HkGuard NodeInfo
+data HkGuard a
+  = HkGuardExp (HkExp a) a
+  | HkGuardAny a
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
 
 
@@ -234,26 +279,31 @@ data HkVisibilityTag a
   | HkPrivate a
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
 
--- | Hawk Binding Declaration
+
+-- | Hawk Object Declaration
 --
--- A binding declaration declares a binding (variable or value) with a name and a type
-type HkBindingDecNode = HkBindingDec NodeInfo
-data HkBindingDec a
+-- An object declaration declares a variable or value with a name and a type
+--
+-- Objects in Hawk are not like objects in most programming languages.
+-- Hawk objects are variables or values that represent some data in memory.
+-- Hawk objects have nothing to do with object oriented programming. 
+type HkObjectDecNode = HkObjectDec NodeInfo
+data HkObjectDec a
   = HkBindingDec
-  { binding_name    :: HkIdent a
-  , binding_typesig :: [HkIdent a]
-  , binding_annot   :: a
+  { obj_name    :: HkIdent a
+  , obj_typesig :: [HkIdent a]
+  , obj_annot   :: a
   }
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
   
 
 
--- | Hawk Binding Definition
+-- | Hawk Object Definition
 --
--- A binding declaration is used to bind an identifier to an expression.
-type HkBindingDefNode = HkBindingDef NodeInfo
-data HkBindingDef a
-  = HkBindingDef (HkBindingDef a) (HkExpr a) a
+-- A object Definition is used to bind an identifier to an expression.
+type HkObjectDefNode = HkObjectDef NodeInfo
+data HkObjectDef a
+  = HkObjectDef (HkObjectDef a) (HkExp a) a
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
 
 
@@ -270,7 +320,7 @@ data HkBindingDef a
 --
 type HkValDecNode = HkValDec NodeInfo
 data HkValDec a
-  = HkValDec (HkBindingDec a) a
+  = HkValDec (HkObjectDec a) a
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
 
 -- | Hawk Value Definiton
@@ -280,7 +330,7 @@ data HkValDec a
 -- A hawk value definition is a contains a binding definition.
 type HkValDefNode = HkValDef NodeInfo
 data HkValDef a
-  = HkValDef (HkBindingDef a) a
+  = HkValDef (HkObjectDef a) a
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
 
 -- | Hawk Variable Declaration
@@ -293,7 +343,7 @@ data HkValDef a
 --
 type HkVarDecNode = HkVarDec NodeInfo
 data HkVarDec a
-  = HkVarDec (HkBindingDec a) a
+  = HkVarDec (HkObjectDec a) a
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
   
 -- | Hawk Variable Definition
@@ -304,7 +354,7 @@ data HkVarDec a
 --
 type HkVarDefNode = HkVarDef NodeInfo
 data HkVarDef a
-  = HkVarDef (HkBindingDef a) a
+  = HkVarDef (HkObjectDef a) a
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
   
   
@@ -409,17 +459,120 @@ data HkBlock a
 -- These are the valid statements that a block may contain.
 type HkBlockStmtNode = HkBlockStmt NodeInfo
 data HkBlockStmt a
-  = HkBlkStmt (HkBlockStmt a) a
-  | IfThen (HkExpr a) (HkBlock a) a
-  | IfThenElse (HkExpr a) (HkBlock a) (HkBlock a) a
-  | IfThenElif (HkExpr a) (HkBlock a) (HkExpr a) (HkBlock a) a
-  | While (HkExpr a) (HkBlock a) a
+  = HkStmtBlk (HkBlockStmt a) a
+  | HkStmtExp (HkExp a) a
+  
+  | HkStmtValDef (HkValDef a) a
+  | HkStmtVarDec (HkVarDec a) a
+  | HkStmtVarDef (HkVarDef a) a
+  
+  | HkStmtReturn (HkExp a) a
+  
+  | HkStmtCase (HkExp a) [HkBinding a] a
+  
+  | HkStmtIf (HkExp a) (HkBlock a) a
+  | HkStmtIfElse (HkExp a) (HkBlock a) (HkBlock a) a
+  
+  | HkStmtWhile (HkExp a) (HkBlock a) a
+  | HkStmtDoWhile (HkExp a) (HkBlock a) a
+  
+  | HkStmtFor       (Maybe (HkForInit a))   (Maybe (HkExp a))   (Maybe (HkExp a))   (HkBlock a) a
+  | HkStmtForEach   (HkIdent a) (HkExp a)   (HkBlock a) (HkBlock a) a
+  | HkStmtForEachIx (HkIdent a) (HkIdent a) (HkExp a)   (HkBlock a) (HkBlock a) a
+  
+  | HkStmtEmpty a
+  deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
+  
+data HkForInit a
+  = HkForLocalVars [HkVarDec a] a 
+  | HkForInitExps  [HkExp a] a
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
   
 -- | Hawk Expression
 --
 -- These are the valid expressions that Hawk can evaluate during runtime.
-type HkExprNode = HkExpr NodeInfo
-data HkExpr a
-  = HkExprAdd (HkExpr a) (HkExpr a) a
+type HkExpNode = HkExp NodeInfo
+data HkExp a
+  = HkConstExpr   (HkConst a) a
+  | HkExpAssign   (HkAssignOp a) (HkIdent a) (HkExp a) a
+  | HkExpUnaryOp  (HkUnaryOp a) (HkExp a) a
+  | HkExpBinaryOp (HkBinaryOp a) (HkExp a) (HkExp a) a
+  
+  | HkExpObj  (HkIdent a) a
+  | HkExpCall (HkExp a) [HkExp a] a
+  | HkExpCast (HkExp a) (HkTypeSig a) a
+  
+  | HkExpIfThenElse (HkExp a) (HkExp a) (HkExp a) a
+  
+  | HkExpLambda (HkBinding a) a
+  
+  deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
+
+type HkConstNode = HkConst NodeInfo  
+data HkConst a
+  = HkUnit a
+  | HkBit Bool a
+  | HkW8  Word8 a
+  | HkW16 Word16 a
+  | HkW32 Word32 a
+  | HkW64 Word64 a
+  | HkI8  Int8 a
+  | HkI16 Int16 a
+  | HkI32 Int32 a
+  | HkI64 Int64 a
+  | HkF32 Float a
+  | HkF64 Double a
+  | HkChar Char a
+  deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
+  
+
+type HkAssignOpNode = HkAssignOp NodeInfo
+data HkAssignOp a
+  = HkAssignOp a  -- Assignment
+  | HkMulAssOp a  -- Multiplication
+  | HkDivAssOp a  -- Division
+  | HkRmdAssOp a  -- Remainder of Division
+  | HkAddAssOp a  -- Addition
+  | HkSubAssOp a  -- Subtraction
+  | HkShlAssOp a  -- Bitshift Left
+  | HkShrAssOp a  -- Bitshift Right
+  | HkAndAssOp a  -- Bitwise And
+  | HkXorAssOp a  -- Exclusive Bitwise Or
+  | HkOrAssOp  a  -- Inclusive Bitwise Or
+  deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})  
+
+type HkBinaryOpNode = HkBinaryOp NodeInfo
+data HkBinaryOp a
+  = HkMulOp a   -- Multiply
+  | HkDivOp a   -- Divide
+  | HkRmdOp a   -- Remainder of Division
+  | HkAddOp a   -- Addition
+  | HkSubOp a   -- Subtraction
+  | HkShlOp a   -- Shift Left
+  | HkShrOp a   -- Shift Right
+  | HkLeOp  a   -- Lesser Than
+  | HkGrOp  a   -- Greater Than
+  | HkLeqOp a   -- Lesser Than or Equal To
+  | HkGeqOp a   -- Greater Than or EqualTo
+  | HkEqOp  a   -- Equal To
+  | HkNeqOp a   -- Not Equal To
+  | HkAndOp a   -- Bitwise And
+  | HkXorOp a   -- Exclusive Bitwise Or
+  | HkOrOp  a   -- Inclusive Bitwise Or
+  | HkLndOp a   -- Logical And
+  | HkLorOp a   -- Logical Or
+  deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})  
+  
+type HkUnaryOpNode = HkUnaryOp NodeInfo
+data HkUnaryOp a
+  = HkPreIncOp a    -- Prefix Increment
+  | HkPreDecOp a    -- Prefix Decrement
+  | HkPostIncOp a   -- Postfix Increment
+  | HkPostDecOp a   -- Postfix Decrement
+  | HkAddrOp a      -- Address Operator
+  | HkIndOp a       -- Indirection Operator
+  | HkPlusOp a      -- Prefix plus
+  | HkMinOp a       -- Postfix plus
+  | HkCompOp a      -- One's Complement
+  | HkNegOp a       -- Logical Negation
   deriving (Show, Data, Typeable {-! ,HkNode, Annotated !-})
