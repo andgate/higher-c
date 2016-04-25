@@ -119,29 +119,36 @@ $white+                   ;
   
   @integer                      { lex (TokenInt . read) }
   
+  
+  \:                            { lex' TokenColon }
+  \:\:                          { lex' TokenDblColon }
+  
+  \|                            { lex' TokenBar }
+  \*                            { lex' TokenStar }
+  \_                            { lex' TokenUnderscore }
+  
   \:\=                          { lex' TokenFuncDef }
   \=                            { lex' TokenEquals }
   
-  \#                            { lex' TokenPound  }
-  \$                            { lex' TokenDollar }
-  
-  \.                            { lex' TokenPeriod }
-  \,                            { lex' TokenComma }
-  \:\:                          { lex' TokenDblColon }
-  \:                            { lex' TokenColon }
-  \<                            { lex' TokenGreater }
-  \>                            { lex' TokenLesser }
+  \<\-                          { lex' TokenRArrow }
+  \<\=                          { lex' TokenThickRArrow }
   \-\>                          { lex' TokenRArrow }
   \=\>                          { lex' TokenThickRArrow }
-  \:                            { lex' TokenColon }
-  \+                            { lex' TokenPlus }
-  \-                            { lex' TokenMinus }
-  \*                            { lex' TokenStar }
-  \/                            { lex' TokenSlash }
+  \<\:                          { lex' TokenSubtype }
+  
+  
   \(                            { lex' TokenLParen }
   \)                            { lex' TokenRParen }
   \{                            { lex' TokenLCurlyBrace }
   \}                            { lex' TokenRCurlyBrace }
+  
+  \.                            { lex' TokenPeriod }
+  \,                            { lex' TokenComma }
+  \<                            { lex' TokenGreater }
+  \>                            { lex' TokenLesser }
+  \+                            { lex' TokenPlus }
+  \-                            { lex' TokenMinus }
+  \/                            { lex' TokenSlash }
   \"                            { begin string }
   \'                            { begin char }
 }
@@ -346,6 +353,7 @@ data TokenClass
   | TokenRCurlyBrace
   | TokenBar
   
+  | TokenUnderscore
   | TokenColon
   | TokenSemicolon
   | TokenPeriod

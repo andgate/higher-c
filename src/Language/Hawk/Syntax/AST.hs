@@ -330,7 +330,12 @@ data HkFnDef a
 instance HkAnnotated HkFnDef where
   annot (HkFnDef _ _ a) = a
 
-  
+
+-- -----------------------------------------------------------------------------
+-- | Hawk Function Symbol
+--
+-- A function symbol holds the function identifier. Function symbols can be 
+-- a string of characters, or an operator symbol.
 type HkFnSymbolNode = HkFnSymbol NodeInfo
 data HkFnSymbol a
   = HkSymIdent  (HkIdent a) a
@@ -345,12 +350,15 @@ instance HkAnnotated HkFnSymbol where
   annot (HkSymOp _ _ a) = a
   annot (HkSymPostOp _ _ a) = a  
   
-  
+-- -----------------------------------------------------------------------------
+-- | Hawk Binding
+--
+-- This binds a set of patterns to a (guarded) block of code.
 type HkBindingNode = HkBinding NodeInfo
 data HkBinding a
   = HkBinding
   { binding_params  :: [HkPattern a]
-  , binding_blocks  :: [(HkGuard a, HkBlock a)]
+  , binding_blocks  :: HkBindingBlock a
   , binding_annot   :: a
   }
   deriving (Eq, Ord, Show)
@@ -358,13 +366,16 @@ data HkBinding a
 instance HkAnnotated HkBinding where
   annot (HkBinding _ _ a) = a
   
-
+-- -----------------------------------------------------------------------------
+-- | Hawk Patterns
+--
+-- Patterns are used to match data based on it's structure.
 type HkPatternNode = HkPattern NodeInfo
 data HkPattern a
   = HkPatIdent  (HkIdent a) a
   | HkPatConst  (HkConst a) a
   | HkPatRec    (HkIdent a) [HkPattern a] a
-  | HkPatTyple  [HkPattern a] a
+  | HkPatTuple  [HkPattern a] a
   | HkPatAlias  (HkIdent a) (HkPattern a) a
   | HkPatAny    a
   deriving (Eq, Ord, Show)
@@ -373,11 +384,15 @@ instance HkAnnotated HkPattern where
   annot (HkPatIdent _ a) = a
   annot (HkPatConst _ a) = a
   annot (HkPatRec _ _ a) = a
-  annot (HkPatTyple _ a) = a
+  annot (HkPatTuple _ a) = a
   annot (HkPatAlias _ _ a) = a
   annot (HkPatAny a) = a 
   
 
+-- -----------------------------------------------------------------------------
+-- | Hawk Guards
+--
+-- Guards are a boolean expression that sits in front of a block of code.
 type HkGuardNode = HkGuard NodeInfo
 data HkGuard a
   = HkGuardExp (HkExp a) a
@@ -386,8 +401,34 @@ data HkGuard a
   
 instance HkAnnotated HkGuard where
   annot (HkGuardExp _ a) = a
-  annot (HkGuardAny a) = a
+  annot (HkGuardAny a) = a 
 
+-- -----------------------------------------------------------------------------
+-- | Hawk Binding block
+--
+-- Guards are a boolean expression that sits in front of a block of code.
+type HkBindingBlockNode = HkBindingBlock NodeInfo
+data HkBindingBlock a
+  = HkBindingBlock (HkBlock a) a
+  | HkBindingExp  (HkExp a) a
+  | HkGuardedBindingBlock [HkGuardedBlock a] a
+  deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkBindingBlock where
+  annot (HkBindingBlock _ a) = a
+  annot (HkBindingExp _ a) = a
+  annot (HkGuardedBindingBlock _ a) = a 
+
+-- Binding blocks can be guarded
+type HkGuardedBlockNode = HkGuardedBlock NodeInfo
+data HkGuardedBlock a
+  = HkGuardedBlock (HkGuard a) (HkBlock a) a
+  | HkGuardedExp   (HkGuard a) (HkExp a) a
+  deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkGuardedBlock where
+  annot (HkGuardedBlock _ _ a) = a
+  annot (HkGuardedExp _ _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Object Declaration
@@ -623,7 +664,7 @@ instance HkAnnotated HkBlock where
 -- These are the valid statements that a block may contain.
 type HkBlockStmtNode = HkBlockStmt NodeInfo
 data HkBlockStmt a
-  = HkStmtBlk (HkBlockStmt a) a
+  = HkStmtBlock (HkBlock a) a
   | HkStmtExp (HkExp a) a
   
   | HkStmtValDef (HkValDef a) a
@@ -648,7 +689,7 @@ data HkBlockStmt a
   deriving (Eq, Ord, Show)
 
 instance HkAnnotated HkBlockStmt where
-  annot (HkStmtBlk _ a) = a
+  annot (HkStmtBlock _ a) = a
   annot (HkStmtExp _ a) = a
   
   annot (HkStmtValDef _ a) = a
@@ -687,7 +728,7 @@ instance HkAnnotated HkForInit where
 -- These are the valid expressions that Hawk can evaluate during runtime.
 type HkExpNode = HkExp NodeInfo
 data HkExp a
-  = HkConstExpr   (HkConst a) a
+  = HkConstExp    (HkConst a) a
   | HkExpAssign   (HkAssignOp a) (HkIdent a) (HkExp a) a
   | HkExpUnaryOp  (HkUnaryOp a) (HkExp a) a
   | HkExpBinaryOp (HkBinaryOp a) (HkExp a) (HkExp a) a
@@ -703,7 +744,7 @@ data HkExp a
   deriving (Eq, Ord, Show)
   
 instance HkAnnotated HkExp where
-  annot (HkConstExpr _ a) = a
+  annot (HkConstExp _ a) = a
   annot (HkExpAssign _ _ _ a) = a
   annot (HkExpUnaryOp _ _ a) = a
   annot (HkExpBinaryOp _ _ _ a) = a
