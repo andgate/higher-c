@@ -1,0 +1,12 @@
+{Foo :: {
+  
+  {extern print str : String -> Unit}
+  
+  {bar :: Int -> Int -> Int
+  | x y :=
+  {{ val sum: Int = x + y }
+   { return sum }
+  }}
+  
+  {baz :: Int = 3 * 2}
+}}

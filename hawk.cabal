@@ -42,10 +42,8 @@ library
   exposed-modules:      Language.Hawk.Syntax.AST
                         Language.Hawk.Parse.Parser
                         Language.Hawk.Parse.Lexer
-                        Language.Hawk.Codegen.LLVM.Codegen
-                        Language.Hawk.Codegen.LLVM.Emit
                         Language.Hawk.Data.Node
-                        Language.Hawk.Data.Position
+                        Language.Hawk.Data.Span
 
   build-tools:          alex, happy
   --other-modules:        Hawk.Grammar,

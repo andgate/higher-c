@@ -32,26 +32,34 @@ $special   = [\(\)\,\;\[\]\`\{\}]
 $ascsymbol = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~\:]
 $unisymbol = \x04 -- Trick Alex into handling Unicode. See alexGetByte.
 $symbol    = [$ascsymbol $unisymbol] # [$special \_\"\']
+
 $unilarge  = \x01 -- Trick Alex into handling Unicode. See alexGetByte.
 $asclarge  = [A-Z]
 $large     = [$asclarge $unilarge]
+
 $unismall  = \x02 -- Trick Alex into handling Unicode. See alexGetByte.
 $ascsmall  = [a-z]
-$small     = [$ascsmall $unismall \_]
+$small     = [$ascsmall $unismall]
+
 $unigraphic = \x06 -- Trick Alex into handling Unicode. See alexGetByte.
 $graphic   = [$small $large $symbol $digit $special $unigraphic \"\']
+
 -- TODO #10196. Only allow modifier letters in the suffix of an identifier.
 $idchar    = [$small $large]
 
 -- -----------------------------------------------------------------------------
 -- Alex "Regular expression macros"
 
-@id          = $idchar+          -- variable identifiers
-@negative    = \-
-@decimal      = $digit+
-@integer     = @negative? @decimal
-@exponent    = [eE] [\-\+]? @decimal
-@floating_point = @decimal \. @decimal @exponent? | @decimal @exponent
+@id_lower               = $small+
+@id_cap_uscore          = $large [$idchar\_]*
+@id_uscore_num_tick     = $small [$idchar\_$digit]*  \`?
+@id_cap_uscore_num_tick = $large [$idchar\_$digit]*  \`?
+
+@negative           = \-
+@decimal            = $digit+
+@integer            = @negative? @decimal
+@exponent           = [eE] [\-\+]? @decimal
+@floating_point     = @decimal \. @decimal @exponent? | @decimal @exponent
 
 -- -----------------------------------------------------------------------------
 -- Alex "Identifier"
@@ -68,13 +76,18 @@ $white+                   ;
 
 -- 0 is the toplevel parser
 <0> {
-  
-  "module"                      { lex' TokenModule }
-  
-  "extern"                      { lex' TokenExtern } 
-  
-  "val"                         { lex' TokenVal }
-  "var"                         { lex' TokenVar }
+  "mod"                         { lex' TokenModule }
+  "use"                         { lex' TokenUse }
+  "use!"                        { lex' TokenUseQualified }
+  "as"                          { lex' TokenAs }
+    
+  "pub"                         { lex' TokenPublic }
+  "priv"                        { lex' TokenPrivate }
+  "link"                        { lex' TokenLink }
+    
+  "fn"                          { lex' TokenFunction }
+  "val"                         { lex' TokenValue }
+  "var"                         { lex' TokenVariable }
   
   "do"                          { lex' TokenDo }
   "return"                      { lex' TokenReturn }
@@ -85,7 +98,11 @@ $white+                   ;
   "elif"                        { lex' TokenElif }
   "while"                       { lex' TokenWhile }
   
-  @id                           { lex TokenId }
+  @id_lower                     { lex TokenIdLower }
+  @id_cap_uscore                { lex TokenIdCapUscore }
+  @id_uscore_num_tick           { lex TokenIdUScoreNumTick }
+  @id_cap_uscore_num_tick       { lex TokenIdCapUScoreNumTick }
+  
   @integer                      { lex (TokenInt . read) }
   
   \:\=                          { lex' TokenFuncDef }
@@ -213,86 +230,114 @@ getColumnNum (AlexPn _ _ colNum) = colNum
 data Token = Token TokenInfo TokenClass
   deriving (Eq, Show)
   
-data TokenInfo = TokenInfo AlexPosn String
+data TokenInfo
+  = TokenInfo 
+  { tokiFilename :: String
+  , tokiPos      :: AlexPosn
+  , tokiLength   :: Int
+  }
   deriving (Eq, Show)
+  
+instance HkNode TokenInfo where
+  nodeInfo toki@(TokenInfo n _ _) = NodeInfo n (spanOf toki)
+  
+instance HkSpan TokenInfo where
+  spanOf (TokenInfo _ (AlexPn _ lineNum colNum) l)
+    = Span lineNum lineNum colNum (colNum + l)
+
+instance HkNode Token where
+  nodeInfo (Token toki _) = nodeInfo toki
+  
+instance HkSpan Token where
+  spanOf (Token toki _) = spanOf toki
 
 -- The token type:
 data TokenClass
-           = TokenModule
-           | TokenExport
-           | TokenId String
-           | TokenInt Int
-           | TokenFloat Float
-           | TokenChar String
-           | TokenString String
-           
-           | TokenExtern
-           
-           | TokenVal
-           | TokenVar
-           
-           | TokenDo
-           | TokenReturn
-           | TokenIf
-           | TokenThen
-           | TokenElse
-           | TokenElif
-           | TokenWhile
-           
-           | TokenDblColon
-           
-           | TokenFuncDef
-           | TokenTypeDec
-           | TokenTypeClass
-           | TokenImplement
-           
-           | TokenLArrow
-           | TokenThickLArrow
-           | TokenRArrow
-           | TokenThickRArrow
-           | TokenSubtype
-           
-           | TokenGrave
-           | TokenTilde
-           | TokenExclaim
-           | TokenQuestion
-           | TokenAt
-           | TokenPound
-           | TokenDollar
-           | TokenPercent
-           | TokenCaret
-           | TokenAmpersand
-           
-           | TokenLParen
-           | TokenRParen
-           | TokenLBracket
-           | TokenRBracket
-           | TokenLCurlyBrace
-           | TokenRCurlyBrace
-           | TokenBar
-           
-           | TokenColon
-           | TokenSemicolon
-           | TokenPeriod
-           | TokenComma
-           | TokenLesser
-           | TokenGreater
-           | TokenStar
-           | TokenSlash
-           | TokenPlus
-           | TokenMinus
-           | TokenEquals
-           | TokenOpenBlock
-           | TokenCloseBlock
-           | TokenOpenStmt
-           | TokenCloseStmt
-           
-           | TokenEof
-           deriving ( Eq, Show )
+  = TokenIdLower String
+  | TokenIdCapUscore String
+  | TokenIdUScoreNumTick String
+  | TokenIdCapUScoreNumTick String
+  
+  | TokenInt Int
+  | TokenFloat Float
+  | TokenChar String
+  | TokenString String
+  
+  | TokenModule
+  | TokenUse
+  | TokenUseQualified
+  | TokenAs
+    
+  | TokenPublic
+  | TokenPrivate
+  | TokenLink
+    
+  | TokenFunction
+  | TokenValue
+  | TokenVariable
+  
+  | TokenDo
+  | TokenReturn
+  | TokenIf
+  | TokenThen
+  | TokenElse
+  | TokenElif
+  | TokenWhile
+  
+  | TokenDblColon
+  
+  | TokenFuncDef
+  | TokenTypeDec
+  | TokenTypeClass
+  | TokenImplement
+  
+  | TokenLArrow
+  | TokenThickLArrow
+  | TokenRArrow
+  | TokenThickRArrow
+  | TokenSubtype
+  
+  | TokenGrave
+  | TokenTilde
+  | TokenExclaim
+  | TokenQuestion
+  | TokenAt
+  | TokenPound
+  | TokenDollar
+  | TokenPercent
+  | TokenCaret
+  | TokenAmpersand
+  
+  | TokenLParen
+  | TokenRParen
+  | TokenLBracket
+  | TokenRBracket
+  | TokenLCurlyBrace
+  | TokenRCurlyBrace
+  | TokenBar
+  
+  | TokenColon
+  | TokenSemicolon
+  | TokenPeriod
+  | TokenComma
+  | TokenLesser
+  | TokenGreater
+  | TokenStar
+  | TokenSlash
+  | TokenPlus
+  | TokenMinus
+  | TokenEquals
+  | TokenOpenBlock
+  | TokenCloseBlock
+  | TokenOpenStmt
+  | TokenCloseStmt
+  
+  | TokenEof
+  deriving ( Eq, Show )
 
 
 tokPos :: Token -> AlexPosn
-tokPos (Token (TokenInfo p _) _) = p
+tokPos (Token (TokenInfo _ p _) _) = p
 
 tokLineNum :: Token -> Int
 tokLineNum = getLineNum . tokPos
@@ -301,28 +346,18 @@ tokColumnNum :: Token -> Int
 tokColumnNum = getColumnNum . tokPos
 
 tokFilePath :: Token -> String
-tokFilePath (Token (TokenInfo _ n) _) = n
-
-posFromTok :: Token -> Position
-posFromTok (Token (TokenInfo p n) _)
-  = Position n (getLineNum p) (getColumnNum p)
-  
-nodeFromTok :: Token -> String -> NodeInfo
-nodeFromTok t n = NodeSingle (posFromTok t) n
-
-nodeFromToks :: Token -> Token -> String -> NodeInfo
-nodeFromToks a b n = NodeSpan (posFromTok a) (posFromTok b) n
+tokFilePath (Token (TokenInfo n _ _) _) = n
 
 alexEOF :: Alex Token
 alexEOF = do
   (p,_,_,_) <- alexGetInput
   n <- alexGetFilePath
-  return $ Token (TokenInfo p n) TokenEof
+  return $ Token (TokenInfo n p 0) TokenEof
 
 lex :: (String -> TokenClass) -> AlexAction Token
 lex f = \(p,_,_,s) i -> do
   n <- alexGetFilePath
-  return $ Token (TokenInfo p n) (f (take i s))
+  return $ Token (TokenInfo n p i) (f (take i s))
 
 lex' :: TokenClass -> AlexAction Token
 lex' = lex . const
