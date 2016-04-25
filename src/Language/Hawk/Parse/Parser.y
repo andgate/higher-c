@@ -166,7 +166,7 @@ import_dec :: { HkExtStmtNode }
 
 import_items :: { HkImportItemsNode }
   : import_item                             { [$1] }
-  | dotted_mod_id '.' '(' import_specs ')'  { prefixImportItems $1 $4 }
+  | dotted_mod_id '(' import_specs ')'      { prefixImportItems $1 $3 }
 
 import_item :: { HkImportItemNode }
   : dotted_mod_id                           { HkImportItem $1 Nothing (nodesInfo $1) }
@@ -184,6 +184,12 @@ import_target :: { HkIdentNode }
   : ID_CAP_USCORE_NUM_TICK                  { HkIdent (getTokId $1) (nodeInfo $1) }
   | ID_USCORE_NUM_TICK                      { HkIdent (getTokId $1) (nodeInfo $1) }
   | ID_LOWER                                { HkIdent (getTokId $1) (nodeInfo $1) }
+
+
+-- -----------------------------------------------------------------------------
+-- Hawk Parser "Function"
+
+
 
 
 {

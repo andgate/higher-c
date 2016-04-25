@@ -13,10 +13,12 @@ data NodeInfo = NodeInfo
                 { node_file   :: String
                 , node_span   :: Span
                 }
-           deriving (Eq,Ord)
+           deriving (Show,Eq,Ord)
 
+{-
 instance Show NodeInfo where
     show (NodeInfo n s) = n ++ (show s)
+-}
 
 
 instance HkSpan NodeInfo where

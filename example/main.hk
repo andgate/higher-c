@@ -1,0 +1,4 @@
+mod Test.Main
+
+use Data.List
+use Math.Trig(sin, cos, tan, Arc(asin, acos, atan))

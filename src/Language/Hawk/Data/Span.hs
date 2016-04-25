@@ -10,10 +10,12 @@ data Span = Span { spanStartRow     :: Int     -- ^ row (line)  in the original 
                  , spanStartColumn  :: Int  -- ^ column in the preprocessed file. Inaccurate w.r.t. to the original
                  , spanEndColumn    :: Int  -- ^ column in the preprocessed file. Inaccurate w.r.t. to the original
                  }
-                deriving (Eq, Ord)
+                deriving (Show, Eq, Ord)
 
+{-
 instance Show Span where
   show (Span row_1 row_2 col_1 col_2) = show row_1 ++ ":" ++ show col_1 ++ "-" ++ show row_2 ++ ":" ++ show col_2
+-}
   
 instance Monoid Span where
   mempty = Span 0 0 0 0

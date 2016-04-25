@@ -111,6 +111,8 @@ $white+                   ;
   \#                            { lex' TokenPound  }
   \$                            { lex' TokenDollar }
   
+  \.                            { lex' TokenPeriod }
+  \,                            { lex' TokenComma }
   \:\:                          { lex' TokenDblColon }
   \:                            { lex' TokenColon }
   \<                            { lex' TokenGreater }

@@ -172,6 +172,9 @@ data HkTypeSig a
   , sig_annot    :: a
   }
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkTypeSig where
+  annot (HkTypeSig _ _ _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Type
@@ -185,6 +188,13 @@ data HkType a
   | HkTyRecordType  (HkRecordType a) a
   | HkTyTypeSig     (HkTypeSig a) a
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkType where
+  annot (HkTyPrimType _ a) = a
+  annot (HkTyConst _ a) = a
+  annot (HkTyRefType _ a) = a
+  annot (HkTyRecordType _ a) = a
+  annot (HkTyTypeSig _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Primitive Type
@@ -206,6 +216,21 @@ data HkPrimType a
   | HkTyF64 a
   | HkTyChar a
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkPrimType where
+  annot (HkTyUnit a) = a
+  annot (HkTyBit a) = a
+  annot (HkTyW8 a) = a
+  annot (HkTyW16 a) = a
+  annot (HkTyW32 a) = a
+  annot (HkTyW64 a) = a
+  annot (HkTyI8 a) = a
+  annot (HkTyI16 a) = a
+  annot (HkTyI32 a) = a
+  annot (HkTyI64 a) = a
+  annot (HkTyF32 a) = a
+  annot (HkTyF64 a) = a
+  annot (HkTyChar a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Reference Type
@@ -218,6 +243,12 @@ data HkRefType a
   | HkTupleType [HkType a] a
   | HkTypeVariable (HkIdent a) a
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkRefType where
+  annot (HkRefType _ a) = a
+  annot (HkArrayType _ a) = a
+  annot (HkTupleType _ a) = a
+  annot (HkTypeVariable _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Record Type
@@ -229,6 +260,10 @@ data HkRecordType a
   = HkRecordType  (HkIdent a) a
   | HkRecordCons  (HkIdent a) [HkType a] a
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkRecordType where
+  annot (HkRecordType _ a) = a
+  annot (HkRecordCons _ _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Type Context
@@ -239,6 +274,9 @@ type HkTypeContextNode = HkTypeContext NodeInfo
 data HkTypeContext a
   = HkTypeContext [HkClassCons a] a
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkTypeContext where
+  annot (HkTypeContext _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Class Constructor
@@ -255,6 +293,9 @@ data HkClassCons a
   , class_cons_annot    :: a
   }
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkClassCons where
+  annot (HkClassCons _ _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Function Declaration
@@ -269,6 +310,9 @@ data HkFnDec a
     }
     deriving (Eq, Ord, Show)
 
+instance HkAnnotated HkFnDec where
+  annot (HkFnDec _ _ a) = a
+
 -- -----------------------------------------------------------------------------
 -- | Hawk Function definition
 --
@@ -278,6 +322,9 @@ data HkFnDef a
   = HkFnDef (HkFnDec a) [HkBinding a] a
   deriving (Eq, Ord, Show)
   
+instance HkAnnotated HkFnDef where
+  annot (HkFnDef _ _ a) = a
+
   
 type HkFnSymbolNode = HkFnSymbol NodeInfo
 data HkFnSymbol a
@@ -287,6 +334,13 @@ data HkFnSymbol a
   | HkSymPostOp (HkIdent a) Int a
   deriving (Eq, Ord, Show)
   
+instance HkAnnotated HkFnSymbol where
+  annot (HkSymIdent _ a) = a
+  annot (HkSymPreOp _ _ a) = a
+  annot (HkSymOp _ _ a) = a
+  annot (HkSymPostOp _ _ a) = a  
+  
+  
 type HkBindingNode = HkBinding NodeInfo
 data HkBinding a
   = HkBinding
@@ -295,6 +349,10 @@ data HkBinding a
   , binding_annot   :: a
   }
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkBinding where
+  annot (HkBinding _ _ a) = a
+  
 
 type HkPatternNode = HkPattern NodeInfo
 data HkPattern a
@@ -305,12 +363,25 @@ data HkPattern a
   | HkPatAlias  (HkIdent a) (HkPattern a) a
   | HkPatAny    a
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkPattern where
+  annot (HkPatIdent _ a) = a
+  annot (HkPatConst _ a) = a
+  annot (HkPatRec _ _ a) = a
+  annot (HkPatTyple _ a) = a
+  annot (HkPatAlias _ _ a) = a
+  annot (HkPatAny a) = a 
+  
 
 type HkGuardNode = HkGuard NodeInfo
 data HkGuard a
   = HkGuardExp (HkExp a) a
   | HkGuardAny a
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkGuard where
+  annot (HkGuardExp _ a) = a
+  annot (HkGuardAny a) = a
 
 
 -- -----------------------------------------------------------------------------
@@ -321,25 +392,29 @@ data HkGuard a
 -- Objects in Hawk are not like objects in most programming languages.
 -- Hawk objects are variables or values that represent some data in memory.
 -- Hawk objects have nothing to do with object oriented programming. 
-type HkObjectDecNode = HkObjectDec NodeInfo
-data HkObjectDec a
-  = HkBindingDec
+type HkObjDecNode = HkObjDec NodeInfo
+data HkObjDec a
+  = HkObjDec
   { obj_name    :: HkIdent a
   , obj_typesig :: [HkIdent a]
   , obj_annot   :: a
   }
   deriving (Eq, Ord, Show)
-  
+
+instance HkAnnotated HkObjDec where
+  annot (HkObjDec _ _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Object Definition
 --
 -- A object Definition is used to bind an identifier to an expression.
-type HkObjectDefNode = HkObjectDef NodeInfo
-data HkObjectDef a
-  = HkObjectDef (HkObjectDef a) (HkExp a) a
+type HkObjDefNode = HkObjDef NodeInfo
+data HkObjDef a
+  = HkObjDef (HkObjDec a) (HkExp a) a
   deriving (Eq, Ord, Show)
 
+instance HkAnnotated HkObjDef where
+  annot (HkObjDef _ _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Value Declaration
@@ -355,8 +430,11 @@ data HkObjectDef a
 --
 type HkValDecNode = HkValDec NodeInfo
 data HkValDec a
-  = HkValDec (HkObjectDec a) a
+  = HkValDec (HkObjDec a) a
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkValDec where
+  annot (HkValDec _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Value Definiton
@@ -366,8 +444,11 @@ data HkValDec a
 -- A hawk value definition is a contains a binding definition.
 type HkValDefNode = HkValDef NodeInfo
 data HkValDef a
-  = HkValDef (HkObjectDef a) a
+  = HkValDef (HkObjDef a) a
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkValDef where
+  annot (HkValDef _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Variable Declaration
@@ -380,8 +461,11 @@ data HkValDef a
 --
 type HkVarDecNode = HkVarDec NodeInfo
 data HkVarDec a
-  = HkVarDec (HkObjectDec a) a
+  = HkVarDec (HkObjDec a) a
   deriving (Eq, Ord, Show)
+
+instance HkAnnotated HkVarDec where
+  annot (HkVarDec _ a) = a
 
 -- -----------------------------------------------------------------------------  
 -- | Hawk Variable Definition
@@ -392,8 +476,11 @@ data HkVarDec a
 --
 type HkVarDefNode = HkVarDef NodeInfo
 data HkVarDef a
-  = HkVarDef (HkObjectDef a) a
+  = HkVarDef (HkObjDef a) a
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkVarDef where
+  annot (HkVarDef _ a) = a
   
 -- -----------------------------------------------------------------------------  
 -- | Hawk Record Definition
@@ -410,6 +497,9 @@ data HkRecordDef a
     , rec_annot   :: a
     }
 
+instance HkAnnotated HkRecordDef where
+  annot (HkRecordDef _ _ _ _ _ a) = a
+  
 -- -----------------------------------------------------------------------------
 -- | Hawk Record member
 --
@@ -425,6 +515,11 @@ data HkRecordMember a
   | HkRecordVarDec (HkVisibilityTag a) (HkVarDec a) a
   | HkRecordVarDef (HkVisibilityTag a) (HkVarDef a) a
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkRecordMember where
+  annot (HkRecordValDef _ _ a) = a
+  annot (HkRecordVarDec _ _ a) = a
+  annot (HkRecordVarDef _ _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Union Definition
@@ -434,7 +529,7 @@ data HkRecordMember a
 -- It's a minor, minor overhead, and they perform as well as tagless unions.
 type HkUnionDefNode = HkUnionDef NodeInfo
 data HkUnionDef a
-  = HkUnion
+  = HkUnionDef
   { union_name    :: HkIdent a
   , union_ctx     :: HkTypeContext a
   , union_tyvars  :: [HkIdent a]
@@ -442,6 +537,9 @@ data HkUnionDef a
   , union_annot   :: a
   }
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkUnionDef where
+  annot (HkUnionDef _ _ _ _ a) = a
 
 -- -----------------------------------------------------------------------------  
 -- Element belonging to a union consists of a tag and a list of types.  
@@ -449,7 +547,10 @@ type HkUnionElementNode = HkUnionElement NodeInfo
 data HkUnionElement a
   = HkUnionElement (HkIdent a) [HkType a] a
   deriving (Eq, Ord, Show)
-  
+
+instance HkAnnotated HkUnionElement where
+  annot (HkUnionElement _ _ a) = a
+ 
 -- -----------------------------------------------------------------------------  
 -- | Hawk Class
 --
@@ -464,6 +565,10 @@ data HkClassDef a
   , class_annot     :: a
   }
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkClassDef where
+  annot (HkClassDef _ _ _ _ a) = a
+  
 
 -- A class member is a function that is either declared, or defined.
 -- If defined, that function serves as the default unless overriden.
@@ -472,6 +577,10 @@ data HkClassMember a
   = HkClassMemberDec (HkVisibilityTag a) (HkFnDec a) a
   | HkClassMemberDef (HkVisibilityTag a) (HkFnDef a) a
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkClassMember where
+  annot (HkClassMemberDec _ _ a) = a
+  annot (HkClassMemberDef _ _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Class Instance
@@ -488,6 +597,9 @@ data HkClassInstance a
   }
   deriving (Eq, Ord, Show)
 
+instance HkAnnotated HkClassInstance where
+  annot (HkClassInstance _ _ _ a) = a
+
 -- -----------------------------------------------------------------------------
 -- | Hawk Block
 --
@@ -496,6 +608,9 @@ type HkBlockNode = HkBlock NodeInfo
 data HkBlock a
   = HkBlock [HkBlockStmt a] a
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkBlock where
+  annot (HkBlock _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Block Statement
@@ -520,17 +635,46 @@ data HkBlockStmt a
   | HkStmtWhile (HkExp a) (HkBlock a) a
   | HkStmtDoWhile (HkExp a) (HkBlock a) a
   
-  | HkStmtFor       (Maybe (HkForInit a))   (Maybe (HkExp a))   (Maybe (HkExp a))   (HkBlock a) a
+  | HkStmtFor       (Maybe (HkForInit a))   (Maybe (HkExp a))   (Maybe (HkExp a))  (HkBlock a) a
   | HkStmtForEach   (HkIdent a) (HkExp a)   (HkBlock a) (HkBlock a) a
   | HkStmtForEachIx (HkIdent a) (HkIdent a) (HkExp a)   (HkBlock a) (HkBlock a) a
   
   | HkStmtEmpty a
   deriving (Eq, Ord, Show)
+
+instance HkAnnotated HkBlockStmt where
+  annot (HkStmtBlk _ a) = a
+  annot (HkStmtExp _ a) = a
   
+  annot (HkStmtValDef _ a) = a
+  annot (HkStmtVarDec _ a) = a
+  annot (HkStmtVarDef _ a) = a
+  
+  annot (HkStmtReturn _ a) = a
+  
+  annot (HkStmtCase _ _ a) = a
+  
+  annot (HkStmtIf _ _ a) = a
+  annot (HkStmtIfElse _ _ _ a) = a
+  
+  annot (HkStmtWhile _ _ a) = a
+  annot (HkStmtDoWhile _ _ a) = a
+  
+  annot (HkStmtFor _ _ _ _ a) = a
+  annot (HkStmtForEach _ _ _ _ a) = a
+  annot (HkStmtForEachIx _ _ _ _ _ a) = a
+  
+  annot (HkStmtEmpty a) = a
+
+ 
 data HkForInit a
   = HkForLocalVars [HkVarDec a] a 
   | HkForInitExps  [HkExp a] a
   deriving (Eq, Ord, Show)
+
+instance HkAnnotated HkForInit where
+  annot (HkForLocalVars _ a) = a
+  annot (HkForInitExps _ a) = a
 
 -- -----------------------------------------------------------------------------  
 -- | Hawk Expression
@@ -552,7 +696,25 @@ data HkExp a
   | HkExpLambda (HkBinding a) a
   
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkExp where
+  annot (HkConstExpr _ a) = a
+  annot (HkExpAssign _ _ _ a) = a
+  annot (HkExpUnaryOp _ _ a) = a
+  annot (HkExpBinaryOp _ _ _ a) = a
+  
+  annot (HkExpObj _ a) = a
+  annot (HkExpCall _ _ a) = a
+  annot (HkExpCast _ _ a) = a
+  
+  annot (HkExpIfThenElse _ _ _ a) = a
+  
+  annot (HkExpLambda _ a) = a
 
+-- -----------------------------------------------------------------------------  
+-- | Hawk Constants
+--
+-- These are the constant (i.e. primitive) objects in Hawk.
 type HkConstNode = HkConst NodeInfo  
 data HkConst a
   = HkUnit a
@@ -569,8 +731,30 @@ data HkConst a
   | HkF64 Double a
   | HkChar Char a
   deriving (Eq, Ord, Show)
-  
 
+instance HkAnnotated HkConst where
+  annot (HkUnit a) = a
+  annot (HkBit _ a) = a
+  
+  annot (HkW8 _ a) = a
+  annot (HkW16 _ a) = a
+  annot (HkW32 _ a) = a
+  annot (HkW64 _ a) = a
+  
+  annot (HkI8 _ a) = a
+  annot (HkI16 _ a) = a
+  annot (HkI32 _ a) = a
+  annot (HkI64 _ a) = a
+  
+  annot (HkF32 _ a) = a
+  annot (HkF64 _ a) = a
+  
+  annot (HkChar _ a) = a
+
+-- -----------------------------------------------------------------------------  
+-- | Hawk Assign Operators
+--
+-- These are built-in assignment operators.
 type HkAssignOpNode = HkAssignOp NodeInfo
 data HkAssignOp a
   = HkAssignOp a  -- Assignment
@@ -586,6 +770,23 @@ data HkAssignOp a
   | HkOrAssOp  a  -- Inclusive Bitwise Or
   deriving (Eq, Ord, Show)  
 
+instance HkAnnotated HkAssignOp where
+  annot (HkAssignOp a) = a
+  annot (HkMulAssOp a) = a
+  annot (HkDivAssOp a) = a
+  annot (HkRmdAssOp a) = a
+  annot (HkAddAssOp a) = a
+  annot (HkSubAssOp a) = a
+  annot (HkShlAssOp a) = a
+  annot (HkShrAssOp a) = a
+  annot (HkAndAssOp a) = a
+  annot (HkXorAssOp a) = a
+  annot (HkOrAssOp a) = a
+
+-- -----------------------------------------------------------------------------  
+-- | Hawk Binary Operators
+--
+-- These are built-in binary operators.
 type HkBinaryOpNode = HkBinaryOp NodeInfo
 data HkBinaryOp a
   = HkMulOp a   -- Multiply
@@ -606,8 +807,32 @@ data HkBinaryOp a
   | HkOrOp  a   -- Inclusive Bitwise Or
   | HkLndOp a   -- Logical And
   | HkLorOp a   -- Logical Or
-  deriving (Eq, Ord, Show)  
+  deriving (Eq, Ord, Show)
   
+instance HkAnnotated HkBinaryOp where
+  annot (HkMulOp a) = a
+  annot (HkDivOp a) = a
+  annot (HkRmdOp a) = a
+  annot (HkAddOp a) = a
+  annot (HkSubOp a) = a
+  annot (HkShlOp a) = a
+  annot (HkShrOp a) = a
+  annot (HkLeOp a) = a
+  annot (HkGrOp a) = a
+  annot (HkLeqOp a) = a
+  annot (HkGeqOp a) = a
+  annot (HkEqOp a) = a
+  annot (HkNeqOp a) = a
+  annot (HkAndOp a) = a
+  annot (HkXorOp a) = a
+  annot (HkOrOp a) = a
+  annot (HkLndOp a) = a
+  annot (HkLorOp a) = a
+
+-- -----------------------------------------------------------------------------  
+-- | Hawk Unary Operators
+--
+-- These are built-in unary operators.  
 type HkUnaryOpNode = HkUnaryOp NodeInfo
 data HkUnaryOp a
   = HkPreIncOp a    -- Prefix Increment
@@ -621,3 +846,15 @@ data HkUnaryOp a
   | HkCompOp a      -- One's Complement
   | HkNegOp a       -- Logical Negation
   deriving (Eq, Ord, Show)
+  
+instance HkAnnotated HkUnaryOp where
+  annot (HkPreIncOp a) = a
+  annot (HkPreDecOp a) = a
+  annot (HkPostIncOp a) = a
+  annot (HkPostDecOp a) = a
+  annot (HkAddrOp a) = a
+  annot (HkIndOp a) = a
+  annot (HkPlusOp a) = a
+  annot (HkMinOp a) = a
+  annot (HkCompOp a) = a
+  annot (HkNegOp a) = a
