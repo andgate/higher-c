@@ -98,6 +98,20 @@ $white+                   ;
   "elif"                        { lex' TokenElif }
   "while"                       { lex' TokenWhile }
   
+  \(\)                          { lex' TokenParenPair }
+  "Bit"                         { lex' TokenBitTy }
+  "W8"                          { lex' TokenW8Ty }
+  "W16"                         { lex' TokenW16Ty }
+  "W32"                         { lex' TokenW32Ty }
+  "W64"                         { lex' TokenW64Ty }
+  "I8"                          { lex' TokenI8Ty }
+  "I16"                         { lex' TokenI16Ty }
+  "I32"                         { lex' TokenI32Ty }
+  "I64"                         { lex' TokenI64Ty }
+  "F32"                         { lex' TokenF32Ty }
+  "F64"                         { lex' TokenF64Ty }
+  "Char"                        { lex' TokenCharTy }
+  
   @id_lower                     { lex TokenIdLower }
   @id_cap_uscore                { lex TokenIdCapUscore }
   @id_uscore_num_tick           { lex TokenIdUScoreNumTick }
@@ -285,6 +299,20 @@ data TokenClass
   | TokenElse
   | TokenElif
   | TokenWhile
+  
+  | TokenParenPair
+  | TokenBitTy
+  | TokenW8Ty
+  | TokenW16Ty
+  | TokenW32Ty
+  | TokenW64Ty
+  | TokenI8Ty
+  | TokenI16Ty
+  | TokenI32Ty
+  | TokenI64Ty
+  | TokenF32Ty
+  | TokenF64Ty
+  | TokenCharTy
   
   | TokenDblColon
   

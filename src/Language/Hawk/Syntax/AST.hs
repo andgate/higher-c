@@ -166,7 +166,7 @@ prefixImportItem pfx imp_item@(HkImportItem ident _ _)
 type HkTypeSigNode = HkTypeSig NodeInfo
 data HkTypeSig a
   = HkTypeSig
-  { sig_context  :: HkTypeContext a
+  { sig_context  :: Maybe (HkTypeContext a)
   , sig_params   :: [HkType a]
   , sig_result   :: HkType a
   , sig_annot    :: a
@@ -175,6 +175,11 @@ data HkTypeSig a
   
 instance HkAnnotated HkTypeSig where
   annot (HkTypeSig _ _ _ a) = a
+
+mkTypeSig :: Maybe (HkTypeContext a) -> [HkType a] -> a -> HkTypeSig a
+mkTypeSig _ [] _        = error "Cannot make type sig with no types"
+mkTypeSig ctx (t:[]) a  = HkTypeSig ctx [] t a
+mkTypeSig ctx ts a      = HkTypeSig ctx (init ts) (last ts) a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Type
@@ -328,9 +333,9 @@ instance HkAnnotated HkFnDef where
   
 type HkFnSymbolNode = HkFnSymbol NodeInfo
 data HkFnSymbol a
-  = HkSymIdent     (HkIdent a) a
+  = HkSymIdent  (HkIdent a) a
   | HkSymPreOp  (HkIdent a) Int a
-  | HkSymOp   (HkIdent a) Int a
+  | HkSymOp     (HkIdent a) Int a
   | HkSymPostOp (HkIdent a) Int a
   deriving (Eq, Ord, Show)
   

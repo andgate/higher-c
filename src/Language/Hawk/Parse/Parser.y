@@ -39,25 +39,39 @@ import Data.Monoid
     VAL     { Token _ TokenValue    }
     VAR     { Token _ TokenVariable }
     
-    DO      { Token _ TokenDo }
-    RETURN  { Token _ TokenReturn }
+    DO              { Token _ TokenDo }
+    RETURN          { Token _ TokenReturn }
     
+    '()'            { Token _ TokenParenPair }
     
-    '::'    { Token _ TokenDblColon }
+    BIT_TY          { Token _ TokenBitTy }
+    W8_TY           { Token _ TokenW8Ty }
+    W16_TY          { Token _ TokenW16Ty }
+    W32_TY          { Token _ TokenW32Ty }
+    W64_TY          { Token _ TokenW64Ty }
+    I8_TY           { Token _ TokenI8Ty }
+    I16_TY          { Token _ TokenI16Ty }
+    I32_TY          { Token _ TokenI32Ty }
+    I64_TY          { Token _ TokenI64Ty }
+    F32_TY          { Token _ TokenF32Ty }
+    F64_TY          { Token _ TokenF64Ty }
+    CHAR_TY         { Token _ TokenCharTy }
     
-    ':='    { Token _ TokenFuncDef }
-    ':-'    { Token _ TokenTypeDec }
-    ':~'    { Token _ TokenTypeClass }
-    ':+'    { Token _ TokenImplement }
+    '::'            { Token _ TokenDblColon }
     
-    '<-'    { Token _ TokenLArrow }
-    '<='    { Token _ TokenThickLArrow }
-    '->'    { Token _ TokenRArrow }
-    '=>'    { Token _ TokenThickRArrow }
-    '<:'    { Token _ TokenSubtype }
+    ':='            { Token _ TokenFuncDef }
+    ':-'            { Token _ TokenTypeDec }
+    ':~'            { Token _ TokenTypeClass }
+    ':+'            { Token _ TokenImplement }
     
-    '`'     { Token _ TokenGrave }
-    '~'     { Token _ TokenTilde }
+    '<-'            { Token _ TokenLArrow }
+    '<='            { Token _ TokenThickLArrow }
+    '->'            { Token _ TokenRArrow }
+    '=>'            { Token _ TokenThickRArrow }
+    '<:'            { Token _ TokenSubtype }
+    
+    '`'             { Token _ TokenGrave }
+    '~'             { Token _ TokenTilde }
     '!'     { Token _ TokenExclaim }
     '?'     { Token _ TokenQuestion }
     '@'     { Token _ TokenAt }
@@ -116,10 +130,6 @@ obj_id :: { HkIdentNode }
   : ID_LOWER                { HkIdent (getTokId $1) (nodeInfo $1) }
   | ID_USCORE_NUM_TICK      { HkIdent (getTokId $1) (nodeInfo $1) }
 
-fn_id :: { HkIdentNode }
-  : ID_LOWER                { HkIdent (getTokId $1) (nodeInfo $1) }
-  | ID_USCORE_NUM_TICK      { HkIdent (getTokId $1) (nodeInfo $1) }
-
 -- -----------------------------------------------------------------------------
 -- | Hawk Parser "External Statments"
 
@@ -145,8 +155,8 @@ vis_tag :: { HkVisibilityTagNode }
 -- | Hawk Parser "Module"
 
 mod_dec :: { HkExtStmtNode }
-  : MOD dotted_mod_id ext_block { HkModDef (HkPublic (nodeInfo $1)) $2 $3 ((nodeInfo $1) <> (nodeInfo $3)) }
-  | vis_tag MOD dotted_mod_id ext_block { HkModDef $1 $3 $4 ((nodeInfo $1) <> (nodeInfo $4)) }
+  : MOD dotted_mod_id ':' ext_block { HkModDef (HkPublic (nodeInfo $1)) $2 $4 ((nodeInfo $1) <> (nodeInfo $4)) }
+  | vis_tag MOD dotted_mod_id ':' ext_block { HkModDef $1 $3 $5 ((nodeInfo $1) <> (nodeInfo $5)) }
 
 mod_id :: { HkIdentNode }
   : ID_CAP_USCORE           { HkIdent (getTokId $1) (nodeInfo $1) }  
@@ -189,8 +199,44 @@ import_target :: { HkIdentNode }
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Function"
 
+fn_dec :: { HkFnDecNode }
+  : FN fn_id '::' typesig                   { HkFnDec (HkSymIdent $2 (nodeInfo $2)) $4 (nodeInfo $1 <> nodeInfo $4) }
+
+fn_id :: { HkIdentNode }
+  : ID_LOWER                                { HkIdent (getTokId $1) (nodeInfo $1) }
+  | ID_USCORE_NUM_TICK                      { HkIdent (getTokId $1) (nodeInfo $1) }
 
 
+-- -----------------------------------------------------------------------------
+-- Hawk Parser "Type Signature"
+
+typesig :: { HkTypeSigNode }
+  : type_chain                              { mkTypeSig Nothing $1 (nodesInfo $1) }
+
+type_chain :: { [HkTypeNode] }
+  : type                                    { [$1] }
+  | type_chain '->' type                    { $1 ++ [$3] }
+
+type :: { HkTypeNode }
+  : prim_type                               { HkTyPrimType $1 (nodeInfo $1) }
+
+-- -----------------------------------------------------------------------------
+-- Hawk Parser "Primitive Types"
+
+prim_type :: { HkPrimTypeNode }
+  : '()'                                    { HkTyUnit (nodeInfo $1) }
+  | BIT_TY                                  { HkTyBit (nodeInfo $1) }
+  | W8_TY                                   { HkTyW8 (nodeInfo $1) }
+  | W16_TY                                  { HkTyW16 (nodeInfo $1) }
+  | W32_TY                                  { HkTyW32 (nodeInfo $1) }
+  | W64_TY                                  { HkTyW64 (nodeInfo $1) }
+  | I8_TY                                   { HkTyI8 (nodeInfo $1) }
+  | I16_TY                                  { HkTyI16 (nodeInfo $1) }
+  | I32_TY                                  { HkTyI32 (nodeInfo $1) }
+  | I64_TY                                  { HkTyI64 (nodeInfo $1) }
+  | F32_TY                                  { HkTyF32 (nodeInfo $1) }
+  | F64_TY                                  { HkTyF64 (nodeInfo $1) }
+  | CHAR_TY                                 { HkTyChar (nodeInfo $1) }
 
 {
 
