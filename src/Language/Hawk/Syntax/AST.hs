@@ -26,11 +26,20 @@ instance (HkNode a, HkAnnotated t) => HkNode (t a) where
 -- It consists of a list of modules, which contain all the external statements.
 type HkTranslUnitNode = HkTranslUnit NodeInfo
 data HkTranslUnit a
-  = HkTranslUnit (HkExtBlock a) a
+  = HkTranslUnit (HkRootModule a)  a
     deriving (Eq, Ord, Show)
     
 instance HkAnnotated HkTranslUnit where
   annot (HkTranslUnit _ a) = a
+
+  
+type HkRootModuleNode = HkRootModule NodeInfo
+data HkRootModule a
+  = HkRootModule (HkDottedIdent a) [HkExtStmt a] a
+    deriving (Eq, Ord, Show)
+    
+instance HkAnnotated HkRootModule where
+  annot (HkRootModule _ _ a) = a
 
 -- ----------------------------------------------------------------------------- 
 -- | Hawk Identifier

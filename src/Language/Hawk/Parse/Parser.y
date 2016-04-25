@@ -96,7 +96,10 @@ import Data.Monoid
 %%
 
 trans_unit :: { HkTranslUnitNode }
-  : ext_block { HkTranslUnit $1 (nodeInfo $1) }
+  : root_mod { HkTranslUnit $1 (nodeInfo $1) }
+  
+root_mod :: { HkRootModuleNode }
+  : MOD dotted_mod_id ext_stmts { HkRootModule $2 $3 (nodeInfo $1 <> nodesInfo $3)  }
 
 
 -- -----------------------------------------------------------------------------
@@ -125,8 +128,8 @@ ext_stmt :: { HkExtStmtNode }
   | import_dec    { $1 }
   
 ext_stmts :: { [HkExtStmtNode] }
-  : '{' ext_stmt '}'                { [$2] }
-  | ext_stmts '{' ext_stmt '}'      { $1 ++ [$3] }
+  : ext_stmt                { [$1] }
+  | ext_stmts ext_stmt      { $1 ++ [$2] }
   
 ext_block :: { HkExtBlockNode }
   : '{' '}'                     { HkExtBlock [] (nodeInfo $1 <> nodeInfo $2) }
