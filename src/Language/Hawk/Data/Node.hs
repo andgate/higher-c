@@ -20,7 +20,6 @@ instance Show NodeInfo where
     show (NodeInfo n s) = n ++ (show s)
 -}
 
-
 instance HkSpan NodeInfo where
   spanOf (NodeInfo _ s) = s
 

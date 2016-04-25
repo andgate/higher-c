@@ -1,7 +1,12 @@
 mod Test.Main
 
 use Data.List
-use Math.Trig(sin cos tan Arc(asin acos atan))
+use Math.Trig(sin cos as T tan Arc(asin acos atan) as A) as M
+use (System.IO System.Network)
 
 fn foo :: I32 -> ()
-| x = ()
+  | x 
+    * () = ()
+    * () = ()
+    * _ = ()
+  | y = ()

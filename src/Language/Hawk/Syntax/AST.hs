@@ -158,6 +158,17 @@ prefixImportItem :: (Monoid a) => HkDottedIdent a -> HkImportItem a -> HkImportI
 prefixImportItem pfx imp_item@(HkImportItem ident _ _) 
   =  imp_item { import_item = pfx ++ ident }
 
+importItemsAlias :: Maybe (HkIdent a) -> HkImportItems a -> HkImportItems a
+importItemsAlias a = map (\ii -> ii { import_alias = a })
+  
+prefixImportItemsAlias :: (Monoid a) => HkDottedIdent a -> Maybe (HkIdent a) -> HkImportItems a -> HkImportItems a
+prefixImportItemsAlias i a = map (prefixImportItemAlias i a)  
+  
+prefixImportItemAlias :: (Monoid a) => HkDottedIdent a -> Maybe (HkIdent a) -> HkImportItem a -> HkImportItem a
+prefixImportItemAlias pfx alias imp_item@(HkImportItem ident _ _) 
+  =  imp_item { import_item = pfx ++ ident, import_alias = alias }
+
+
 -- -----------------------------------------------------------------------------
 -- | Hawk Type Signature
 --

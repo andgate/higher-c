@@ -30,6 +30,7 @@ import Data.Monoid
     MOD             { Token _ TokenModule }
     USE             { Token _ TokenUse }
     USE_QUAL        { Token _ TokenUseQualified }
+    AS              { Token _ TokenAs }
     
     PUB             { Token _ TokenPublic   }
     PRIV            { Token _ TokenPrivate  }
@@ -188,12 +189,21 @@ import_dec :: { HkExtStmtNode }
   | vis_tag USE_QUAL import_items           { HkExtImportQual $1 $3 (nodeInfo $1 <> nodesInfo $3) }
 
 import_items :: { HkImportItemsNode }
-  : import_item                             { [$1] }
-  | dotted_mod_id '(' import_specs ')'      { prefixImportItems $1 $3 }
+  : import_item                                   { [$1] }
+  | '(' import_items_list ')'                     { $2 }
+  | '(' import_items_list ')' AS mod_id           { importItemsAlias (Just $5) $2 }
+  | dotted_mod_id '(' import_specs ')'            { prefixImportItems $1 $3 }
+  | dotted_mod_id '(' import_specs ')' AS mod_id  { prefixImportItemsAlias $1 (Just $6) $3 }
+
+import_items_list :: { HkImportItemsNode }
+  : import_items                                { $1 }
+  | import_items_list import_items              { $1 ++ $2}
 
 import_item :: { HkImportItemNode }
-  : dotted_mod_id                           { HkImportItem $1 Nothing (nodesInfo $1) }
-  | dotted_mod_id '.' import_target         { HkImportItem ($1 ++ [$3]) Nothing (nodesInfo $1 <> nodeInfo $3) }
+  : dotted_mod_id                               { HkImportItem $1 Nothing (nodesInfo $1) }
+  | dotted_mod_id AS mod_id                     { HkImportItem $1 (Just $3) (nodesInfo $1 <> nodeInfo $3) }
+  | dotted_mod_id '.' import_target             { HkImportItem ($1 ++ [$3]) Nothing (nodesInfo $1 <> nodeInfo $3) }
+  | dotted_mod_id '.' import_target AS mod_id   { HkImportItem ($1 ++ [$3]) (Just $5) (nodesInfo $1 <> nodeInfo $5) }
   
 import_specs :: { HkImportItemsNode }
   : import_spec                             { $1 }
@@ -201,6 +211,7 @@ import_specs :: { HkImportItemsNode }
   
 import_spec :: { HkImportItemsNode }
   : import_target                           { [HkImportItem [$1] Nothing (nodeInfo $1)] }
+  | import_target AS mod_id                 { [HkImportItem [$1] (Just $3) (nodeInfo $1 <> nodeInfo $3)] }
   | import_items                            { $1 }
   
 import_target :: { HkIdentNode }
