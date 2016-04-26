@@ -453,7 +453,7 @@ type HkObjDecNode = HkObjDec NodeInfo
 data HkObjDec a
   = HkObjDec
   { obj_name    :: HkIdent a
-  , obj_typesig :: [HkIdent a]
+  , obj_typesig :: HkTypeSig a
   , obj_annot   :: a
   }
   deriving (Eq, Ord, Show)

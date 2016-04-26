@@ -131,10 +131,6 @@ ty_id :: { HkIdentNode }
 tyvar_id :: { HkIdentNode }
   : ID_LOWER                                { HkIdent (getTokId $1) (nodeInfo $1) }
 
-obj_id :: { HkIdentNode }
-  : ID_LOWER                                { HkIdent (getTokId $1) (nodeInfo $1) }
-  | ID_USCORE_NUM_TICK                      { HkIdent (getTokId $1) (nodeInfo $1) }
-
 -- -----------------------------------------------------------------------------
 -- | Hawk Parser "External Statments"
 
@@ -164,6 +160,15 @@ ext_fn_stmt :: { HkExtStmtNode }
   
   | fn_def                                  { HkExtFnDef (HkPublic mempty) $1 (nodeInfo $1) }
   | vis_tag fn_def                          { HkExtFnDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  
+  | val_def                                 { HkExtValDef (HkPublic mempty) $1 (nodeInfo $1) }
+  | vis_tag val_def                         { HkExtValDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  
+  | var_dec                                 { HkExtVarDec (HkPublic mempty) $1 (nodeInfo $1) }
+  | vis_tag var_dec                         { HkExtVarDec $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  
+  | var_def                                 { HkExtVarDef (HkPublic mempty) $1 (nodeInfo $1) }
+  | vis_tag var_def                         { HkExtVarDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Parser "Module"
@@ -235,6 +240,29 @@ fn_id :: { HkIdentNode }
 
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Object"
+
+obj_dec :: { HkObjDecNode }
+  : obj_id typesig                          { HkObjDec $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  
+obj_def :: { HkObjDefNode }
+  : obj_dec '=' exp                         { HkObjDef $1 $3 (nodeInfo $1 <> nodeInfo $3) }
+  
+val_dec :: { HkValDecNode }
+  : VAL obj_dec                             { HkValDec $2 (nodeInfo $1 <> nodeInfo $2) }
+
+val_def :: { HkValDefNode }  
+  : VAL obj_def                             { HkValDef $2 (nodeInfo $1 <> nodeInfo $2) }
+
+var_dec :: { HkVarDecNode }
+  : VAR obj_dec                             { HkVarDec $2 (nodeInfo $1 <> nodeInfo $2) }
+
+var_def :: { HkVarDefNode }  
+  : VAR obj_def                             { HkVarDef $2 (nodeInfo $1 <> nodeInfo $2) }
+
+
+obj_id :: { HkIdentNode }
+  : ID_LOWER                                { HkIdent (getTokId $1) (nodeInfo $1) }
+  | ID_USCORE_NUM_TICK                      { HkIdent (getTokId $1) (nodeInfo $1) }
 
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Record"

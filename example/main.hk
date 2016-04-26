@@ -4,6 +4,10 @@ use Data.List
 use Math.Trig(sin cos as T tan Arc(asin acos atan) as A) as M
 use (System.IO System.Network)
 
+val blueberry :: I32 = ()
+var raspberry :: I16 = ()
+var blackberry :: W64 = ()
+
 fn foo :: I32 -> ()
   | x 
     * () = ()
