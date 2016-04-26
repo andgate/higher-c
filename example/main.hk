@@ -8,6 +8,9 @@ val blueberry :: I32 = ()
 var raspberry :: I16 = ()
 var blackberry :: W64 = ()
 
+fn fancy :: Foo a b c, Bar c b => a -> b -> c -> ()
+| a b c = ()
+
 fn foo :: I32 -> ()
   | x 
     * () = ()

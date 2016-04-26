@@ -198,18 +198,25 @@ mkTypeSig ctx ts a      = HkTypeSig ctx (init ts) (last ts) a
 -- A type in Hawk can be primitive type, reference types, a record type, or even a type signature.
 type HkTypeNode = HkType NodeInfo
 data HkType a
-  = HkTyPrimType    (HkPrimType a) a
+  = HkTyPrim        (HkPrimType a) a
   | HkTyConst       (HkType a) a
-  | HkTyRefType     (HkRefType a) a
-  | HkTyRecordType  (HkRecordType a) a
+  | HkTyRef         (HkType a) a
+  | HkTyRecord      (HkRecordType a) a
+  | HkTyTuple       [HkType a] a
+  | HkTyVar         (HkIdent a) a
+  | HkTyArray       (HkType a) a
   | HkTyTypeSig     (HkTypeSig a) a
+  
   deriving (Eq, Ord, Show)
   
 instance HkAnnotated HkType where
-  annot (HkTyPrimType _ a) = a
+  annot (HkTyPrim _ a) = a
   annot (HkTyConst _ a) = a
-  annot (HkTyRefType _ a) = a
-  annot (HkTyRecordType _ a) = a
+  annot (HkTyRef _ a) = a
+  annot (HkTyRecord _ a) = a
+  annot (HkTyTuple _ a) = a
+  annot (HkTyVar _ a) = a
+  annot (HkTyArray _ a) = a
   annot (HkTyTypeSig _ a) = a
 
 -- -----------------------------------------------------------------------------
@@ -247,24 +254,6 @@ instance HkAnnotated HkPrimType where
   annot (HkTyF32 a) = a
   annot (HkTyF64 a) = a
   annot (HkTyChar a) = a
-
--- -----------------------------------------------------------------------------
--- | Hawk Reference Type
---
--- A reference type is an address to some data. This include pointers, arrays, and type variables.
-type HkRefTypeNode = HkRefType NodeInfo
-data HkRefType a
-  = HkRefType (HkType a) a
-  | HkArrayType (HkType a) a
-  | HkTupleType [HkType a] a
-  | HkTypeVariable (HkIdent a) a
-  deriving (Eq, Ord, Show)
-  
-instance HkAnnotated HkRefType where
-  annot (HkRefType _ a) = a
-  annot (HkArrayType _ a) = a
-  annot (HkTupleType _ a) = a
-  annot (HkTypeVariable _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Record Type

@@ -130,8 +130,8 @@ $white+                   ;
   \:\=                          { lex' TokenFuncDef }
   \=                            { lex' TokenEquals }
   
-  \<\-                          { lex' TokenRArrow }
-  \<\=                          { lex' TokenThickRArrow }
+  \<\-                          { lex' TokenLArrow }
+  \<\=                          { lex' TokenThickLArrow }
   \-\>                          { lex' TokenRArrow }
   \=\>                          { lex' TokenThickRArrow }
   \<\:                          { lex' TokenSubtype }
