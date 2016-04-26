@@ -120,17 +120,6 @@ trans_unit :: { HkTranslUnitNode }
 root_mod :: { HkRootModuleNode }
   : MOD dotted_mod_id ext_stmts             { HkRootModule $2 $3 (nodeInfo $1 <> nodesInfo $3)  }
 
-
--- -----------------------------------------------------------------------------
--- Hawk Parser "General"  
-  
-ty_id :: { HkIdentNode }
-  : ID_CAP_USCORE                           { HkIdent (getTokId $1) (nodeInfo $1) }
-  | ID_CAP_USCORE_NUM_TICK                  { HkIdent (getTokId $1) (nodeInfo $1) }
-  
-tyvar_id :: { HkIdentNode }
-  : ID_LOWER                                { HkIdent (getTokId $1) (nodeInfo $1) }
-
 -- -----------------------------------------------------------------------------
 -- | Hawk Parser "External Statments"
 
@@ -281,13 +270,117 @@ obj_id :: { HkIdentNode }
 
 typesig :: { HkTypeSigNode }
   : '::' type_chain                         { mkTypeSig Nothing $2 (nodeInfo $1 <> nodesInfo $2) }
+  | '::' type_ctx '=>' type_chain           { mkTypeSig (Just $2) $4 (nodeInfo $1 <> nodesInfo $4) }
 
 type_chain :: { [HkTypeNode] }
   : type                                    { [$1] }
   | type_chain '->' type                    { $1 ++ [$3] }
 
 type :: { HkTypeNode }
+  : ty_prim_type                            { $1 }
+  | ty_const_type                           { $1 }
+  | ty_ref_type                             { $1 }
+  | ty_rec_type                             { $1 }
+  | ty_typesig                              { $1 }
+
+ty_prim_type :: { HkTypeNode }
   : prim_type                               { HkTyPrimType $1 (nodeInfo $1) }
+
+ty_const_type :: { HkTypeNode }  
+  : '#' type                                { HkTyConst $2 (nodeInfo $1 <> nodeInfo $2) }
+
+ty_ref_type :: { HkTypeNode }  
+  : ref_type                                { HkTyRefType $1 (nodeInfo $1) }
+  
+ty_rec_type :: { HkTypeNode }  
+  : rec_type                                { HkTyRecordType $1 (nodeInfo $1) }
+  
+ty_typesig :: { HkTypeNode }  
+  : '(' typesig ')'                         { HkTyTypeSig $2 (nodeInfo $1 <> nodeInfo $3) }
+
+
+ty_id :: { HkIdentNode }
+  : ID_CAP_USCORE                           { HkIdent (getTokId $1) (nodeInfo $1) }
+  | ID_CAP_USCORE_NUM_TICK                  { HkIdent (getTokId $1) (nodeInfo $1) }
+  
+dotted_ty_id :: { HkDottedIdentNode }
+  : ty_id                                   { [$1] }
+  | dotted_mod_id '.' ty_id                 { $1 ++ [$3] }
+  
+tyvar_id :: { HkIdentNode }
+  : ID_LOWER                                { HkIdent (getTokId $1) (nodeInfo $1) }
+  
+tyvar_ids :: { [HkIdentNode] }
+  : tyvar_id                                { [$1] }
+  | tyvar_ids tyvar_id                      { $1 ++ [$2] }
+
+-- -----------------------------------------------------------------------------
+-- Hawk Parser "Reference Type"
+  
+ref_type :: { HkRefTypeNode }
+  : '*' type                                { HkRefType $2 (nodeInfo $1 <> nodeInfo $2) }
+  | '[' type ']'                            { HkArrayType $2 (nodeInfo $1 <> nodeInfo $3) }
+  | '(' tuple_type ')'                      { HkTupleType $2 (nodeInfo $1 <> nodeInfo $3) }
+  | tyvar_id                                { HkTypeVariable $1 (nodeInfo $1) }
+
+tuple_type :: { [HkTypeNode] }
+  : type ',' type                           { [$1, $3] }
+  | tuple_type ',' type                    { $1 ++ [$3] }
+
+
+-- -----------------------------------------------------------------------------
+-- Hawk Parser "Record Type"
+
+rec_type :: {  HkRecordTypeNode }
+  : dotted_ty_id                            { HkRecordType $1 [] (nodesInfo $1) }
+  | dotted_ty_id rec_type_body              { HkRecordType $1 $2 (nodesInfo $1 <> nodesInfo $2) }
+  | tyvar_id rec_type_body                  { HkRecordHKT $1 $2 (nodeInfo $1 <> nodesInfo $2) }
+
+rec_type_cons :: { HkDottedIdentNode }
+  : dotted_ty_id                            { $1 }
+
+rec_type_body :: { [HkTypeNode] }
+  : rec_type_param                          { [$1] }
+  | rec_type_body rec_type_param            { $1 ++ [$2] }
+
+rec_type_param :: { HkTypeNode }
+  : ty_prim_type                            { $1 }
+  | ty_const_type                           { $1 }
+  | ty_ref_type                             { $1 }
+  | '(' ty_rec_type ')'                     { $2 }
+  | '(' ty_typesig ')'                      { $2 }
+
+-- -----------------------------------------------------------------------------
+-- Hawk Parser "Type Context"
+
+type_ctx :: { HkTypeContextNode }
+  : class_cons_list                         { HkTypeContext $1 (nodesInfo $1) }
+
+class_cons_list :: { [HkClassConsNode] }
+  : class_cons                              { [$1] } 
+  | class_cons_list ',' class_cons          { $1 ++ [$3] }
+
+class_cons :: { HkClassConsNode }
+  : dotted_ty_id tyvar_ids                  { HkClassCons $1 $2 (nodesInfo $1 <> nodesInfo $2) }
+  
+-- -----------------------------------------------------------------------------
+-- Hawk Parser "Primitive Type"
+
+prim_type :: { HkPrimTypeNode }
+  : '()'                                    { HkTyUnit (nodeInfo $1) }
+  | BIT_TY                                  { HkTyBit (nodeInfo $1) }
+  | W8_TY                                   { HkTyW8 (nodeInfo $1) }
+  | W16_TY                                  { HkTyW16 (nodeInfo $1) }
+  | W32_TY                                  { HkTyW32 (nodeInfo $1) }
+  | W64_TY                                  { HkTyW64 (nodeInfo $1) }
+  | I8_TY                                   { HkTyI8 (nodeInfo $1) }
+  | I16_TY                                  { HkTyI16 (nodeInfo $1) }
+  | I32_TY                                  { HkTyI32 (nodeInfo $1) }
+  | I64_TY                                  { HkTyI64 (nodeInfo $1) }
+  | F32_TY                                  { HkTyF32 (nodeInfo $1) }
+  | F64_TY                                  { HkTyF64 (nodeInfo $1) }
+  | CHAR_TY                                 { HkTyChar (nodeInfo $1) }
+
 
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Guarderd Pattern Bindings"
@@ -326,8 +419,8 @@ patterns :: { [HkPatternNode] }
 pattern :: { HkPatternNode }
   : obj_id                                  { HkPatIdent $1 (nodeInfo $1) }
   | const_obj                               { HkPatConst $1 (nodeInfo $1) }
-  | ty_id                                   { HkPatRec $1 [] (nodeInfo $1) }
-  | '(' ty_id patterns ')'                  { HkPatRec $2 $3 (nodeInfo $1 <> nodeInfo $4) }
+  | dotted_ty_id                            { HkPatRec $1 [] (nodesInfo $1) }
+  | '(' dotted_ty_id patterns ')'           { HkPatRec $2 $3 (nodeInfo $1 <> nodeInfo $4) }
   | '(' pattern_tuple ')'                   { HkPatTuple $2 (nodeInfo $1 <> nodeInfo $3) }
   | obj_id '@' pattern                      { HkPatAlias $1 $3 (nodeInfo $1 <> nodeInfo $3) }
   | '_'                                     { HkPatAny (nodeInfo $1) }
@@ -336,23 +429,6 @@ pattern_tuple :: { [HkPatternNode] }
   : pattern                                 { [$1] }
   | pattern_tuple ',' pattern               { $1 ++ [$3] }
 
--- -----------------------------------------------------------------------------
--- Hawk Parser "Primitive Type"
-
-prim_type :: { HkPrimTypeNode }
-  : '()'                                    { HkTyUnit (nodeInfo $1) }
-  | BIT_TY                                  { HkTyBit (nodeInfo $1) }
-  | W8_TY                                   { HkTyW8 (nodeInfo $1) }
-  | W16_TY                                  { HkTyW16 (nodeInfo $1) }
-  | W32_TY                                  { HkTyW32 (nodeInfo $1) }
-  | W64_TY                                  { HkTyW64 (nodeInfo $1) }
-  | I8_TY                                   { HkTyI8 (nodeInfo $1) }
-  | I16_TY                                  { HkTyI16 (nodeInfo $1) }
-  | I32_TY                                  { HkTyI32 (nodeInfo $1) }
-  | I64_TY                                  { HkTyI64 (nodeInfo $1) }
-  | F32_TY                                  { HkTyF32 (nodeInfo $1) }
-  | F64_TY                                  { HkTyF64 (nodeInfo $1) }
-  | CHAR_TY                                 { HkTyChar (nodeInfo $1) }
 
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Statement"

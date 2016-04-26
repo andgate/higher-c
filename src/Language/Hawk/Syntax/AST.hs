@@ -273,13 +273,13 @@ instance HkAnnotated HkRefType where
 -- constructed if a record is defined with type parameters.
 type HkRecordTypeNode = HkRecordType NodeInfo
 data HkRecordType a
-  = HkRecordType  (HkIdent a) a
-  | HkRecordCons  (HkIdent a) [HkType a] a
+  = HkRecordType  (HkDottedIdent a) [HkType a] a
+  | HkRecordHKT (HkIdent a) [HkType a] a
   deriving (Eq, Ord, Show)
   
 instance HkAnnotated HkRecordType where
-  annot (HkRecordType _ a) = a
-  annot (HkRecordCons _ _ a) = a
+  annot (HkRecordType _ _ a) = a
+  annot (HkRecordHKT _ _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Type Context
@@ -385,7 +385,7 @@ type HkPatternNode = HkPattern NodeInfo
 data HkPattern a
   = HkPatIdent  (HkIdent a) a
   | HkPatConst  (HkConst a) a
-  | HkPatRec    (HkIdent a) [HkPattern a] a
+  | HkPatRec    (HkDottedIdent a) [HkPattern a] a
   | HkPatTuple  [HkPattern a] a
   | HkPatAlias  (HkIdent a) (HkPattern a) a
   | HkPatAny    a
