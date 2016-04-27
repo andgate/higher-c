@@ -84,7 +84,8 @@ $white+                   ;
   "pub"                         { lex' TokenPublic }
   "priv"                        { lex' TokenPrivate }
   "link"                        { lex' TokenLink }
-    
+
+  "ty"                          { lex' TokenType }
   "fn"                          { lex' TokenFunction }
   "val"                         { lex' TokenValue }
   "var"                         { lex' TokenVariable }
@@ -127,6 +128,7 @@ $white+                   ;
   \*                            { lex' TokenStar }
   \_                            { lex' TokenUnderscore }
   
+  \:\-                          { lex' TokenTypeDec }
   \:\=                          { lex' TokenFuncDef }
   \=                            { lex' TokenEquals }
   
@@ -294,7 +296,8 @@ data TokenClass
   | TokenPublic
   | TokenPrivate
   | TokenLink
-    
+  
+  | TokenType
   | TokenFunction
   | TokenValue
   | TokenVariable

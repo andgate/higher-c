@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, DeriveDataTypeable #-}
 module Language.Hawk.Syntax.AST where
 
 import Language.Hawk.Data.Node
@@ -27,7 +27,7 @@ instance (HkNode a, HkAnnotated t) => HkNode (t a) where
 type HkTranslUnitNode = HkTranslUnit NodeInfo
 data HkTranslUnit a
   = HkTranslUnit (HkRootModule a)  a
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data, Typeable)
     
 instance HkAnnotated HkTranslUnit where
   annot (HkTranslUnit _ a) = a
@@ -36,7 +36,7 @@ instance HkAnnotated HkTranslUnit where
 type HkRootModuleNode = HkRootModule NodeInfo
 data HkRootModule a
   = HkRootModule (HkDottedIdent a) [HkExtStmt a] a
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data, Typeable)
     
 instance HkAnnotated HkRootModule where
   annot (HkRootModule _ _ a) = a
@@ -50,7 +50,7 @@ instance HkAnnotated HkRootModule where
 type HkIdentNode = HkIdent NodeInfo
 data HkIdent a
   = HkIdent !String a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
 
 instance HkAnnotated HkIdent where
   annot (HkIdent _ a) = a
@@ -87,8 +87,10 @@ data HkExtStmt a
   -- External variables may be declared or defined.
   | HkExtVarDec (HkVisibilityTag a) (HkVarDec a) a
   | HkExtVarDef (HkVisibilityTag a) (HkVarDef a) a
+  
+  | HkExtTypeDef (HkVisibilityTag a) (HkTypeDef a) a
     
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
 
 
 instance HkAnnotated HkExtStmt where
@@ -104,11 +106,13 @@ instance HkAnnotated HkExtStmt where
   annot (HkExtVarDec _ _ a) = a
   annot (HkExtVarDef _ _ a) = a
   
+  annot (HkExtTypeDef _ _ a) = a
+  
 
 type HkExtBlockNode = HkExtBlock NodeInfo
 data HkExtBlock a
   = HkExtBlock [HkExtStmt a] a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkExtBlock where
   annot (HkExtBlock _ a) = a
@@ -122,7 +126,7 @@ type HkVisibilityTagNode = HkVisibilityTag NodeInfo
 data HkVisibilityTag a
   = HkPublic a
   | HkPrivate a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkVisibilityTag where
   annot (HkPublic a) = a
@@ -146,7 +150,7 @@ data HkImportItem a
     , import_alias  :: Maybe (HkIdent a)
     , import_annot  :: a
     }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
 
 instance HkAnnotated HkImportItem where
   annot (HkImportItem _ _ a) = a
@@ -170,27 +174,30 @@ prefixImportItemAlias pfx alias imp_item@(HkImportItem ident _ _)
 
 
 -- -----------------------------------------------------------------------------
--- | Hawk Type Signature
---
--- A type signature contains the type of a variable or function. A type signature represents
--- a mapping from @sig_params@ to @sig_result@. A type signature can be restricted by a type context.
-type HkTypeSigNode = HkTypeSig NodeInfo
-data HkTypeSig a
-  = HkTypeSig
-  { sig_context  :: Maybe (HkTypeContext a)
-  , sig_params   :: [HkType a]
-  , sig_result   :: HkType a
-  , sig_annot    :: a
-  }
-  deriving (Eq, Ord, Show)
-  
-instance HkAnnotated HkTypeSig where
-  annot (HkTypeSig _ _ _ a) = a
+-- | Hawk Type Context and Class Assertion
 
-mkTypeSig :: Maybe (HkTypeContext a) -> [HkType a] -> a -> HkTypeSig a
-mkTypeSig _ [] _        = error "Cannot make type sig with no types"
-mkTypeSig ctx (t:[]) a  = HkTypeSig ctx [] t a
-mkTypeSig ctx ts a      = HkTypeSig ctx (init ts) (last ts) a
+-- | A type qualified with a context.
+-- An unqualified type has an empty context
+type HkQualTypeNode = HkQualType NodeInfo
+data HkQualType a
+  = HkQualType (HkTypeContext a) (HkType a) a
+  deriving (Eq, Ord, Show, Data, Typeable)
+
+instance HkAnnotated HkQualType where
+  annot (HkQualType _ _ a) = a
+
+-- | Type context
+type HkTypeContextNode = HkTypeContext NodeInfo
+type HkTypeContext a = [HkClassAsst a]
+
+-- | Class assertions
+type HkClassAsstNode = HkClassAsst NodeInfo
+data HkClassAsst a
+  = HkClassAsst (HkDottedIdent a) [HkType a] a
+  deriving (Eq, Ord, Show, Data, Typeable)
+
+instance HkAnnotated HkClassAsst where
+  annot (HkClassAsst _ _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Type
@@ -198,26 +205,31 @@ mkTypeSig ctx ts a      = HkTypeSig ctx (init ts) (last ts) a
 -- A type in Hawk can be primitive type, reference types, a record type, or even a type signature.
 type HkTypeNode = HkType NodeInfo
 data HkType a
-  = HkTyPrim        (HkPrimType a) a
+  = HkTyFun         (HkType a) (HkType a) a
+  | HkTyApp         (HkType a) (HkType a) a
+  
+  | HkTyPrim        (HkPrimType a) a
+  | HkTyCon         (HkDottedIdent a) a
+  | HkTyVar         (HkIdent a) a
+  
   | HkTyConst       (HkType a) a
   | HkTyRef         (HkType a) a
-  | HkTyRecord      (HkRecordType a) a
-  | HkTyTuple       [HkType a] a
-  | HkTyVar         (HkIdent a) a
   | HkTyArray       (HkType a) a
-  | HkTyTypeSig     (HkTypeSig a) a
-  
-  deriving (Eq, Ord, Show)
+  | HkTyTuple       [HkType a] a
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkType where
+  annot (HkTyFun _ _ a) = a
+  annot (HkTyApp _ _ a) = a
+  
   annot (HkTyPrim _ a) = a
+  annot (HkTyCon _ a) = a
+  annot (HkTyVar _ a) = a
+  
   annot (HkTyConst _ a) = a
   annot (HkTyRef _ a) = a
-  annot (HkTyRecord _ a) = a
-  annot (HkTyTuple _ a) = a
-  annot (HkTyVar _ a) = a
   annot (HkTyArray _ a) = a
-  annot (HkTyTypeSig _ a) = a
+  annot (HkTyTuple _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Primitive Type
@@ -238,7 +250,7 @@ data HkPrimType a
   | HkTyF32 a
   | HkTyF64 a
   | HkTyChar a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkPrimType where
   annot (HkTyUnit a) = a
@@ -256,34 +268,6 @@ instance HkAnnotated HkPrimType where
   annot (HkTyChar a) = a
 
 -- -----------------------------------------------------------------------------
--- | Hawk Record Type
---
--- A record type is a reference to a record defined in program. Records should be
--- constructed if a record is defined with type parameters.
-type HkRecordTypeNode = HkRecordType NodeInfo
-data HkRecordType a
-  = HkRecordType  (HkDottedIdent a) [HkType a] a
-  | HkRecordHKT (HkIdent a) [HkType a] a
-  deriving (Eq, Ord, Show)
-  
-instance HkAnnotated HkRecordType where
-  annot (HkRecordType _ _ a) = a
-  annot (HkRecordHKT _ _ a) = a
-
--- -----------------------------------------------------------------------------
--- | Hawk Type Context
---
--- A type context provides type class restrictions to type variables, which allows a type
--- variable to support multiple interfaces.
-type HkTypeContextNode = HkTypeContext NodeInfo
-data HkTypeContext a
-  = HkTypeContext [HkClassCons a] a
-  deriving (Eq, Ord, Show)
-  
-instance HkAnnotated HkTypeContext where
-  annot (HkTypeContext _ a) = a
-
--- -----------------------------------------------------------------------------
 -- | Hawk Class Constructor
 --
 -- A class constructor has a dotted identifier for a name, and constructs at least type variable.
@@ -297,7 +281,7 @@ data HkClassCons a
   , class_cons_tyvars   :: [HkIdent a]
   , class_cons_annot    :: a
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkClassCons where
   annot (HkClassCons _ _ a) = a
@@ -310,10 +294,10 @@ type HkFnDecNode = HkFnDec NodeInfo
 data HkFnDec a
   = HkFnDec
     { fn_symbol   :: HkFnSymbol a
-    , fn_typesig  :: HkTypeSig a
+    , fn_type     :: HkQualType a
     , fn_annot    :: a
     }
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data, Typeable)
 
 instance HkAnnotated HkFnDec where
   annot (HkFnDec _ _ a) = a
@@ -325,7 +309,7 @@ instance HkAnnotated HkFnDec where
 type HkFnDefNode = HkFnDef NodeInfo
 data HkFnDef a
   = HkFnDef (HkFnDec a) [HkBinding a] a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkFnDef where
   annot (HkFnDef _ _ a) = a
@@ -342,7 +326,7 @@ data HkFnSymbol a
   | HkSymPreOp  (HkIdent a) Int a
   | HkSymOp     (HkIdent a) Int a
   | HkSymPostOp (HkIdent a) Int a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkFnSymbol where
   annot (HkSymIdent _ a) = a
@@ -361,7 +345,7 @@ data HkBinding a
   , binding_blocks  :: HkBindingBlock a
   , binding_annot   :: a
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkBinding where
   annot (HkBinding _ _ a) = a
@@ -378,7 +362,7 @@ data HkPattern a
   | HkPatTuple  [HkPattern a] a
   | HkPatAlias  (HkIdent a) (HkPattern a) a
   | HkPatAny    a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkPattern where
   annot (HkPatIdent _ a) = a
@@ -397,7 +381,7 @@ type HkGuardNode = HkGuard NodeInfo
 data HkGuard a
   = HkGuardExp (HkExp a) a
   | HkGuardAny a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkGuard where
   annot (HkGuardExp _ a) = a
@@ -412,7 +396,7 @@ data HkBindingBlock a
   = HkBindingBlock (HkBlock a) a
   | HkBindingExp  (HkExp a) a
   | HkGuardedBindingBlock [HkGuardedBlock a] a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkBindingBlock where
   annot (HkBindingBlock _ a) = a
@@ -424,7 +408,7 @@ type HkGuardedBlockNode = HkGuardedBlock NodeInfo
 data HkGuardedBlock a
   = HkGuardedBlock (HkGuard a) (HkBlock a) a
   | HkGuardedExp   (HkGuard a) (HkExp a) a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkGuardedBlock where
   annot (HkGuardedBlock _ _ a) = a
@@ -442,10 +426,10 @@ type HkObjDecNode = HkObjDec NodeInfo
 data HkObjDec a
   = HkObjDec
   { obj_name    :: HkIdent a
-  , obj_typesig :: HkTypeSig a
+  , obj_type    :: HkType a
   , obj_annot   :: a
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
 
 instance HkAnnotated HkObjDec where
   annot (HkObjDec _ _ a) = a
@@ -457,7 +441,7 @@ instance HkAnnotated HkObjDec where
 type HkObjDefNode = HkObjDef NodeInfo
 data HkObjDef a
   = HkObjDef (HkObjDec a) (HkExp a) a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
 
 instance HkAnnotated HkObjDef where
   annot (HkObjDef _ _ a) = a
@@ -477,7 +461,7 @@ instance HkAnnotated HkObjDef where
 type HkValDecNode = HkValDec NodeInfo
 data HkValDec a
   = HkValDec (HkObjDec a) a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkValDec where
   annot (HkValDec _ a) = a
@@ -491,7 +475,7 @@ instance HkAnnotated HkValDec where
 type HkValDefNode = HkValDef NodeInfo
 data HkValDef a
   = HkValDef (HkObjDef a) a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkValDef where
   annot (HkValDef _ a) = a
@@ -508,7 +492,7 @@ instance HkAnnotated HkValDef where
 type HkVarDecNode = HkVarDec NodeInfo
 data HkVarDec a
   = HkVarDec (HkObjDec a) a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
 
 instance HkAnnotated HkVarDec where
   annot (HkVarDec _ a) = a
@@ -523,11 +507,25 @@ instance HkAnnotated HkVarDec where
 type HkVarDefNode = HkVarDef NodeInfo
 data HkVarDef a
   = HkVarDef (HkObjDef a) a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkVarDef where
   annot (HkVarDef _ a) = a
+
+-- -----------------------------------------------------------------------------  
+-- | Hawk Type Definition
+--
+-- Types in hawk are either records, unions or type aliases.
+type HkTypeDefNode = HkTypeDef NodeInfo
+data HkTypeDef a
+  = HkTyRecDef    (HkRecordDef a) a
+  | HkTyUnionDef  (HkUnionDef a) a
+  deriving (Eq, Ord, Show, Data, Typeable)
   
+instance HkAnnotated HkTypeDef where
+  annot (HkTyRecDef _ a) = a
+  annot (HkTyUnionDef _ a) = a
+
 -- -----------------------------------------------------------------------------  
 -- | Hawk Record Definition
 --
@@ -538,10 +536,11 @@ data HkRecordDef a
     { rec_name    :: HkIdent a
     , rec_tyvars  :: [HkIdent a]
     , rec_ctx     :: HkTypeContext a
-    , rec_supers  :: [HkRecordType a]
+    , rec_supers  :: [HkType a]
     , rec_mems    :: [HkRecordMember a]
     , rec_annot   :: a
     }
+  deriving (Eq, Ord, Show, Data, Typeable)
 
 instance HkAnnotated HkRecordDef where
   annot (HkRecordDef _ _ _ _ _ a) = a
@@ -560,7 +559,7 @@ data HkRecordMember a
   = HkRecordValDef (HkVisibilityTag a) (HkValDef a) a
   | HkRecordVarDec (HkVisibilityTag a) (HkVarDec a) a
   | HkRecordVarDef (HkVisibilityTag a) (HkVarDef a) a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkRecordMember where
   annot (HkRecordValDef _ _ a) = a
@@ -582,7 +581,7 @@ data HkUnionDef a
   , union_elems   :: [HkUnionElement a]
   , union_annot   :: a
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkUnionDef where
   annot (HkUnionDef _ _ _ _ a) = a
@@ -592,7 +591,7 @@ instance HkAnnotated HkUnionDef where
 type HkUnionElementNode = HkUnionElement NodeInfo
 data HkUnionElement a
   = HkUnionElement (HkIdent a) [HkType a] a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
 
 instance HkAnnotated HkUnionElement where
   annot (HkUnionElement _ _ a) = a
@@ -610,7 +609,7 @@ data HkClassDef a
   , class_body      :: [HkClassMember a]
   , class_annot     :: a
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkClassDef where
   annot (HkClassDef _ _ _ _ a) = a
@@ -622,7 +621,7 @@ type HkClassMemberNode = HkClassMember NodeInfo
 data HkClassMember a
   = HkClassMemberDec (HkVisibilityTag a) (HkFnDec a) a
   | HkClassMemberDef (HkVisibilityTag a) (HkFnDef a) a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkClassMember where
   annot (HkClassMemberDec _ _ a) = a
@@ -641,7 +640,7 @@ data HkClassInstance a
   , inst_body        :: [HkFnDef a]
   , inst_annot       :: a
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
 
 instance HkAnnotated HkClassInstance where
   annot (HkClassInstance _ _ _ a) = a
@@ -653,7 +652,7 @@ instance HkAnnotated HkClassInstance where
 type HkBlockNode = HkBlock NodeInfo 
 data HkBlock a
   = HkBlock [HkBlockStmt a] a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkBlock where
   annot (HkBlock _ a) = a
@@ -686,7 +685,7 @@ data HkBlockStmt a
   | HkStmtForEachIx (HkIdent a) (HkIdent a) (HkExp a)   (HkBlock a) (HkBlock a) a
   
   | HkStmtEmpty a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
 
 instance HkAnnotated HkBlockStmt where
   annot (HkStmtBlock _ a) = a
@@ -716,7 +715,7 @@ instance HkAnnotated HkBlockStmt where
 data HkForInit a
   = HkForLocalVars [HkVarDec a] a 
   | HkForInitExps  [HkExp a] a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
 
 instance HkAnnotated HkForInit where
   annot (HkForLocalVars _ a) = a
@@ -735,13 +734,13 @@ data HkExp a
   
   | HkExpObj  (HkIdent a) a
   | HkExpCall (HkExp a) [HkExp a] a
-  | HkExpCast (HkExp a) (HkTypeSig a) a
+  | HkExpCast (HkExp a) (HkType a) a
   
   | HkExpIfThenElse (HkExp a) (HkExp a) (HkExp a) a
   
   | HkExpLambda (HkBinding a) a
   
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkExp where
   annot (HkConstExp _ a) = a
@@ -776,7 +775,7 @@ data HkConst a
   | HkF32 Float a
   | HkF64 Double a
   | HkChar Char a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
 
 instance HkAnnotated HkConst where
   annot (HkUnit a) = a
@@ -814,7 +813,7 @@ data HkAssignOp a
   | HkAndAssOp a  -- Bitwise And
   | HkXorAssOp a  -- Exclusive Bitwise Or
   | HkOrAssOp  a  -- Inclusive Bitwise Or
-  deriving (Eq, Ord, Show)  
+  deriving (Eq, Ord, Show, Data, Typeable)  
 
 instance HkAnnotated HkAssignOp where
   annot (HkAssignOp a) = a
@@ -853,7 +852,7 @@ data HkBinaryOp a
   | HkOrOp  a   -- Inclusive Bitwise Or
   | HkLndOp a   -- Logical And
   | HkLorOp a   -- Logical Or
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkBinaryOp where
   annot (HkMulOp a) = a
@@ -891,7 +890,7 @@ data HkUnaryOp a
   | HkMinOp a       -- Postfix plus
   | HkCompOp a      -- One's Complement
   | HkNegOp a       -- Logical Negation
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkUnaryOp where
   annot (HkPreIncOp a) = a

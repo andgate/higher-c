@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 module Language.Hawk.Data.Node
         ( module Language.Hawk.Data.Node,
           module Language.Hawk.Data.Span
@@ -13,12 +14,19 @@ data NodeInfo = NodeInfo
                 { node_file   :: String
                 , node_span   :: Span
                 }
-           deriving (Show,Eq,Ord)
+           deriving (Eq,Ord, Data, Typeable)
 
 {-
 instance Show NodeInfo where
     show (NodeInfo n s) = n ++ (show s)
 -}
+
+showNode :: (HkNode n) => n -> String
+showNode n = f ++ ":" ++ (show s)
+  where (NodeInfo f s) = nodeInfo n
+
+instance Show NodeInfo where
+    show (NodeInfo n s) = ""
 
 instance HkSpan NodeInfo where
   spanOf (NodeInfo _ s) = s

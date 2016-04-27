@@ -1,11 +1,14 @@
 {
 module Language.Hawk.Parse.Parser where
 
-import Language.Hawk.Parse.Lexer
-import Language.Hawk.Syntax.AST
-import Language.Hawk.Data.Node
 
 import Data.Monoid
+
+import Language.Hawk.Data.Node
+import Language.Hawk.Syntax.AST
+import Language.Hawk.Parse.Lexer
+import Language.Hawk.Parse.Utils
+
 
 }
 
@@ -36,6 +39,7 @@ import Data.Monoid
     PRIV            { Token _ TokenPrivate  }
     LINK            { Token _ TokenLink }
     
+    TY              { Token _ TokenType }
     FN              { Token _ TokenFunction }
     VAL             { Token _ TokenValue    }
     VAR             { Token _ TokenVariable }
@@ -158,6 +162,9 @@ ext_fn_stmt :: { HkExtStmtNode }
   
   | var_def                                 { HkExtVarDef (HkPublic mempty) $1 (nodeInfo $1) }
   | vis_tag var_def                         { HkExtVarDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  
+  | type_def                                { HkExtTypeDef (HkPublic mempty) $1 (nodeInfo $1) }
+  | vis_tag type_def                        { HkExtTypeDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Parser "Module"
@@ -218,7 +225,7 @@ import_target :: { HkIdentNode }
 -- Hawk Parser "Function"
 
 fn_dec :: { HkFnDecNode }
-  : FN fn_id typesig                        { HkFnDec (HkSymIdent $2 (nodeInfo $2)) $3 (nodeInfo $1 <> nodeInfo $3) }
+  : FN fn_id '::' ctype                      { HkFnDec (HkSymIdent $2 (nodeInfo $2)) $4 (nodeInfo $1 <> nodeInfo $4) }
 
 fn_def :: { HkFnDefNode }
   : fn_dec bindings                         { HkFnDef $1 $2 (nodeInfo $1 <> nodesInfo $2) }
@@ -231,7 +238,7 @@ fn_id :: { HkIdentNode }
 -- Hawk Parser "Object"
 
 obj_dec :: { HkObjDecNode }
-  : obj_id typesig                          { HkObjDec $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  : obj_id '::' type                        { HkObjDec $1 $3 (nodeInfo $1 <> nodeInfo $3) }
   
 obj_def :: { HkObjDefNode }
   : obj_dec '=' exp                         { HkObjDef $1 $3 (nodeInfo $1 <> nodeInfo $3) }
@@ -254,10 +261,60 @@ obj_id :: { HkIdentNode }
   | ID_USCORE_NUM_TICK                      { HkIdent (getTokId $1) (nodeInfo $1) }
 
 -- -----------------------------------------------------------------------------
+-- Hawk Parser "Type"
+
+type_def :: { HkTypeDefNode }
+  : TY rec_def                              { HkTyRecDef $2 (nodeInfo $1 <> nodeInfo $2) }
+  | TY union_def                            { HkTyUnionDef $2 (nodeInfo $1 <> nodeInfo $2) }
+
+-- -----------------------------------------------------------------------------
 -- Hawk Parser "Record"
+
+rec_def :: { HkRecordDefNode }
+  : ty_id ':-' rec_member_block             { HkRecordDef $1 [] [] [] $3 (nodeInfo $1 <> nodesInfo $3) }
+  
+rec_member_block :: { [HkRecordMemberNode] }
+  : rec_members                             { $1 }        
+  
+rec_members :: { [HkRecordMemberNode] }
+  : rec_member                              { [$1] }
+  | rec_members ',' rec_member              { $1 ++ [$3] }
+
+rec_member :: { HkRecordMemberNode }
+  : val_def                                 { HkRecordValDef (HkPublic mempty) $1 (nodeInfo $1) }
+  | vis_tag val_def                         { HkRecordValDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  
+  | var_dec                                 { HkRecordVarDec (HkPublic mempty) $1 (nodeInfo $1) }
+  | vis_tag var_dec                         { HkRecordVarDec $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  
+  | var_def                                 { HkRecordVarDef (HkPublic mempty) $1 (nodeInfo $1) }
+  | vis_tag var_def                         { HkRecordVarDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
 
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Union"
+
+union_def :: { HkUnionDefNode }
+  : ty_id ':-' union_block                          { HkUnionDef $1 [] [] $3 (nodeInfo $1 <> nodesInfo $3) }
+  | ty_id tyvar_ids ':-' union_block                { HkUnionDef $1 [] $2 $4 (nodeInfo $1 <> nodesInfo $4) }
+  | ty_id tyvar_ids '<=' context ':-' union_block   { HkUnionDef $1 $4 $2 $6 (nodeInfo $1 <> nodesInfo $6) }
+  
+union_block :: { [HkUnionElementNode] }
+  : union_elem                              { [$1] }
+  | union_block '|' union_elem              { $1 ++ [$3] }
+  
+union_elem  :: { HkUnionElementNode }
+  : ty_id                                   { HkUnionElement $1 [] (nodeInfo $1) }
+  | ty_id union_elem_types                  { HkUnionElement $1 $2 (nodeInfo $1 <> nodesInfo $2) }
+  
+union_elem_types :: { [HkTypeNode] }  
+  : union_elem_type                         { [$1] }
+  | union_elem_types union_elem_type        { $1 ++ [$2] }
+  
+union_elem_type :: { HkTypeNode }
+  : atype                                   { $1 }
+
+-- -----------------------------------------------------------------------------
+-- Hawk Parser "Type Alias"
 
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Class"
@@ -266,57 +323,65 @@ obj_id :: { HkIdentNode }
 -- Hawk Parser "Class Instance"
 
 -- -----------------------------------------------------------------------------
--- Hawk Parser "Type Signature"
-
-typesig :: { HkTypeSigNode }
-  : '::' type_chain                         { mkTypeSig Nothing $2 (nodeInfo $1 <> nodesInfo $2) }
-  | '::' typesig_ctx type_chain             { mkTypeSig $2 $3 (nodeInfo $1 <> nodesInfo $3) }
-  
-typesig_ctx :: { Maybe HkTypeContextNode }
-  : type_ctx '=>'                           { Just $1 }
-
-type_chain :: { [HkTypeNode] }
-  : type                                    { [$1] }
-  | type_chain '->' type                    { $1 ++ [$3] }
+-- Hawk Parser "Type"
 
 type :: { HkTypeNode }
-  : ty_prim                                 { $1 }
-  | ty_const                                { $1 }
-  | ty_ref                                  { $1 }
-  | ty_rec                                  { $1 }
-  | ty_tuple                                { $1 }
-  | ty_var                                  { $1 }
-  | ty_array                                { $1 }
-  | ty_typesig                              { $1 }
+  : btype '->' type                         { HkTyFun $1 $3 (nodeInfo $1 <> nodeInfo $3) }
+  | btype                                   { $1 }
+  
+btype :: { HkTypeNode }
+  : btype atype                             { HkTyApp $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  | atype                                   { $1 }
+  
+atype :: { HkTypeNode }
+  : typrim                                  { $1 }
+  | tycon                                   { $1 }
+  | tyvar                                   { $1 }
+  | tyconst                                 { $1 }
+  | tyref                                   { $1 }
+  | tyarray                                 { $1 }
+  | tytuple                                 { $1 }
+  | tygroup                                 { $1 }
 
-ty_prim :: { HkTypeNode }
+typrim :: { HkTypeNode }
   : prim_type                               { HkTyPrim $1 (nodeInfo $1) }
 
-ty_const :: { HkTypeNode }  
-  : '#' type                                { HkTyConst $2 (nodeInfo $1 <> nodeInfo $2) }
+tycon :: { HkTypeNode }
+  : dotted_ty_id                            { HkTyCon $1 (nodesInfo $1) }
 
-ty_ref :: { HkTypeNode }  
-  : '*' type                                { HkTyRef $2 (nodeInfo $1 <> nodeInfo $2) }
-  
-ty_rec :: { HkTypeNode }  
-  : rec_type                                { HkTyRecord $1 (nodeInfo $1) }
-
-ty_tuple :: { HkTypeNode }
-  : '(' tuple_type_list ')'                 { HkTyTuple $2 (nodeInfo $1 <> nodeInfo $3) }
-
-tuple_type_list :: { [HkTypeNode] }
-  : type ',' type                           { [$1, $3] }
-  | tuple_type_list ',' type                { $1 ++ [$3] }
-
-ty_var :: { HkTypeNode }
+tyvar :: { HkTypeNode }
   : tyvar_id                                { HkTyVar $1 (nodeInfo $1) }
-  
-ty_array :: { HkTypeNode }
-  : '[' type ']'                            { HkTyArray $2 (nodeInfo $1 <> nodeInfo $3) }
-  
-ty_typesig :: { HkTypeNode }  
-  : '(' typesig ')'                         { HkTyTypeSig $2 (nodeInfo $1 <> nodeInfo $3) }
 
+tyconst :: { HkTypeNode }  
+  : '#' atype                               { HkTyConst $2 (nodeInfo $1 <> nodeInfo $2) }
+
+tyref :: { HkTypeNode }  
+  : '*' atype                               { HkTyRef $2 (nodeInfo $1 <> nodeInfo $2) }
+
+tyarray :: { HkTypeNode }
+  : '[' type ']'                            { HkTyArray $2 (nodeInfo $1 <> nodeInfo $3) }
+
+tytuple :: { HkTypeNode }
+  : '(' types ')'                           { HkTyTuple $2 (nodeInfo $1 <> nodeInfo $3) }
+  
+tygroup :: { HkTypeNode }
+  : '(' type ')'                            { $2 }
+
+types :: { [HkTypeNode] }
+  : type ',' type                           { [$1, $3] }
+  | types ',' type                          { $1 ++ [$3] }
+  
+atypes :: { [HkTypeNode] }
+  : atype ',' atype                           { [$1, $3] }
+  | atypes ',' atype                          { $1 ++ [$3] }
+
+
+ctype :: { HkQualTypeNode }
+  : type                                    { HkQualType [] $1 (nodeInfo $1) }
+  | context '=>' type                       { HkQualType $1 $3 (nodesInfo $1 <> nodeInfo $3) }
+  
+context :: { HkTypeContextNode }
+  : types                                   { checkContext $1 }
 
 ty_id :: { HkIdentNode }
   : ID_CAP_USCORE                           { HkIdent (getTokId $1) (nodeInfo $1) }
@@ -333,43 +398,7 @@ tyvar_id :: { HkIdentNode }
 tyvar_ids :: { [HkIdentNode] }
   : tyvar_id                                { [$1] }
   | tyvar_ids tyvar_id                      { $1 ++ [$2] }
-
-
--- -----------------------------------------------------------------------------
--- Hawk Parser "Record Type"
-
-rec_type :: {  HkRecordTypeNode }
-  : dotted_ty_id                            { HkRecordType $1 [] (nodesInfo $1) }
-  | dotted_ty_id rec_type_body              { HkRecordType $1 $2 (nodesInfo $1 <> nodesInfo $2) }
-  | tyvar_id rec_type_body                  { HkRecordHKT $1 $2 (nodeInfo $1 <> nodesInfo $2) }
-
-rec_type_body :: { [HkTypeNode] }
-  : rec_type_param                          { [$1] }
-  | rec_type_body rec_type_param            { $1 ++ [$2] }
-
-rec_type_param :: { HkTypeNode }
-  : ty_prim                                 { $1 }
-  | ty_const                                { $1 }
-  | ty_ref                                  { $1 }
-  | ty_var                                  { $1 }
-  | ty_array                                { $1 }
-  | ty_tuple                                { $1 }
-  | '(' ty_rec ')'                          { $2 }
-  | '(' ty_typesig ')'                      { $2 }
-
-
--- -----------------------------------------------------------------------------
--- Hawk Parser "Type Context"
-
-type_ctx :: { HkTypeContextNode }
-  : class_cons_list                         { HkTypeContext $1 (nodesInfo $1) }
-
-class_cons_list :: { [HkClassConsNode] }
-  : class_cons                              { [$1] } 
-  | class_cons_list ',' class_cons          { $1 ++ [$3] }
-
-class_cons :: { HkClassConsNode }
-  : dotted_ty_id tyvar_ids                   { HkClassCons $1 $2 (nodesInfo $1 <> nodesInfo $2) }
+  
   
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Primitive Type"
