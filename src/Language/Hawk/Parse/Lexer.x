@@ -85,7 +85,11 @@ $white+                   ;
   "priv"                        { lex' TokenPrivate }
   "link"                        { lex' TokenLink }
 
-  "ty"                          { lex' TokenType }
+  "data"                        { lex' TokenData }
+  "enum"                        { lex' TokenEnum }
+  "type"                        { lex' TokenType }
+  "class"                       { lex' TokenClass }
+  "inst"                        { lex' TokenInst }
   "fn"                          { lex' TokenFunction }
   "val"                         { lex' TokenValue }
   "var"                         { lex' TokenVariable }
@@ -120,7 +124,7 @@ $white+                   ;
   
   @integer                      { lex (TokenInt . read) }
   
-  
+  \=                            { lex' TokenEquals }
   \:                            { lex' TokenColon }
   \:\:                          { lex' TokenDblColon }
   
@@ -128,15 +132,12 @@ $white+                   ;
   \*                            { lex' TokenStar }
   \_                            { lex' TokenUnderscore }
   
-  \:\-                          { lex' TokenTypeDec }
-  \:\=                          { lex' TokenFuncDef }
-  \=                            { lex' TokenEquals }
-  
   \<\-                          { lex' TokenLArrow }
-  \<\=                          { lex' TokenThickLArrow }
   \-\>                          { lex' TokenRArrow }
+  \<\=                          { lex' TokenThickLArrow }
   \=\>                          { lex' TokenThickRArrow }
-  \<\:                          { lex' TokenSubtype }
+  \<\:                          { lex' TokenLSubArrow }
+  \:\>                          { lex' TokenRSubArrow }
   
   
   \(                            { lex' TokenLParen }
@@ -297,7 +298,11 @@ data TokenClass
   | TokenPrivate
   | TokenLink
   
+  | TokenData
+  | TokenEnum
   | TokenType
+  | TokenClass
+  | TokenInst
   | TokenFunction
   | TokenValue
   | TokenVariable
@@ -326,16 +331,12 @@ data TokenClass
   
   | TokenDblColon
   
-  | TokenFuncDef
-  | TokenTypeDec
-  | TokenTypeClass
-  | TokenImplement
-  
   | TokenLArrow
   | TokenThickLArrow
   | TokenRArrow
   | TokenThickRArrow
-  | TokenSubtype
+  | TokenLSubArrow
+  | TokenRSubArrow
   
   | TokenGrave
   | TokenTilde

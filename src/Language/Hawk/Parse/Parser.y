@@ -39,7 +39,11 @@ import Language.Hawk.Parse.Utils
     PRIV            { Token _ TokenPrivate  }
     LINK            { Token _ TokenLink }
     
-    TY              { Token _ TokenType }
+    DATA            { Token _ TokenData }
+    ENUM            { Token _ TokenEnum }
+    TYPE            { Token _ TokenType }
+    CLASS           { Token _ TokenClass }
+    INST            { Token _ TokenInst }
     FN              { Token _ TokenFunction }
     VAL             { Token _ TokenValue    }
     VAR             { Token _ TokenVariable }
@@ -62,6 +66,7 @@ import Language.Hawk.Parse.Utils
     F64_TY          { Token _ TokenF64Ty }
     CHAR_TY         { Token _ TokenCharTy }
     
+    '='             { Token _ TokenEquals }
     ':'             { Token _ TokenColon }
     '::'            { Token _ TokenDblColon }
     
@@ -70,18 +75,12 @@ import Language.Hawk.Parse.Utils
     '*'             { Token _ TokenStar }
     '_'             { Token _ TokenUnderscore }
     
-    ':='            { Token _ TokenFuncDef }
-    '='             { Token _ TokenEquals }
-    
-    ':-'            { Token _ TokenTypeDec }
-    ':~'            { Token _ TokenTypeClass }
-    ':+'            { Token _ TokenImplement }
-    
     '<-'            { Token _ TokenLArrow }
-    '<='            { Token _ TokenThickLArrow }
     '->'            { Token _ TokenRArrow }
+    '<='            { Token _ TokenThickLArrow }
     '=>'            { Token _ TokenThickRArrow }
-    '<:'            { Token _ TokenSubtype }
+    '<:'            { Token _ TokenLSubArrow }
+    ':>'            { Token _ TokenRSubArrow }
     
     '`'             { Token _ TokenGrave }
     '~'             { Token _ TokenTilde }
@@ -144,27 +143,20 @@ vis_tag :: { HkVisibilityTagNode }
   : PUB                                     { HkPublic  (nodeInfo $1) }
   | PRIV                                    { HkPrivate (nodeInfo $1) }
   
+vis_tag0 :: { HkVisibilityTagNode }
+  : vis_tag                                 { $1 }
+  | {- empty -}                             { HkPublic mempty }
+  
 ext_fn_stmt :: { HkExtStmtNode }
-  : LINK fn_dec                             { HkExtFnLink (HkPublic mempty) $2 (nodeInfo $1 <> nodeInfo $2) }
-  | vis_tag LINK fn_dec                     { HkExtFnLink $1 $3 (nodeInfo $1 <> nodeInfo $3) }
+  : vis_tag0 LINK fn_dec                    { HkExtFnLink $1 $3 (nodeInfo $1 <> nodeInfo $2 <> nodeInfo $3) }
+  | vis_tag0 fn_dec                         { HkExtFnDec $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  | vis_tag0 fn_def                         { HkExtFnDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
   
-  | fn_dec                                  { HkExtFnDec (HkPublic mempty) $1 (nodeInfo $1) }
-  | vis_tag fn_dec                          { HkExtFnDec $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  | vis_tag0 val_def                        { HkExtValDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  | vis_tag0 var_dec                        { HkExtVarDec $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  | vis_tag0 var_def                        { HkExtVarDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
   
-  | fn_def                                  { HkExtFnDef (HkPublic mempty) $1 (nodeInfo $1) }
-  | vis_tag fn_def                          { HkExtFnDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
-  
-  | val_def                                 { HkExtValDef (HkPublic mempty) $1 (nodeInfo $1) }
-  | vis_tag val_def                         { HkExtValDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
-  
-  | var_dec                                 { HkExtVarDec (HkPublic mempty) $1 (nodeInfo $1) }
-  | vis_tag var_dec                         { HkExtVarDec $1 $2 (nodeInfo $1 <> nodeInfo $2) }
-  
-  | var_def                                 { HkExtVarDef (HkPublic mempty) $1 (nodeInfo $1) }
-  | vis_tag var_def                         { HkExtVarDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
-  
-  | type_def                                { HkExtTypeDef (HkPublic mempty) $1 (nodeInfo $1) }
-  | vis_tag type_def                        { HkExtTypeDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  | vis_tag0 type_def                       { HkExtTypeDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Parser "Module"
@@ -261,46 +253,55 @@ obj_id :: { HkIdentNode }
   | ID_USCORE_NUM_TICK                      { HkIdent (getTokId $1) (nodeInfo $1) }
 
 -- -----------------------------------------------------------------------------
--- Hawk Parser "Type"
+-- Hawk Parser "Type Definition"
 
 type_def :: { HkTypeDefNode }
-  : TY rec_def                              { HkTyRecDef $2 (nodeInfo $1 <> nodeInfo $2) }
-  | TY union_def                            { HkTyUnionDef $2 (nodeInfo $1 <> nodeInfo $2) }
+  : alias_def                               { HkTyAliasDef $1 (nodeInfo $1) }
+  | rec_def                                 { HkTyRecDef   $1 (nodeInfo $1) }
+  | union_def                               { HkTyUnionDef $1 (nodeInfo $1) }
+  | class_def                               { HkTyClassDef $1 (nodeInfo $1) }
+  | inst_def                                { HkTyClassInstDef $1 (nodeInfo $1) }
+
+-- -----------------------------------------------------------------------------
+-- Hawk Parser "Type Alias"
+
+alias_def :: { HkTypeAliasDefNode }
+  : TYPE ty_id tyvar_ids0 rcontext0 '=' type
+    { HkTypeAliasDef $2 $3 $4 $6 (nodeInfo $1 <> nodeInfo $6) }
 
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Record"
 
 rec_def :: { HkRecordDefNode }
-  : ty_id ':-' rec_member_block             { HkRecordDef $1 [] [] [] $3 (nodeInfo $1 <> nodesInfo $3) }
+  : DATA ty_id tyvar_ids0 rsupertys0 rcontext0 rec_member_block 
+    { HkRecordDef $2 $3 $4 $5 $6 (nodeInfo $1 <> nodeInfo $2 <> nodesInfo $3 <> nodesInfo $4 <> nodesInfo $5 <> nodesInfo $6) }
   
 rec_member_block :: { [HkRecordMemberNode] }
-  : rec_members                             { $1 }        
+  : '=' rec_members                         { $2 }     
+  | {- empty -}                             { [] }
   
 rec_members :: { [HkRecordMemberNode] }
   : rec_member                              { [$1] }
   | rec_members ',' rec_member              { $1 ++ [$3] }
 
 rec_member :: { HkRecordMemberNode }
-  : val_def                                 { HkRecordValDef (HkPublic mempty) $1 (nodeInfo $1) }
-  | vis_tag val_def                         { HkRecordValDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
-  
-  | var_dec                                 { HkRecordVarDec (HkPublic mempty) $1 (nodeInfo $1) }
-  | vis_tag var_dec                         { HkRecordVarDec $1 $2 (nodeInfo $1 <> nodeInfo $2) }
-  
-  | var_def                                 { HkRecordVarDef (HkPublic mempty) $1 (nodeInfo $1) }
-  | vis_tag var_def                         { HkRecordVarDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  : vis_tag0 val_def                        { HkRecordValDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  | vis_tag0 var_dec                        { HkRecordVarDec $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  | vis_tag0 var_def                        { HkRecordVarDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
 
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Union"
 
 union_def :: { HkUnionDefNode }
-  : ty_id ':-' union_block                          { HkUnionDef $1 [] [] $3 (nodeInfo $1 <> nodesInfo $3) }
-  | ty_id tyvar_ids ':-' union_block                { HkUnionDef $1 [] $2 $4 (nodeInfo $1 <> nodesInfo $4) }
-  | ty_id tyvar_ids '<=' context ':-' union_block   { HkUnionDef $1 $4 $2 $6 (nodeInfo $1 <> nodesInfo $6) }
-  
+  : ENUM ty_id tyvar_ids0 rcontext0 union_block
+    { HkUnionDef $2 $3 $4 $5 (nodeInfo $1 <> nodesInfo $5) }
+ 
 union_block :: { [HkUnionElementNode] }
+  : '=' union_elems                        { $2 }
+ 
+union_elems :: { [HkUnionElementNode] }
   : union_elem                              { [$1] }
-  | union_block '|' union_elem              { $1 ++ [$3] }
+  | union_elems '|' union_elem              { $1 ++ [$3] }
   
 union_elem  :: { HkUnionElementNode }
   : ty_id                                   { HkUnionElement $1 [] (nodeInfo $1) }
@@ -314,16 +315,45 @@ union_elem_type :: { HkTypeNode }
   : atype                                   { $1 }
 
 -- -----------------------------------------------------------------------------
--- Hawk Parser "Type Alias"
-
--- -----------------------------------------------------------------------------
 -- Hawk Parser "Class"
+
+class_def :: { HkClassDefNode }
+  : CLASS ty_id tyvar_ids rcontext0 class_body
+    { HkClassDef $2 $3 $4 $5 (nodeInfo $1 <> nodesInfo $5) }
+
+class_body :: { [HkClassMemberNode] }
+  : ':' '{' class_members '}'               { $3 }
+  
+class_members :: { [HkClassMemberNode] }
+  : class_member                            { [$1] }
+  | class_members class_member              { $1 ++ [$2] }
+  
+class_member :: { HkClassMemberNode }
+  : vis_tag0 fn_dec                         { HkClassMemberDec $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+  | vis_tag0 fn_def                         { HkClassMemberDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
 
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Class Instance"
 
+inst_def :: { HkClassInstDefNode }
+  : INST ty_id atypes rcontext0 inst_body
+    { HkClassInstDef $2 $3 $4 $5 (nodeInfo $1 <> nodesInfo $5) }
+
+inst_body :: { [HkClassInstMemberNode] }
+  : ':' '{' inst_members '}'                { $3 }
+  
+inst_members :: { [HkClassInstMemberNode] }
+  : inst_member                             { [$1] }
+  | inst_members inst_member                { $1 ++ [$2] }
+  
+inst_member  :: { HkClassInstMemberNode }
+  : vis_tag0 fn_def                         { HkClassInstMemberDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Type"
+
+ctype :: { HkQualTypeNode }
+  : lcontext0 type                          { HkQualType $1 $2 (nodesInfo $1 <> nodeInfo $2) }
 
 type :: { HkTypeNode }
   : btype '->' type                         { HkTyFun $1 $3 (nodeInfo $1 <> nodeInfo $3) }
@@ -370,18 +400,61 @@ tygroup :: { HkTypeNode }
 types :: { [HkTypeNode] }
   : type ',' type                           { [$1, $3] }
   | types ',' type                          { $1 ++ [$3] }
-  
-atypes :: { [HkTypeNode] }
-  : atype ',' atype                           { [$1, $3] }
-  | atypes ',' atype                          { $1 ++ [$3] }
 
+-- -----------------------------------------------------------------------------
+-- Hawk Parser "Type Contexts"
 
-ctype :: { HkQualTypeNode }
-  : type                                    { HkQualType [] $1 (nodeInfo $1) }
-  | context '=>' type                       { HkQualType $1 $3 (nodesInfo $1 <> nodeInfo $3) }
+rcontext0 :: { HkTypeContextNode }
+  : rcontext                                { $1 }
+  | {- empty -}                             { [] }
+
+rcontext :: { HkTypeContextNode }
+  : '<=' context                            { $2 }
+
+lcontext0 :: { HkTypeContextNode }
+  : lcontext                                { $1 }
+  | {- empty -}                             { [] }
+ 
+lcontext :: { HkTypeContextNode }
+  : context '=>'                            { $1 }
   
 context :: { HkTypeContextNode }
-  : types                                   { checkContext $1 }
+  : class_asst                              { [$1] }
+  | context ',' class_asst                  { $1 ++ [$3] }
+
+class_asst :: { HkClassAsstNode }
+  : dotted_ty_id atypes                     { HkClassAsst $1 $2 (nodesInfo $1 <> nodesInfo $2) }
+
+atypes :: { [HkTypeNode] }
+  : atype                                   { [$1] }
+  | atypes atype                            { $1 ++ [$2] }
+
+-- -----------------------------------------------------------------------------
+-- Hawk Parser "Super Types"
+
+lsupertys0 :: { [HkTypeNode] }
+  : lsupertys                               { $1 }
+  | {- empty -}                             { [] }
+  
+lsupertys :: { [HkTypeNode] }
+  : rsupertys ':>'                          { $1 }
+
+rsupertys0 :: { [HkTypeNode] }
+  : rsupertys                               { $1 }
+  | {- empty -}                             { [] }
+  
+rsupertys :: { [HkTypeNode] }
+  : '<:' supertys                           { $2 }
+ 
+supertys :: { [HkTypeNode] }
+  : superty                               { [$1] }
+  | supertys ',' superty                  { $1 ++ [$3] }
+  
+superty :: { HkTypeNode }
+  : type                                    { $1 }
+
+-- -----------------------------------------------------------------------------
+-- Hawk Parser "Type Identifiers"
 
 ty_id :: { HkIdentNode }
   : ID_CAP_USCORE                           { HkIdent (getTokId $1) (nodeInfo $1) }
@@ -398,6 +471,10 @@ tyvar_id :: { HkIdentNode }
 tyvar_ids :: { [HkIdentNode] }
   : tyvar_id                                { [$1] }
   | tyvar_ids tyvar_id                      { $1 ++ [$2] }
+
+tyvar_ids0 :: { [HkIdentNode] }
+  : tyvar_ids                               { $1 }
+  | {- empty -}                             { [] }
   
   
 -- -----------------------------------------------------------------------------
@@ -431,7 +508,7 @@ binding :: { HkBindingNode }
   | binding_block                           { HkBinding [] $1 (nodeInfo $1) }
 
 binding_block :: { HkBindingBlockNode }
-  : ':=' block                              { HkBindingBlock $2 (nodeInfo $1 <> nodeInfo $2) }
+  : ':' block                              { HkBindingBlock $2 (nodeInfo $1 <> nodeInfo $2) }
   | '=' exp                                 { HkBindingExp $2 (nodeInfo $1 <> nodeInfo $2) }
   | guarded_binding_blocks                  { HkGuardedBindingBlock $1 (nodesInfo $1) }
   
@@ -440,7 +517,7 @@ guarded_binding_blocks :: { [HkGuardedBlockNode] }
   | guarded_binding_blocks guarded_binding_block        { $1 ++ [$2] }
   
 guarded_binding_block :: { HkGuardedBlockNode }
-  : guard ':=' block                        { HkGuardedBlock $1 $3 (nodeInfo $1 <> nodeInfo $3) }
+  : guard ':' block                        { HkGuardedBlock $1 $3 (nodeInfo $1 <> nodeInfo $3) }
   | guard '=' exp                           { HkGuardedExp $1 $3 (nodeInfo $1 <> nodeInfo $3) }
   
 guard :: { HkGuardNode }
@@ -479,7 +556,7 @@ block_stmts :: { [HkBlockStmtNode] }
   | block_stmts '{' block_stmt '}'          { $1 ++ [$3] }
 
 block_stmt :: { HkBlockStmtNode }
-  : DO block                                { HkStmtBlock $2 (nodeInfo $1 <> nodeInfo $2) }
+  : DO ':' block                            { HkStmtBlock $3 (nodeInfo $1 <> nodeInfo $3) }
   | exp                                     { HkStmtExp $1 (nodeInfo $1) }
 
 -- -----------------------------------------------------------------------------

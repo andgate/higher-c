@@ -518,13 +518,37 @@ instance HkAnnotated HkVarDef where
 -- Types in hawk are either records, unions or type aliases.
 type HkTypeDefNode = HkTypeDef NodeInfo
 data HkTypeDef a
-  = HkTyRecDef    (HkRecordDef a) a
+  = HkTyAliasDef  (HkTypeAliasDef a) a
+  | HkTyRecDef    (HkRecordDef a) a
   | HkTyUnionDef  (HkUnionDef a) a
+  | HkTyClassDef  (HkClassDef a) a
+  | HkTyClassInstDef  (HkClassInstDef a) a
   deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkTypeDef where
+  annot (HkTyAliasDef _ a) = a
   annot (HkTyRecDef _ a) = a
   annot (HkTyUnionDef _ a) = a
+  annot (HkTyClassDef _ a) = a
+  annot (HkTyClassInstDef _ a) = a
+
+-- -----------------------------------------------------------------------------  
+-- | Hawk Type Alias Definition
+--
+-- A type alias in Hawk is a new type, that is defined based on another type.
+type HkTypeAliasDefNode = HkTypeAliasDef NodeInfo
+data HkTypeAliasDef a
+  = HkTypeAliasDef
+    { alias_name    :: HkIdent a
+    , alias_tyvars  :: [HkIdent a]
+    , alias_context :: HkTypeContext a
+    , alias_type    :: HkType a
+    , alias_annot   :: a
+    }
+    deriving (Eq, Ord, Show, Data, Typeable)
+    
+instance HkAnnotated HkTypeAliasDef where
+  annot (HkTypeAliasDef _ _ _ _ a) = a
 
 -- -----------------------------------------------------------------------------  
 -- | Hawk Record Definition
@@ -535,8 +559,8 @@ data HkRecordDef a
   = HkRecordDef
     { rec_name    :: HkIdent a
     , rec_tyvars  :: [HkIdent a]
-    , rec_ctx     :: HkTypeContext a
     , rec_supers  :: [HkType a]
+    , rec_context :: HkTypeContext a
     , rec_mems    :: [HkRecordMember a]
     , rec_annot   :: a
     }
@@ -576,8 +600,8 @@ type HkUnionDefNode = HkUnionDef NodeInfo
 data HkUnionDef a
   = HkUnionDef
   { union_name    :: HkIdent a
-  , union_ctx     :: HkTypeContext a
   , union_tyvars  :: [HkIdent a]
+  , union_context :: HkTypeContext a
   , union_elems   :: [HkUnionElement a]
   , union_annot   :: a
   }
@@ -604,8 +628,8 @@ type HkClassDefNode = HkClassDef NodeInfo
 data HkClassDef a
   = HkClassDef
   { class_name      :: HkIdent a
-  , class_tyctx     :: HkTypeContext a
-  , class_tyvars    :: [HkIdent a]  
+  , class_tyvars    :: [HkIdent a]
+  , class_context   :: HkTypeContext a
   , class_body      :: [HkClassMember a]
   , class_annot     :: a
   }
@@ -632,18 +656,29 @@ instance HkAnnotated HkClassMember where
 -- 
 -- A class instance is implements the class for the given type.
 -- This allows that type to match a class constraint.
-type HkClassInstanceNode = HkClassInstance NodeInfo
-data HkClassInstance a
-  = HkClassInstance
-  { inst_class       :: HkIdent a
-  , inst_tyargs      :: [HkType a]
-  , inst_body        :: [HkFnDef a]
-  , inst_annot       :: a
+type HkClassInstDefNode = HkClassInstDef NodeInfo
+data HkClassInstDef a
+  = HkClassInstDef
+  { inst_class      :: HkIdent a
+  , inst_tyargs     :: [HkType a]
+  , inst_context    :: HkTypeContext a  
+  , inst_body       :: [HkClassInstMember a]
+  , inst_annot      :: a
   }
   deriving (Eq, Ord, Show, Data, Typeable)
 
-instance HkAnnotated HkClassInstance where
-  annot (HkClassInstance _ _ _ a) = a
+instance HkAnnotated HkClassInstDef where
+  annot (HkClassInstDef _ _ _ _ a) = a
+  
+-- A class member is a function that is either declared, or defined.
+-- If defined, that function serves as the default unless overriden.
+type HkClassInstMemberNode = HkClassInstMember NodeInfo
+data HkClassInstMember a
+  = HkClassInstMemberDef (HkVisibilityTag a) (HkFnDef a) a
+  deriving (Eq, Ord, Show, Data, Typeable)
+  
+instance HkAnnotated HkClassInstMember where
+  annot (HkClassInstMemberDef _ _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Block

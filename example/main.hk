@@ -4,15 +4,26 @@ use Data.List
 use Math.Trig(sin cos as T tan Arc(asin acos atan) as A) as M
 use (System.IO System.Network)
 
-ty Maybe :- Nothing | Just a
+enum Maybe a b c 
+  <= Foo a b
+  = Nothing | Just a
 
-ty Vector
-  :- var x :: a
-  ,  var y :: a
+data Vector a 
+  <: MetaInfo a, MoreInfo 
+  <= Foo a
+  = var x :: Foo a
+  , var y :: a
+
+type IntVector = Vector I32
 
 val blueberry :: I32 = ()
 var raspberry :: I16 = ()
 var blackberry :: W64 = ()
+
+class Berry a : {
+  fn squish :: a -> ()
+  fn mix :: a -> a -> a
+}
 
 fn fancy :: Foo a b c, Bar c b => a -> b -> c -> ()
 | a b c = ()
@@ -22,4 +33,4 @@ fn foo :: I32 -> ()
     * () = ()
     * () = ()
     * _ = ()
-  | y = ()
+  | _ : { { () } }

@@ -6,6 +6,7 @@ module Language.Hawk.Data.Node
 
 import Language.Hawk.Data.Span
 
+import Data.List
 import Data.Generics
 import Data.Monoid
 
@@ -14,7 +15,8 @@ data NodeInfo = NodeInfo
                 { node_file   :: String
                 , node_span   :: Span
                 }
-           deriving (Eq,Ord, Data, Typeable)
+              | EmptyNode
+              deriving (Eq,Ord, Data, Typeable)
 
 {-
 instance Show NodeInfo where
@@ -27,17 +29,23 @@ showNode n = f ++ ":" ++ (show s)
 
 instance Show NodeInfo where
     show (NodeInfo n s) = ""
+    show (EmptyNode) = ""
 
 instance HkSpan NodeInfo where
   spanOf (NodeInfo _ s) = s
+  spanOf (EmptyNode) = mempty
 
 
 instance Monoid NodeInfo where
-  mempty = NodeInfo "<unknown file>" mempty
+  mempty = EmptyNode
   
-  mappend (NodeInfo n1 s1) (NodeInfo n2 s2)
-    | n1 == n2 = NodeInfo n1 (s1 <> s2)
-    | otherwise = error "Cannot combine nodes from different files"
+  mappend EmptyNode EmptyNode = EmptyNode
+  mappend EmptyNode n@(NodeInfo _ _) = n
+  mappend n@(NodeInfo _ _) EmptyNode = n
+  
+  mappend n1@(NodeInfo f1 s1) n2@(NodeInfo f2 s2)
+    | f1 == f2 = NodeInfo f1 (s1 <> s2)
+    | otherwise = error ("Cannot combine nodes from different files.\n" ++ showNode n1 ++ "\n" ++ showNode n2)
 
 -- | a class for convenient access to the attributes of an attributed object
 class HkNode a where
@@ -53,3 +61,6 @@ nodesInfo :: HkNode n => [n] -> NodeInfo
 nodesInfo []      = mempty
 nodesInfo (x:[])  = nodeInfo x
 nodesInfo xs      = nodeInfo (head xs) <> nodeInfo (last xs)
+
+mergeNodes :: [NodeInfo] -> NodeInfo
+mergeNodes = foldl' (<>) mempty

@@ -25,3 +25,6 @@ instance Monoid Span where
 -- | class of type which aggregate a source code location
 class HkSpan a where
     spanOf :: a -> Span
+    
+zeroSpan :: Span
+zeroSpan = mempty
