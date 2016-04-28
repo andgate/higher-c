@@ -237,7 +237,7 @@ instance HkAnnotated HkType where
 type HkPrimTypeNode = HkPrimType NodeInfo
 data HkPrimType a
   = HkTyUnit a
-  | HkTyBit a
+  | HkTyBool a
   | HkTyW8 a
   | HkTyW16 a
   | HkTyW32 a
@@ -249,11 +249,12 @@ data HkPrimType a
   | HkTyF32 a
   | HkTyF64 a
   | HkTyChar a
+  | HkTyString a
   deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkPrimType where
   annot (HkTyUnit a) = a
-  annot (HkTyBit a) = a
+  annot (HkTyBool a) = a
   annot (HkTyW8 a) = a
   annot (HkTyW16 a) = a
   annot (HkTyW32 a) = a
@@ -265,6 +266,7 @@ instance HkAnnotated HkPrimType where
   annot (HkTyF32 a) = a
   annot (HkTyF64 a) = a
   annot (HkTyChar a) = a
+  annot (HkTyString a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Class Constructor
@@ -797,23 +799,24 @@ instance HkAnnotated HkExp where
 type HkConstNode = HkConst NodeInfo  
 data HkConst a
   = HkUnit a
-  | HkBit Bool a
-  | HkW8  Word8 a
-  | HkW16 Word16 a
-  | HkW32 Word32 a
-  | HkW64 Word64 a
-  | HkI8  Int8 a
-  | HkI16 Int16 a
-  | HkI32 Int32 a
-  | HkI64 Int64 a
-  | HkF32 Float a
-  | HkF64 Double a
+  | HkBool Bool  a
+  | HkW8  Integer a
+  | HkW16 Integer a
+  | HkW32 Integer a
+  | HkW64 Integer a
+  | HkI8  Integer a
+  | HkI16 Integer a
+  | HkI32 Integer a
+  | HkI64 Integer a
+  | HkF32  Double a
+  | HkF64  Double a
   | HkChar Char a
+  | HkString String a
   deriving (Eq, Ord, Show, Data, Typeable)
 
 instance HkAnnotated HkConst where
   annot (HkUnit a) = a
-  annot (HkBit _ a) = a
+  annot (HkBool _ a) = a
   
   annot (HkW8 _ a) = a
   annot (HkW16 _ a) = a
@@ -829,6 +832,7 @@ instance HkAnnotated HkConst where
   annot (HkF64 _ a) = a
   
   annot (HkChar _ a) = a
+  annot (HkString _ a) = a
 
 -- -----------------------------------------------------------------------------  
 -- | Hawk Assign Operators

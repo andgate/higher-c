@@ -58,8 +58,7 @@ $idchar    = [$small $large]
 @negative           = \-
 @decimal            = $digit+
 @integer            = @negative? @decimal
-@exponent           = [eE] [\-\+]? @decimal
-@floating_point     = @decimal \. @decimal @exponent? | @decimal @exponent
+@double           = @negative? @decimal \. @decimal
 
 -- -----------------------------------------------------------------------------
 -- Alex "Identifier"
@@ -70,9 +69,12 @@ hawk :-
 -- Alex "Rules"
 
 -- Skip whitespace everywhere
-$white+                   ;
-"--".*                          ;
+$white+                         ;
+$tab                            ;
 
+"//".*                          ;
+
+<0, commentSC> "/*"             { enterStartCode commentSC }
 
 -- 0 is the toplevel parser
 <0> {
@@ -105,25 +107,27 @@ $white+                   ;
   "in"                          { lex' TokenIn }
   
   \(\)                          { lex' TokenParenPair }
-  "Bit"                         { lex' TokenBitTy }
-  "W8"                          { lex' TokenW8Ty }
-  "W16"                         { lex' TokenW16Ty }
-  "W32"                         { lex' TokenW32Ty }
-  "W64"                         { lex' TokenW64Ty }
-  "I8"                          { lex' TokenI8Ty }
-  "I16"                         { lex' TokenI16Ty }
-  "I32"                         { lex' TokenI32Ty }
-  "I64"                         { lex' TokenI64Ty }
-  "F32"                         { lex' TokenF32Ty }
-  "F64"                         { lex' TokenF64Ty }
-  "Char"                        { lex' TokenCharTy }
+  "bool"                        { lex' TokenBoolTy }
+  "w8"                          { lex' TokenW8Ty }
+  "w16"                         { lex' TokenW16Ty }
+  "w32"                         { lex' TokenW32Ty }
+  "w64"                         { lex' TokenW64Ty }
+  "i8"                          { lex' TokenI8Ty }
+  "i16"                         { lex' TokenI16Ty }
+  "i32"                         { lex' TokenI32Ty }
+  "i64"                         { lex' TokenI64Ty }
+  "f32"                         { lex' TokenF32Ty }
+  "f64"                         { lex' TokenF64Ty }
+  "char"                        { lex' TokenCharTy }
+  "string"                      { lex' TokenStringTy }
   
   @id_lower                     { lex TokenIdLower }
   @id_cap_uscore                { lex TokenIdCapUscore }
   @id_uscore_num_tick           { lex TokenIdUScoreNumTick }
   @id_cap_uscore_num_tick       { lex TokenIdCapUScoreNumTick }
   
-  @integer                      { lex (TokenInt . read) }
+  @integer                      { lex (TokenInteger . read) }
+  @double                     { lex (TokenDouble . read) }
   
   \=                            { lex' TokenEquals }
   \:                            { lex' TokenColon }
@@ -153,18 +157,18 @@ $white+                   ;
   \+                            { lex' TokenPlus }
   \-                            { lex' TokenMinus }
   \/                            { lex' TokenSlash }
-  \"                            { begin string }
-  \'                            { begin char }
+  \'                            { enterStartCode charSC }
 }
 
-<char> {
-  [^\']                         { lex TokenChar }
+<charSC> {
+  .                             { lex (TokenChar . head) }
   \'                            { exitStartCode }
 }
 
-<string> {
-  [^\"]                         { lex TokenString }
-  \"                            { exitStartCode }
+<commentSC>
+{
+    "*/"                        { exitStartCode }
+    [.\n]                       ;
 }
 
 
@@ -175,10 +179,11 @@ data AlexUserState
   { filePath    :: FilePath
   , scopes      :: [Int]
   , startCodes  :: [Int]
+  , stringBuf   :: String
   }
 
 alexInitUserState :: AlexUserState
-alexInitUserState = AlexUserState "<unknown>" [0] [0]
+alexInitUserState = AlexUserState "<unknown>" [0] [0] ""
 
 alexGetFilePath :: Alex FilePath
 alexGetFilePath = liftM filePath alexGetUserState
@@ -285,9 +290,9 @@ data TokenClass
   | TokenIdUScoreNumTick String
   | TokenIdCapUScoreNumTick String
   
-  | TokenInt Int
-  | TokenFloat Float
-  | TokenChar String
+  | TokenInteger Integer
+  | TokenDouble Double
+  | TokenChar Char
   | TokenString String
   
   | TokenModule
@@ -318,7 +323,7 @@ data TokenClass
   | TokenIn
   
   | TokenParenPair
-  | TokenBitTy
+  | TokenBoolTy
   | TokenW8Ty
   | TokenW16Ty
   | TokenW32Ty
@@ -330,6 +335,7 @@ data TokenClass
   | TokenF32Ty
   | TokenF64Ty
   | TokenCharTy
+  | TokenStringTy
   
   | TokenDblColon
   

@@ -25,10 +25,10 @@ import Language.Hawk.Parse.Utils
     ID_CAP_USCORE_NUM_TICK    { Token _ (TokenIdCapUScoreNumTick _) }
     
     
-    INT             { Token _ (TokenInt  _)     }
-    FLOAT           { Token _ (TokenFloat  _)   }
-    CHAR            { Token _ (TokenChar  _)    }
-    STRING          { Token _ (TokenString  _)  }
+    INTEGER         { Token _ (TokenInteger _) }
+    DOUBLE          { Token _ (TokenDouble _) }
+    CHAR            { Token _ (TokenChar _) }
+    STRING          { Token _ (TokenString _) }
     
     MOD             { Token _ TokenModule }
     USE             { Token _ TokenUse }
@@ -60,7 +60,7 @@ import Language.Hawk.Parse.Utils
     
     '()'            { Token _ TokenParenPair }
     
-    BIT_TY          { Token _ TokenBitTy }
+    BOOL_TY         { Token _ TokenBoolTy }
     W8_TY           { Token _ TokenW8Ty }
     W16_TY          { Token _ TokenW16Ty }
     W32_TY          { Token _ TokenW32Ty }
@@ -72,6 +72,7 @@ import Language.Hawk.Parse.Utils
     F32_TY          { Token _ TokenF32Ty }
     F64_TY          { Token _ TokenF64Ty }
     CHAR_TY         { Token _ TokenCharTy }
+    STRING_TY       { Token _ TokenStringTy }
     
     '='             { Token _ TokenEquals }
     ':'             { Token _ TokenColon }
@@ -489,7 +490,7 @@ tyvar_ids0 :: { [HkIdentNode] }
 
 prim_type :: { HkPrimTypeNode }
   : '()'                                    { HkTyUnit (nodeInfo $1) }
-  | BIT_TY                                  { HkTyBit (nodeInfo $1) }
+  | BOOL_TY                                 { HkTyBool (nodeInfo $1) }
   | W8_TY                                   { HkTyW8 (nodeInfo $1) }
   | W16_TY                                  { HkTyW16 (nodeInfo $1) }
   | W32_TY                                  { HkTyW32 (nodeInfo $1) }
@@ -501,7 +502,7 @@ prim_type :: { HkPrimTypeNode }
   | F32_TY                                  { HkTyF32 (nodeInfo $1) }
   | F64_TY                                  { HkTyF64 (nodeInfo $1) }
   | CHAR_TY                                 { HkTyChar (nodeInfo $1) }
-
+  | STRING_TY                               { HkTyString (nodeInfo $1) }
 
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Guarderd Pattern Bindings"
@@ -600,6 +601,10 @@ exp :: { HkExpNode }
 
 const_obj :: { HkConstNode }
   : '()'                                    { HkUnit (nodeInfo $1) }
+  | INTEGER                                 { HkI64 (getTokInt $1) (nodeInfo $1) }
+  | DOUBLE                                  { HkF64 (getTokRat $1) (nodeInfo $1) }
+  | CHAR                                    { HkChar (getTokChar $1) (nodeInfo $1) }
+  | STRING                                  { HkString (getTokStr $1) (nodeInfo $1) }
 
 {
 
@@ -609,8 +614,10 @@ getTokId (Token _ (TokenIdCapUscore s))        = s
 getTokId (Token _ (TokenIdUScoreNumTick s))    = s
 getTokId (Token _ (TokenIdCapUScoreNumTick s)) = s
 
-getTokInt     (Token _ (TokenInt s))    = s
-getTokString  (Token _ (TokenString s)) = s
+getTokInt   (Token _ (TokenInteger i))  = i
+getTokRat   (Token _ (TokenDouble d))   = d
+getTokChar  (Token _ (TokenChar c))     = c
+getTokStr   (Token _ (TokenString s))   = s
 
 lexwrap :: (Token -> Alex a) -> Alex a
 lexwrap = (alexMonadScan' >>=)
