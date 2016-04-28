@@ -17,7 +17,6 @@ class HkAnnotated t where
   
 instance (HkNode a, HkAnnotated t) => HkNode (t a) where
   nodeInfo = nodeInfo . annot
-  
 
 -- -----------------------------------------------------------------------------
 -- | Complete Hawk translation unit
@@ -709,8 +708,8 @@ data HkBlockStmt a
   
   | HkStmtCase (HkExp a) [HkBinding a] a
   
-  | HkStmtIf (HkExp a) (HkBlock a) a
-  | HkStmtIfElse (HkExp a) (HkBlock a) (HkBlock a) a
+  | HkStmtIf (HkExp a) (HkBlock a) (HkBlockStmt a) a
+  | HkStmtElse (HkBlock a) a
   
   | HkStmtWhile (HkExp a) (HkBlock a) a
   | HkStmtDoWhile (HkExp a) (HkBlock a) a
@@ -734,8 +733,8 @@ instance HkAnnotated HkBlockStmt where
   
   annot (HkStmtCase _ _ a) = a
   
-  annot (HkStmtIf _ _ a) = a
-  annot (HkStmtIfElse _ _ _ a) = a
+  annot (HkStmtIf _ _ _ a) = a
+  annot (HkStmtElse _ a) = a
   
   annot (HkStmtWhile _ _ a) = a
   annot (HkStmtDoWhile _ _ a) = a

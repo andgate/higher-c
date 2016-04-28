@@ -57,6 +57,12 @@ instance HkNode NodeInfo where
 instance (HkNode a, HkNode b) => HkNode (Either a b) where
   nodeInfo = either nodeInfo nodeInfo
 
+{-
+instance (HkNode a) => HkNode (Maybe a) where
+  nodeInfo (Just a) = nodeInfo a
+  nodeInfo Nothing = mempty
+-}
+
 nodesInfo :: HkNode n => [n] -> NodeInfo  
 nodesInfo []      = mempty
 nodesInfo (x:[])  = nodeInfo x

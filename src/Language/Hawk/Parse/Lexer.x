@@ -98,10 +98,11 @@ $white+                   ;
   "return"                      { lex' TokenReturn }
   
   "if"                          { lex' TokenIf }
-  "then"                        { lex' TokenThen }
   "else"                        { lex' TokenElse }
   "elif"                        { lex' TokenElif }
   "while"                       { lex' TokenWhile }
+  "for"                         { lex' TokenFor }
+  "in"                          { lex' TokenIn }
   
   \(\)                          { lex' TokenParenPair }
   "Bit"                         { lex' TokenBitTy }
@@ -310,10 +311,11 @@ data TokenClass
   | TokenDo
   | TokenReturn
   | TokenIf
-  | TokenThen
   | TokenElse
   | TokenElif
   | TokenWhile
+  | TokenFor
+  | TokenIn
   
   | TokenParenPair
   | TokenBitTy
