@@ -68,5 +68,9 @@ nodesInfo []      = mempty
 nodesInfo (x:[])  = nodeInfo x
 nodesInfo xs      = nodeInfo (head xs) <> nodeInfo (last xs)
 
+maybeNodeInfo :: HkNode n => Maybe n -> NodeInfo  
+maybeNodeInfo Nothing = mempty
+maybeNodeInfo (Just n)  = nodeInfo n
+
 mergeNodes :: [NodeInfo] -> NodeInfo
 mergeNodes = foldl' (<>) mempty

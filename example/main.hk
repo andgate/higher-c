@@ -1,8 +1,9 @@
 mod Test.Main
 
 use Data.List
-use Math.Trig(sin cos as T tan Arc(asin acos atan) as A) as M
-use (System.IO System.Network)
+use! Math.Trig.(sin as S, cos as C, tan, Arc.(asin as S, acos, atan) as A) as M
+use System.IO
+use Network.Socket
 
 enum Maybe a b c 
   <= Foo a b
@@ -16,9 +17,9 @@ data Vector a
 
 type IntVector = Vector I32
 
-val blueberry :: i32 = 21312
-var raspberry :: i32 = -123
-var blackberry :: f64 = 312.3
+val blueberry :: i32 = { 21312 }
+var raspberry :: i32 = { -123 }
+var blackberry :: f64 = { 312.3 }
 
 class Berry a : {
   fn squish :: a -> ()
@@ -26,13 +27,13 @@ class Berry a : {
 }
 
 fn fancy :: Foo a b c, Bar c b => a -> b -> c -> ()
-| a b c = ()
+| a b c = { () }
 
 fn foo :: i32 -> ()
 | x 
-  * () = ()
-  * () = ()
-  * _ = ()
+  * () = { () }
+  * () = { () }
+  * _ = { () }
 | _ : {
         { 
           if () :{

@@ -100,13 +100,14 @@ $tab                            ;
   "return"                      { lex' TokenReturn }
   
   "if"                          { lex' TokenIf }
+  "then"                        { lex' TokenThen }
   "else"                        { lex' TokenElse }
   "elif"                        { lex' TokenElif }
   "while"                       { lex' TokenWhile }
   "for"                         { lex' TokenFor }
   "in"                          { lex' TokenIn }
   
-  \(\)                          { lex' TokenParenPair }
+  "()"                          { lex' TokenParenPair }
   "bool"                        { lex' TokenBoolTy }
   "w8"                          { lex' TokenW8Ty }
   "w16"                         { lex' TokenW16Ty }
@@ -121,21 +122,11 @@ $tab                            ;
   "char"                        { lex' TokenCharTy }
   "string"                      { lex' TokenStringTy }
   
-  @id_lower                     { lex TokenIdLower }
-  @id_cap_uscore                { lex TokenIdCapUscore }
-  @id_uscore_num_tick           { lex TokenIdUScoreNumTick }
-  @id_cap_uscore_num_tick       { lex TokenIdCapUScoreNumTick }
-  
-  @integer                      { lex (TokenInteger . read) }
-  @double                     { lex (TokenDouble . read) }
-  
-  \=                            { lex' TokenEquals }
+  "@"                           { lex' TokenAtSign }
+  "#"                           { lex' TokenPound }
   \:                            { lex' TokenColon }
   \:\:                          { lex' TokenDblColon }
-  
-  \|                            { lex' TokenBar }
-  \*                            { lex' TokenStar }
-  \_                            { lex' TokenUnderscore }
+  "_"                           { lex' TokenUnderscore }
   
   \<\-                          { lex' TokenLArrow }
   \-\>                          { lex' TokenRArrow }
@@ -147,17 +138,59 @@ $tab                            ;
   
   \(                            { lex' TokenLParen }
   \)                            { lex' TokenRParen }
+  \[                            { lex' TokenLBracket }
+  \]                            { lex' TokenRBracket }
   \{                            { lex' TokenLCurlyBrace }
   \}                            { lex' TokenRCurlyBrace }
   
   \.                            { lex' TokenPeriod }
   \,                            { lex' TokenComma }
-  \<                            { lex' TokenGreater }
-  \>                            { lex' TokenLesser }
-  \+                            { lex' TokenPlus }
-  \-                            { lex' TokenMinus }
-  \/                            { lex' TokenSlash }
-  \'                            { enterStartCode charSC }
+  
+  "="                           { lex' TokenEquals }
+  "*="                          { lex' TokenStarEquals }
+  "/="                          { lex' TokenSlashEquals }
+  "%="                          { lex' TokenPercentEquals }
+  "+="                          { lex' TokenPlusEquals }
+  "-="                          { lex' TokenMinusEquals }
+  "<<="                         { lex' TokenShlEq }
+  ">>="                         { lex' TokenShrEq }
+  "&="                          { lex' TokenAmpersandEquals }
+  "|="                          { lex' TokenBarEquals }
+  "^="                          { lex' TokenCaretEquals }
+  
+  "*"                           { lex' TokenStar }
+  "/"                           { lex' TokenSlash }
+  "%"                           { lex' TokenPercent }
+  "+"                           { lex' TokenPlus }
+  "-"                           { lex' TokenMinus }
+  "<<"                          { lex' TokenShl }
+  ">>"                          { lex' TokenShr }
+  "<"                           { lex' TokenLesser }
+  ">"                           { lex' TokenGreater }
+  ">="                          { lex' TokenGreaterEquals }
+  "=="                          { lex' TokenDblEquals }
+  "!="                          { lex' TokenExclaimEquals }
+  "&"                           { lex' TokenAmpersand }
+  "^"                           { lex' TokenCaret }
+  "|"                           { lex' TokenBar }
+  "&&"                          { lex' TokenAmpAmp }
+  "||"                          { lex' TokenBarBar }
+  
+  "++"                          { lex' TokenDblPlus }
+  "--"                          { lex' TokenDblMinus }
+  "~"                           { lex' TokenTilde }
+  "!"                           { lex' TokenExclaim }
+  
+  "\\"                          { lex' TokenBackslash }
+  
+  @id_cap_uscore                { lex TokenIdCapUscore }
+  @id_cap_uscore_num_tick       { lex TokenIdCapUScoreNumTick }
+  @id_lower                     { lex TokenIdLower }
+  @id_uscore_num_tick           { lex TokenIdUScoreNumTick }
+  
+  @integer                      { lex (TokenInteger . read) }
+  @double                       { lex (TokenDouble . read) }
+  "'"                           { enterStartCode charSC }
 }
 
 <charSC> {
@@ -285,17 +318,7 @@ instance HkSpan Token where
 
 -- The token type:
 data TokenClass
-  = TokenIdLower String
-  | TokenIdCapUscore String
-  | TokenIdUScoreNumTick String
-  | TokenIdCapUScoreNumTick String
-  
-  | TokenInteger Integer
-  | TokenDouble Double
-  | TokenChar Char
-  | TokenString String
-  
-  | TokenModule
+  = TokenModule
   | TokenUse
   | TokenUseQualified
   | TokenAs
@@ -315,7 +338,9 @@ data TokenClass
   
   | TokenDo
   | TokenReturn
+  
   | TokenIf
+  | TokenThen
   | TokenElse
   | TokenElif
   | TokenWhile
@@ -337,7 +362,11 @@ data TokenClass
   | TokenCharTy
   | TokenStringTy
   
+  | TokenAtSign
+  | TokenPound
+  | TokenColon
   | TokenDblColon
+  | TokenUnderscore
   
   | TokenLArrow
   | TokenThickLArrow
@@ -346,37 +375,63 @@ data TokenClass
   | TokenLSubArrow
   | TokenRSubArrow
   
-  | TokenGrave
-  | TokenTilde
-  | TokenExclaim
-  | TokenQuestion
-  | TokenAt
-  | TokenPound
-  | TokenDollar
-  | TokenPercent
-  | TokenCaret
-  | TokenAmpersand
-  
   | TokenLParen
   | TokenRParen
   | TokenLBracket
   | TokenRBracket
   | TokenLCurlyBrace
   | TokenRCurlyBrace
-  | TokenBar
   
-  | TokenUnderscore
-  | TokenColon
-  | TokenSemicolon
   | TokenPeriod
   | TokenComma
-  | TokenLesser
-  | TokenGreater
+  
+  | TokenEquals
+  | TokenStarEquals
+  | TokenSlashEquals
+  | TokenPercentEquals
+  | TokenPlusEquals
+  | TokenMinusEquals
+  | TokenShlEq
+  | TokenShrEq
+  | TokenAmpersandEquals
+  | TokenBarEquals
+  | TokenCaretEquals
+    
   | TokenStar
   | TokenSlash
+  | TokenPercent
   | TokenPlus
   | TokenMinus
-  | TokenEquals
+  | TokenShl
+  | TokenShr
+  | TokenLesser
+  | TokenGreater
+  | TokenGreaterEquals
+  | TokenDblEquals
+  | TokenExclaimEquals
+  | TokenAmpersand
+  | TokenCaret
+  | TokenBar
+  | TokenAmpAmp
+  | TokenBarBar
+  
+  | TokenDblPlus
+  | TokenDblMinus
+  | TokenTilde
+  | TokenExclaim
+  
+  | TokenBackslash
+  
+  | TokenIdLower String
+  | TokenIdCapUscore String
+  | TokenIdUScoreNumTick String
+  | TokenIdCapUScoreNumTick String
+  
+  | TokenInteger Integer
+  | TokenDouble Double
+  | TokenChar Char
+  | TokenString String
+  
   | TokenOpenBlock
   | TokenCloseBlock
   | TokenOpenStmt
