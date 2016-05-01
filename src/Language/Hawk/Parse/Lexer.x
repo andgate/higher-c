@@ -87,8 +87,8 @@ $tab                            ;
   "priv"                        { lex' TokenPrivate }
   "link"                        { lex' TokenLink }
 
+  "rec"                         { lex' TokenRecord }
   "data"                        { lex' TokenData }
-  "enum"                        { lex' TokenEnum }
   "type"                        { lex' TokenType }
   "class"                       { lex' TokenClass }
   "inst"                        { lex' TokenInst }
@@ -106,6 +106,8 @@ $tab                            ;
   "while"                       { lex' TokenWhile }
   "for"                         { lex' TokenFor }
   "in"                          { lex' TokenIn }
+  "case"                        { lex' TokenCase }
+  "of"                          { lex' TokenOf }
   
   "()"                          { lex' TokenParenPair }
   "bool"                        { lex' TokenBoolTy }
@@ -327,8 +329,8 @@ data TokenClass
   | TokenPrivate
   | TokenLink
   
+  | TokenRecord
   | TokenData
-  | TokenEnum
   | TokenType
   | TokenClass
   | TokenInst
@@ -346,6 +348,8 @@ data TokenClass
   | TokenWhile
   | TokenFor
   | TokenIn
+  | TokenCase
+  | TokenOf
   
   | TokenParenPair
   | TokenBoolTy

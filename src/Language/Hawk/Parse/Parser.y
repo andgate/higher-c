@@ -28,8 +28,8 @@ import Language.Hawk.Parse.Utils
     PRIV            { Token _ TokenPrivate  }
     LINK            { Token _ TokenLink }
     
+    REC             { Token _ TokenRecord }
     DATA            { Token _ TokenData }
-    ENUM            { Token _ TokenEnum }
     TYPE            { Token _ TokenType }
     CLASS           { Token _ TokenClass }
     INST            { Token _ TokenInst }
@@ -47,6 +47,8 @@ import Language.Hawk.Parse.Utils
     WHILE           { Token _ TokenWhile }
     FOR             { Token _ TokenFor }
     IN              { Token _ TokenIn }
+    CASE            { Token _ TokenCase }
+    OF              { Token _ TokenOf }
     
     
     '()'            { Token _ TokenParenPair }
@@ -164,6 +166,10 @@ dotted_modid :: { [HkNameNode] }
 varid :: { HkNameNode }
   : ID_LOWER                                { HkIdent (getTokId $1) (nodeInfo $1) }
   | ID_USCORE_NUM_TICK                      { HkIdent (getTokId $1) (nodeInfo $1) }
+  
+vars :: { [HkNameNode] }
+  : varid                                   { [$1] }
+  | vars ',' varid                          { $1 ++ [$3] }
 
 qvarid :: { HkQNameNode }
   : varid                                   { HkUnQual $1 }
@@ -300,11 +306,11 @@ var_def :: { HkVarDefNode }
 -- Hawk Parser "Type Definition"
 
 type_def :: { HkTypeDefNode }
-  : alias_def                               { HkTyAliasDef $1 (nodeInfo $1) }
-  | rec_def                                 { HkTyRecDef   $1 (nodeInfo $1) }
-  | union_def                               { HkTyUnionDef $1 (nodeInfo $1) }
-  | class_def                               { HkTyClassDef $1 (nodeInfo $1) }
-  | inst_def                                { HkTyClassInstDef $1 (nodeInfo $1) }
+  : alias_def                               { HkTyAliasDef $1 }
+  | rec_def                                 { HkTyRecDef $1 }
+  | data_def                                { HkTyDataDef $1 }
+  | class_def                               { HkTyClassDef $1 }
+  | inst_def                                { HkTyClassInstDef $1 }
 
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Type Alias"
@@ -314,49 +320,34 @@ alias_def :: { HkTypeAliasDefNode }
     { HkTypeAliasDef $2 $3 $4 $6 (nodeInfo $1 <> nodeInfo $6) }
 
 -- -----------------------------------------------------------------------------
--- Hawk Parser "Record"
+-- Hawk Parser "Data Definition"
 
-rec_def :: { HkRecordDefNode }
-  : DATA conid tyvarids0 rsupertys0 rcontext0 rec_member_block 
-    { HkRecordDef $2 $3 $4 $5 $6 (nodeInfo $1 <> nodeInfo $2 <> nodesInfo $3 <> nodesInfo $4 <> nodesInfo $5 <> nodesInfo $6) }
-  
-rec_member_block :: { [HkRecordMemberNode] }
-  : '=' rec_members                         { $2 }     
-  | {- empty -}                             { [] }
-  
-rec_members :: { [HkRecordMemberNode] }
-  : rec_member                              { [$1] }
-  | rec_members ',' rec_member              { $1 ++ [$3] }
+rec_def :: { HkRecDefNode }
+  : REC conid tyvarids0 rsupertys0 rcontext0 '=' field_defs 
+    { HkRecDef $2 $3 $4 $5 $7 (nodeInfo $1 <> nodesInfo $7) }
 
-rec_member :: { HkRecordMemberNode }
-  : vis_tag0 val_def                        { HkRecordValDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
-  | vis_tag0 var_dec                        { HkRecordVarDec $1 $2 (nodeInfo $1 <> nodeInfo $2) }
-  | vis_tag0 var_def                        { HkRecordVarDef $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+field_defs :: { [HkFieldDefNode]  }
+  : field_def                               { [$1] }
+  | field_defs ',' field_def                { $1 ++ [$3] }
+
+field_def :: { HkFieldDefNode }
+  : vars '::' type                          { HkFieldDef $1 $3 (nodesInfo $1 <> nodeInfo $3) }
 
 -- -----------------------------------------------------------------------------
--- Hawk Parser "Union"
+-- Hawk Parser "Data Definition"
 
-union_def :: { HkUnionDefNode }
-  : ENUM conid tyvarids0 rcontext0 union_block
-    { HkUnionDef $2 $3 $4 $5 (nodeInfo $1 <> nodesInfo $5) }
+data_def :: { HkDataDefNode }
+  : DATA conid tyvarids0 rcontext0 '=' constrs 
+    { HkDataDef $2 $3 $4 $6 (nodeInfo $1 <> nodesInfo $6) }
  
-union_block :: { [HkUnionElementNode] }
-  : '=' union_elems                        { $2 }
- 
-union_elems :: { [HkUnionElementNode] }
-  : union_elem                              { [$1] }
-  | union_elems '|' union_elem              { $1 ++ [$3] }
+constrs :: { [HkConDefNode] }
+  : constr                                  { [$1] }
+  | constrs '|' constr                      { $1 ++ [$3] }
   
-union_elem  :: { HkUnionElementNode }
-  : conid                                   { HkUnionElement $1 [] (nodeInfo $1) }
-  | conid union_elem_types                  { HkUnionElement $1 $2 (nodeInfo $1 <> nodesInfo $2) }
-  
-union_elem_types :: { [HkTypeNode] }  
-  : union_elem_type                         { [$1] }
-  | union_elem_types union_elem_type        { $1 ++ [$2] }
-  
-union_elem_type :: { HkTypeNode }
-  : atype                                   { $1 }
+constr :: { HkConDefNode }
+  : conid atypes0                           { HkConDef $1 $2 (nodeInfo $1 <> nodesInfo $2) }
+  | conid '-' field_defs                    { HkConRecDef $1 $3 (nodeInfo $1 <> nodesInfo $3) }
+
 
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Class"
@@ -469,6 +460,10 @@ context :: { HkTypeContextNode }
 class_asst :: { HkClassAsstNode }
   : qconid atypes                           { HkClassAsst $1 $2 (nodeInfo $1 <> nodesInfo $2) }
 
+atypes0 :: { [HkTypeNode] }
+  : atypes                                  { $1 }
+  | {- empty -}                             { [] }
+
 atypes :: { [HkTypeNode] }
   : atype                                   { [$1] }
   | atypes atype                            { $1 ++ [$2] }
@@ -496,9 +491,6 @@ supertys :: { [HkTypeNode] }
   
 superty :: { HkTypeNode }
   : type                                    { $1 }
-
--- -----------------------------------------------------------------------------
--- Hawk Parser "Type Identifiers"
   
   
 -- -----------------------------------------------------------------------------

@@ -3,13 +3,12 @@ module Language.Hawk.Syntax.AST where
 
 import Language.Hawk.Data.Node
 
+import Control.Lens
 import Data.Int
 import Data.Word
-
+import Data.List
 import Data.Generics
 import Data.Monoid
-
-import Control.Lens
 
 
 class HkAnnotated t where
@@ -35,7 +34,7 @@ instance HkAnnotated HkTranslUnit where
 type HkRootModuleNode = HkRootModule NodeInfo
 data HkRootModule a
   = HkRootModule (HkModPath a) [HkExtStmt a] a
-    deriving (Eq, Ord, Show, Data, Typeable)
+  deriving (Eq, Ord, Show, Data, Typeable)
     
 instance HkAnnotated HkRootModule where
   annot (HkRootModule _ _ a) = a
@@ -47,7 +46,11 @@ instance HkAnnotated HkRootModule where
 type HkModPathNode = HkModPath NodeInfo
 data HkModPath a
   = HkModPath [HkName a] a
-  deriving (Eq, Ord, Show, Data, Typeable)
+  deriving (Eq, Ord, Data, Typeable)
+  
+instance Show (HkModPath a) where
+  show (HkModPath ns _)
+    = foldl' (\l n -> l ++ show n) [] ns
 
 instance HkAnnotated HkModPath where
   annot (HkModPath _ a) = a
@@ -69,7 +72,11 @@ type HkNameNode = HkName NodeInfo
 data HkName a
   = HkIdent !String a     -- ^ /varid/ or /conid/
   | HkSymbol !String a    -- ^ /varsym/ or /consym/
-  deriving (Eq, Ord, Show, Data, Typeable)
+  deriving (Eq, Ord, Data, Typeable)
+
+instance Show (HkName a) where
+  show (HkIdent s _) = s
+  show (HkSymbol s _) = "(" ++ s ++ ")"
 
 instance HkAnnotated HkName where
   annot (HkIdent _ a) = a
@@ -535,19 +542,19 @@ instance HkAnnotated HkVarDef where
 -- Types in hawk are either records, unions or type aliases.
 type HkTypeDefNode = HkTypeDef NodeInfo
 data HkTypeDef a
-  = HkTyAliasDef  (HkTypeAliasDef a) a
-  | HkTyRecDef    (HkRecordDef a) a
-  | HkTyUnionDef  (HkUnionDef a) a
-  | HkTyClassDef  (HkClassDef a) a
-  | HkTyClassInstDef  (HkClassInstDef a) a
+  = HkTyAliasDef      (HkTypeAliasDef a)
+  | HkTyRecDef        (HkRecDef a)
+  | HkTyDataDef       (HkDataDef a)
+  | HkTyClassDef      (HkClassDef a)
+  | HkTyClassInstDef  (HkClassInstDef a)
   deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkTypeDef where
-  annot (HkTyAliasDef _ a) = a
-  annot (HkTyRecDef _ a) = a
-  annot (HkTyUnionDef _ a) = a
-  annot (HkTyClassDef _ a) = a
-  annot (HkTyClassInstDef _ a) = a
+  annot (HkTyAliasDef n) = annot n
+  annot (HkTyRecDef n) = annot n
+  annot (HkTyDataDef n) = annot n
+  annot (HkTyClassDef n) = annot n
+  annot (HkTyClassInstDef n) = annot n
 
 -- -----------------------------------------------------------------------------  
 -- | Hawk Type Alias Definition
@@ -570,72 +577,60 @@ instance HkAnnotated HkTypeAliasDef where
 -- -----------------------------------------------------------------------------  
 -- | Hawk Record Definition
 --
--- Records in hawk contain variables and values.
-type HkRecordDefNode = HkRecordDef NodeInfo
-data HkRecordDef a
-  = HkRecordDef
+-- A record is essentially a c struct, that can inherit other structs.
+type HkRecDefNode = HkRecDef NodeInfo  
+data HkRecDef a
+  = HkRecDef
     { rec_name    :: HkName a
     , rec_tyvars  :: [HkName a]
     , rec_supers  :: [HkType a]
     , rec_context :: HkTypeContext a
-    , rec_mems    :: [HkRecordMember a]
+    , rec_fields  :: [HkFieldDef a]
     , rec_annot   :: a
     }
   deriving (Eq, Ord, Show, Data, Typeable)
-
-instance HkAnnotated HkRecordDef where
-  annot (HkRecordDef _ _ _ _ _ a) = a
   
--- -----------------------------------------------------------------------------
--- | Hawk Record member
---
--- A record member in Hawk is a variable or a value, with a visibility tag.
---
--- The default visibility tag is public, which provides no restriction to member access. When set to
--- private, a record member can only be accessed by functions in a typeclass that the record belongs too.
---
--- A record can only contain value definitions, variable declarations, and variable definitions.
-type HkRecordMemberNode = HkRecordMember NodeInfo
-data HkRecordMember a
-  = HkRecordValDef (HkVisibilityTag a) (HkValDef a) a
-  | HkRecordVarDec (HkVisibilityTag a) (HkVarDec a) a
-  | HkRecordVarDef (HkVisibilityTag a) (HkVarDef a) a
+instance HkAnnotated HkRecDef where
+  annot (HkRecDef _ _ _ _ _ a) = a
+
+-- | Record Field Definition
+type HkFieldDefNode = HkFieldDef NodeInfo
+data HkFieldDef a
+  = HkFieldDef [HkName a] (HkType a) a
   deriving (Eq, Ord, Show, Data, Typeable)
   
-instance HkAnnotated HkRecordMember where
-  annot (HkRecordValDef _ _ a) = a
-  annot (HkRecordVarDec _ _ a) = a
-  annot (HkRecordVarDef _ _ a) = a
-
--- -----------------------------------------------------------------------------
--- | Hawk Union Definition
---
--- Unions in hawk are classified as tagged unions. Each element of these unions
--- have a tag, which are enormously helpful for typesafety and pattern matching.
--- It's a minor, minor overhead, and they perform as well as tagless unions.
-type HkUnionDefNode = HkUnionDef NodeInfo
-data HkUnionDef a
-  = HkUnionDef
-  { union_name    :: HkName a
-  , union_tyvars  :: [HkName a]
-  , union_context :: HkTypeContext a
-  , union_elems   :: [HkUnionElement a]
-  , union_annot   :: a
-  }
-  deriving (Eq, Ord, Show, Data, Typeable)
-  
-instance HkAnnotated HkUnionDef where
-  annot (HkUnionDef _ _ _ _ a) = a
+instance HkAnnotated HkFieldDef where
+  annot (HkFieldDef _ _ a) = a
 
 -- -----------------------------------------------------------------------------  
--- Element belonging to a union consists of a tag and a list of types.  
-type HkUnionElementNode = HkUnionElement NodeInfo
-data HkUnionElement a
-  = HkUnionElement (HkName a) [HkType a] a
+-- | Hawk Data Definition
+--
+-- A data definition in Hawk is used to construct sum and product types.
+-- This is effectively a union.
+type HkDataDefNode = HkDataDef NodeInfo  
+data HkDataDef a
+  = HkDataDef
+    { dat_name    :: HkName a
+    , dat_tyvars  :: [HkName a]
+    , dat_context :: HkTypeContext a
+    , dat_cons    :: [HkConDef a]
+    , dat_annot   :: a
+    }
   deriving (Eq, Ord, Show, Data, Typeable)
+  
+instance HkAnnotated HkDataDef where
+  annot (HkDataDef _ _ _ _ a) = a
 
-instance HkAnnotated HkUnionElement where
-  annot (HkUnionElement _ _ a) = a
+-- | Data constructor definition
+type HkConDefNode = HkConDef NodeInfo  
+data HkConDef a
+  = HkConDef (HkName a) [HkType a] a
+  | HkConRecDef (HkName a) [HkFieldDef a] a
+  deriving (Eq, Ord, Show, Data, Typeable)
+  
+instance HkAnnotated HkConDef where
+  annot (HkConDef _ _ a) = a
+  annot (HkConRecDef _ _ a) = a
  
 -- -----------------------------------------------------------------------------  
 -- | Hawk Class

@@ -18,7 +18,6 @@ spec = do
                 let result = error "no valid result"
                 ast `shouldBe` result
           
-        {-      
         context "IR Generation" $ do
             it "example/main.hk" $ do
                 ast <- parseFile "example/main.hk"
@@ -32,8 +31,6 @@ spec = do
                     
                         (length ir_str == 0)  `shouldBe` False
                     _ -> return ()
-                    
-        -}
 
 
 main :: IO ()
