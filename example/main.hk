@@ -1,60 +1,12 @@
 mod Test.Main
 
-use Data.List
-use! Math.Trig.(sin as S, cos as C, tan, Arc.(asin as S, acos, atan) as A) as M
-use System.IO
-use Network.Socket
+rec Point =
+  x, y :: i32
 
-data Maybe a = Nothing | Just a
-
-rec Entity
-  = x, y :: f32
-  , components :: [Components]
-
-rec Player <: Entity
-  = health :: i32
-  , attack :: i32
-  , defense :: i32
-
-data FooBar a e
-  <= Foo a
-  = Foo - x :: Foo a 
-       , y :: a
-  | Bar
-    - magic :: Buzz a
-    , rabbit :: Cute e
-  | Baz i32
-  
-
-
-type IntVector = Vector I32
-
-val blueberry :: i32 = { 21312 }
-var raspberry :: i32 = { -123 }
-var blackberry :: f64 = { 312.3 }
-
-class Berry a : {
-  fn squish :: a -> ()
-  fn mix :: a -> a -> a
-}
-
-fn fancy :: Foo a b c, Bar c b => a -> b -> c -> ()
-| a b c = { () }
-
-fn foo :: i32 -> ()
-| x 
-  * () = { () }
-  * () = { () }
-  * _ = { () }
-| _ : {
-        { 
-          if () :{
-            {()}
-          }
-        }
-        {
-          else :{ 
-            {()}
-          }
-        }
-      }
+fn main :: i32 -> **i8 -> ()
+| ac av :
+  {
+    { val p :: Point = { Point 1 2 } }
+    
+    { return () }
+  }

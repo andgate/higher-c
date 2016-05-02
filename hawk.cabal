@@ -24,6 +24,7 @@ library
                         , array
                         , bytestring
                         , containers
+                        , convertible
                         , lens
                         , uniplate
                         , llvm-general         >= 3.5.0.0

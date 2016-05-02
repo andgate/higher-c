@@ -9,8 +9,8 @@ spec = do
     describe "Parsing Examples" $ do
     
         context "AST Generation" $ do
-            it "example/main.hk" $ do
-                ast <- parseFile "example/main.hk"
+            it "example/grammar.hk" $ do
+                ast <- parseFile "example/grammar.hk"
                 
                 putStr "\nAST Generated: "
                 print ast

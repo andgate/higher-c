@@ -1,26 +1,30 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Language.Hawk.Codegen.LLVM.Emit where
 
-import LLVM.General.Module
+import Control.Applicative
+import qualified Control.Lens as L
+import Control.Lens.Operators
+import Control.Monad.Except
+
+import Data.Convertible.Base
+import Data.Int
+import qualified Data.Map as Map
+import Data.Word
+
+import Language.Hawk.Analysis.Utils
+import Language.Hawk.Codegen.LLVM.Codegen
+import Language.Hawk.Syntax.AST
+
+
 import LLVM.General.Context
+import LLVM.General.Module
 
 import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as C
 import qualified LLVM.General.AST.Float as F
 import qualified LLVM.General.AST.FloatingPointPredicate as FP
+import qualified LLVM.General.AST.Type as Ty
 
-
-import qualified Control.Lens as L
-import Control.Lens.Operators
-import Control.Monad.Except
-import Control.Applicative
-
-import Data.Word
-import Data.Int
-import qualified Data.Map as Map
-
-import Language.Hawk.Codegen.LLVM.Codegen
-import Language.Hawk.Syntax.AST
-import Language.Hawk.Analysis.Utils
 
 {-
 one = cons $ C.Float (F.Double 1.0)
@@ -88,7 +92,31 @@ instance Emit (HkRecDef a) where
 -- Helpers
 -------------------------------------------------------------------------------
 
-
+instance Convertible (HkType a) Ty.Type where
+  safeConvert (HkTyPrim p _) = safeConvert p
+  safeConvert _ = undefined
+  
+instance Convertible (HkPrimType a) Ty.Type where
+  safeConvert (HkTyUnit _) = Right Ty.void
+  safeConvert (HkTyBool _) = Right Ty.i1
+  safeConvert (HkTyW8 _) = Right Ty.i8
+  safeConvert (HkTyW16 _) = Right Ty.i16
+  safeConvert (HkTyW32 _) = Right Ty.i32
+  safeConvert (HkTyW64 _) = Right Ty.i64
+  safeConvert (HkTyI8 _) = Right Ty.i8
+  safeConvert (HkTyI16 _) = Right Ty.i16
+  safeConvert (HkTyI32 _) = Right Ty.i32
+  safeConvert (HkTyI64 _) = Right Ty.i64
+  safeConvert (HkTyF32 _) = Right Ty.float
+  safeConvert (HkTyF64 _) = Right Ty.double
+  safeConvert (HkTyChar _) = Right Ty.i8
+  safeConvert (HkTyString _)
+    = Left $ ConvertError
+      { convSourceValue = "HkTyString" 
+      , convSourceType = "HkPrimType"
+      , convDestType = "Type"
+      , convErrorMessage = "String types are unsupported."
+      }
   
 -------------------------------------------------------------------------------
 -- Operations
