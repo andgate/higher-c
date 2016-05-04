@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Language.Hawk.Codegen.LLVM.Codegen where
+module Language.Hawk.Target.LLVM.Codegen where
 
 import Data.Word
 import Data.String
@@ -163,20 +163,20 @@ addDefn d = do
       mod' = mod { moduleDefinitions = defs ++ [d] }
   modify $ \s -> s { _llmod = mod' }
 
-define ::  Type -> String -> [(Type, Name)] -> [BasicBlock] -> LLVM ()
-define retty label argtys body = addDefn $
+define ::  Type -> String -> [Parameter] -> [BasicBlock] -> LLVM ()
+define retty label params body = addDefn $
   GlobalDefinition $ functionDefaults {
     name        = Name label
-  , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
+  , parameters  = (params, False)
   , returnType  = retty
   , basicBlocks = body
   }
 
-external ::  Type -> String -> [(Type, Name)] -> LLVM ()
-external retty label argtys = addDefn $
+external ::  Type -> String -> [Parameter] -> LLVM ()
+external retty label params = addDefn $
   GlobalDefinition $ functionDefaults {
     name        = Name label
-  , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
+  , parameters  = (params, False)
   , returnType  = retty
   , basicBlocks = []
   }  

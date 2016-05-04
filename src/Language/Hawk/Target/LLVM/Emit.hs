@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Language.Hawk.Codegen.LLVM.Emit where
+{-# LANGUAGE FlexibleInstances #-}
+module Language.Hawk.Target.LLVM.Emit where
 
 import Control.Applicative
 import qualified Control.Lens as L
@@ -12,8 +13,10 @@ import qualified Data.Map as Map
 import Data.Word
 
 import Language.Hawk.Analysis.Utils
-import Language.Hawk.Codegen.LLVM.Codegen
-import Language.Hawk.Syntax.AST
+import Language.Hawk.Data.Emittable
+import Language.Hawk.Target.LLVM.Codegen
+
+import qualified Language.Hawk.Core.AST as Core
 
 
 import LLVM.General.Context
@@ -62,53 +65,55 @@ llvmCodegen exp = do
 
 -}
 
-class Emit a where
-  emit :: a -> LLVM () 
-
-instance Emit (HkTranslUnit a) where
-  emit (HkTranslUnit (HkMod path (HkModBlock items _) _)) = do
-    llmod . _moduleName .= show path
+instance Emittable Core.Mod (LLVM ()) where
+  emit (Core.Mod name items) = do
+    llmod . _moduleName .= name
     mapM_ emit items
     
-instance Emit (HkModItem a) where
-  emit _ = return ()
+instance Emittable Core.Item (LLVM ()) where
+  emit (Core.ItemFn (Core.FnDecl vis name retty params) body) = do
+    define retty' name params' bls
+    where
+      retty' = emit retty
+      params' = map emit params
+      bls = undefined 
+        {- createBlocks $ execCodegen $ do
+        entry <- addBlock entryBlockName
+        setBlock entry
+        forM args $ \a -> do
+          var <- alloca double
+          store var (local (AST.Name a))
+          llassign a var
+        cgen body >>= ret
+        -}
 
-instance Emit (HkTypeDef a) where
-  emit _ = return ()
-  
-instance Emit (HkRecDef a) where
-  emit r = return ()
-
+instance Emittable Core.Param AST.Parameter where
+  emit (Core.Param name ty) = AST.Parameter ty' name' []
+    where ty' = emit ty
+          name' = AST.Name name
 
 -------------------------------------------------------------------------------
--- Helpers
+-- Type Emission
 -------------------------------------------------------------------------------
 
-instance Convertible (HkType a) Ty.Type where
-  safeConvert (HkTyPrim p _) = safeConvert p
-  safeConvert _ = undefined
+instance Emittable Core.Type Ty.Type where
+  emit (Core.PrimTy p) = emit p
   
-instance Convertible (HkPrimType a) Ty.Type where
-  safeConvert (HkTyUnit _) = Right Ty.void
-  safeConvert (HkTyBool _) = Right Ty.i1
-  safeConvert (HkTyW8 _) = Right Ty.i8
-  safeConvert (HkTyW16 _) = Right Ty.i16
-  safeConvert (HkTyW32 _) = Right Ty.i32
-  safeConvert (HkTyW64 _) = Right Ty.i64
-  safeConvert (HkTyI8 _) = Right Ty.i8
-  safeConvert (HkTyI16 _) = Right Ty.i16
-  safeConvert (HkTyI32 _) = Right Ty.i32
-  safeConvert (HkTyI64 _) = Right Ty.i64
-  safeConvert (HkTyF32 _) = Right Ty.float
-  safeConvert (HkTyF64 _) = Right Ty.double
-  safeConvert (HkTyChar _) = Right Ty.i8
-  safeConvert (HkTyString _)
-    = Left $ ConvertError
-      { convSourceValue = "HkTyString" 
-      , convSourceType = "HkPrimType"
-      , convDestType = "Type"
-      , convErrorMessage = "String types are unsupported."
-      }
+instance Emittable Core.PrimType Ty.Type where
+  emit Core.UnitTy = Ty.void
+  emit Core.BoolTy = Ty.i1
+  emit Core.W8Ty = Ty.i8
+  emit Core.W16Ty = Ty.i16
+  emit Core.W32Ty = Ty.i32
+  emit Core.W64Ty = Ty.i64
+  emit Core.I8Ty = Ty.i8
+  emit Core.I16Ty = Ty.i16
+  emit Core.I32Ty = Ty.i32
+  emit Core.I64Ty = Ty.i64
+  emit Core.F32Ty = Ty.float
+  emit Core.F64Ty = Ty.double
+  emit Core.CharTy = Ty.i8
+  emit Core.StringTy = error "Strings are not supported."
   
 -------------------------------------------------------------------------------
 -- Operations
@@ -193,7 +198,7 @@ liftError :: ExceptT String IO a -> IO a
 liftError = runExceptT >=> either fail return
 
 
-codegen :: HkTranslUnit a -> IO AST.Module
+codegen :: Core.Mod -> IO AST.Module
 codegen ast = withContext $ \context ->
   liftError $ withModuleFromAST context newast $ \m -> do
     llstr <- moduleLLVMAssembly m
@@ -204,7 +209,7 @@ codegen ast = withContext $ \context ->
     newast  = (runLLVM emptyCodegen modn) ^. llmod
     
 
-write_as_ir :: FilePath -> HkTranslUnit a -> IO ()
+write_as_ir :: FilePath -> Core.Mod -> IO ()
 write_as_ir f ast =
   withContext $ \context ->
     liftError $ withModuleFromAST context newast $ \m ->
@@ -214,7 +219,7 @@ write_as_ir f ast =
     newast  = (runLLVM emptyCodegen modn) ^. llmod
 
 
-to_ir_string :: HkTranslUnit a -> IO String
+to_ir_string :: Core.Mod -> IO String
 to_ir_string ast =
   withContext $ \context ->
     liftError $ withModuleFromAST context newast $ \m ->

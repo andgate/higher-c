@@ -16,6 +16,7 @@ class HkAnnotated t where
   
 instance (HkNode a, HkAnnotated t) => HkNode (t a) where
   nodeInfo = nodeInfo . annot
+ 
   
 type AstNode = Ast NodeInfo
 type Ast a = [HkTranslUnit a]

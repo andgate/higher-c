@@ -1,12 +1,8 @@
 mod Test.Main
 
-rec Point =
-  x, y :: i32
-
-fn main :: i32 -> **i8 -> ()
-| ac av :
+fn foo :: i32 -> i32 -> i32
+| a b :
   {
-    { val p :: Point = { Point 1 2 } }
-    
-    { return () }
+    { let c :: i32 = { a + b } }
+    { return b }
   }

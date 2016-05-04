@@ -12,6 +12,6 @@ type TcRnIf a e = StateT e IO a
 data RnEnv
   = RnEnv
   { env_ast :: AstNode
-  , env_gbl :: SymbolTable
+  , env_gbl :: SuffixTrie
   , env_lcl :: SymbolTable
   }

@@ -43,17 +43,22 @@ library
   hs-source-dirs:       src
 
   exposed-modules:      Language.Hawk.Analysis.Utils
+  
+                        Language.Hawk.Core.AST
+                        Language.Hawk.Core.Emit
+              
+                        Language.Hawk.Data.Emittable
                         Language.Hawk.Data.Node
                         Language.Hawk.Data.Span
-                      
-                        Language.Hawk.Syntax.AST
                         
                         Language.Hawk.Parse.Parser
                         Language.Hawk.Parse.Lexer
                         Language.Hawk.Parse.Utils
+                      
+                        Language.Hawk.Syntax.AST
                         
-                        Language.Hawk.Codegen.LLVM.Codegen
-                        Language.Hawk.Codegen.LLVM.Emit
+                        Language.Hawk.Target.LLVM.Codegen
+                        Language.Hawk.Target.LLVM.Emit
                         
 
   build-tools:          alex, happy

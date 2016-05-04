@@ -4,6 +4,11 @@ import SpecHelper
 
 import Data.Sequence (fromList)
 
+
+-- ASTs must be imported qualifed, and thus need to be imported here
+-- import qualified Language.Hawk.Syntax.AST as Syn
+-- import qualified Language.Hawk.Core.AST as Core
+
 spec :: Spec
 spec = do
     describe "Parsing Examples" $ do
@@ -20,11 +25,12 @@ spec = do
           
         context "IR Generation" $ do
             it "example/main.hk" $ do
-                ast <- parseFile "example/main.hk"
+                syn_ast <- parseFile "example/main.hk"
                 
-                case ast of
-                    Right ast' -> do
-                        ir_str <- to_ir_string ast'
+                case syn_ast of
+                    Right syn_ast' -> do
+                        let core_ast = emit syn_ast'
+                        ir_str <- to_ir_string core_ast
                         
                         putStr "\nIR Generated:\n"
                         print ir_str
