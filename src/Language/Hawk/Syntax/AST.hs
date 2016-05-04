@@ -16,23 +16,6 @@ class HkAnnotated t where
   
 instance (HkNode a, HkAnnotated t) => HkNode (t a) where
   nodeInfo = nodeInfo . annot
- 
-  
-type AstNode = Ast NodeInfo
-type Ast a = [HkTranslUnit a]
-
--- -----------------------------------------------------------------------------
--- | Complete Hawk translation unit
---
--- A complete Hawk translation unit, for example representing all Hawk source or info files of a program.
--- It consists of a list of modules, which contain all the external statements.
-type HkTranslUnitNode = HkTranslUnit NodeInfo
-data HkTranslUnit a
-  = HkTranslUnit (HkMod a)
-    deriving (Eq, Ord, Show, Data, Typeable)
-    
-instance HkAnnotated HkTranslUnit where
-  annot (HkTranslUnit n) = annot n
   
 -- ----------------------------------------------------------------------------- 
 -- Hawk Module
@@ -155,6 +138,12 @@ data HkQualType a
 
 instance HkAnnotated HkQualType where
   annot (HkQualType _ _ a) = a
+  
+evalQType :: HkQualType a -> HkType a
+evalQType (HkQualType _ ty _) = evalType ty
+
+qtypeArgs :: HkQualType a -> [HkType a]
+qtypeArgs (HkQualType _ ty _) = typeArgs ty
 
 -- | Type context
 type HkTypeContextNode = HkTypeContext NodeInfo
@@ -182,11 +171,19 @@ data HkType a
   | HkTyCon         (HkQName a) a
   | HkTyVar         (HkName a) a
   
-  | HkTyConst       (HkType a) a
-  | HkTyRef         (HkType a) a
+  | HkTyPtr         (HkType a) a
   | HkTyArray       (HkType a) a
   | HkTyTuple       [HkType a] a
   deriving (Eq, Ord, Show, Data, Typeable)
+
+evalType :: HkType a -> HkType a
+evalType (HkTyFun _ t2 _) = evalType t2
+evalType t = t
+
+typeArgs :: HkType a -> [HkType a]
+typeArgs ty = typeArgs' ty []
+  where typeArgs' (HkTyFun t1 t2 _) tys = typeArgs' t2 (tys ++ [t1])
+        typeArgs' _ tys = tys -- disregard resulting type
   
 instance HkAnnotated HkType where
   annot (HkTyFun _ _ a) = a
@@ -196,8 +193,7 @@ instance HkAnnotated HkType where
   annot (HkTyCon _ a) = a
   annot (HkTyVar _ a) = a
   
-  annot (HkTyConst _ a) = a
-  annot (HkTyRef _ a) = a
+  annot (HkTyPtr _ a) = a
   annot (HkTyArray _ a) = a
   annot (HkTyTuple _ a) = a
 

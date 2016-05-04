@@ -141,9 +141,6 @@ import Language.Hawk.Parse.Utils
     CLOSE_STMT      { Token _ TokenCloseStmt }
 
 %%
-
-trans_unit :: { HkTranslUnitNode }
-  : root_mod                                { HkTranslUnit $1 }
   
 root_mod :: { HkModNode }
   : MOD mod_path mod_items                  { HkMod $2 (HkModBlock $3 (nodesInfo $3)) (nodeInfo $1 <> nodesInfo $3)  }
@@ -294,8 +291,7 @@ atype :: { HkTypeNode }
   : typrim                                  { $1 }
   | tycon                                   { $1 }
   | tyvar                                   { $1 }
-  | tyconst                                 { $1 }
-  | tyref                                   { $1 }
+  | typtr                                   { $1 }
   | tyarray                                 { $1 }
   | tytuple                                 { $1 }
   | tygroup                                 { $1 }
@@ -309,11 +305,8 @@ tycon :: { HkTypeNode }
 tyvar :: { HkTypeNode }
   : tyvarid                                 { HkTyVar $1 (nodeInfo $1) }
 
-tyconst :: { HkTypeNode }  
-  : '#' atype                               { HkTyConst $2 (nodeInfo $1 <> nodeInfo $2) }
-
-tyref :: { HkTypeNode }  
-  : '*' atype                               { HkTyRef $2 (nodeInfo $1 <> nodeInfo $2) }
+typtr :: { HkTypeNode }  
+  : '*' atype                               { HkTyPtr $2 (nodeInfo $1 <> nodeInfo $2) }
 
 tyarray :: { HkTypeNode }
   : '[' type ']'                            { HkTyArray $2 (nodeInfo $1 <> nodeInfo $3) }
@@ -726,10 +719,10 @@ happyError :: Token -> Alex a
 happyError tok@(Token (TokenInfo n p _) t) =
   alexError' p ("parse error at token '" ++ show t ++ "'" ++ "\n" ++ show tok)
 
-parse :: FilePath -> String -> Either String HkTranslUnitNode
+parse :: FilePath -> String -> Either String HkModNode
 parse = runAlex' parseHk
 
-parseFile :: FilePath -> IO (Either String HkTranslUnitNode)
+parseFile :: FilePath -> IO (Either String HkModNode)
 parseFile p = readFile p >>= return . parse p
 
 

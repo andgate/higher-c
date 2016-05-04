@@ -76,7 +76,7 @@ instance Emittable Core.Item (LLVM ()) where
     where
       retty' = emit retty
       params' = map emit params
-      bls = undefined 
+      bls = error "Function block generation not implemented." 
         {- createBlocks $ execCodegen $ do
         entry <- addBlock entryBlockName
         setBlock entry
@@ -88,7 +88,7 @@ instance Emittable Core.Item (LLVM ()) where
         -}
 
 instance Emittable Core.Param AST.Parameter where
-  emit (Core.Param name ty) = AST.Parameter ty' name' []
+  emit (Core.Param ty name) = AST.Parameter ty' name' []
     where ty' = emit ty
           name' = AST.Name name
 

@@ -16,7 +16,6 @@ module SpecHelper
 
 import Test.Hspec
 
-
 import Language.Hawk.Core.Emit
 
 import Language.Hawk.Data.Emittable

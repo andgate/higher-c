@@ -23,8 +23,8 @@ instance Show NodeInfo where
     show (NodeInfo n s) = n ++ (show s)
 -}
 
-showNode :: (HkNode n) => n -> String
-showNode n = f ++ ":" ++ (show s)
+prefixError :: (HkNode n) => n -> String
+prefixError n = f ++ ":" ++ (show s)
   where (NodeInfo f s) = nodeInfo n
 
 instance Show NodeInfo where
@@ -45,7 +45,7 @@ instance Monoid NodeInfo where
   
   mappend n1@(NodeInfo f1 s1) n2@(NodeInfo f2 s2)
     | f1 == f2 = NodeInfo f1 (s1 <> s2)
-    | otherwise = error ("Cannot combine nodes from different files.\n" ++ showNode n1 ++ "\n" ++ showNode n2)
+    | otherwise = error ("Cannot combine nodes from different files.\n" ++ prefixError n1 ++ "\n" ++ prefixError n2)
 
 -- | a class for convenient access to the attributes of an attributed object
 class HkNode a where

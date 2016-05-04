@@ -71,8 +71,8 @@ data Visibility
 -- The are function parameters.
 data Param
   = Param
-  { param_name :: String
-  , param_type :: Type
+  { param_type :: Type
+  , param_name :: String
   }
   deriving (Eq, Ord, Show, Data, Typeable)
   
