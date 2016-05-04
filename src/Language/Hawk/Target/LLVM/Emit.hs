@@ -72,11 +72,12 @@ instance Emittable Core.Mod (LLVM ()) where
     
 instance Emittable Core.Item (LLVM ()) where
   emit (Core.ItemFn (Core.FnDecl vis name retty params) body) = do
+    bls <- genBlocks params' body
     define retty' name params' bls
     where
       retty' = emit retty
       params' = map emit params
-      bls = error "Function block generation not implemented." 
+        --error "Function block generation not implemented." 
         {- createBlocks $ execCodegen $ do
         entry <- addBlock entryBlockName
         setBlock entry
@@ -87,10 +88,27 @@ instance Emittable Core.Item (LLVM ()) where
         cgen body >>= ret
         -}
 
+genBlocks :: [AST.Parameter] -> [Core.Expr] -> LLVM [AST.BasicBlock]
+genBlocks params body = do
+  startBlocks
+  -- allocate parameters
+  mapM genParam params
+  mapM emit body
+  endBlocks
+  
+genParam :: AST.Parameter -> LLVM ()
+genParam (AST.Parameter ty pname _) = do
+  var <- alloca ty
+  store var (local pname)
+  assign pname var
+
 instance Emittable Core.Param AST.Parameter where
   emit (Core.Param ty name) = AST.Parameter ty' name' []
     where ty' = emit ty
           name' = AST.Name name
+
+instance Emittable Core.Expr (LLVM ()) where
+  emit _ = error "Codegen Error: Expression emission not implemented."
 
 -------------------------------------------------------------------------------
 -- Type Emission

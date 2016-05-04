@@ -59,7 +59,7 @@ data BlockState
 data LLVMState
   = LLVMState 
     { _llmod          :: AST.Module               -- The module to edit
-    , _llCurrBlock    :: Name                     -- Name of the active block to append to
+    , _llCurrBlock    :: Maybe Name               -- Name of the active block to append to
     , _llBlocks       :: Map.Map Name BlockState  -- Blocks for function
     , _llSymtab       :: SymbolTable              -- Function scope symbol table
     , _llBlockCount   :: Int                      -- Count of basic blocks
@@ -74,7 +74,7 @@ emptyModule :: String -> AST.Module
 emptyModule label = defaultModule { moduleName = label }  
   
 emptyCodegen :: LLVMState
-emptyCodegen = LLVMState (emptyModule "") (Name entryBlockName) Map.empty [] 1 0 Map.empty
+emptyCodegen = LLVMState (emptyModule "") Nothing Map.empty [] 1 0 Map.empty
 
 runLLVM :: LLVMState -> LLVM a -> LLVMState
 runLLVM = flip (execState . unLLVM)
@@ -110,7 +110,7 @@ llmod :: L.Lens' LLVMState AST.Module
 llmod f (LLVMState x1 x2 x3 x4 x5 x6 x7) = fmap (\y -> LLVMState y x2 x3 x4 x5 x6 x7) (f x1)
 {-# INLINE llmod #-}
 
-llCurrBlock :: L.Lens' LLVMState Name
+llCurrBlock :: L.Lens' LLVMState (Maybe Name)
 llCurrBlock f (LLVMState x1 x2 x3 x4 x5 x6 x7) = fmap (\y -> LLVMState x1 y x3 x4 x5 x6 x7) (f x2)
 {-# INLINE llCurrBlock #-}
 
@@ -158,10 +158,7 @@ _moduleDefinitions f (AST.Module x1 x2 x3 x4) = fmap (\y -> AST.Module x1 x2 x3 
 
 addDefn :: Definition -> LLVM ()
 addDefn d = do
-  mod <- gets _llmod
-  let defs = moduleDefinitions mod
-      mod' = mod { moduleDefinitions = defs ++ [d] }
-  modify $ \s -> s { _llmod = mod' }
+  llmod . _moduleDefinitions %= (++ [d])
 
 define ::  Type -> String -> [Parameter] -> [BasicBlock] -> LLVM ()
 define retty label params body = addDefn $
@@ -188,8 +185,20 @@ def_struct tys label = addDefn $
 sortBlocks :: [(Name, BlockState)] -> [(Name, BlockState)]
 sortBlocks = sortBy (compare `on` (_blkIndex . snd))
 
-createBlocks :: LLVMState -> [BasicBlock]
-createBlocks m = map makeBlock $ sortBlocks $ Map.toList (_llBlocks m)
+startBlocks :: LLVM ()
+startBlocks = do
+  llBlocks .= Map.empty
+  setBlock =<< addBlock entryBlockName
+  return ()
+  
+endBlocks :: LLVM [BasicBlock]
+endBlocks = do
+  bls <- L.use llBlocks
+  llBlocks .= Map.empty
+  return $ createBlocks bls
+
+createBlocks :: Map.Map Name BlockState -> [BasicBlock]
+createBlocks = map makeBlock . sortBlocks . Map.toList
 
 makeBlock :: (Name, BlockState) -> BasicBlock
 makeBlock (l, (BlockState _ s _ t)) = BasicBlock l s (maketerm t)
@@ -228,7 +237,7 @@ terminator trm = do
 -- Block Stack
 -------------------------------------------------------------------------------
 
-entry :: LLVM Name
+entry :: LLVM (Maybe Name)
 entry = gets _llCurrBlock
 
 addBlock :: String -> LLVM Name
@@ -246,33 +255,38 @@ addBlock bname = do
 
 setBlock :: Name -> LLVM Name
 setBlock bname = do
-  modify $ \s -> s { _llCurrBlock = bname }
+  llCurrBlock .= Just bname
   return bname
 
-getBlock :: LLVM Name
-getBlock = gets _llCurrBlock
+getBlock :: LLVM (Maybe Name)
+getBlock = L.use llCurrBlock
 
 modifyBlock :: BlockState -> LLVM ()
 modifyBlock new = do
-  active <- gets _llCurrBlock
-  modify $ \s -> s { _llBlocks = Map.insert active new (_llBlocks s) }
+  active <- L.use llCurrBlock
+  case active of
+    Just active' -> llBlocks %= (Map.insert active' new)
+    Nothing -> error "Codegen error: Attempted to modify current block when no block is selected."
 
 current :: LLVM BlockState
 current = do
-  c <- gets _llCurrBlock
-  blks <- gets _llBlocks
-  case Map.lookup c blks of
-    Just x -> return x
-    Nothing -> error $ "No such block: " ++ show c
+  c <- L.use llCurrBlock
+  case c of
+    Just c' -> do blks <- L.use llBlocks
+                  case Map.lookup c' blks of
+                    Just x -> return x
+                    Nothing -> error $ "No such block: " ++ show c'
+    Nothing -> error "Codegen error: Attempted to access current block when no block is selected."
     
 -------------------------------------------------------------------------------
 -- Symbol Table
 -------------------------------------------------------------------------------
 
-assign :: String -> Operand -> LLVM ()
-assign var x = do
+assign :: Name -> Operand -> LLVM ()
+assign (Name var) x = do
   lcls <- gets _llSymtab
   modify $ \s -> s { _llSymtab = [(var, x)] ++ lcls }
+assign (UnName _) _ = error "Codegen Error: Assignment with UnName not supported."
 
 getvar :: String -> LLVM Operand
 getvar var = do
