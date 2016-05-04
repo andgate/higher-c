@@ -16,6 +16,9 @@ class HkAnnotated t where
   
 instance (HkNode a, HkAnnotated t) => HkNode (t a) where
   nodeInfo = nodeInfo . annot
+  
+type AstNode = Ast NodeInfo
+type Ast a = [HkTranslUnit a]
 
 -- -----------------------------------------------------------------------------
 -- | Complete Hawk translation unit
@@ -24,155 +27,79 @@ instance (HkNode a, HkAnnotated t) => HkNode (t a) where
 -- It consists of a list of modules, which contain all the external statements.
 type HkTranslUnitNode = HkTranslUnit NodeInfo
 data HkTranslUnit a
-  = HkTranslUnit (HkRootModule a)  a
+  = HkTranslUnit (HkMod a)
     deriving (Eq, Ord, Show, Data, Typeable)
     
 instance HkAnnotated HkTranslUnit where
-  annot (HkTranslUnit _ a) = a
-
+  annot (HkTranslUnit n) = annot n
   
-type HkRootModuleNode = HkRootModule NodeInfo
-data HkRootModule a
-  = HkRootModule (HkModPath a) [HkExtStmt a] a
-  deriving (Eq, Ord, Show, Data, Typeable)
-    
-instance HkAnnotated HkRootModule where
-  annot (HkRootModule _ _ a) = a
-
 -- ----------------------------------------------------------------------------- 
--- Hawk Identifiers
-  
--- | A path of modules is composed of a list of module names.
-type HkModPathNode = HkModPath NodeInfo
-data HkModPath a
-  = HkModPath [HkName a] a
-  deriving (Eq, Ord, Data, Typeable)
-  
-instance Show (HkModPath a) where
-  show (HkModPath ns _)
-    = foldl' (\l n -> l ++ show n) [] ns
-
-instance HkAnnotated HkModPath where
-  annot (HkModPath _ a) = a
-
--- | A qualified name is used to represent qualified functions, variables, and
--- constructors.
-type HkQNameNode = HkQName NodeInfo
-data HkQName a
-  = HkQual (HkModPath a) (HkName a) a     -- ^ name qualiied with a module name
-  | HkUnQual (HkName a)                   -- ^ unqualified name
-  deriving (Eq, Ord, Show, Data, Typeable)
-  
-instance HkAnnotated HkQName where
-  annot (HkQual _ _ a) = a
-  annot (HkUnQual n) = annot n
-
--- | A name represents variables, types and constructors.
-type HkNameNode = HkName NodeInfo
-data HkName a
-  = HkIdent !String a     -- ^ /varid/ or /conid/
-  | HkSymbol !String a    -- ^ /varsym/ or /consym/
-  deriving (Eq, Ord, Data, Typeable)
-
-instance Show (HkName a) where
-  show (HkIdent s _) = s
-  show (HkSymbol s _) = "(" ++ s ++ ")"
-
-instance HkAnnotated HkName where
-  annot (HkIdent _ a) = a
-  annot (HkSymbol _ a) = a
-  
--- | Used for infix operators that can be qualified, appearing in expressions.
-type HkQOpNode = HkQOp NodeInfo
-data HkQOp a
-  = HkQVarOp (HkQName a)  -- ^ Variable Operator /(qvarop)/
-  | HkQConOp (HkQName a)  -- ^ Constructor Operator /(qconop)/
-  deriving (Eq, Ord, Show, Data, Typeable)
-  
-instance HkAnnotated HkQOp where
-  annot (HkQVarOp n) = annot n
-  annot (HkQConOp n) = annot n
-
--- | Operators, which appear in infix declarations.
-type HkOpNode = HkOp NodeInfo
-data HkOp a
-  = HkVarOp (HkName a)  -- ^ variable operator /(varop)/
-  | HkConOp (HkName a)  -- ^ constructor operator /(conop)/
-  deriving (Eq, Ord, Show, Data, Typeable)
-
-instance HkAnnotated HkOp where
-  annot (HkVarOp n) = annot n
-  annot (HkConOp n) = annot n
-  
--- | A name of a component of a class or data type.
-type HkCNameNode = HkCName NodeInfo
-data HkCName a
-  = HkVarName (HkName a)    -- ^ name of a method or field
-  | HkConName (HkName a)    -- ^ name of a data constructor
-  deriving (Eq, Ord, Show, Data, Typeable)
-  
-instance HkAnnotated HkCName where
-  annot (HkVarName n) = annot n
-  annot (HkConName n) = annot n
-
--- -----------------------------------------------------------------------------
--- | Hawk External Statement
+-- Hawk Module
 --
-type HkExtStmtNode = HkExtStmt NodeInfo
-data HkExtStmt a
-  -- Module definition statement, defaults to public.
-  = HkModDef (HkVisibilityTag a) (HkModPath a) (HkExtBlock a) a
+-- | Hawk module declaration
+type HkModNode = HkMod NodeInfo
+data HkMod a
+  = HkMod (HkModPath a) (HkModBlock a) a
+  deriving (Eq, Ord, Show, Data, Typeable)
+  
+instance HkAnnotated HkMod where
+  annot (HkMod _ _ a) = a
 
-  -- Import statment, may be qualified or unqualified
-  -- By default, an import statement is private.
-  | HkExtImport     (HkVisibilityTag a) (HkImportPath a) a
-  | HkExtImportQual (HkVisibilityTag a) (HkImportPath a) a
+-- | Hawk item declaration
+type HkModItemNode = HkModItem NodeInfo  
+data HkModItem a
+  = HkModItem (HkVisibilityTag a) (HkItem a) a
+  deriving (Eq, Ord, Show, Data, Typeable)
   
-  -- External function statements
-  -- At the external level, a function can be linked, declared, or defined.
-  -- A Function at the external level also requires a visibility tag.
-  | HkExtFnLink (HkVisibilityTag a) (HkFnDec a) a
-  | HkExtFnDec  (HkVisibilityTag a) (HkFnDec a) a
-  | HkExtFnDef  (HkVisibilityTag a) (HkFnDef a) a
+instance HkAnnotated HkModItem where
+  annot (HkModItem _ _ a) = a
+
+-- | Hawk module block declaration
+type HkModBlockNode = HkModBlock NodeInfo
+data HkModBlock a
+  = HkModBlock [HkModItem a] a
+  deriving (Eq, Ord, Show, Data, Typeable)
   
-  -- External binding statement
-  -- These also come with visibility modifiers.
-  -- External values must be defined.
-  | HkExtValDef (HkVisibilityTag a) (HkValDef a) a
-  -- External variables may be declared or defined.
-  | HkExtVarDec (HkVisibilityTag a) (HkVarDec a) a
-  | HkExtVarDef (HkVisibilityTag a) (HkVarDef a) a
+instance HkAnnotated HkModBlock where
+  annot (HkModBlock _ a) = a
   
-  | HkExtTypeDef (HkVisibilityTag a) (HkTypeDef a) a
+-- -----------------------------------------------------------------------------
+-- Hawk Items
+--
+-- | Also known as top-level statements.
+type HkItemNode = HkItem NodeInfo
+data HkItem a
+  -- Module definition statement, defaults to public.
+  = HkItemMod         (HkMod a)
+
+  -- Import declaration, may be qualified or unqualified
+  -- By default, an import declaration is private.
+  | HkItemImport      (HkImportPath a) a
+  | HkItemImportQual  (HkImportPath a) a
+  
+  -- Top-level function statements
+  -- At the top-level, a function can be linked, declared, or defined.
+  -- A Function at the top-level also requires a visibility tag.
+  | HkItemFnLink      (HkFn a) a
+  | HkItemFn          (HkFn a)
+  -- Top-level binding statement
+  | HkItemBind        (HkBind a)
+  
+  | HkItemType        (HkTypeDef a)
     
   deriving (Eq, Ord, Show, Data, Typeable)
 
-
-instance HkAnnotated HkExtStmt where
-  annot (HkModDef _ _ _ a) = a
-  annot (HkExtImport _ _ a) = a
-  annot (HkExtImportQual _ _ a) = a
-  annot (HkExtFnLink _ _ a) = a
+instance HkAnnotated HkItem where
+  annot (HkItemMod n) = annot n
+  annot (HkItemImport _ a) = a
+  annot (HkItemImportQual _ a) = a
   
-  annot (HkExtFnDec _ _ a) = a
-  annot (HkExtFnDef _ _ a) = a
+  annot (HkItemFnLink _ a) = a
+  annot (HkItemFn n) = annot n
+  annot (HkItemBind n) = annot n
   
-  annot (HkExtValDef _ _ a) = a
-  annot (HkExtVarDec _ _ a) = a
-  annot (HkExtVarDef _ _ a) = a
+  annot (HkItemType n) = annot n
   
-  annot (HkExtTypeDef _ _ a) = a
-  
-
-type HkExtBlockNode = HkExtBlock NodeInfo
-data HkExtBlock a
-  = HkExtBlock [HkExtStmt a] a
-  deriving (Eq, Ord, Show, Data, Typeable)
-  
-instance HkAnnotated HkExtBlock where
-  annot (HkExtBlock _ a) = a
-
-
 -- -----------------------------------------------------------------------------
 -- | Hawk Visibility Tag
 --
@@ -334,68 +261,136 @@ instance HkAnnotated HkClassCons where
 -- | Hawk Function Declaration
 --
 -- A function declaration is the header of a function, containing the name, args, and type signature of a function
-type HkFnDecNode = HkFnDec NodeInfo
-data HkFnDec a
+type HkFnNode = HkFn NodeInfo
+data HkFn a
   = HkFnDec
-    { fn_name     :: HkName a
-    , fn_type     :: HkQualType a
-    , fn_annot    :: a
+    { fn_dec_name     :: HkName a
+    , fn_dec_type     :: HkQualType a
+    , fn_dec_annot    :: a
+    }
+  | HkFnDef
+    { fn_def_name     :: HkName a
+    , fn_def_type     :: Maybe (HkQualType a)
+    , fn_def_matches  :: [HkMultiMatch a]
+    , fn_def_annot    :: a
     }
     deriving (Eq, Ord, Show, Data, Typeable)
 
-instance HkAnnotated HkFnDec where
+instance HkAnnotated HkFn where
   annot (HkFnDec _ _ a) = a
-
+  annot (HkFnDef _ _ _ a) = a
+  
 -- -----------------------------------------------------------------------------
--- | Hawk Function definition
+-- | Hawk Binding Declaration
 --
--- A function definition consists of a function declarations along with a block that serves as the body.
-type HkFnDefNode = HkFnDef NodeInfo
-data HkFnDef a
-  = HkFnDef (HkFnDec a) [HkBinding a] a
+-- An binding declaration consists of a pattern and a type.
+-- The pattern will bind to the default values of the given type.
+type HkBindNode = HkBind NodeInfo
+data HkBind a
+  = HkBindDec
+  { bind_dec_name    :: HkPattern a
+  , bind_dec_type    :: HkType a
+  , bind_dec_annot   :: a
+  }
+  | HkBindDef
+  { bind_def_name    :: HkPattern a
+  , bind_def_type    :: Maybe (HkType a)
+  , bind_def_exp     :: HkExp a
+  , bind_def_annot   :: a
+  }
   deriving (Eq, Ord, Show, Data, Typeable)
-  
-instance HkAnnotated HkFnDef where
-  annot (HkFnDef _ _ a) = a
+
+instance HkAnnotated HkBind where
+  annot (HkBindDec _ _ a) = a
+  annot (HkBindDef _ _ _ a) = a
   
 -- -----------------------------------------------------------------------------
--- | Hawk Binding
+-- | Hawk Match
 --
--- This binds a set of patterns to a (guarded) block of code.
-type HkBindingNode = HkBinding NodeInfo
-data HkBinding a
-  = HkBinding
-  { binding_params  :: [HkPattern a]
-  , binding_blocks  :: HkBindingBlock a
-  , binding_annot   :: a
+-- This binds a patterns to a (possibly) guarded block or expression
+type HkMatchNode = HkMatch NodeInfo
+data HkMatch a
+  = HkMatch
+  { match_pat     :: HkPattern a
+  , match_block   :: HkMatchRhs a
+  , match_annot   :: a
   }
   deriving (Eq, Ord, Show, Data, Typeable)
   
-instance HkAnnotated HkBinding where
-  annot (HkBinding _ _ a) = a
+instance HkAnnotated HkMatch where
+  annot (HkMatch _ _ a) = a
+
+-- | Multi-match binds a list of patterns to a (possibly) guarded block or expression
+type HkMultiMatchNode = HkMultiMatch NodeInfo
+data HkMultiMatch a
+  = HkMultiMatch
+  { mul_match_pats    :: [HkPattern a]
+  , mul_match_rhs     :: HkMatchRhs a
+  , mul_match_annot   :: a
+  }
+  deriving (Eq, Ord, Show, Data, Typeable)
   
+instance HkAnnotated HkMultiMatch where
+  annot (HkMultiMatch _ _ a) = a
+
+-- | Right-hand side of a match
+type HkMatchRhsNode = HkMatchRhs NodeInfo
+data HkMatchRhs a
+  = HkMatchBlock  (HkBlock a) a
+  | HkMatchExp    (HkExp a) a
+  | HkMatchGuardedRhs [HkRhsGuard a] a
+  deriving (Eq, Ord, Show, Data, Typeable)
+  
+instance HkAnnotated HkMatchRhs where
+  annot (HkMatchBlock _ a) = a
+  annot (HkMatchExp _ a) = a
+  annot (HkMatchGuardedRhs _ a) = a 
+
 -- -----------------------------------------------------------------------------
 -- | Hawk Patterns
 --
 -- Patterns are used to match data based on it's structure.
 type HkPatternNode = HkPattern NodeInfo
 data HkPattern a
-  = HkPatIdent  (HkName a) a
+  = HkPatIdent  (HkBindingMode a) (HkName a) a
+  | HkPatAlias  (HkBindingMode a) (HkName a) (HkPattern a) a
   | HkPatConst  (HkConst a) a
   | HkPatRec    (HkQName a) [HkPattern a] a
   | HkPatTuple  [HkPattern a] a
-  | HkPatAlias  (HkName a) (HkPattern a) a
+  | HkPatRef    (HkPattern a) (HkMutability a) a
   | HkPatAny    a
   deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkPattern where
-  annot (HkPatIdent _ a) = a
+  annot (HkPatIdent _ _ a) = a
+  annot (HkPatAlias _ _ _ a) = a
   annot (HkPatConst _ a) = a
   annot (HkPatRec _ _ a) = a
   annot (HkPatTuple _ a) = a
-  annot (HkPatAlias _ _ a) = a
+  annot (HkPatRef _ _ a) = a
   annot (HkPatAny a) = a 
+
+-- | Pattern binding mode  
+type HkBindingModeNode = HkBindingMode NodeInfo
+data HkBindingMode a
+  = HkByRef (HkMutability a) a
+  | HkByVal (HkMutability a)
+  deriving (Eq, Ord, Show, Data, Typeable)
   
+instance HkAnnotated HkBindingMode where
+  annot (HkByRef _ a) = a
+  annot (HkByVal n) = annot n
+  
+-- | Binding mutability
+type HkMutabilityNode = HkMutability NodeInfo
+data HkMutability a
+  = HkMutable a
+  | HkImmutable a
+  deriving (Eq, Ord, Show, Data, Typeable)
+
+instance HkAnnotated HkMutability where
+  annot (HkMutable a) = a
+  annot (HkImmutable a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Guards
@@ -411,130 +406,16 @@ instance HkAnnotated HkGuard where
   annot (HkGuardExp _ a) = a
   annot (HkGuardAny a) = a 
 
--- -----------------------------------------------------------------------------
--- | Hawk Binding block
---
--- Guards are a boolean expression that sits in front of a block of code.
-type HkBindingBlockNode = HkBindingBlock NodeInfo
-data HkBindingBlock a
-  = HkBindingBlock (HkBlock a) a
-  | HkBindingExp  (HkExp a) a
-  | HkGuardedBindingBlock [HkGuardedBlock a] a
-  deriving (Eq, Ord, Show, Data, Typeable)
-  
-instance HkAnnotated HkBindingBlock where
-  annot (HkBindingBlock _ a) = a
-  annot (HkBindingExp _ a) = a
-  annot (HkGuardedBindingBlock _ a) = a 
-
--- Binding blocks can be guarded
-type HkGuardedBlockNode = HkGuardedBlock NodeInfo
-data HkGuardedBlock a
+-- | Guarded right-hand side of a match
+type HkRhsGuardNode = HkRhsGuard NodeInfo
+data HkRhsGuard a
   = HkGuardedBlock (HkGuard a) (HkBlock a) a
   | HkGuardedExp   (HkGuard a) (HkExp a) a
   deriving (Eq, Ord, Show, Data, Typeable)
   
-instance HkAnnotated HkGuardedBlock where
+instance HkAnnotated HkRhsGuard where
   annot (HkGuardedBlock _ _ a) = a
   annot (HkGuardedExp _ _ a) = a
-
--- -----------------------------------------------------------------------------
--- | Hawk Object Declaration
---
--- An object declaration declares a variable or value with a name and a type
---
--- Objects in Hawk are not like objects in most programming languages.
--- Hawk objects are variables or values that represent some data in memory.
--- Hawk objects have nothing to do with object oriented programming. 
-type HkObjDecNode = HkObjDec NodeInfo
-data HkObjDec a
-  = HkObjDec
-  { obj_name    :: HkName a
-  , obj_type    :: HkType a
-  , obj_annot   :: a
-  }
-  deriving (Eq, Ord, Show, Data, Typeable)
-
-instance HkAnnotated HkObjDec where
-  annot (HkObjDec _ _ a) = a
-
--- -----------------------------------------------------------------------------
--- | Hawk Object Definition
---
--- A object Definition is used to bind an identifier to an expression.
-type HkObjDefNode = HkObjDef NodeInfo
-data HkObjDef a
-  = HkObjDef (HkObjDec a) (HkExp a) a
-  deriving (Eq, Ord, Show, Data, Typeable)
-
-instance HkAnnotated HkObjDef where
-  annot (HkObjDef _ _ a) = a
-
--- -----------------------------------------------------------------------------
--- | Hawk Value Declaration
---
---
--- A hawk value represents an immutable binding (i.e. cannot be changed).
---
--- A Hawk value declaration is contains a binding declaration, and brings a value into existance.
---
--- Usually, value declarations are disallowed, as values cannot be changed and should be assigned
--- immediatly. However, some special cases, like record constructors, allow bindings to be declared
--- and given a value later.
---
-type HkValDecNode = HkValDec NodeInfo
-data HkValDec a
-  = HkValDec (HkObjDec a) a
-  deriving (Eq, Ord, Show, Data, Typeable)
-  
-instance HkAnnotated HkValDec where
-  annot (HkValDec _ a) = a
-
--- -----------------------------------------------------------------------------
--- | Hawk Value Definiton
---
--- A hawk value represents an immutable binding (i.e. cannot be changed).
---
--- A hawk value definition is a contains a binding definition.
-type HkValDefNode = HkValDef NodeInfo
-data HkValDef a
-  = HkValDef (HkObjDef a) a
-  deriving (Eq, Ord, Show, Data, Typeable)
-  
-instance HkAnnotated HkValDef where
-  annot (HkValDef _ a) = a
-
--- -----------------------------------------------------------------------------
--- | Hawk Variable Declaration
---
--- A variable represents a mutable binding (i.e. can be changed).
---
--- A hawk variable declaration contains a binding declaration.
---
--- A variable declaration will be initialized with the default value of it's type.
---
-type HkVarDecNode = HkVarDec NodeInfo
-data HkVarDec a
-  = HkVarDec (HkObjDec a) a
-  deriving (Eq, Ord, Show, Data, Typeable)
-
-instance HkAnnotated HkVarDec where
-  annot (HkVarDec _ a) = a
-
--- -----------------------------------------------------------------------------  
--- | Hawk Variable Definition
---
--- A variable represents a mutable binding (i.e. can be changed).
---
--- A hawk variable definition contains a binding definition.
---
-type HkVarDefNode = HkVarDef NodeInfo
-data HkVarDef a
-  = HkVarDef (HkObjDef a) a
-  deriving (Eq, Ord, Show, Data, Typeable)
-  
-instance HkAnnotated HkVarDef where
-  annot (HkVarDef _ a) = a
 
 -- -----------------------------------------------------------------------------  
 -- | Hawk Type Definition
@@ -655,13 +536,11 @@ instance HkAnnotated HkClassDef where
 -- If defined, that function serves as the default unless overriden.
 type HkClassMemberNode = HkClassMember NodeInfo
 data HkClassMember a
-  = HkClassMemberDec (HkVisibilityTag a) (HkFnDec a) a
-  | HkClassMemberDef (HkVisibilityTag a) (HkFnDef a) a
+  = HkClassMember (HkVisibilityTag a) (HkFn a) a
   deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkClassMember where
-  annot (HkClassMemberDec _ _ a) = a
-  annot (HkClassMemberDef _ _ a) = a
+  annot (HkClassMember _ _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Class Instance
@@ -686,11 +565,11 @@ instance HkAnnotated HkClassInstDef where
 -- If defined, that function serves as the default unless overriden.
 type HkClassInstMemberNode = HkClassInstMember NodeInfo
 data HkClassInstMember a
-  = HkClassInstMemberDef (HkVisibilityTag a) (HkFnDef a) a
+  = HkClassInstMember (HkVisibilityTag a) (HkFn a) a
   deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkClassInstMember where
-  annot (HkClassInstMemberDef _ _ a) = a
+  annot (HkClassInstMember _ _ a) = a
 
 -- -----------------------------------------------------------------------------
 -- | Hawk Block
@@ -713,14 +592,12 @@ data HkBlockStmt a
   = HkStmtBlock (HkBlock a) a
   | HkStmtExp (HkExp a) a
   
-  | HkStmtValDef (HkValDef a) a
-  | HkStmtVarDec (HkVarDec a) a
-  | HkStmtVarDef (HkVarDef a) a
+  | HkStmtBind (HkBind a)
   | HkStmtAssign (HkQName a) (HkExp a) a
   
   | HkStmtReturn (HkExp a) a
   
-  | HkStmtCase (HkExp a) [HkBinding a] a
+  | HkStmtMatch (HkExp a) [HkMatch a] a
   
   | HkStmtIf (HkExp a) (HkBlock a) (HkBlockStmt a) a
   | HkStmtElse (HkBlock a) a
@@ -739,14 +616,12 @@ instance HkAnnotated HkBlockStmt where
   annot (HkStmtBlock _ a) = a
   annot (HkStmtExp _ a) = a
   
-  annot (HkStmtValDef _ a) = a
-  annot (HkStmtVarDec _ a) = a
-  annot (HkStmtVarDef _ a) = a
+  annot (HkStmtBind n) = annot n
   annot (HkStmtAssign _ _ a) = a
   
   annot (HkStmtReturn _ a) = a
   
-  annot (HkStmtCase _ _ a) = a
+  annot (HkStmtMatch _ _ a) = a
   
   annot (HkStmtIf _ _ _ a) = a
   annot (HkStmtElse _ a) = a
@@ -759,10 +634,10 @@ instance HkAnnotated HkBlockStmt where
   annot (HkStmtForEachIx _ _ _ _ _ a) = a
   
   annot (HkStmtEmpty a) = a
+  
 
- 
 data HkForInit a
-  = HkForLocalVars [HkVarDec a] a 
+  = HkForLocalVars [HkBind a] a 
   | HkForInitExps  [HkExp a] a
   deriving (Eq, Ord, Show, Data, Typeable)
 
@@ -959,3 +834,79 @@ instance HkAnnotated HkUnaryOp where
   annot (HkMinOp a) = a
   annot (HkCompOp a) = a
   annot (HkNegOp a) = a
+  
+-- ----------------------------------------------------------------------------- 
+-- Hawk Identifiers
+  
+-- | A path of modules is composed of a list of module names.
+type HkModPathNode = HkModPath NodeInfo
+data HkModPath a
+  = HkModPath [HkName a] a
+  deriving (Eq, Ord, Data, Typeable)
+  
+instance Show (HkModPath a) where
+  show (HkModPath ns _)
+    = foldl' (\l n -> l ++ show n) [] ns
+
+instance HkAnnotated HkModPath where
+  annot (HkModPath _ a) = a
+
+-- | A qualified name is used to represent qualified functions, variables, and
+-- constructors.
+type HkQNameNode = HkQName NodeInfo
+data HkQName a
+  = HkQual (HkModPath a) (HkName a) a     -- ^ name qualiied with a module name
+  | HkUnQual (HkName a)                   -- ^ unqualified name
+  deriving (Eq, Ord, Show, Data, Typeable)
+  
+instance HkAnnotated HkQName where
+  annot (HkQual _ _ a) = a
+  annot (HkUnQual n) = annot n
+
+-- | A name represents variables, types and constructors.
+type HkNameNode = HkName NodeInfo
+data HkName a
+  = HkIdent !String a     -- ^ /varid/ or /conid/
+  | HkSymbol !String a    -- ^ /varsym/ or /consym/
+  deriving (Eq, Ord, Data, Typeable)
+
+instance Show (HkName a) where
+  show (HkIdent s _) = s
+  show (HkSymbol s _) = "(" ++ s ++ ")"
+
+instance HkAnnotated HkName where
+  annot (HkIdent _ a) = a
+  annot (HkSymbol _ a) = a
+  
+-- | Used for infix operators that can be qualified, appearing in expressions.
+type HkQOpNode = HkQOp NodeInfo
+data HkQOp a
+  = HkQVarOp (HkQName a)  -- ^ Variable Operator /(qvarop)/
+  | HkQConOp (HkQName a)  -- ^ Constructor Operator /(qconop)/
+  deriving (Eq, Ord, Show, Data, Typeable)
+  
+instance HkAnnotated HkQOp where
+  annot (HkQVarOp n) = annot n
+  annot (HkQConOp n) = annot n
+
+-- | Operators, which appear in infix declarations.
+type HkOpNode = HkOp NodeInfo
+data HkOp a
+  = HkVarOp (HkName a)  -- ^ variable operator /(varop)/
+  | HkConOp (HkName a)  -- ^ constructor operator /(conop)/
+  deriving (Eq, Ord, Show, Data, Typeable)
+
+instance HkAnnotated HkOp where
+  annot (HkVarOp n) = annot n
+  annot (HkConOp n) = annot n
+  
+-- | A name of a component of a class or data type.
+type HkCNameNode = HkCName NodeInfo
+data HkCName a
+  = HkVarName (HkName a)    -- ^ name of a method or field
+  | HkConName (HkName a)    -- ^ name of a data constructor
+  deriving (Eq, Ord, Show, Data, Typeable)
+  
+instance HkAnnotated HkCName where
+  annot (HkVarName n) = annot n
+  annot (HkConName n) = annot n

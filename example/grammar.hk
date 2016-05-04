@@ -29,9 +29,11 @@ data FooBar a e
 
 type IntVector = Vector I32
 
-val blueberry :: i32 = { 21312 }
-var raspberry :: i32 = { -123 }
-var blackberry :: f64 = { 312.3 }
+
+let strawberry :: Berry
+let blueberry :: i32 = { 21312 }
+let !raspberry :: i32 = { -123 }
+let blackberry :: f64 = { 312.3 }
 
 class Berry a : {
   fn squish :: a -> ()

@@ -38,6 +38,7 @@ library
                         -fno-warn-unused-do-bind
                         -fno-warn-unused-imports
                         -fno-warn-type-defaults
+                        -fno-warn-orphans
 
   hs-source-dirs:       src
 
@@ -75,6 +76,7 @@ executable              hkc
                         -fno-warn-unused-do-bind
                         -fno-warn-unused-imports
                         -fno-warn-type-defaults
+                        -fno-warn-orphans
 
 test-suite spec
   default-language:     Haskell2010

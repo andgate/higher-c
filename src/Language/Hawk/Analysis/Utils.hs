@@ -11,6 +11,6 @@ evalType t = undefined
 mkFnParam :: HkType a -> (String, HkType a)
 mkFnParam t =  undefined
 
-findExtFns :: (Data.Data.Data a) => HkTranslUnit a -> [HkExtStmt a]
+findExtFns :: (Data.Data.Data a) => HkTranslUnit a -> [HkItem a]
 findExtFns ast
-  = [fn | fn@(HkExtFnDef _ _ _) <- universeBi ast]
+  = [fn | fn@(HkItemFn _) <- universeBi ast]

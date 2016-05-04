@@ -93,8 +93,7 @@ $tab                            ;
   "class"                       { lex' TokenClass }
   "inst"                        { lex' TokenInst }
   "fn"                          { lex' TokenFunction }
-  "val"                         { lex' TokenValue }
-  "var"                         { lex' TokenVariable }
+  "let"                         { lex' TokenLet }
   
   "do"                          { lex' TokenDo }
   "return"                      { lex' TokenReturn }
@@ -106,7 +105,7 @@ $tab                            ;
   "while"                       { lex' TokenWhile }
   "for"                         { lex' TokenFor }
   "in"                          { lex' TokenIn }
-  "case"                        { lex' TokenCase }
+  "match"                       { lex' TokenMatch }
   "of"                          { lex' TokenOf }
   
   "()"                          { lex' TokenParenPair }
@@ -189,6 +188,8 @@ $tab                            ;
   @id_cap_uscore_num_tick       { lex TokenIdCapUScoreNumTick }
   @id_lower                     { lex TokenIdLower }
   @id_uscore_num_tick           { lex TokenIdUScoreNumTick }
+  
+  
   
   @integer                      { lex (TokenInteger . read) }
   @double                       { lex (TokenDouble . read) }
@@ -335,8 +336,7 @@ data TokenClass
   | TokenClass
   | TokenInst
   | TokenFunction
-  | TokenValue
-  | TokenVariable
+  | TokenLet
   
   | TokenDo
   | TokenReturn
@@ -348,7 +348,7 @@ data TokenClass
   | TokenWhile
   | TokenFor
   | TokenIn
-  | TokenCase
+  | TokenMatch
   | TokenOf
   
   | TokenParenPair
@@ -430,6 +430,17 @@ data TokenClass
   | TokenIdCapUscore String
   | TokenIdUScoreNumTick String
   | TokenIdCapUScoreNumTick String
+  
+  
+  | TokenI8 Integer
+  | TokenI16 Integer
+  | TokenI32 Integer
+  | TokenI64 Integer
+  | TokenF16 Double
+  | TokenF32 Double
+  | TokenF64 Double
+  | TokenF80 Double
+  | TokenF128 Double
   
   | TokenInteger Integer
   | TokenDouble Double

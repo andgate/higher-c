@@ -66,22 +66,14 @@ class Emit a where
   emit :: a -> LLVM () 
 
 instance Emit (HkTranslUnit a) where
-  emit (HkTranslUnit r _) =
-    emit r
-  
-instance Emit (HkRootModule a) where
-  emit (HkRootModule n stmts _) = do
-    llmod . _moduleName .= show n
-    mapM_ emit stmts
+  emit (HkTranslUnit (HkMod path (HkModBlock items _) _)) = do
+    llmod . _moduleName .= show path
+    mapM_ emit items
     
-instance Emit (HkExtStmt a) where
-  emit (HkExtFnDef vis fndef _) = do
-    return ()
-  emit (HkExtTypeDef _ tydef _) = emit tydef
+instance Emit (HkModItem a) where
   emit _ = return ()
 
 instance Emit (HkTypeDef a) where
-  emit (HkTyRecDef r) = emit r
   emit _ = return ()
   
 instance Emit (HkRecDef a) where

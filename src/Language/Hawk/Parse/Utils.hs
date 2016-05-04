@@ -17,3 +17,11 @@ checkAssertion = checkAssertion' []
     checkAssertion' ts (HkTyCon c a) = HkClassAsst c ts (nodeInfo a <> nodesInfo ts)
     checkAssertion' ts (HkTyApp ap t _) = checkAssertion' (t:ts) ap
     checkAssertion' _ t = error $ showNode t ++ ": Illegal class assertion." 
+    
+mkFn :: (HkNameNode, Maybe HkQualTypeNode) -> [HkMultiMatchNode] -> HkFnNode
+mkFn (n, Nothing) [] = error $ showNode n ++ ": Function declared without a type."
+mkFn (n, Just t) [] = HkFnDec n t (nodeInfo n <> nodeInfo t)
+mkFn (n, t) ms = HkFnDef n t ms (nodeInfo n <> nodesInfo ms )
+
+mkBind :: HkFnNode
+mkBind = undefined
