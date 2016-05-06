@@ -12,7 +12,6 @@ import Data.Int
 import qualified Data.Map as Map
 import Data.Word
 
-import Language.Hawk.Analysis.Utils
 import Language.Hawk.Data.Emittable
 import Language.Hawk.Target.LLVM.Codegen
 
@@ -77,23 +76,13 @@ instance Emittable Core.Item (LLVM ()) where
     where
       retty' = emit retty
       params' = map emit params
-        --error "Function block generation not implemented." 
-        {- createBlocks $ execCodegen $ do
-        entry <- addBlock entryBlockName
-        setBlock entry
-        forM args $ \a -> do
-          var <- alloca double
-          store var (local (AST.Name a))
-          llassign a var
-        cgen body >>= ret
-        -}
 
-genBlocks :: [AST.Parameter] -> [Core.Expr] -> LLVM [AST.BasicBlock]
+genBlocks :: [AST.Parameter] -> Core.Expr -> LLVM [AST.BasicBlock]
 genBlocks params body = do
   startBlocks
   -- allocate parameters
   mapM genParam params
-  mapM emit body
+  emit body
   endBlocks
   
 genParam :: AST.Parameter -> LLVM ()
@@ -108,7 +97,30 @@ instance Emittable Core.Param AST.Parameter where
           name' = AST.Name name
 
 instance Emittable Core.Expr (LLVM ()) where
+  emit (Core.Var x)
+    = getvar x >>= load >>= setVal
+    
+  emit (Core.Const c)
+    = setVal $ cons $ emit c
+    
   emit _ = error "Codegen Error: Expression emission not implemented."
+
+
+instance Emittable Core.Constant C.Constant where
+  emit Core.ConstVoid = C.Null $ Ty.void 
+  emit (Core.ConstBool v)  = error "Codegen Error: String Constant is not implemented."
+  emit (Core.ConstW8   i)  = error "Codegen Error: String Constant is not implemented."
+  emit (Core.ConstW16  i)  = error "Codegen Error: String Constant is not implemented."
+  emit (Core.ConstW32  i)  = error "Codegen Error: String Constant is not implemented."
+  emit (Core.ConstW64  i)  = error "Codegen Error: String Constant is not implemented."
+  emit (Core.ConstI8   i)  = error "Codegen Error: String Constant is not implemented."
+  emit (Core.ConstI16  i)  = error "Codegen Error: String Constant is not implemented."
+  emit (Core.ConstI32  i)  = error "Codegen Error: String Constant is not implemented."
+  emit (Core.ConstI64  i)  = error "Codegen Error: String Constant is not implemented."
+  emit (Core.ConstF32  f)  = error "Codegen Error: String Constant is not implemented."
+  emit (Core.ConstF64  f)  = error "Codegen Error: String Constant is not implemented."
+  emit (Core.ConstChar c)  = error "Codegen Error: String Constant is not implemented."
+  emit (Core.ConstString s) = error "Codegen Error: String Constant is not implemented."
 
 -------------------------------------------------------------------------------
 -- Type Emission

@@ -268,7 +268,7 @@ data HkFn a
   | HkFnDef
     { fn_def_name     :: HkName a
     , fn_def_type     :: Maybe (HkQualType a)
-    , fn_def_matches  :: [HkMultiMatch a]
+    , fn_def_matches  :: HkMultiMatch a
     , fn_def_annot    :: a
     }
     deriving (Eq, Ord, Show, Data, Typeable)
@@ -304,31 +304,50 @@ instance HkAnnotated HkBind where
 -- -----------------------------------------------------------------------------
 -- | Hawk Match
 --
--- This binds a patterns to a (possibly) guarded block or expression
+-- A match binds a pattern to a (possibly) guarded block or expression
 type HkMatchNode = HkMatch NodeInfo
 data HkMatch a
-  = HkMatch
-  { match_pat     :: HkPattern a
-  , match_block   :: HkMatchRhs a
-  , match_annot   :: a
-  }
+  = HkMatch [HkMatchArm a] a
   deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkMatch where
-  annot (HkMatch _ _ a) = a
+  annot (HkMatch _ a) = a
 
--- | Multi-match binds a list of patterns to a (possibly) guarded block or expression
+-- | An arm of a match
+type HkMatchArmNode = HkMatchArm NodeInfo
+data HkMatchArm a
+  = HkMatchArm (HkPattern a) (HkMatchRhs a) a
+  deriving (Eq, Ord, Show, Data, Typeable)
+
+instance HkAnnotated HkMatchArm where
+  annot (HkMatchArm _ _ a) = a 
+
+-- | Multi-match has arms that accept multiple patterns.
+-- Functions use a multi-match for pattern matching arguments.
 type HkMultiMatchNode = HkMultiMatch NodeInfo
 data HkMultiMatch a
-  = HkMultiMatch
-  { mul_match_pats    :: [HkPattern a]
-  , mul_match_rhs     :: HkMatchRhs a
-  , mul_match_annot   :: a
+  = HkMultiMatch 
+  { mm_arms :: [HkMultiMatchArm a]
+  , mm_annot :: a
   }
   deriving (Eq, Ord, Show, Data, Typeable)
   
 instance HkAnnotated HkMultiMatch where
-  annot (HkMultiMatch _ _ a) = a
+  annot (HkMultiMatch _ a) = a
+
+-- | An arm of a multi-match
+type HkMultiMatchArmNode = HkMultiMatchArm NodeInfo
+data HkMultiMatchArm a
+  = HkMultiMatchArm 
+  { mm_arm_pats :: [HkPattern a]
+  , mm_arm_rhs  :: (HkMatchRhs a)
+  , mm_arm_annot :: a
+  }
+  deriving (Eq, Ord, Show, Data, Typeable)
+  
+instance HkAnnotated HkMultiMatchArm where
+  annot (HkMultiMatchArm _ _ a) = a 
+    
 
 -- | Right-hand side of a match
 type HkMatchRhsNode = HkMatchRhs NodeInfo
@@ -603,8 +622,8 @@ data HkBlockStmt a
   | HkStmtDoWhile (HkExp a) (HkBlock a) a
   
   | HkStmtFor       (Maybe (HkForInit a))   (Maybe (HkExp a))   (Maybe (HkExp a))  (HkBlock a) a
-  | HkStmtForEach   (HkName a) (HkExp a)  (HkBlock a) (HkBlock a) a
-  | HkStmtForEachIx (HkName a) (HkName a) (HkExp a)   (HkBlock a) (HkBlock a) a
+  | HkStmtForEach   (HkName a) (HkExp a)  (HkBlock a) a
+  | HkStmtForEachIx (HkName a) (HkName a) (HkExp a) (HkBlock a) a
   
   | HkStmtEmpty a
   deriving (Eq, Ord, Show, Data, Typeable)
@@ -627,8 +646,8 @@ instance HkAnnotated HkBlockStmt where
   annot (HkStmtDoWhile _ _ a) = a
   
   annot (HkStmtFor _ _ _ _ a) = a
-  annot (HkStmtForEach _ _ _ _ a) = a
-  annot (HkStmtForEachIx _ _ _ _ _ a) = a
+  annot (HkStmtForEach _ _ _ a) = a
+  annot (HkStmtForEachIx _ _ _ _ a) = a
   
   annot (HkStmtEmpty a) = a
   

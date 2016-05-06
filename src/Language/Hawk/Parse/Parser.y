@@ -405,8 +405,8 @@ fn_dec :: { HkFnNode }
   : FN varid '::' ctype                     { HkFnDec $2 $4 (nodeInfo $1 <> nodeInfo $4) }
   
 fn_def :: { HkFnNode }
-  : FN varid '::' ctype multi_matches       { HkFnDef $2 (Just $4) $5 (nodeInfo $1 <> nodesInfo $5) }
-  | FN varid multi_matches                  { HkFnDef $2 Nothing $3 (nodeInfo $1 <> nodesInfo $3) }
+  : FN varid '::' ctype multi_match         { HkFnDef $2 (Just $4) $5 (nodeInfo $1 <> nodeInfo $5) }
+  | FN varid multi_match                    { HkFnDef $2 Nothing $3 (nodeInfo $1 <> nodeInfo $3) }
 
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Binding"
@@ -505,15 +505,24 @@ inst_member  :: { HkClassInstMemberNode }
 -- -----------------------------------------------------------------------------
 -- Hawk Parser "Pattern Match"
 
-multi_matches :: { [HkMultiMatchNode] }
-  : multi_match                             { [$1] }
-  | multi_matches multi_match               { $1 ++ [$2] }
-  
 multi_match :: { HkMultiMatchNode }
-  : '|' patterns match_rhs                  { HkMultiMatch $2 $3 (nodeInfo $1 <> nodeInfo $3) }
+  : multi_match_arms                        { HkMultiMatch $1 (nodesInfo $1) }
+  | multi_match_arm1                        { HkMultiMatch [$1] (nodeInfo $1) }
+
+
+multi_match_arms :: { [HkMultiMatchArmNode] }
+  : multi_match_arm                         { [$1] }
+  | multi_match_arms multi_match_arm        { $1 ++ [$2] }
+
+multi_match_arm :: { HkMultiMatchArmNode }
+  : '|' patterns match_rhs                  { HkMultiMatchArm $2 $3 (nodeInfo $1 <> nodeInfo $3) }
   
-match :: { HkMatchNode }
-  : pattern match_rhs                       { HkMatch $1 $2 (nodeInfo $1 <> nodeInfo $2) }
+multi_match_arm1 :: { HkMultiMatchArmNode }
+  : patterns match_rhs                      { HkMultiMatchArm $1 $2 (nodesInfo $1 <> nodeInfo $2) }
+
+
+match_arm :: { HkMatchArmNode }
+  : pattern match_rhs                       { HkMatchArm $1 $2 (nodeInfo $1 <> nodeInfo $2) }
 
 match_rhs :: { HkMatchRhsNode }
   : ':' block                               { HkMatchBlock $2 (nodeInfo $1 <> nodeInfo $2) }

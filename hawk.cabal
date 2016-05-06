@@ -30,6 +30,7 @@ library
                         , llvm-general         >= 3.5.0.0
                         , llvm-general-pure    >= 3.5.0
                         , mtl
+                        , safe
                         , syb
                         , text
 
@@ -42,9 +43,7 @@ library
 
   hs-source-dirs:       src
 
-  exposed-modules:      Language.Hawk.Analysis.Utils
-  
-                        Language.Hawk.Core.AST
+  exposed-modules:      Language.Hawk.Core.AST
                         Language.Hawk.Core.Emit
               
                         Language.Hawk.Data.Emittable

@@ -295,7 +295,15 @@ getvar var = do
     Just x  -> return x
     Nothing -> error $ "Local variable not in scope: " ++ show var
     
-    
+getVal :: LLVM (Maybe Operand)
+getVal = do
+  c <- current
+  return $ _blkVal c
+
+setVal :: Operand -> LLVM ()
+setVal op = do
+  c <- current
+  modifyBlock $ c & blkVal .~ Just op
 -------------------------------------------------------------------------------
 
 -- References

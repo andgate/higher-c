@@ -33,7 +33,7 @@ data Item
   = ItemLinkFn FnDecl
   -- A function item is just a function declaration with an associated
   -- list of statements. Function declarations are not allowed.
-  | ItemFn FnDecl [Expr]
+  | ItemFn FnDecl Expr
   -- A variable item declares a variable and initializes it
   -- with the result of a given function.
   | ItemVar VarDecl Expr
@@ -82,10 +82,31 @@ data Expr
   = Var String
   | Const Constant
   | Call String [Expr]
+  
+  | Block [Expr]
+  | Return Expr
+  | Loop Expr
+  | Break
+  
   | BinOp BinaryOp Expr Expr
   | UnOp UnaryOp Expr Expr
+  
+  | If Expr Expr Expr
+  
+  | Let String Expr
+  
+  | Case Expr [Arm]
+  
   deriving (Eq, Ord, Show, Data, Typeable)
   
+
+data Arm 
+  = Arm ArmCon Expr
+  deriving (Eq, Ord, Show, Data, Typeable)
+  
+data ArmCon
+  = VarArm String | ConstArm Constant | DefaultArm
+  deriving (Eq, Ord, Show, Data, Typeable)
   
 data Constant
   = ConstVoid
