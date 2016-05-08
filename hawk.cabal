@@ -20,19 +20,24 @@ source-repository head
 library
   default-language:     Haskell2010
 
-  build-depends:        base
+  build-depends:        aeson
+                        , ansi-wl-pprint
                         , array
+                        , base
+                        , binary
                         , bytestring
                         , containers
                         , convertible
+                        , filepath
                         , lens
-                        , uniplate
                         , llvm-general         >= 3.5.0.0
                         , llvm-general-pure    >= 3.5.0
                         , mtl
+                        , parsec
                         , safe
                         , syb
                         , text
+                        , uniplate
 
   ghc-options:          -Wall
                         -fno-warn-unused-binds
@@ -43,9 +48,14 @@ library
 
   hs-source-dirs:       src
 
-  exposed-modules:      Language.Hawk.Core.AST
+  exposed-modules:      Language.Hawk.Compile.Package
+                        Language.Hawk.Compile.Compiler.Type
+                        Language.Hawk.Compile.Compiler.Version
+  
+                        Language.Hawk.Core.AST
                         Language.Hawk.Core.Emit
               
+                        Language.Hawk.Data.Bag
                         Language.Hawk.Data.Emittable
                         Language.Hawk.Data.Node
                         Language.Hawk.Data.Span
@@ -54,10 +64,30 @@ library
                         Language.Hawk.Parse.Lexer
                         Language.Hawk.Parse.Utils
                       
+                        Language.Hawk.Report.Annotation
+                        Language.Hawk.Report.Region
+                        Language.Hawk.Report.Render.Code
+                        Language.Hawk.Report.Report
+                        Language.Hawk.Report.Result
+                      
                         Language.Hawk.Syntax.AST
+                        Language.Hawk.Syntax.Expression.Canonical
+                        Language.Hawk.Syntax.Expression.General
+                        Language.Hawk.Syntax.Expression.Source
+                        Language.Hawk.Syntax.Expression.Valid
+                        Language.Hawk.Syntax.Helpers
+                        Language.Hawk.Syntax.Item
+                        Language.Hawk.Syntax.Literal
+                        Language.Hawk.Syntax.Module
+                        Language.Hawk.Syntax.Module.Name
+                        Language.Hawk.Syntax.Pattern
+                        Language.Hawk.Syntax.Type
+                        Language.Hawk.Syntax.Variable
                         
                         Language.Hawk.Target.LLVM.Codegen
                         Language.Hawk.Target.LLVM.Emit
+                        
+                        Paths_hawk
                         
 
   build-tools:          alex, happy
