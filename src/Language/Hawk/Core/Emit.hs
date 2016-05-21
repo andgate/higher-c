@@ -10,7 +10,7 @@ import Language.Hawk.Data.Emittable
 import Language.Hawk.Data.Node
 
 import qualified Language.Hawk.Core.AST as Core
-import qualified Language.Hawk.Syntax.AST as Syn
+import qualified Language.Hawk.AST.AST as Syn
 
 
 -- -----------------------------------------------------------------------------

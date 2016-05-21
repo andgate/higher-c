@@ -1,0 +1,1 @@
+module Language.Hawk.AST.Class where

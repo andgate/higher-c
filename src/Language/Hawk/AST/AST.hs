@@ -1,5 +1,8 @@
+-- This is the last, more comprehensive AST of Hawk that's been cooked up.
+-- Currently, this is not included in the source code, but remains as a
+-- reference for future development.
 {-# LANGUAGE FlexibleInstances, DeriveDataTypeable #-}
-module Language.Hawk.Syntax.AST where
+module Language.Hawk.AST.AST where
 
 import Language.Hawk.Data.Node
 

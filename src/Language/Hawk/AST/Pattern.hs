@@ -1,46 +1,30 @@
-module Language.Hawk.Syntax.Pattern where
+module Language.Hawk.AST.Pattern where
 
 import qualified Data.Set as Set
 
-import qualified Language.Hawk.Syntax.Literal as L
-import qualified Language.Hawk.Syntax.Variable as Var
+import qualified Language.Hawk.AST.Literal as L
+import qualified Language.Hawk.AST.Name as Name
 import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
-
-
-type Pattern ann var =
-  A.Annotated ann (Pattern' ann var)
-  
-  
-data Pattern' ann var
-  = Data var [Pattern ann var]
-  | Record [String]
-  | Alias BindingMode String (Pattern ann var)
-  | Var BindingMode String
-  | Anything
-  | Literal L.Literal
-
-  
-data BindingMode
-  = ByRef Mutability
-  | ByVal Mutability
-  
-data Mutability
-  = Mutable
-  | Immutable
 
 
 type Raw =
   Pattern R.Region Var.Raw
   
-
-type Raw' =
-  Pattern' R.Region Var.Raw
-  
-  
 type Canonical =
   Pattern R.Region Var.Canonical
+
+
+data Pattern n a
+  = Ident (BindingMode a) n a
+  | Alias (BindingMode a) n (Pattern n a) a
+  | Lit (L.Literal a)
+  | Rec n [Pattern n a] a
+  | Tuple [Pattern n a] a
+  | Any a
+
   
+
 
 isVar :: String -> Pattern ann var -> Bool
 isVar name (A.A _ pattern) =

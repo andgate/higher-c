@@ -3,6 +3,7 @@ module Language.Hawk.Report.Region where
 
 import Data.Aeson ((.=))
 import qualified Data.Aeson as Json
+import Data.Binary
 import qualified Text.Parsec.Pos as Parsec
 
 
@@ -20,6 +21,7 @@ data Position
     , column  :: Int
     }
     deriving (Eq, Show)
+    
     
 fromSourcePos :: Parsec.SourcePos -> Position
 fromSourcePos sourcePos =
@@ -58,3 +60,18 @@ instance Json.ToJSON Position where
       [ "line"    .= line
       , "column"  .= column
       ]
+      
+      
+instance Binary Region where
+  put r =
+    put (start r) >> put (end r)
+    
+  get = Region <$> get <*> get
+  
+
+instance Binary Position where
+  put p =
+    put (line p) >> put (column p)
+    
+  get =
+    Position <$> get <*> get

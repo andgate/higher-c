@@ -25,18 +25,23 @@ library
                         , array
                         , base
                         , binary
+                        , bound
                         , bytestring
                         , containers
                         , convertible
+                        , edit-distance
                         , filepath
+                        , indents
                         , lens
                         , llvm-general         >= 3.5.0.0
                         , llvm-general-pure    >= 3.5.0
                         , mtl
                         , parsec
+                        , parsers
                         , safe
                         , syb
                         , text
+                        , trifecta
                         , uniplate
 
   ghc-options:          -Wall
@@ -48,12 +53,30 @@ library
 
   hs-source-dirs:       src
 
-  exposed-modules:      Language.Hawk.Compile.Package
+  exposed-modules:      Language.Hawk.AST.Alias
+                        Language.Hawk.AST.Class
+                        Language.Hawk.AST.Binder
+                        Language.Hawk.AST.Expression
+                        Language.Hawk.AST.Function
+                        Language.Hawk.AST.Helpers
+                        Language.Hawk.AST.Instance
+                        Language.Hawk.AST.Items
+                        Language.Hawk.AST.Literal
+                        Language.Hawk.AST.Module
+                        Language.Hawk.AST.ModuleName
+                        Language.Hawk.AST.Name
+                        Language.Hawk.AST.Record
+                        Language.Hawk.AST.Statement
+                        Language.Hawk.AST.Type
+                        
+                        -- Old AST
+                        Language.Hawk.AST.AST
+                        
+                        
+                        Language.Hawk.Compile
+                        Language.Hawk.Compile.Package
                         Language.Hawk.Compile.Compiler.Type
                         Language.Hawk.Compile.Compiler.Version
-  
-                        Language.Hawk.Core.AST
-                        Language.Hawk.Core.Emit
               
                         Language.Hawk.Data.Bag
                         Language.Hawk.Data.Emittable
@@ -62,37 +85,31 @@ library
                         
                         Language.Hawk.Parse.Parser
                         Language.Hawk.Parse.Lexer
-                        Language.Hawk.Parse.Utils
+                        
+                        Language.Hawk.Parse
                       
                         Language.Hawk.Report.Annotation
+                        Language.Hawk.Report.Error
+                        Language.Hawk.Report.Error.Helpers
+                        Language.Hawk.Report.Error.Syntax
                         Language.Hawk.Report.Region
-                        Language.Hawk.Report.Render.Code
+                        --Language.Hawk.Report.Render.Code
+                        --Language.Hawk.Report.Render.Type
                         Language.Hawk.Report.Report
                         Language.Hawk.Report.Result
-                      
-                        Language.Hawk.Syntax.AST
-                        Language.Hawk.Syntax.Expression.Canonical
-                        Language.Hawk.Syntax.Expression.General
-                        Language.Hawk.Syntax.Expression.Source
-                        Language.Hawk.Syntax.Expression.Valid
-                        Language.Hawk.Syntax.Helpers
-                        Language.Hawk.Syntax.Item
-                        Language.Hawk.Syntax.Literal
-                        Language.Hawk.Syntax.Module
-                        Language.Hawk.Syntax.Module.Name
-                        Language.Hawk.Syntax.Pattern
-                        Language.Hawk.Syntax.Type
-                        Language.Hawk.Syntax.Variable
+                        Language.Hawk.Report.Warning
                         
                         Language.Hawk.Target.LLVM.Codegen
                         Language.Hawk.Target.LLVM.Emit
+                        
+                        Language.Hawk.Validate
                         
                         Paths_hawk
                         
 
   build-tools:          alex, happy
-  --other-modules:        Hawk.Grammar,
-  --                      Hawk.Tokens
+  --other-modules:        Hawk.Parser,
+  --                      Hawk.Lexer
 
 executable              hkc
   main-is:              Main.hs

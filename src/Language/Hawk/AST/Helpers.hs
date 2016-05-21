@@ -1,4 +1,4 @@
-module Language.Hawk.Syntax.Helpers where
+module Language.Hawk.AST.Helpers where
 
 import qualified Data.Char as Char
 

@@ -11,7 +11,6 @@ import Text.PrettyPrint.ANSI.Leijen
     
 
 import qualified Language.Hawk.Report.Region as R
-import qualified Language.Hawk.Report.Render.Code as Code
 
 
 data Report
@@ -46,8 +45,8 @@ toDoc location region (Report title highlight preHint postHint) source =
   messageBar title location
   <> hardline <> hardline <>
   preHint
-  <> hardline <> hardline <>
-  Code.render highlight region source
+  -- <> hardline <> hardline <>
+  -- Code.render highlight region source
   <> hardline <>
   postHint
   <> hardline <> hardline

@@ -40,23 +40,24 @@ class Berry a : {
   fn mix :: a -> a -> a
 }
 
-fn fancy :: Foo a b c, Bar c b => a -> b -> c -> ()
-| a b c = { () }
+fn fancy
+  :: Foo a b c, Bar c b => a -> b -> c -> ()
+  | a b c =
+  { () }
 
 fn foo :: i32 -> ()
-| x 
-  * () = { () }
-  * () = { () }
-  * _ = { () }
-| _ : {
-        { 
-          if () :{
-            {()}
+  | x * () = { () }
+      * () = { () }
+      * _ = { () }
+  | _ : {
+          { 
+            if () :{
+              {()}
+            }
+          }
+          {
+            else :{ 
+              {()}
+            }
           }
         }
-        {
-          else :{ 
-            {()}
-          }
-        }
-      }
