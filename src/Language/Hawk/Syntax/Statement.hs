@@ -1,4 +1,4 @@
-module Language.Hawk.AST.Statement where
+module Language.Hawk.Syntax.Statement where
 
 
 type Block n e a t = [Statement n e a t]

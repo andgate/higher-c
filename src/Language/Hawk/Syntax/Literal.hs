@@ -1,4 +1,4 @@
-module Language.Hawk.AST.Literal where
+module Language.Hawk.Syntax.Literal where
 
 
 data Literal a

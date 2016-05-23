@@ -1,14 +1,14 @@
-module Language.Hawk.AST.Module where
+module Language.Hawk.Syntax.Module where
     
 
 import Data.Binary
 import qualified Data.Map as Map
 
-import qualified Language.Hawk.AST.Items as Items
-import qualified Language.Hawk.AST.Expression as Expression
-import qualified Language.Hawk.AST.ModuleName as ModuleName
-import qualified Language.Hawk.AST.Type as Type
-import qualified Language.Hawk.AST.Name as Name
+import qualified Language.Hawk.Syntax.Items as Items
+import qualified Language.Hawk.Syntax.Expression as Expression
+import qualified Language.Hawk.Syntax.ModuleName as ModuleName
+import qualified Language.Hawk.Syntax.Type as Type
+import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Docs.AST as Docs
 import qualified Language.Hawk.Compile.Package as Package
 import qualified Language.Hawk.Compile.Compiler.Version as Compiler
@@ -58,7 +58,7 @@ type Typed =
 
 data Info i
   = Info
-    { exports   :: [Name.Value]
+    { exports   :: [Name.Raw]
     , imports   :: [Name.Raw]
     , items     :: i
     , types     :: Types
@@ -85,7 +85,7 @@ data Interface
   = Interface
     { iVersion  :: Package.Version
     , iPackage  :: Package.Name
-    , iExports  :: [Name.Value]
+    , iExports  :: [Name.Raw]
     , iImports  :: [Name.Raw]
     , iTypes    :: Types
     , iRecords  :: Records

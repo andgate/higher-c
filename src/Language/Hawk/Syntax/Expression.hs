@@ -1,9 +1,9 @@
-module Language.Hawk.AST.Expression where
+module Language.Hawk.Syntax.Expression where
 
-import qualified Language.Hawk.AST.Literal as Literal
-import qualified Language.Hawk.AST.ModuleName as ModuleName
-import qualified Language.Hawk.AST.Type as Type
-import qualified Language.Hawk.AST.Name as Name
+import qualified Language.Hawk.Syntax.Literal as Literal
+import qualified Language.Hawk.Syntax.ModuleName as ModuleName
+import qualified Language.Hawk.Syntax.Type as Type
+import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
 

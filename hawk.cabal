@@ -36,7 +36,6 @@ library
                         , llvm-general         >= 3.5.0.0
                         , llvm-general-pure    >= 3.5.0
                         , mtl
-                        , parsec
                         , parsers
                         , safe
                         , syb
@@ -53,24 +52,24 @@ library
 
   hs-source-dirs:       src
 
-  exposed-modules:      Language.Hawk.AST.Alias
-                        Language.Hawk.AST.Class
-                        Language.Hawk.AST.Binder
-                        Language.Hawk.AST.Expression
-                        Language.Hawk.AST.Function
-                        Language.Hawk.AST.Helpers
-                        Language.Hawk.AST.Instance
-                        Language.Hawk.AST.Items
-                        Language.Hawk.AST.Literal
-                        Language.Hawk.AST.Module
-                        Language.Hawk.AST.ModuleName
-                        Language.Hawk.AST.Name
-                        Language.Hawk.AST.Record
-                        Language.Hawk.AST.Statement
-                        Language.Hawk.AST.Type
+  exposed-modules:      Language.Hawk.Syntax.Alias
+                        Language.Hawk.Syntax.Class
+                        Language.Hawk.Syntax.Binder
+                        Language.Hawk.Syntax.Expression
+                        Language.Hawk.Syntax.Function
+                        Language.Hawk.Syntax.Helpers
+                        Language.Hawk.Syntax.Instance
+                        Language.Hawk.Syntax.Items
+                        Language.Hawk.Syntax.Literal
+                        Language.Hawk.Syntax.Module
+                        Language.Hawk.Syntax.ModuleName
+                        Language.Hawk.Syntax.Name
+                        Language.Hawk.Syntax.Record
+                        Language.Hawk.Syntax.Statement
+                        Language.Hawk.Syntax.Type
                         
-                        -- Old AST
-                        Language.Hawk.AST.AST
+                        -- Old Syntax
+                        --Language.Hawk.Syntax.AST
                         
                         
                         Language.Hawk.Compile
@@ -83,10 +82,15 @@ library
                         Language.Hawk.Data.Node
                         Language.Hawk.Data.Span
                         
-                        Language.Hawk.Parse.Parser
-                        Language.Hawk.Parse.Lexer
+                        --Language.Hawk.Parse.Parser
+                        --Language.Hawk.Parse.Lexer
                         
                         Language.Hawk.Parse
+                        Language.Hawk.Parse.Binder
+                        Language.Hawk.Parse.Expression
+                        Language.Hawk.Parse.Helpers
+                        Language.Hawk.Parse.Name
+                        Language.Hawk.Parse.Type
                       
                         Language.Hawk.Report.Annotation
                         Language.Hawk.Report.Error
@@ -107,7 +111,7 @@ library
                         Paths_hawk
                         
 
-  build-tools:          alex, happy
+  --build-tools:          alex, happy
   --other-modules:        Hawk.Parser,
   --                      Hawk.Lexer
 
@@ -139,6 +143,7 @@ test-suite spec
                         , hspec
                         , hawk
                         , containers
+                        , trifecta
   
   ghc-options:          -threaded
                         -rtsopts

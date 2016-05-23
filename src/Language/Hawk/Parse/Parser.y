@@ -5,7 +5,7 @@ module Language.Hawk.Parse.Parser where
 import Data.Monoid
 
 import Language.Hawk.Data.Node
-import Language.Hawk.AST.AST
+import Language.Hawk.Syntax.AST
 import Language.Hawk.Parse.Lexer
 import Language.Hawk.Parse.Utils
 

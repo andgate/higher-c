@@ -1,11 +1,13 @@
 module Language.Hawk.Report.Annotation where
 
 import Prelude hiding (map)
+import Data.Binary
 import qualified Language.Hawk.Report.Region as R
 
 
 data Annotated annot a
   = A annot a
+  deriving (Show)
   
 type Located a =
   Annotated R.Region a
@@ -36,3 +38,13 @@ map f (A annot value) =
 drop :: Annotated info a -> a
 drop (A _ value) =
   value
+  
+  
+  
+instance (Binary annot, Binary a) => Binary (Annotated annot a) where
+  put (A annot a) =
+    put annot >> put a
+    
+    
+  get =
+    A <$> get <*> get

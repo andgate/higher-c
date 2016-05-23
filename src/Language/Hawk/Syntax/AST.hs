@@ -2,7 +2,7 @@
 -- Currently, this is not included in the source code, but remains as a
 -- reference for future development.
 {-# LANGUAGE FlexibleInstances, DeriveDataTypeable #-}
-module Language.Hawk.AST.AST where
+module Language.Hawk.Syntax.AST where
 
 import Language.Hawk.Data.Node
 

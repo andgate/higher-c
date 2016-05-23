@@ -1,10 +1,10 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, FlexibleInstances #-}
 module Language.Hawk.Report.Region where
 
 import Data.Aeson ((.=))
 import qualified Data.Aeson as Json
 import Data.Binary
-import qualified Text.Parsec.Pos as Parsec
+import Data.Int
 
 
 data Region
@@ -17,17 +17,13 @@ data Region
 
 data Position
   = Position
-    { line    :: Int
-    , column  :: Int
+    { line    :: {-# UNPACK #-} !Int64
+    , column  :: {-# UNPACK #-} !Int64
     }
     deriving (Eq, Show)
     
-    
-fromSourcePos :: Parsec.SourcePos -> Position
-fromSourcePos sourcePos =
-  Position
-    (Parsec.sourceLine sourcePos)
-    (Parsec.sourceColumn sourcePos)
+mkRegion :: HasPosition a => a -> a -> Region
+mkRegion start end = Region (getPosition start) (getPosition end)
     
 merge :: Region -> Region -> Region
 merge (Region start _) (Region _ end) =
@@ -44,6 +40,26 @@ toString (Region start end) =
     True ->
       "on line " ++ show (line end) ++ ", column "
       ++ show (column start) ++ " to " ++ show (column end)
+
+
+class HasPosition a where
+    getPosition :: a -> Position     
+
+instance HasPosition Position where
+    getPosition = id
+    
+
+
+class HasRegion a where
+    getRegion :: a -> Region
+    
+
+instance HasRegion Region where
+    getRegion = id
+  
+instance HasPosition a => HasRegion (a, a) where
+    getRegion =
+      (uncurry mkRegion)
       
       
 instance Json.ToJSON Region where

@@ -1,14 +1,14 @@
-module Language.Hawk.AST.Items where
+module Language.Hawk.Syntax.Items where
 
 import Data.Binary
 
-import qualified Language.Hawk.AST.Alias as Alias
-import qualified Language.Hawk.AST.Binder as Binder
-import qualified Language.Hawk.AST.Expression as Expr
-import qualified Language.Hawk.AST.Function as Function
-import qualified Language.Hawk.AST.Name as Name
-import qualified Language.Hawk.AST.Record as Record
-import qualified Language.Hawk.AST.Type as Type
+import qualified Language.Hawk.Syntax.Alias as Alias
+import qualified Language.Hawk.Syntax.Binder as Binder
+import qualified Language.Hawk.Syntax.Expression as Expr
+import qualified Language.Hawk.Syntax.Function as Function
+import qualified Language.Hawk.Syntax.Name as Name
+import qualified Language.Hawk.Syntax.Record as Record
+import qualified Language.Hawk.Syntax.Type as Type
 import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
   
@@ -50,7 +50,7 @@ type Function n e a t
   = Item (Function.Function n e a t) a
   
 type Binder n e a t
-  = Item (Binder.Binder n e a t) a
+  = Item (Binder.Binder n t e) a
   
 type Record n a
   = Item (Record.Record n a) a

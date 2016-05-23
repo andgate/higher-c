@@ -1,7 +1,7 @@
-module Language.Hawk.AST.Alias where
+module Language.Hawk.Syntax.Alias where
 
-import qualified Language.Hawk.AST.Name as Name
-import qualified Language.Hawk.AST.Type as Type
+import qualified Language.Hawk.Syntax.Name as Name
+import qualified Language.Hawk.Syntax.Type as Type
 import qualified Language.Hawk.Report.Region as R
 
 type Source =
@@ -18,4 +18,4 @@ type Typed =
 
 
 data Alias n a
-  = Alias n (Type.Type n a) a
+  = Alias n (Type.Type n) a

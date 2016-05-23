@@ -1,6 +1,6 @@
-resolver: lts-5.14
+resolver: lts-5.17
 packages:
 - '.'
 extra-deps:
-- llvm-general-3.5.1.0
-- llvm-general-pure-3.5.0.0
+- llvm-general-3.5.1.2
+- llvm-general-pure-3.5.1.0

@@ -1,1 +1,0 @@
-module Language.Hawk.AST.Instance where

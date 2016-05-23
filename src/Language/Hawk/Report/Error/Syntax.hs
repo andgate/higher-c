@@ -2,7 +2,6 @@ module Language.Hawk.Report.Error.Syntax where
 
 import qualified Data.List as List
 import qualified Data.Set as Set
-import qualified Text.Parsec.Error as Parsec
 import Text.PrettyPrint.ANSI.Leijen (dullyellow, hsep, text)
 
 import qualified Language.Hawk.Report.Error.Helpers as Help
@@ -11,8 +10,7 @@ import qualified Language.Hawk.Report.Report as Report
 -- -----------------------------------------------------------------------------
 -- Syntax Errors
 data Error
-  = Parse [Parsec.Message]
-  | BadFunctionName Int
+  = BadFunctionName Int
   | BadPattern String
   
   | CommentOnNothing

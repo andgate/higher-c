@@ -1,31 +1,36 @@
-module Language.Hawk.AST.Type where
+module Language.Hawk.Syntax.Type where
 
 import Control.Arrow (second)
 import Data.Binary
 import qualified Data.Map as Map
 
-import qualified Language.Hawk.AST.Name as Name
+import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
 
 
+type Source'
+  = Type' Name.Source
 
 type Source
-  = Type Name.Source R.Region
+  = Type Name.Source
 
 type Valid
-  = Type Name.Valid R.Region
+  = Type Name.Valid
 
 type Canonical
-  = Maybe (Type Name.Canonical R.Region)
+  = Maybe (Type Name.Canonical)
 
 type Typed
-  = Type Name.Canonical R.Region
+  = Type Name.Canonical
 
 
-data Type n a
-  = App (Type n a) [Type n a] a
-  | Con n a
+type Type n = A.Located (Type' n)
+
+data Type' n
+  = App (Type n) [Type n]
+  | Con n
+  deriving (Show)
 -- Type variables will require at least monomorphization,
 -- and won't be possible for a while.
 --  | Var TVar a
@@ -56,25 +61,41 @@ type TVar = String
 -- Tuple [Type n]
 -- "_Tuple"
   
-
-tuple :: R.Region -> [Source] -> Source
-tuple region types =
+{-
+fn :: [Source] -> R.Region -> Source
+fn types region =
   let
     name = 
-      Name.Name region ("_Tuple" ++ show (length types))
+      Name.Name ("_Arr" ++ show (length types)) region
   in
-    App (Con name region) types region
-    
+    App (Con name region) types
+-}
+
+arrow :: R.Region -> [Source] -> Source
+arrow =
+  variadic "_Arr"
+
+tuple :: R.Region -> [Source] -> Source
+tuple =
+  variadic "_Tuple"
+
+variadic :: String -> R.Region -> [Source] -> Source
+variadic name region types =
+  let
+    con = 
+      A.A region $ Con name
+  in
+    A.A region $ App con types
       
 
-instance (Binary n, Binary a) => Binary (Type n a) where
+instance (Binary n) => Binary (Type' n) where
   put tipe =
     case tipe of
-      App t1 t2 a ->
-        putWord8 0 >> put t1 >> put t2 >> put a
+      App t1 t2 ->
+        putWord8 0 >> put t1 >> put t2
         
-      Con name a ->
-        putWord8 1 >> put name >> put a
+      Con name ->
+        putWord8 1 >> put name
         
       --Var name a ->
       --  putWord8 2 >> put name >> put a
@@ -82,8 +103,8 @@ instance (Binary n, Binary a) => Binary (Type n a) where
   get =
     do  n <- getWord8
         case n of
-          0 -> App <$> get <*> get <*> get
-          1 -> Con <$> get <*> get
-          --2 -> Var <$> get <*> get
+          0 -> App <$> get <*> get
+          1 -> Con <$> get
+          --2 -> Var <$> get
           _ -> error "Error reading a valid type from serialized string"
           

@@ -4,6 +4,6 @@ import Compile
 import BuildInfo
 
 main :: IO ()
-main = compile build_conf
+main = return ()
   where
     build_conf = BuildInfo "example/main.hk"

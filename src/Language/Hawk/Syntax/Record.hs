@@ -1,7 +1,7 @@
-module Language.Hawk.AST.Record where
+module Language.Hawk.Syntax.Record where
 
-import qualified Language.Hawk.AST.Name as Name
-import qualified Language.Hawk.AST.Type as Type
+import qualified Language.Hawk.Syntax.Name as Name
+import qualified Language.Hawk.Syntax.Type as Type
 import qualified Language.Hawk.Report.Region as R
 
 type Source =
@@ -22,4 +22,4 @@ data Record n a
   
   
 data RecordField n a
-  = RecordField n (Type.Type n a) a
+  = RecordField n (Type.Type n) a

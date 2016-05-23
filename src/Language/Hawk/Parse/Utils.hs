@@ -2,7 +2,7 @@ module Language.Hawk.Parse.Utils where
 
 import Data.Monoid
 
-import Language.Hawk.AST.AST
+import Language.Hawk.Syntax.AST
 import Language.Hawk.Data.Node
 
 -----------------------------------------------------------------------------

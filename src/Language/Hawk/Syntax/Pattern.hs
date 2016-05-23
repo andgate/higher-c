@@ -1,9 +1,9 @@
-module Language.Hawk.AST.Pattern where
+module Language.Hawk.Syntax.Pattern where
 
 import qualified Data.Set as Set
 
-import qualified Language.Hawk.AST.Literal as L
-import qualified Language.Hawk.AST.Name as Name
+import qualified Language.Hawk.Syntax.Literal as L
+import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
 

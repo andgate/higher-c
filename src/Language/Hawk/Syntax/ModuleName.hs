@@ -1,4 +1,4 @@
-module Language.Hawk.AST.ModuleName where
+module Language.Hawk.Syntax.ModuleName where
 
 import Data.Binary
 import qualified Data.List as List
