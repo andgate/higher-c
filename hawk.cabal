@@ -89,6 +89,7 @@ library
                         Language.Hawk.Parse.Binder
                         Language.Hawk.Parse.Expression
                         Language.Hawk.Parse.Helpers
+                        Language.Hawk.Parse.Literal
                         Language.Hawk.Parse.Name
                         Language.Hawk.Parse.Type
                       

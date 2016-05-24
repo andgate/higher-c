@@ -9,32 +9,38 @@ import qualified Language.Hawk.Report.Region as R
 
 
 type Source
-  = Expr Name.Raw R.Region (Maybe Type.Source)
+  = Expr Name.Raw Type.Source
 
 type Valid
-  = Expr Name.Raw R.Region (Maybe Type.Valid)
+  = Expr Name.Raw Type.Valid
 
 type Canonical
-  = Expr Name.Canonical R.Region (Maybe Type.Canonical)
+  = Expr Name.Canonical Type.Canonical
 
 type Typed
-  = Expr Name.Canonical R.Region Type.Typed
+  = Expr Name.Canonical Type.Typed
 
+type Expr n t =
+  A.Located (Expr' n t)
 
-data Expr n a t
-  = Lit (Literal.Literal a) t
-  | Var n a t
-  | Con n a t
+data Expr' n t
+  = Lit Literal.Literal
+  | Var n
+  | Con n
   
-  | App (Expr n a t) [Expr n a t] a
-  | Let n (Expr n a t) (Expr n a t) a
+  | App (Expr n t) [Expr n t]
+  | Let n (Expr n t) (Expr n t)
   -- Probably need to add suport for operators later
   
-  | If [(Expr n a t, Expr n a t)] (Expr n a t) a
+  | If [(Expr n t, Expr n t)] (Expr n t)
   
   -- Specific stucture access
-  | Access (Expr n a t) (Expr n a t) a
-  | RefAccess (Expr n a t) (Expr n a t) a
+  | Access (Expr n t) (Expr n t)
+  | RefAccess (Expr n t) (Expr n t)
+  
+  | Cast (Expr n t) t
   
   -- disable case for now, patterns are too complicated
-  -- | Case (Expr n a t) [(Pattern.Pattern n a, Expr n b t a)]
+  -- | Case (Expr n t) [(Pattern.Pattern n, Expr n t)]
+  
+  deriving (Show)

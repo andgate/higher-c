@@ -9,14 +9,14 @@ import Text.Trifecta.Delta
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Parse.Name
 import Language.Hawk.Parse.Expression
+import Language.Hawk.Parse.Type
 import qualified Language.Hawk.Syntax.Binder as Binder
 import qualified Language.Hawk.Report.Region as R
 
 
 binder :: MonadicParsing m => m Binder.Source
-binder = 
-  do  p <- position
-      
+binder =
+  locate $ do
       string "let"
       spaces
       
@@ -24,16 +24,15 @@ binder =
       name <- varName
       spaces
       
-      -- t <- type
+      t <- typesig
       spaces
       
       equals
       spaces
       
-      --e <- expr
-      r <- R.mkRegion p <$> position
-      undefined
-      --return Binder mode name t e r
+      e <- expr
+      
+      (return $ Binder.Binder mode name t e) <?> "Let Binding"
 
 bindingMode :: MonadicParsing m => m Binder.BindingMode
 bindingMode =
@@ -42,6 +41,7 @@ bindingMode =
 byVal :: MonadicParsing m => m Binder.BindingMode
 byVal = 
   Binder.ByVal <$> mutability
+
 
 byRef :: MonadicParsing m => m Binder.BindingMode
 byRef =

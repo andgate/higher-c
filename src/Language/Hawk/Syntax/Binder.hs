@@ -14,12 +14,20 @@ type Binder n e t =
   A.Located (Binder' n e t)
 
 data Binder' n e t
-  = Binder BindingMode n t e
+  = Binder
+    { mode  :: BindingMode
+    , bame  :: n
+    , tipe  :: t
+    , rhs   :: e
+    }
+  deriving (Show)
   
 data BindingMode
   = ByRef Mutability
   | ByVal Mutability
+  deriving (Show)
   
 data Mutability
   = Mutable
   | Immutable
+  deriving (Show)

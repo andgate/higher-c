@@ -15,6 +15,7 @@ import qualified Language.Hawk.Report.Result as Result
 import System.IO (hFlush, hPutStr, hPutStrLn, stderr, stdout)
 
 import qualified Language.Hawk.Parse.Type as TyP
+import qualified Language.Hawk.Parse.Binder as BinderP
 
 import Text.Trifecta.Parser
 import Text.Trifecta.Delta
@@ -36,9 +37,21 @@ spec = do
                 
             it "Simple Type" $ do
                 
-                let type_str = ":: Foo i32 -> i32 -> (i32, i32)->void"
+                let str = ":: Foo i32 -> i32 -> (i32, i32)->void"
                     delta = (Directed "(test)" 0 0 0 0)
-                    res = parseString TyP.typesig delta type_str
+                    res = parseString TyP.typesig delta str
+                
+                putStr "\nFile parsed:\n"
+                print res
+                
+                --True `shouldBe` False
+                
+                
+            it "Basic Bind" $ do
+                
+                let str = "let foo :: f64 = 3.5"
+                    delta = (Directed "(test)" 0 0 0 0)
+                    res = parseString BinderP.binder delta str
                 
                 putStr "\nFile parsed:\n"
                 print res
