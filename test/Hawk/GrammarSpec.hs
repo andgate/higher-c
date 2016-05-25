@@ -48,7 +48,7 @@ spec = do
                 
             it "Basic Bind" $ do
                 
-                let str = "let foo :: f64 = 64.0"
+                let str = "let foo :: f64 = add x 13 :: f32"
                     res = Parser.parseString BinderP.binder "(test)" str
                 
                 putStr "\nFile parsed:\n"

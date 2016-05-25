@@ -75,9 +75,9 @@ popLayout = do
 peekLayout :: LayoutState m => m Layout
 peekLayout =
   headDef defaultLayout <$> get
-    
 
- 
+
+
 class (LayoutState m, DeltaParsing m) => LayoutParsing m where
     ws :: m ()
     ws = do 

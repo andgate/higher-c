@@ -32,7 +32,7 @@ binder =
       equals
       ws
       
-      e <- withFloatingLayout expr
+      e <- expr
       
       (return $ Binder.Binder mode name t e) <?> "Let Binding"
 

@@ -3,7 +3,6 @@ module Language.Hawk.Parse.Type where
 import Control.Applicative
 import Text.Parser.Char
 import Text.Parser.Combinators
-import Text.Parser.Token
 import Text.Trifecta.Combinators
 import Text.Trifecta.Delta
 
@@ -22,13 +21,15 @@ typesig =
   
   
 tipe :: MonadicParsing m => m Type.Source
-tipe = try typeArr <|> btype
+tipe =
+      try typeArr
+  <|> btype
 
    
 typeArr :: MonadicParsing m => m Type.Source
 typeArr = withRegion fnArgs Type.arrow <?> "Function Type"
   where
-   fnArgs = btype `sepBy1` (ws *> rightArrow <* ws)
+   fnArgs = btype `sepBy2` (ws *> rightArrow <* ws)
   
 
 btype :: MonadicParsing m => m Type.Source
@@ -37,7 +38,7 @@ btype =
     
 btype' :: MonadicParsing m => m Type.Source
 btype' =
-  locate $ Type.App <$> atype <*> some (spaces *> atype <* spaces) <?> "Type constructor"
+  locate $ Type.App <$> atype <*> some (ws *> atype <* ws) <?> "Type constructor"
   
 
 -- Single Type
@@ -55,7 +56,7 @@ tyPrim =
 tyTuple :: MonadicParsing m => m Type.Source
 tyTuple = withRegion tupleArgs Type.tuple <?> "Tuple Type"
   where
-    tupleArgs = parens (commaSep1 (spaces *> atype <* spaces))
+    tupleArgs = parens (commaSep2 atype)
     
 tyCon :: MonadicParsing m => m Type.Source
 tyCon = locate $ Type.Con <$> conName

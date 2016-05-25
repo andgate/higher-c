@@ -87,6 +87,17 @@ makeId :: MonadicParsing m => m Char -> m Char -> m String
 makeId firstChar bodyChar =
   (:) <$> firstChar <*> many bodyChar 
 
+
+-- -----------------------------------------------------------------------------
+-- Numbers
+
+
+-- -----------------------------------------------------------------------------
+-- Characters
+
+
+
+
 -- -----------------------------------------------------------------------------
 -- Common Symbols
 
@@ -104,7 +115,40 @@ hasType :: MonadicParsing m => m String
 hasType =
   string "::" <?> "the \"has type\" symbol '::'"
     
+    
+comma :: MonadicParsing m => m String
+comma =
+  (ws *> string "," <* ws) <?> "a comma symbol ','"
 
+-- -----------------------------------------------------------------------------
+-- Grouping
+
+sepBy2 :: MonadicParsing m => m a -> m b -> m [a]
+sepBy2 p sep =
+  (:) <$> p *> sep *> (p `sepBy1` sep)
+
+
+parens :: MonadicParsing m => m a -> m a
+parens p =
+  char '(' *> ws *> p <* ws <* char ')'
+
+
+commaSep :: MonadicParsing m => m a -> m [a]
+commaSep p =
+  p `sepBy` comma
+
+
+commaSep1 :: MonadicParsing m => m a -> m [a]
+commaSep1 p =
+  p `sepBy1` comma
+  
+  
+commaSep2 :: MonadicParsing m => m a -> m [a]
+commaSep2 p =
+  p `sepBy2` comma
+  
+-- -----------------------------------------------------------------------------
+-- Location
 
 locate :: MonadicParsing m => m a -> m (A.Located a)
 locate p = do
