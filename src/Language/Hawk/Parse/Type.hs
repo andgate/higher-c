@@ -8,6 +8,7 @@ import Text.Trifecta.Combinators
 import Text.Trifecta.Delta
 
 import Language.Hawk.Parse.Helpers
+import Language.Hawk.Parse.Layout
 import Language.Hawk.Parse.Name
 import qualified Language.Hawk.Syntax.Type as Type
 import qualified Language.Hawk.Syntax.Name as Name
@@ -17,10 +18,7 @@ import qualified Language.Hawk.Report.Region as R
 
 typesig :: MonadicParsing m => m Type.Source
 typesig =
-  do  hasType
-      spaces
-      
-      tipe
+  hasType *> ws *> tipe
   
   
 tipe :: MonadicParsing m => m Type.Source
@@ -30,7 +28,7 @@ tipe = try typeArr <|> btype
 typeArr :: MonadicParsing m => m Type.Source
 typeArr = withRegion fnArgs Type.arrow <?> "Function Type"
   where
-   fnArgs = btype `sepBy1` (spaces *> rightArrow <* spaces)
+   fnArgs = btype `sepBy1` (ws *> rightArrow <* ws)
   
 
 btype :: MonadicParsing m => m Type.Source

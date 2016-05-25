@@ -5,6 +5,7 @@ import Data.Aeson ((.=))
 import qualified Data.Aeson as Json
 import Data.Binary
 import Data.Int
+import qualified Text.Trifecta.Delta as Trifecta
 
 
 data Region
@@ -60,6 +61,20 @@ instance HasRegion Region where
 instance HasPosition a => HasRegion (a, a) where
     getRegion =
       (uncurry mkRegion)
+      
+      
+instance HasPosition Trifecta.Delta where
+  getPosition (Trifecta.Columns _ _) =
+    error "Delta Columns constructor does not have position"
+    
+  getPosition (Trifecta.Tab _ _ _) =
+    error "Delta Tab constuctor does not have position"
+    
+  getPosition (Trifecta.Lines line column _ _) =
+    Position line column
+    
+  getPosition (Trifecta.Directed _ line column _ _) =
+    Position line column
       
       
 instance Json.ToJSON Region where

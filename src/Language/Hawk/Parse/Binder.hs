@@ -6,9 +6,11 @@ import Text.Parser.Combinators
 import Text.Trifecta.Combinators
 import Text.Trifecta.Delta
 
-import Language.Hawk.Parse.Helpers
-import Language.Hawk.Parse.Name
+
 import Language.Hawk.Parse.Expression
+import Language.Hawk.Parse.Helpers
+import Language.Hawk.Parse.Layout
+import Language.Hawk.Parse.Name
 import Language.Hawk.Parse.Type
 import qualified Language.Hawk.Syntax.Binder as Binder
 import qualified Language.Hawk.Report.Region as R
@@ -18,19 +20,19 @@ binder :: MonadicParsing m => m Binder.Source
 binder =
   locate $ do
       string "let"
-      spaces
+      ws
       
       mode <- bindingMode
       name <- varName
-      spaces
+      ws
       
       t <- typesig
-      spaces
+      ws
       
       equals
-      spaces
+      ws
       
-      e <- expr
+      e <- withFloatingLayout expr
       
       (return $ Binder.Binder mode name t e) <?> "Let Binding"
 

@@ -1,20 +1,47 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 module Language.Hawk.Parse.Helpers where
 
 import Control.Applicative
-import Data.Tuple (snd)
+import Control.Monad.State
+import qualified Data.ByteString.UTF8 as UTF8
 import Text.Parser.Char
 import Text.Parser.Combinators
 import Text.Trifecta.Combinators
 import Text.Trifecta.Delta
+import qualified Text.Trifecta.Parser as Trifecta
+import Text.Trifecta.Result
 
+import Language.Hawk.Parse.Layout
 import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
 
 
+type IParser a = StateT LayoutEnv Trifecta.Parser a
 
 type MonadicParsing m
-  = (DeltaParsing m, Monad m)
+  = (DeltaParsing m, LayoutParsing m, Monad m)
+
+
+defDelta :: String -> Delta
+defDelta fn =
+  Directed (UTF8.fromString fn) 0 0 0 0
+
+
+parseFromFile :: MonadIO m => IParser a -> String -> m (Maybe a)
+parseFromFile p fn =
+  Trifecta.parseFromFile (evalStateT p defLayoutEnv) fn
+  
+
+parseFromFileEx :: MonadIO m => IParser a -> String -> m (Result a)
+parseFromFileEx p fn =
+  Trifecta.parseFromFileEx (evalStateT p defLayoutEnv) fn
+
+
+parseString :: IParser a -> String -> String -> Result a
+parseString p fn str =
+  Trifecta.parseString (evalStateT p defLayoutEnv) (defDelta fn) str
 
 -- -----------------------------------------------------------------------------
 -- Identifiers
@@ -76,21 +103,6 @@ rightArrow =
 hasType :: MonadicParsing m => m String
 hasType =
   string "::" <?> "the \"has type\" symbol '::'"
-    
-    
-    
-instance R.HasPosition Delta where
-  getPosition (Columns _ _) =
-    error "Delta Columns constructor does not have position"
-    
-  getPosition (Tab _ _ _) =
-    error "Delta Tab constuctor does not have position"
-    
-  getPosition (Lines line column _ _) =
-    R.Position line column
-    
-  getPosition (Directed _ line column _ _) =
-    R.Position line column
     
 
 

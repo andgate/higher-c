@@ -13,31 +13,31 @@ import qualified Language.Hawk.Syntax.Literal as Lit
 
 literal :: MonadicParsing m => m Lit.Literal
 literal =
-      try intLit
-  <|> try floatLit
+      try floatLit
+  <|> try intLit
   <|> try charLit
   <|> try stringLit
   <|> boolLit
   <?> "Literal"
 
 intLit :: MonadicParsing m => m Lit.Literal
-intLit = Lit.IntNum <$> integer
+intLit = Lit.IntNum <$> integer <?> "Integer Literal"
 
 
 floatLit :: MonadicParsing m => m Lit.Literal
-floatLit = Lit.FloatNum <$> double
+floatLit = Lit.FloatNum <$> double <?> "Double Literal"
 
 
 charLit :: MonadicParsing m => m Lit.Literal
-charLit = Lit.Chr <$> charLiteral
+charLit = Lit.Chr <$> charLiteral <?> "Character Literal"
 
 
 stringLit :: MonadicParsing m => m Lit.Literal
-stringLit = Lit.Str <$> stringLiteral
+stringLit = Lit.Str <$> stringLiteral <?> "String Literal"
 
 
 boolLit :: MonadicParsing m => m Lit.Literal
-boolLit = Lit.Boolean <$> (try trueBool <|> falseBool) <?> "Boolean literal"
+boolLit = Lit.Boolean <$> (try trueBool <|> falseBool) <?> "Boolean Literal"
 
 
 trueBool :: MonadicParsing m => m Bool
