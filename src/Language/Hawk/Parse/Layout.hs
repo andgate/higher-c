@@ -81,7 +81,7 @@ peekLayout =
 class (LayoutState m, DeltaParsing m) => LayoutParsing m where
     ws :: m ()
     ws = do 
-      spaces
+      try spaces <|> pure ()
       col <- column <$> position
       layout <- peekLayout
       case isLayoutInvalid layout col of
@@ -94,7 +94,7 @@ class (LayoutState m, DeltaParsing m) => LayoutParsing m where
               
     startLayout :: (Int64 -> Layout) -> m ()
     startLayout layoutCon = do
-      spaces
+      try spaces <|> pure ()
       pushLayout . layoutCon . column =<< position
       
     

@@ -2,20 +2,25 @@ module Language.Hawk.Syntax.Alias where
 
 import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Syntax.Type as Type
-import qualified Language.Hawk.Report.Region as R
+import qualified Language.Hawk.Report.Annotation as A
 
 type Source =
-  Alias Name.Source R.Region
+  Alias Name.Source
   
 type Valid =
-  Alias Name.Valid R.Region
+  Alias Name.Valid
   
 type Canonical =
-  Alias Name.Canonical R.Region
+  Alias Name.Canonical
   
 type Typed =
-  Alias Name.Typed R.Region
+  Alias Name.Typed
+  
+
+type Alias n =
+  A.Located (Alias' n)
 
 
-data Alias n a
-  = Alias n (Type.Type n) a
+data Alias' n
+  = Alias n (Type.Type n)
+  deriving (Show)

@@ -36,7 +36,9 @@ expr0 =
 
 fexpr :: MonadicParsing m => m Expr.Source
 fexpr =
-  locate $ Expr.App <$> aexpr <*> some (ws *> aexpr) <?> "Function application"
+  locate $ do
+    (call:args) <- spaceSep1 aexpr
+    return (Expr.App call args) <?> "Function Call"
 
 
 aexpr :: MonadicParsing m => m Expr.Source

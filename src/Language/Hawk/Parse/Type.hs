@@ -17,34 +17,27 @@ import qualified Language.Hawk.Report.Region as R
 
 typesig :: MonadicParsing m => m Type.Source
 typesig =
-  hasType *> ws *> tipe
-  
-  
-tipe :: MonadicParsing m => m Type.Source
-tipe =
-      try typeArr
-  <|> btype
+  hasType *> ws *> typ2
 
-   
-typeArr :: MonadicParsing m => m Type.Source
-typeArr = withRegion fnArgs Type.arrow <?> "Function Type"
-  where
-   fnArgs = btype `sepBy2` (ws *> rightArrow <* ws)
-  
-
-btype :: MonadicParsing m => m Type.Source
-btype =
-  try btype' <|> atype
-    
-btype' :: MonadicParsing m => m Type.Source
-btype' =
-  locate $ Type.App <$> atype <*> some (ws *> atype <* ws) <?> "Type constructor"
-  
 
 -- Single Type
-atype :: MonadicParsing m => m Type.Source
-atype =
-  try tyPrim <|> try tyTuple <|> tyCon
+typ0 :: MonadicParsing m => m Type.Source
+typ0 =
+      tyPrim
+  <|> tyTuple
+  <|> tyCon
+
+
+typ1 :: MonadicParsing m => m Type.Source
+typ1 = 
+  Type.apply <$> typ0 <*> many (try (ws *> typ0)) <?> "Type constructor"
+
+
+typ2 :: MonadicParsing m => m Type.Source
+typ2 = withRegion arrArgs Type.arrow <?> "Type arrow"
+  where
+    arrArgs = arrowSep1 typ1
+
 
 
 -- Primitive Type
@@ -56,10 +49,12 @@ tyPrim =
 tyTuple :: MonadicParsing m => m Type.Source
 tyTuple = withRegion tupleArgs Type.tuple <?> "Tuple Type"
   where
-    tupleArgs = parens (commaSep2 atype)
+    tupleArgs = parens (commaSep1 typ2)
     
+
 tyCon :: MonadicParsing m => m Type.Source
 tyCon = locate $ Type.Con <$> conName
+
 
 tyPrimName :: MonadicParsing m => m Name.Source
 tyPrimName =
@@ -73,5 +68,4 @@ tyPrimName =
   <|> string "f16"
   <|> string "f32"
   <|> string "f64"
-  <|> string "f128"
-  <?> "Name of a primitive type"
+  <|> string "f128" 

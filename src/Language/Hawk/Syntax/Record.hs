@@ -2,24 +2,35 @@ module Language.Hawk.Syntax.Record where
 
 import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Syntax.Type as Type
-import qualified Language.Hawk.Report.Region as R
+import qualified Language.Hawk.Report.Annotation as A
 
 type Source =
-  Record Name.Source R.Region
+  Record Name.Source
   
 type Valid =
-  Record Name.Valid R.Region
+  Record Name.Valid
   
 type Canonical =
-  Record Name.Canonical R.Region
+  Record Name.Canonical
   
 type Typed =
-  Record Name.Typed R.Region
+  Record Name.Typed
+  
+
+type Record n =
+  A.Located (Record' n)
+
+data Record' n
+  = Record
+    { name :: n
+    , fields :: [RecordField n]
+    }
+  deriving (Show)
 
 
-data Record n a
-  = Record n [RecordField n a] a
-  
-  
-data RecordField n a
-  = RecordField n (Type.Type n) a
+type RecordField n
+  = A.Located (RecordField' n)
+
+data RecordField' n
+  = RecordField n (Type.Type n)
+  deriving (Show)

@@ -8,6 +8,7 @@ import Control.Monad.State
 import qualified Data.ByteString.UTF8 as UTF8
 import Text.Parser.Char
 import Text.Parser.Combinators
+import Text.Parser.LookAhead
 import Text.Trifecta.Combinators
 import Text.Trifecta.Delta
 import qualified Text.Trifecta.Parser as Trifecta
@@ -21,7 +22,7 @@ import qualified Language.Hawk.Report.Region as R
 type IParser a = StateT LayoutEnv Trifecta.Parser a
 
 type MonadicParsing m
-  = (DeltaParsing m, LayoutParsing m, Monad m)
+  = (DeltaParsing m, LookAheadParsing m, LayoutParsing m, Monad m)
 
 
 defDelta :: String -> Delta
@@ -118,35 +119,85 @@ hasType =
     
 comma :: MonadicParsing m => m String
 comma =
-  (ws *> string "," <* ws) <?> "a comma symbol ','"
+  string "," <?> "a comma symbol ','"
 
 -- -----------------------------------------------------------------------------
 -- Grouping
 
-sepBy2 :: MonadicParsing m => m a -> m b -> m [a]
-sepBy2 p sep =
-  (:) <$> p *> sep *> (p `sepBy1` sep)
+commitIf :: MonadicParsing m => m b -> m a -> m a
+commitIf check p =
+    commit <|> try p
+  where
+    commit =
+      try (lookAhead check) >> p
 
 
-parens :: MonadicParsing m => m a -> m a
-parens p =
-  char '(' *> ws *> p <* ws <* char ')'
+spaceySepBy1 :: MonadicParsing m => m a -> m b -> m [a]
+spaceySepBy1 p sep =
+  (:) <$> p <*> p `spaceyPrefixBy` sep
+    
+    
+spaceyPrefixBy :: MonadicParsing m => m a -> m b -> m [a]
+spaceyPrefixBy p sep =
+  many $ commitIf (ws >> sep) (padded sep >> p)
+  
+  
+arrowSep1 :: MonadicParsing m => m a -> m [a]
+arrowSep1 p =
+  p `spaceySepBy1` (try rightArrow)
 
+
+spaceSep :: MonadicParsing m => m a -> m [a]
+spaceSep =
+  many . try . padded
+  
+spaceSep1 :: MonadicParsing m => m a -> m [a]
+spaceSep1 p =
+  p `spaceySepBy1` pure ()
 
 commaSep :: MonadicParsing m => m a -> m [a]
 commaSep p =
-  p `sepBy` comma
+  p `spaceySepBy1` comma
 
 
 commaSep1 :: MonadicParsing m => m a -> m [a]
 commaSep1 p =
-  p `sepBy1` comma
+  p `spaceySepBy1` comma
   
+
+-- -----------------------------------------------------------------------------
+-- Containers
+
+padded :: MonadicParsing m => m a -> m a
+padded p =
+  ws *> p <* ws
+
+
+surround :: MonadicParsing m => String -> String -> String -> m a -> m a
+surround l r name p =
+  string l *> padded p <* (string r <?> unwords ["a closing", name, " '", show r, "'"])
+
+
+parens :: MonadicParsing m => m a -> m a
+parens =
+  surround "(" ")" "paren"
   
-commaSep2 :: MonadicParsing m => m a -> m [a]
-commaSep2 p =
-  p `sepBy2` comma
+
+brackets :: MonadicParsing m => m a -> m a
+brackets =
+  surround "[" "]" "bracket"
+
+ 
+braces :: MonadicParsing m => m a -> m a
+braces =
+  surround "{" "}" "brace"
   
+
+chevrons :: MonadicParsing m => m a -> m a
+chevrons =
+  surround "<" ">" "chevron"
+  
+
 -- -----------------------------------------------------------------------------
 -- Location
 

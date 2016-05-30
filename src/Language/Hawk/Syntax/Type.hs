@@ -71,13 +71,28 @@ fn types region =
     App (Con name region) types
 -}
 
+apply :: Source -> [Source] -> Source
+apply con [] = con
+
+apply con args =
+  A.merge con (last args) result
+  where
+    result = App con args
+
+
 arrow :: R.Region -> [Source] -> Source
-arrow =
-  variadic "_Arr"
+arrow _ (arg:[]) =
+  arg
+
+arrow region args =
+  variadic "_Arr" region args
 
 tuple :: R.Region -> [Source] -> Source
-tuple =
-  variadic "_Tuple"
+tuple _ (arg:[]) =
+  arg
+  
+tuple region args =
+  variadic "_Tuple" region args
 
 variadic :: String -> R.Region -> [Source] -> Source
 variadic name region types =
@@ -97,8 +112,8 @@ instance (Binary n) => Binary (Type' n) where
       Con name ->
         putWord8 1 >> put name
         
-      --Var name a ->
-      --  putWord8 2 >> put name >> put a
+      --Var name ->
+      --  putWord8 2 >> put name
         
   get =
     do  n <- getWord8

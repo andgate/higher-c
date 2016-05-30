@@ -1,16 +1,55 @@
 module Language.Hawk.Syntax.Statement where
 
+import qualified Language.Hawk.Syntax.Expression as Expr
+import qualified Language.Hawk.Syntax.Name as Name
+import qualified Language.Hawk.Syntax.Type as Type
+import qualified Language.Hawk.Syntax.Variable as Var
+import qualified Language.Hawk.Report.Annotation as A
+import qualified Language.Hawk.Report.Region as R
 
-type Block n e a t = [Statement n e a t]
+type Source
+  = Statement Name.Raw Expr.Source Type.Source
+  
+type SourceBlock
+  = Block Name.Raw Expr.Source Type.Source
 
 
-data Statement n e a t
-  = Do (Block n e a t) a
-  | Call e a
-  | Let n t e a
-  | Assign n t e a
-  | Break a
-  | Return e a
-  | If [(e, Block n e a t)] (Block n e a t) a
-  | While e (Block n t e a) a
-  | DoWhile (Block n e a t) e a
+type Valid
+  = Statement Name.Raw Expr.Valid Type.Valid
+  
+type ValidBlock
+  = Block Name.Raw Expr.Source Type.Source
+
+
+type Canonical
+  = Statement Name.Canonical Expr.Canonical Type.Canonical
+
+type CanonicalBlock
+  = Block Name.Raw Expr.Source Type.Source
+
+
+type Typed
+  = Statement Name.Canonical Expr.Typed Type.Typed
+  
+type TypedBlock
+  = Block Name.Raw Expr.Source Type.Source
+  
+
+
+type Block n e t = [Statement n e t]
+
+
+type Statement n e t =
+  A.Located (Statement' n e t)
+
+
+data Statement' n e t
+  = Do (Block n e t)
+  | Call e
+  | Let (Var.Variable n e t)
+  | Assign n t e
+  | Break
+  | Return e
+  | If [(e, Block n e t)] (Block n e t)
+  | While e (Block n e t)
+  deriving (Show)

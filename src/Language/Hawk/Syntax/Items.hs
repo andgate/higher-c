@@ -3,75 +3,79 @@ module Language.Hawk.Syntax.Items where
 import Data.Binary
 
 import qualified Language.Hawk.Syntax.Alias as Alias
-import qualified Language.Hawk.Syntax.Binder as Binder
 import qualified Language.Hawk.Syntax.Expression as Expr
 import qualified Language.Hawk.Syntax.Function as Function
 import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Syntax.Record as Record
 import qualified Language.Hawk.Syntax.Type as Type
+import qualified Language.Hawk.Syntax.Variable as Var
 import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
   
 -- Items Structure
 
 type Source = 
-  Items Name.Source Expr.Source R.Region Type.Source
+  Items Name.Source Expr.Source Type.Source
  
 type Valid = 
-  Items Name.Valid Expr.Valid R.Region Type.Valid
+  Items Name.Valid Expr.Valid Type.Valid
   
 type Canonical =
-  Items Name.Canonical Expr.Canonical R.Region Type.Canonical
+  Items Name.Canonical Expr.Canonical Type.Canonical
   
 type Typed =
-  Items Name.Typed Expr.Typed R.Region Type.Canonical
+  Items Name.Typed Expr.Typed Type.Canonical
   
-data Items n e a t
+data Items n e t
   = Items
-    { _fns      :: [Function n e a t]
-    , _binds    :: [Binder n e a t]
-    , _recs     :: [Record n a]
-    , _aliases  :: [Alias n a]
+    { _fns      :: [Function n e t]
+    , _vars     :: [Variable n e t]
+    , _recs     :: [Record n]
+    , _aliases  :: [Alias n]
     }
+  deriving (Show)
     
-data Item i a
-  = Item (Comment a) (Visibility a) i
+data Item i
+  = Item Comment Visibility i
+  deriving (Show)
 
-data Comment a
-  = Comment String a
+data Comment
+  = Comment String
+  deriving (Show)
   
-data Visibility a
-  = Public a
-  | Private a
+data Visibility
+  = Public
+  | Private
+  deriving (Show)
 
 
 -- Specific Items  
-type Function n e a t
-  = Item (Function.Function n e a t) a
+type Function n e t
+  = Item (Function.Function n e t)
   
-type Binder n e a t
-  = Item (Binder.Binder n t e) a
+type Variable n e t
+  = Item (Var.Variable n e t)
   
-type Record n a
-  = Item (Record.Record n a) a
+type Record n
+  = Item (Record.Record n)
   
-type Alias n a
-  = Item (Alias.Alias n a) a
+type Alias n
+  = Item (Alias.Alias n)
   
 
   
-addFunction :: Function n e a t -> Items n e a t -> Items n e a t
+addFunction :: Function n e t -> Items n e t -> Items n e t
 addFunction fn items =
   items { _fns = fn : _fns items }
   
-addBinder :: Binder n e a t -> Items n e a t -> Items n e a t
-addBinder bind items =
-  items { _binds = bind : _binds items }
+addBinder :: Variable n e t -> Items n e t -> Items n e t
+addBinder var items =
+  items { _vars = var : _vars items }
   
-addRecord :: Record n a -> Items n e a t -> Items n e a t
+addRecord :: Record n -> Items n e t -> Items n e t
 addRecord rec items =
   items { _recs = rec : _recs items }
   
-addAlias :: Alias n a -> Items n e a t -> Items n e a t
+addAlias :: Alias n -> Items n e t -> Items n e t
 addAlias alias items =
   items { _aliases = alias : _aliases items }

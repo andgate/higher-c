@@ -55,7 +55,7 @@ library
 
   exposed-modules:      Language.Hawk.Syntax.Alias
                         Language.Hawk.Syntax.Class
-                        Language.Hawk.Syntax.Binder
+                        Language.Hawk.Syntax.Binding
                         Language.Hawk.Syntax.Expression
                         Language.Hawk.Syntax.Function
                         Language.Hawk.Syntax.Helpers
@@ -68,6 +68,7 @@ library
                         Language.Hawk.Syntax.Record
                         Language.Hawk.Syntax.Statement
                         Language.Hawk.Syntax.Type
+                        Language.Hawk.Syntax.Variable
                         
                         -- Old Syntax
                         --Language.Hawk.Syntax.AST
@@ -87,13 +88,16 @@ library
                         --Language.Hawk.Parse.Lexer
                         
                         Language.Hawk.Parse
-                        Language.Hawk.Parse.Binder
+                        Language.Hawk.Parse.Binding
                         Language.Hawk.Parse.Expression
+                        Language.Hawk.Parse.Function
                         Language.Hawk.Parse.Helpers
                         Language.Hawk.Parse.Layout
                         Language.Hawk.Parse.Literal
                         Language.Hawk.Parse.Name
+                        Language.Hawk.Parse.Statement
                         Language.Hawk.Parse.Type
+                        Language.Hawk.Parse.Variable
                       
                         Language.Hawk.Report.Annotation
                         Language.Hawk.Report.Error
