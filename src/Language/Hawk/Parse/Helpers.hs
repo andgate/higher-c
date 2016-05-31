@@ -139,8 +139,8 @@ spaceySepBy1 p sep =
     
 spaceyPrefixBy :: MonadicParsing m => m a -> m b -> m [a]
 spaceyPrefixBy p sep =
-  many $ commitIf (ws >> sep) (padded sep >> p)
-  
+  many $ commitIf (ws >> sep) (pad sep >> p)
+
   
 arrowSep1 :: MonadicParsing m => m a -> m [a]
 arrowSep1 p =
@@ -149,11 +149,11 @@ arrowSep1 p =
 
 spaceSep :: MonadicParsing m => m a -> m [a]
 spaceSep =
-  many . try . padded
+  many . try . pad
   
 spaceSep1 :: MonadicParsing m => m a -> m [a]
 spaceSep1 p =
-  p `spaceySepBy1` pure ()
+  p `spaceySepBy1` (pure ())
 
 commaSep :: MonadicParsing m => m a -> m [a]
 commaSep p =
@@ -168,14 +168,9 @@ commaSep1 p =
 -- -----------------------------------------------------------------------------
 -- Containers
 
-padded :: MonadicParsing m => m a -> m a
-padded p =
-  ws *> p <* ws
-
-
 surround :: MonadicParsing m => String -> String -> String -> m a -> m a
 surround l r name p =
-  string l *> padded p <* (string r <?> unwords ["a closing", name, " '", show r, "'"])
+  string l *> pad p <* (string r <?> unwords ["a closing", name, " '", show r, "'"])
 
 
 parens :: MonadicParsing m => m a -> m a

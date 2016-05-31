@@ -21,6 +21,7 @@ expr :: MonadicParsing m => m Expr.Source
 expr = 
       try exprTyped
   <|> expr0
+  <?> "Expression"
 
 
 exprTyped :: MonadicParsing m => m Expr.Source

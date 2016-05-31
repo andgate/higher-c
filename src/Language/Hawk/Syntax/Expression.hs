@@ -9,16 +9,16 @@ import qualified Language.Hawk.Report.Region as R
 
 
 type Source
-  = Expr Name.Raw Type.Source
+  = Expr Name.Source (Maybe Type.Source)
 
 type Valid
-  = Expr Name.Raw Type.Valid
+  = Expr Name.Valid (Maybe Type.Valid)
 
 type Canonical
-  = Expr Name.Canonical Type.Canonical
+  = Expr Name.Canonical (Maybe Type.Canonical)
 
 type Typed
-  = Expr Name.Canonical Type.Typed
+  = Expr Name.Typed Type.Typed
 
 type Expr n t =
   A.Located (Expr' n t)
@@ -38,7 +38,7 @@ data Expr' n t
   | Access (Expr n t) (Expr n t)
   | RefAccess (Expr n t) (Expr n t)
   
-  | Cast (Expr n t) t
+  | Cast (Expr n t) (Type.Type n)
   
   -- disable case for now, patterns are too complicated
   -- | Case (Expr n t) [(Pattern.Pattern n, Expr n t)]

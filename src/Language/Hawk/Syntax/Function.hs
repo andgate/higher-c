@@ -11,13 +11,13 @@ import qualified Language.Hawk.Report.Region as R
 
 
 type Source
-  = Function Name.Source Expr.Source Type.Source
+  = Function Name.Source Expr.Source (Maybe Type.Source)
 
 type Valid
-  = Function Name.Valid Expr.Valid Type.Valid
+  = Function Name.Valid Expr.Valid (Maybe Type.Valid)
 
 type Canonical
-  = Function Name.Valid Expr.Canonical Type.Canonical
+  = Function Name.Valid Expr.Canonical (Maybe Type.Canonical)
 
 type Typed
   = Function Name.Typed Expr.Typed Type.Typed

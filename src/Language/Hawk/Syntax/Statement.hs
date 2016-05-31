@@ -8,31 +8,31 @@ import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
 
 type Source
-  = Statement Name.Raw Expr.Source Type.Source
+  = Statement Name.Source Expr.Source (Maybe Type.Source)
   
 type SourceBlock
-  = Block Name.Raw Expr.Source Type.Source
+  = Block Name.Source Expr.Source (Maybe Type.Source)
 
 
 type Valid
-  = Statement Name.Raw Expr.Valid Type.Valid
+  = Statement Name.Valid Expr.Valid (Maybe Type.Valid)
   
 type ValidBlock
-  = Block Name.Raw Expr.Source Type.Source
+  = Block Name.Valid Expr.Valid (Maybe Type.Valid)
 
 
 type Canonical
-  = Statement Name.Canonical Expr.Canonical Type.Canonical
+  = Statement Name.Canonical Expr.Canonical (Maybe Type.Canonical)
 
 type CanonicalBlock
-  = Block Name.Raw Expr.Source Type.Source
+  = Block Name.Canonical Expr.Canonical (Maybe Type.Canonical)
 
 
 type Typed
-  = Statement Name.Canonical Expr.Typed Type.Typed
+  = Statement Name.Typed Expr.Typed Type.Typed
   
 type TypedBlock
-  = Block Name.Raw Expr.Source Type.Source
+  = Block Name.Typed Expr.Typed Type.Typed
   
 
 
@@ -53,3 +53,8 @@ data Statement' n e t
   | If [(e, Block n e t)] (Block n e t)
   | While e (Block n e t)
   deriving (Show)
+  
+  
+mkRetBlk :: Expr.Source -> SourceBlock
+mkRetBlk e@(A.A r _) =
+  [A.A r (Return e)]

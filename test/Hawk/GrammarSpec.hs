@@ -53,9 +53,19 @@ spec = do
                 putStr "\nFile parsed:\n"
                 print res
                 
+                
             it "Simple Function" $ do
                 
                 let str = "fn foo :: f64 -> f64 | x = x"
+                    res = Parser.parseString P.function "(test)" str
+                
+                putStr "\nFile parsed:\n"
+                print res
+                
+                
+            it "Add and Double Function" $ do
+                
+                let str = "fn doubleSum :: i32 -> i32 -> i32 | x y :\n  let sum :: i32 = add_i32 x y\n  let z :: i32 = mul_i32 sum 2\n  return z"
                     res = Parser.parseString P.function "(test)" str
                 
                 putStr "\nFile parsed:\n"

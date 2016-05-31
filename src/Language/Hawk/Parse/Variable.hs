@@ -19,17 +19,13 @@ var :: MonadicParsing m => m Var.Source
 var =
   locate $ do
       string "let"
-      ws
       
-      b <- binding
-      ws
+      b <- lpad binding
       
-      t <- typesig
-      ws
+      t <- lpad typesig0
       
-      equals
-      ws
+      lpad equals
       
-      e <- withFloatingLayout expr
+      e <- withLayout expr
       
       (return $ Var.Variable b t e) <?> "Let Binding"

@@ -10,13 +10,13 @@ import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
 
 type Source =
-  Variable Name.Source Expr.Source Type.Source
+  Variable Name.Source Expr.Source (Maybe Type.Source)
   
 type Valid =
-  Variable Name.Valid Expr.Valid Type.Valid
+  Variable Name.Valid Expr.Valid (Maybe Type.Valid)
   
 type Canonical =
-  Variable Name.Canonical Expr.Canonical Type.Canonical
+  Variable Name.Canonical Expr.Canonical (Maybe Type.Canonical)
   
 type Typed =
   Variable Name.Typed Expr.Typed Type.Typed

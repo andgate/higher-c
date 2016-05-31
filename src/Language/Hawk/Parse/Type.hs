@@ -15,6 +15,10 @@ import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
 
 
+typesig0 :: MonadicParsing m => m (Maybe Type.Source)
+typesig0 =
+  optional typesig
+
 typesig :: MonadicParsing m => m Type.Source
 typesig =
   hasType *> ws *> typ2
