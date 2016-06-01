@@ -25,14 +25,14 @@ block =
 
 statement :: MonadicParsing m => m Stmt.Source
 statement =
-  freshLine *> statement'
+  freshLine >> statement'
 
 
 statement' :: MonadicParsing m => m Stmt.Source
 statement' = 
-      try stmtCall
-  <|> try stmtLet
-  <|> stmtRet
+      try stmtLet
+  <|> try stmtRet
+  <|> stmtCall
   <?> "Statement"
 
   

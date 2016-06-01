@@ -9,7 +9,6 @@ import Text.Trifecta.Delta
 
 import Language.Hawk.Parse.Helpers
 import qualified Language.Hawk.Syntax.Name as Name
-import qualified Language.Hawk.Report.Region as R
 
 
 varName :: MonadicParsing m => m Name.Source

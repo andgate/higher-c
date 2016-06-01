@@ -92,8 +92,11 @@ library
                         Language.Hawk.Parse.Expression
                         Language.Hawk.Parse.Function
                         Language.Hawk.Parse.Helpers
+                        Language.Hawk.Parse.Items
                         Language.Hawk.Parse.Layout
                         Language.Hawk.Parse.Literal
+                        Language.Hawk.Parse.Module
+                        Language.Hawk.Parse.ModuleName
                         Language.Hawk.Parse.Name
                         Language.Hawk.Parse.Statement
                         Language.Hawk.Parse.Type

@@ -77,7 +77,7 @@ peekLayout =
 class (LayoutState m, DeltaParsing m) => LayoutParsing m where
     ws :: m ()
     ws = do 
-      try spaces <|> pure ()
+      try spaces
       col <- column <$> position
       layout <- peekLayout
       
@@ -85,24 +85,24 @@ class (LayoutState m, DeltaParsing m) => LayoutParsing m where
         return ()
       
       else  
-        unexpected "end of layout"
+        fail $ "Expected content after column " ++ show (layoutColumn layout)
         
     
     freshLine :: m ()
     freshLine = do
-      try spaces <|> pure ()
+      try spaces
       col <- column <$> position
       layout <- peekLayout
       
       if layoutColumn layout == col then
         return ()
       else
-        unexpected $ "expected on column " ++ show col
+        fail $ "Expected fresh line on column " ++ show (layoutColumn layout)
               
               
     startLayout :: m ()
     startLayout =
-      lpad position >>= (column >>> Layout >>> pushLayout)
+      ws >> position >>= (column >>> Layout >>> pushLayout)
         
     
     endLayout :: m ()
@@ -115,7 +115,7 @@ class (LayoutState m, DeltaParsing m) => LayoutParsing m where
         return ()
         
       else  
-        unexpected "open layout"
+        fail $ "Expected layout to end on column " ++ show (layoutColumn layout)
 
 
 

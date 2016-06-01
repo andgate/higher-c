@@ -4,6 +4,7 @@
 module Language.Hawk.Parse.Helpers where
 
 import Control.Applicative
+import Control.Arrow
 import Control.Monad.State
 import qualified Data.ByteString.UTF8 as UTF8
 import Text.Parser.Char
@@ -120,6 +121,11 @@ hasType =
 comma :: MonadicParsing m => m String
 comma =
   string "," <?> "a comma symbol ','"
+  
+  
+period :: MonadicParsing m => m String
+period =
+  string "." <?> "a period symbol '.'"
 
 -- -----------------------------------------------------------------------------
 -- Grouping
@@ -132,6 +138,11 @@ commitIf check p =
       try (lookAhead check) >> p
 
 
+spaceySepBy :: MonadicParsing m => m a -> m b -> m [a]
+spaceySepBy p sep = 
+  option [] ((try p) `spaceySepBy1` sep)
+
+
 spaceySepBy1 :: MonadicParsing m => m a -> m b -> m [a]
 spaceySepBy1 p sep =
   (:) <$> p <*> p `spaceyPrefixBy` sep
@@ -139,30 +150,50 @@ spaceySepBy1 p sep =
     
 spaceyPrefixBy :: MonadicParsing m => m a -> m b -> m [a]
 spaceyPrefixBy p sep =
-  many $ commitIf (ws >> sep) (pad sep >> p)
+  many $ commitIf (lpad sep) (pad sep >> p)
 
   
 arrowSep1 :: MonadicParsing m => m a -> m [a]
 arrowSep1 p =
   p `spaceySepBy1` (try rightArrow)
-
-
-spaceSep :: MonadicParsing m => m a -> m [a]
-spaceSep =
-  many . try . pad
   
-spaceSep1 :: MonadicParsing m => m a -> m [a]
-spaceSep1 p =
-  p `spaceySepBy1` (pure ())
+
 
 commaSep :: MonadicParsing m => m a -> m [a]
 commaSep p =
-  p `spaceySepBy1` comma
-
-
+  p `spaceySepBy` comma
+  
+  
 commaSep1 :: MonadicParsing m => m a -> m [a]
 commaSep1 p =
   p `spaceySepBy1` comma
+  
+  
+periodSep :: MonadicParsing m => m a -> m [a]
+periodSep p =
+  p `spaceySepBy` period
+  
+  
+periodSep1 :: MonadicParsing m => m a -> m [a]
+periodSep1 p =
+  p `spaceySepBy1` period
+
+
+spaceSep :: MonadicParsing m => m a -> m [a]
+spaceSep p =
+  try (spaceSep1 p) <|> pure []
+ 
+
+spaceSep1 :: MonadicParsing m => m a -> m [a]
+spaceSep1 p =
+  (:) <$> p <*> spacePrefix p
+
+
+spacePrefix :: MonadicParsing m => m a -> m [a]
+spacePrefix =
+  many . try . lpad
+
+  
   
 
 -- -----------------------------------------------------------------------------

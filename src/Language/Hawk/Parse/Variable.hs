@@ -16,16 +16,16 @@ import qualified Language.Hawk.Syntax.Variable as Var
 
 
 var :: MonadicParsing m => m Var.Source
-var =
+var = 
   locate $ do
-      string "let"
+      try $ string "let"
       
       b <- lpad binding
       
       t <- lpad typesig0
       
-      lpad equals
+      pad equals
       
-      e <- withLayout expr
+      e <- expr
       
-      (return $ Var.Variable b t e) <?> "Let Binding"
+      (return $ Var.Variable b t e)

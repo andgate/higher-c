@@ -17,7 +17,7 @@ import qualified Language.Hawk.Report.Region as R
 
 typesig0 :: MonadicParsing m => m (Maybe Type.Source)
 typesig0 =
-  optional typesig
+  optional (try typesig)
 
 typesig :: MonadicParsing m => m Type.Source
 typesig =
@@ -34,11 +34,11 @@ typ0 =
 
 typ1 :: MonadicParsing m => m Type.Source
 typ1 = 
-  Type.apply <$> typ0 <*> many (try (ws *> typ0)) <?> "Type constructor"
+  Type.apply <$> typ0 <*> many (try (ws *> typ0))
 
 
 typ2 :: MonadicParsing m => m Type.Source
-typ2 = withRegion arrArgs Type.arrow <?> "Type arrow"
+typ2 = withRegion arrArgs Type.arrow
   where
     arrArgs = arrowSep1 typ1
 
@@ -47,11 +47,11 @@ typ2 = withRegion arrArgs Type.arrow <?> "Type arrow"
 -- Primitive Type
 tyPrim :: MonadicParsing m => m Type.Source
 tyPrim =
-  locate $ Type.Con <$> tyPrimName <?> "Primitive Type"
+  locate $ Type.Con <$> tyPrimName
 
   
 tyTuple :: MonadicParsing m => m Type.Source
-tyTuple = withRegion tupleArgs Type.tuple <?> "Tuple Type"
+tyTuple = withRegion tupleArgs Type.tuple
   where
     tupleArgs = parens (commaSep1 typ2)
     

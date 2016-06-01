@@ -21,12 +21,11 @@ expr :: MonadicParsing m => m Expr.Source
 expr = 
       try exprTyped
   <|> expr0
-  <?> "Expression"
 
 
 exprTyped :: MonadicParsing m => m Expr.Source
 exprTyped =
-  locate $ Expr.Cast <$> expr0 <*> (ws *> typesig)
+  locate $ Expr.Cast <$> expr0 <*> lpad typesig
 
 
 expr0 :: MonadicParsing m => m Expr.Source
@@ -39,13 +38,13 @@ fexpr :: MonadicParsing m => m Expr.Source
 fexpr =
   locate $ do
     (call:args) <- spaceSep1 aexpr
-    return (Expr.App call args) <?> "Function Call"
+    return (Expr.App call args)
 
 
 aexpr :: MonadicParsing m => m Expr.Source
 aexpr = 
-  try litExpr
-  <|> try varExpr
+      litExpr
+  <|> varExpr
   <|> nestedExpr
 
 
