@@ -10,6 +10,7 @@ import qualified Data.ByteString.UTF8 as UTF8
 import Text.Parser.Char
 import Text.Parser.Combinators
 import Text.Parser.LookAhead
+import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty)
 import Text.Trifecta.Combinators
 import Text.Trifecta.Delta
 import qualified Text.Trifecta.Parser as Trifecta
@@ -44,6 +45,15 @@ parseFromFileEx p fn =
 parseString :: IParser a -> String -> String -> Result a
 parseString p fn str =
   Trifecta.parseString (evalStateT p defLayoutEnv) (defDelta fn) str
+
+
+-- Test Parser with String
+(#) :: Pretty a => IParser a -> String -> IO ()
+(#) parser input =
+  do  putStr "\nFile parsed:\n"
+      case (parseString parser "(test)" input) of
+        Success result -> print $ pretty result
+        Failure errMsg -> print errMsg
 
 -- -----------------------------------------------------------------------------
 -- Identifiers

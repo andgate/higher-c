@@ -21,8 +21,7 @@ import qualified Language.Hawk.Syntax.Statement as Stmt
 function :: MonadicParsing m => m Fn.Source
 function =
   locate $ do
-      freshLine
-      string "fn"
+      try $ string "fn"
       name <- lpad varName
       tipe <- lpad typesig0  
       

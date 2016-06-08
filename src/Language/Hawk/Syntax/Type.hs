@@ -1,8 +1,13 @@
+{-# LANGUAGE OverloadedStrings, FlexibleInstances #-}
 module Language.Hawk.Syntax.Type where
 
 import Control.Arrow (second)
+import Data.Aeson ((.=))
+import qualified Data.Aeson as Json
 import Data.Binary
 import qualified Data.Map as Map
+import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Report.Annotation as A
@@ -101,7 +106,39 @@ variadic name region types =
       A.A region $ Con name
   in
     A.A region $ App con types
+    
+
+
+instance (PP.Pretty n) => PP.Pretty (Type' n) where
+  pretty (App con args) =
+    PP.text "Type App:"
+    PP.<$>
+    PP.indent 2
+      ( PP.text "con:" <+> PP.pretty con
+        PP.<$>
+        PP.text "args:" PP.<$> PP.indent 2 (PP.pretty args)
+      )
+    
+
+  pretty (Con name) =
+    PP.text "Type Con" <+> PP.dquotes (PP.pretty name)
+    
+
+
+instance (Json.ToJSON n) => Json.ToJSON (Type' n) where
+  toJSON (App con args) =
+    Json.object
+      [ "value" .= Json.String "App"
+      , "con"   .= con
+      , "args"  .= args
+      ]
       
+  toJSON (Con name) =
+    Json.object
+      [ "value" .= Json.String "Con"
+      , "name"  .= name
+      ]
+
 
 instance (Binary n) => Binary (Type' n) where
   put tipe =

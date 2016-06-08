@@ -1,7 +1,11 @@
+{-# LANGUAGE OverloadedStrings, FlexibleInstances #-}
 module Language.Hawk.Syntax.Name where
 
+import Data.Aeson ((.=))
+import qualified Data.Aeson as Json
 import Data.Binary
 import qualified Data.Maybe as Maybe
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 import qualified Language.Hawk.Syntax.Helpers as Help
 import qualified Language.Hawk.Syntax.ModuleName as ModuleName
@@ -108,8 +112,20 @@ instance ToString Home where
 
 instance ToString (ModuleName.Name) where
   toString = ModuleName.toString
+
+
+instance (ToString h) => PP.Pretty (Name h) where
+  pretty n =
+    PP.string (toString n)
+
+
+instance (Json.ToJSON h) => Json.ToJSON (Name h) where
+  toJSON (Name name home) =
+    Json.object
+      [ "name" .= name
+      , "home" .= Json.toJSON home
+      ]
   
-    
  
     
 instance (Binary h) => Binary (Name h) where

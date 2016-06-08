@@ -43,6 +43,7 @@ library
                         , trifecta
                         , uniplate
                         , utf8-string
+                        , yaml
 
   ghc-options:          -Wall
                         -fno-warn-unused-binds
@@ -150,10 +151,13 @@ test-suite spec
   main-is:              Spec.hs
   
   build-depends:        base
+                        , bytestring
+                        , ansi-wl-pprint
                         , hspec
                         , hawk
                         , containers
                         , trifecta
+                        , yaml
   
   ghc-options:          -threaded
                         -rtsopts

@@ -1,17 +1,24 @@
+{-# LANGUAGE OverloadedStrings, FlexibleInstances #-}
 module Language.Hawk.Report.Annotation where
 
 import Prelude hiding (map)
+import Data.Aeson ((.=))
+import qualified Data.Aeson as Json
 import Data.Binary
+import Text.PrettyPrint.ANSI.Leijen ((<+>))
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
+
 import qualified Language.Hawk.Report.Region as R
 
 
 data Annotated annot a
   = A annot a
-  deriving (Show)
+  deriving (Eq, Show)
   
 type Located a =
   Annotated R.Region a
-  
+ 
+-- This is currently unused 
 type Commented a =
   Annotated (R.Region, Maybe String) a
   
@@ -38,7 +45,19 @@ map f (A annot value) =
 drop :: Annotated info a -> a
 drop (A _ value) =
   value
-  
+
+
+instance (PP.Pretty annot, PP.Pretty a) => PP.Pretty (Annotated annot a) where
+  pretty (A annot a) =
+    PP.pretty a <+> PP.parens (PP.pretty annot)
+
+
+instance (Json.ToJSON annot, Json.ToJSON a) => Json.ToJSON (Annotated annot a) where
+  toJSON (A annot a) =
+    Json.object
+      [ "annot" .= annot
+      , "value" .= a
+      ]
   
   
 instance (Binary annot, Binary a) => Binary (Annotated annot a) where

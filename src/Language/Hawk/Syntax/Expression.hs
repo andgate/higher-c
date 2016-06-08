@@ -1,5 +1,8 @@
 module Language.Hawk.Syntax.Expression where
 
+import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
+
 import qualified Language.Hawk.Syntax.Literal as Literal
 import qualified Language.Hawk.Syntax.ModuleName as ModuleName
 import qualified Language.Hawk.Syntax.Type as Type
@@ -44,3 +47,11 @@ data Expr' n t
   -- | Case (Expr n t) [(Pattern.Pattern n, Expr n t)]
   
   deriving (Show)
+  
+  
+  
+instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (Expr' n t) where
+  pretty (Lit lit) =
+    PP.text "Literal Expression:"
+    PP.<$>
+    PP.indent 2 ( PP.pretty lit )

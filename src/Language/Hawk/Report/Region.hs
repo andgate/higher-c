@@ -5,6 +5,8 @@ import Data.Aeson ((.=))
 import qualified Data.Aeson as Json
 import Data.Binary
 import Data.Int
+import Text.PrettyPrint.ANSI.Leijen ((<>))
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import qualified Text.Trifecta.Delta as Trifecta
 
 
@@ -92,7 +94,17 @@ instance Json.ToJSON Position where
       , "column"  .= column
       ]
       
-      
+
+instance PP.Pretty Region where
+  pretty (Region start end) =
+    PP.pretty start
+    <> PP.text "-"
+    <> PP.pretty end
+    
+instance PP.Pretty Position where
+  pretty (Position line column) =
+    PP.text $ show line ++ ":" ++ show column
+     
 instance Binary Region where
   put r =
     put (start r) >> put (end r)
