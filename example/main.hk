@@ -6,10 +6,6 @@
 // Declare this module with the name 'Main' 
 mod Main
 
-// Import the 'IO' module
-use IO
-
-
 
 // Create a Car struct, with gas and a max speed
 Car :- 
@@ -30,6 +26,9 @@ var_a :: I32 ^= 1
 !var_b :: I32 ^= 2
 
 
+// Import the 'IO' module
+use IO
+
 /* Function for driving car.
    Functions are created using the ":=" operator.
    Prints out the maxium speed of a given car.
@@ -37,7 +36,7 @@ var_a :: I32 ^= 1
    However, type signatures in Hawk come after function name and args.
   */
 drive car :: Car -> IO () :=
-  io.print (toString car.max_speed)
+  IO.print $ toString car.max_speed
 
 // Main function and default entry point of all programs.
 // An executable cannot compile without a main function.
