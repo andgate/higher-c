@@ -12,7 +12,7 @@ rec Entity
   , components :: [Components]
 
 rec Player <: Entity
-  = health :: i32
+  = health :'2
   , attack :: i32
   , defense :: i32
 
@@ -30,15 +30,25 @@ data FooBar a e
 type IntVector = Vector I32
 
 
-let strawberry :: Berry
-let blueberry :: i32 = { 21312 }
-let !raspberry :: i32 = { -123 }
-let blackberry :: f64 = { 312.3 }
+// Berries
+strawberry :: Berry
+strawberry = 0
 
+blueberry :: i32
+blueberry = 21312
+
+raspberry :: i32
+raspberry = -123
+
+blackberry :: f64
+blackberry = { 312.3 }
+
+// Actual berry class
 class Berry a : {
   fn squish :: a -> ()
   fn mix :: a -> a -> a
 }
+
 
 fn fancy
   :: Foo a b c, Bar c b => a -> b -> c -> ()

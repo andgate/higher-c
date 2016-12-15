@@ -116,7 +116,15 @@ makeId firstChar bodyChar =
 equals :: MonadicParsing m => m String
 equals =
   string "=" <?> "an equals sign '='"
+  
+vardefsym :: MonadicParsing m => m String
+vardefsym =
+  string "$=" <?> "a variable definition symbol '$='"
     
+fndefsym :: MonadicParsing m => m String
+fndefsym =
+  string ":=" <?> "a function definition symbol ':='"
+
 
 rightArrow :: MonadicParsing m => m String
 rightArrow = 

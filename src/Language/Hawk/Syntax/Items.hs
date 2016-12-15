@@ -53,8 +53,14 @@ data Visibility
 type Function n e t
   = Item (Function.Function n e t)
   
+type SourceFunction
+  = Item Function.Source
+  
 type Variable n e t
   = Item (Var.Variable n e t)
+  
+type SourceVariable
+  = Item Var.Source
   
 type Record n
   = Item (Record.Record n)
@@ -79,3 +85,11 @@ addRecord rec items =
 addAlias :: Alias n -> Items n e t -> Items n e t
 addAlias alias items =
   items { _aliases = alias : _aliases items }
+  
+  
+emptyComment :: Comment
+emptyComment = Comment ""
+
+
+noComment :: Visibility -> i -> Item i
+noComment = Item emptyComment

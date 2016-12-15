@@ -30,7 +30,8 @@ statement =
 
 statement' :: MonadicParsing m => m Stmt.Source
 statement' = 
-      try stmtLet
+      try stmtAssign
+  <|> try stmtVarBind
   <|> try stmtRet
   <|> stmtCall
   <?> "Statement"
@@ -41,9 +42,21 @@ stmtCall =
   locate $ Stmt.Call <$> fexpr <?> "Function Call Statement"
 
 
-stmtLet :: MonadicParsing m => m Stmt.Source
-stmtLet =
-  locate $ Stmt.Let <$> var <?> "Let Statement"
+stmtVarBind :: MonadicParsing m => m Stmt.Source
+stmtVarBind =
+  locate $ Stmt.Let <$> var <?> "Variable Binding"
+  
+stmtAssign :: MonadicParsing m => m Stmt.Source
+stmtAssign =
+  locate $ do
+    n <- varName
+    t <- lpad typesig0
+    
+    pad equals
+    
+    e <- expr
+    
+    (return $ Stmt.Assign n t e)
   
   
 stmtRet :: MonadicParsing m => m Stmt.Source

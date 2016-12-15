@@ -1,8 +1,44 @@
-mod Test.Main
+// Sample of a basic Hawk program.
+// Hawk is similar in syntax to Haskell,
+// but technically closer to C.
+mod main
+use io
 
-fn foo :: i32 -> i32 -> i32
-| a b :
-  {
-    { let c :: i32 = { a + b } }
-    { return b }
-  }
+// Create a Car struct, with gas and a max speed
+Car :- 
+  gas :: I32,
+  max_speed :: I32
+
+// Create an Automobile type as a type synonym for Car
+Automobile = Car
+
+
+
+// Variables are created using the "$=" operator.
+// Type is set using "::" followed by a type signature.
+var_a :: I32 $= 1
+
+// Variables are mutable by default, but can be set to
+// immutable with a "!" operator on the name of the variable.
+!var_b :: I32 $= 2
+
+
+// Function for driving car.
+// Functions are created using the ":=" operator.
+// Prints out the maxium speed of a given car.
+// Functions use a type signature similar to haskell as well.
+// However, type signatures in Hawk come after function name and args.
+drive car :: Car -> IO () :=
+  io.print (toString car.max_speed)
+
+// Main function and default entry point of all programs.
+// An executable cannot compile without a main function.
+main :: IO () :=
+  
+  // Create some cars
+  car_a $= Car 12 124
+  !car_b $= Car 19 103
+  
+  // Drive some cars
+  drive car_a
+  drive car_b // If drive mutated car_b, and error should be thrown.

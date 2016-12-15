@@ -55,3 +55,43 @@ instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (Expr' n t) where
     PP.text "Literal Expression:"
     PP.<$>
     PP.indent 2 ( PP.pretty lit )
+    
+  pretty (Var name) =
+    PP.text "Variable Expression:"
+    PP.<$>
+    PP.indent 2 ( PP.pretty name )
+    
+  pretty (Con name) =
+    PP.text "Constructor Expression:"
+    PP.<$>
+    PP.indent 2 ( PP.pretty name )
+    
+  pretty (App f xs) =
+    PP.text "Application Expression:"
+    PP.<$>
+    PP.indent 2 
+        ( PP.pretty f PP.<$> PP.pretty xs )
+        
+  pretty (Let name value definition) =
+    PP.text "Let Expression:"
+    PP.<$>
+    PP.indent 2
+      ( PP.string "name:" <+> PP.pretty name
+        PP.<$>
+        PP.string "value:" <+> PP.pretty value
+        PP.<$> 
+        PP.string "definition:" <+> PP.pretty definition
+      )
+      
+      
+  pretty (Cast e t) =
+    PP.text "Cast Expression:"
+    PP.<$>
+    PP.indent 2
+      ( PP.string "expression:" <+> PP.pretty e
+        PP.<$>
+        PP.string "type:" <+> PP.pretty t
+      )
+              
+  
+          

@@ -1,9 +1,11 @@
 module Language.Hawk.Syntax.Function where
 
-import qualified Language.Hawk.Syntax.Expression as Expr
-import qualified Language.Hawk.Syntax.Name as Name
+import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 import qualified Language.Hawk.Syntax.Binding as B
+import qualified Language.Hawk.Syntax.Expression as Expr
+import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Syntax.Statement as Stmt
 import qualified Language.Hawk.Syntax.Type as Type
 import qualified Language.Hawk.Report.Annotation as A
@@ -34,3 +36,19 @@ data Function' n e t
     , fn_body :: Stmt.Block n e t
     }
   deriving (Show)
+  
+  
+  
+instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Function' n e t) where
+  pretty (Function name tipe args body) =
+    PP.text "Function:"
+    PP.<$>
+    PP.indent 2
+      ( PP.text "name:" <+> PP.pretty name
+        PP.<$>
+        PP.text "type:" <+> PP.pretty tipe
+        PP.<$>
+        PP.text "args:" <+> PP.pretty args
+        PP.<$>
+        PP.text "body:" <+> PP.pretty body
+      )

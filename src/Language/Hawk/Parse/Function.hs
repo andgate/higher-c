@@ -21,14 +21,11 @@ import qualified Language.Hawk.Syntax.Statement as Stmt
 function :: MonadicParsing m => m Fn.Source
 function =
   locate $ do
-      try $ string "fn"
-      name <- lpad varName
-      tipe <- lpad typesig0  
+      name <- varName
       
-      try $ case tipe of
-          Just _  -> lpad (string "|")
-          Nothing -> return []
       args <- spacePrefix binding
+      
+      tipe <- lpad typesig0
       
       (Fn.Function name tipe args) <$> lpad fnBody
 
@@ -41,9 +38,9 @@ fnBody =
 
 fnBlock :: MonadicParsing m => m Stmt.SourceBlock
 fnBlock =
-  string ":" *> block <?> "Statement block"
+  string ":=" *> block <?> "Statement block"
 
 
 fnExpr :: MonadicParsing m => m Stmt.SourceBlock
 fnExpr =
-  string "=" *> withLayout (Stmt.mkRetBlk <$> expr)
+  string ":=" *> withLayout (Stmt.mkRetBlk <$> expr)

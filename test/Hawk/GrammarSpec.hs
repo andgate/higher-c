@@ -39,25 +39,25 @@ spec = do
           
       it "Simple Type" $ do
           
-          let str = ":: Foo i32 -> i32 -> (i32, f64 -> Bool) -> void"
+          let str = ":: (Foo F32 -> F32 -> (I32, F64 -> Bool) -> ())"
           P.typesig # str
           
           
       it "Simple Variable Binding" $ do
           
-          let str = "let foo :: f64 = add x 13 :: f32"
+          let str = "sum :: I32 $= add 13 13"
           P.var # str
           
           
       it "Simple Function" $ do
           
-          let str = "fn foo :: f64 -> f64 | x = x"
+          let str = "id x :: F64 -> F64 := x"
           P.function # str
           
           
       it "Add and Double Function" $ do
           
-          let str = "fn doubleSum :: i32 -> i32 -> i32 | x y :\n  let sum :: i32 = add_i32 x y\n  let z :: i32 = mul_i32 sum 2\n  return z"
+          let str = "doubleSum x y :: I32 -> I32 -> I32 :=\n  sum :: I32 $= add_i32 x y\n  sum = mul_i32 sum 2\n  return sum"
           P.function # str
 
 main :: IO ()

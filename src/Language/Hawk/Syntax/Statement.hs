@@ -1,5 +1,8 @@
 module Language.Hawk.Syntax.Statement where
 
+import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
+
 import qualified Language.Hawk.Syntax.Expression as Expr
 import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Syntax.Type as Type
@@ -58,3 +61,40 @@ data Statement' n e t
 mkRetBlk :: Expr.Source -> SourceBlock
 mkRetBlk e@(A.A r _) =
   [A.A r (Return e)]
+  
+  
+
+instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Statement' n e t) where
+  pretty (Do e) =
+    PP.text "Do Statement:"
+    PP.<$>
+    PP.indent 2 ( PP.pretty e )
+    
+  pretty (Call e) =
+    PP.text "Call Statement:"
+    PP.<$>
+    PP.indent 2 
+        ( PP.pretty e )
+        
+  pretty (Let variable) =
+    PP.text "Let Statement:"
+    PP.<$>
+    PP.indent 2
+      ( PP.string "Var:" <+> PP.pretty variable
+      )
+      
+  pretty (Assign name tipe e) =
+    PP.text "Assign Statement:"
+    PP.<$>
+    PP.indent 2
+      ( PP.string "name:" <+> PP.pretty name
+        <+> PP.string "type:" <+> PP.pretty tipe
+        <+> PP.string "expr:" <+> PP.pretty e
+      )
+      
+  pretty (Return e) =
+    PP.text "Return Statement:"
+    PP.<$>
+    PP.indent 2 
+        ( PP.pretty e )        
+  

@@ -18,13 +18,11 @@ import qualified Language.Hawk.Syntax.Variable as Var
 var :: MonadicParsing m => m Var.Source
 var = 
   locate $ do
-      try $ string "let"
-      
-      b <- lpad binding
+      b <- binding
       
       t <- lpad typesig0
       
-      pad equals
+      pad vardefsym
       
       e <- expr
       
