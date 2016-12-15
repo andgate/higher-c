@@ -1,8 +1,15 @@
-// Sample of a basic Hawk program.
-// Hawk is similar in syntax to Haskell,
-// but technically closer to C.
-mod main
-use io
+/* Sample of a basic Hawk program.
+   Hawk is similar in syntax to Haskell,
+   but technically closer to C.
+ */
+
+// Declare this module with the name 'Main' 
+mod Main
+
+// Import the 'IO' module
+use IO
+
+
 
 // Create a Car struct, with gas and a max speed
 Car :- 
@@ -23,11 +30,12 @@ var_a :: I32 $= 1
 !var_b :: I32 $= 2
 
 
-// Function for driving car.
-// Functions are created using the ":=" operator.
-// Prints out the maxium speed of a given car.
-// Functions use a type signature similar to haskell as well.
-// However, type signatures in Hawk come after function name and args.
+/* Function for driving car.
+   Functions are created using the ":=" operator.
+   Prints out the maxium speed of a given car.
+   Functions use a type signature similar to haskell as well.
+   However, type signatures in Hawk come after function name and args.
+  */
 drive car :: Car -> IO () :=
   io.print (toString car.max_speed)
 
