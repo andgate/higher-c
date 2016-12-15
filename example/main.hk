@@ -16,18 +16,18 @@ Car :-
   gas :: I32,
   max_speed :: I32
 
-// Create an Automobile type as a type synonym for Car
-Automobile = Car
+// Type binding, set type Automobile as synonym for Car
+Automobile ^= Car
 
 
 
 // Variables are created using the "$=" operator.
 // Type is set using "::" followed by a type signature.
-var_a :: I32 $= 1
+var_a :: I32 ^= 1
 
 // Variables are mutable by default, but can be set to
 // immutable with a "!" operator on the name of the variable.
-!var_b :: I32 $= 2
+!var_b :: I32 ^= 2
 
 
 /* Function for driving car.
@@ -44,8 +44,8 @@ drive car :: Car -> IO () :=
 main :: IO () :=
   
   // Create some cars
-  car_a $= Car 12 124
-  !car_b $= Car 19 103
+  car_a ^= Car 12 124
+  !car_b ^= Car 19 103
   
   // Drive some cars
   drive car_a
