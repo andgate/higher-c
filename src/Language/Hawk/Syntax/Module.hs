@@ -18,10 +18,10 @@ import qualified Language.Hawk.Report.Region as R
     
 data Module info
   = Module
-    { name :: ModuleName.Name
-    , path :: FilePath
+    { path :: FilePath
     , info :: info
     }
+    deriving(Show)
 
 
 type Source =
@@ -30,9 +30,10 @@ type Source =
   
 data SourceInfo
   = SourceInfo
-    { srcImports   :: [Name.Canonical]
+    { srcName      :: ModuleName.Raw
+    , srcImports   :: Items.Source
     , srcItems     :: Items.Source
-    }
+    } deriving(Show)
   
   
 type Valid =
@@ -40,7 +41,8 @@ type Valid =
 
 data ValidInfo
   = ValidInfo
-    { validImports   :: [Name.Canonical]
+    { validName      :: ModuleName.Name
+    , validImports   :: [Name.Canonical]
     , validExports   :: [Name.Canonical]
     , validItems     :: Items.Valid
     }
@@ -58,7 +60,8 @@ type Typed =
 
 data Info i
   = Info
-    { exports   :: [Name.Raw]
+    { name         :: ModuleName.Name
+    , exports   :: [Name.Raw]
     , imports   :: [Name.Raw]
     , items     :: i
     , types     :: Types

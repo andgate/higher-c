@@ -18,6 +18,7 @@ type Result =
   Result.Result Warning.Warning Error.Error Module.Source
   
   
+{-
 compile
   :: Package.Name
   -> String
@@ -27,3 +28,5 @@ compile packageName sourcePath =
       srcModule <- Parse.program packageName sourcePath
             
       return $ Right ([], srcModule)
+      
+-}

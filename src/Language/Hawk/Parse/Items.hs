@@ -8,19 +8,22 @@ import Text.Trifecta.Delta
 
 
 import Language.Hawk.Parse.Helpers
-import Language.Hawk.Parse.Function
+import Language.Hawk.Parse.Layout
+import qualified Language.Hawk.Parse.Function as Fn
 import qualified Language.Hawk.Syntax.Items as Items
 
 
 
 items :: MonadicParsing m => m Items.Source
-items = undefined
+items =
+   concat <$> (withLayout . some) item
+  
+  
+item :: MonadicParsing m => m Items.Source
+item =
+  functionItem
 
-
-functionItem :: MonadicParsing m => m Items.SourceFunction
-functionItem = 
-  Items.noComment <$> visibility <*> function
-
-visibility :: MonadicParsing m => m Items.Visibility
-visibility =
-  string "public" *> pure Items.Public
+functionItem :: MonadicParsing m => m Items.Source
+functionItem = do
+  fn <- (Items.itemizeFunction <$> Fn.function)
+  pure [fn]

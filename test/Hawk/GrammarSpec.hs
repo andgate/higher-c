@@ -21,21 +21,18 @@ import qualified Language.Hawk.Parse.Helpers as Parser
 import qualified Language.Hawk.Parse.Type as P
 import qualified Language.Hawk.Parse.Variable as P
 import qualified Language.Hawk.Parse.Function as P
+import qualified Language.Hawk.Parse.Module as P
 
 spec :: Spec
 spec = do
   describe "Parsing Examples" $ do
   
     context "AST Generation" $ do
-      {-
+    
       it "example/grammar.hk" $ do
-          let res = Compile.compile Package.dummyName "example/grammar.hk"
-          
-          putStr "\nFile parsed:\n"
-          --print src_ast
-          
-          --True `shouldBe` False
-      -}
+          r <- Parser.parseFromFile P.moduleUnits "example/main.hk"
+          print $ show r
+      
           
       it "Simple Type" $ do
           
