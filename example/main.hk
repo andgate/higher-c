@@ -20,7 +20,7 @@ Automobile ^= Car
 // Variables are created using the "$=" operator.
 // Type is set using "::" followed by a type signature.
 var_a :: I32 ^= 1
-
+ 
 // Variables are mutable by default, but can be set to
 // immutable with a "!" operator on the name of the variable.
 !var_b :: I32 ^= 2

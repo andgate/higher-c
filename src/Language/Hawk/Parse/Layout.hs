@@ -32,12 +32,17 @@ isInLayout layout col =
   layoutColumn layout < col
 
 
-type LayoutEnv =
-  [Layout]
+
+data LayoutEnv =
+  LayoutEnv {
+    layoutStack :: [Layout],
+    lastComment :: String
+  }
+  deriving (Show)
 
 
 defLayoutEnv :: LayoutEnv
-defLayoutEnv = []
+defLayoutEnv = LayoutEnv [] ""
   
 class HasLayoutEnv u where
     layoutEnv :: Simple Lens u LayoutEnv
@@ -58,19 +63,25 @@ type LayoutState m =
 
 pushLayout :: LayoutState m => Layout -> m ()
 pushLayout layout = do
-  modify (layout:)
+  LayoutEnv s c <- get
+  put (LayoutEnv (layout:s) c)
+  
 
 
 popLayout :: LayoutState m => m Layout
 popLayout = do
   layout <- peekLayout
-  modify (tail)
+  LayoutEnv s c <- get
+  let s' = tail s
+      res = LayoutEnv s' c
+  put res
   return layout
   
 
 peekLayout :: LayoutState m => m Layout
-peekLayout =
-  headDef (Layout 0) <$> get
+peekLayout = do
+  LayoutEnv s c <- get
+  return $ headDef (Layout 0) s
   
 
 
