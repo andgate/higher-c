@@ -20,9 +20,9 @@ import qualified Language.Hawk.Syntax.Name as Name
 record :: MonadicParsing m => m Rec.Source
 record = 
   locate $ do
-    n <- conName
-    pad condefsym
-    xs <- record_fields
+    n <- ws >> conName
+    ws >> condefsym
+    xs <- ws >> record_fields
     
     return $ Rec.Record n xs
     
@@ -34,6 +34,6 @@ record_fields =
 
 record_field :: MonadicParsing m => m (Rec.RecordField Name.Source)
 record_field = locate $ do
-  n <- varName
-  t <- lpad typesig
+  n <- ws >> varName
+  t <- ws >> typesig
   return $ Rec.RecordField n t

@@ -43,8 +43,8 @@ stmtVarBind =
 stmtAssign :: MonadicParsing m => m Stmt.Source
 stmtAssign =
   locate $ do
-    n <- varName
-    t <- lpad typesig0
+    n <- ws >> varName
+    t <- ws >> typesig0
     
     pad equals
     

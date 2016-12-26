@@ -31,8 +31,8 @@ type Function n e t =
 data Function' n e t
   = Function 
     { fn_name :: n
-    , fn_type :: t
     , fn_args :: [B.Binding n]
+    , fn_type :: t
     , fn_body :: Stmt.Block n e t
     }
   deriving (Show)
@@ -46,9 +46,9 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Function' n e t) 
     PP.indent 2
       ( PP.text "name:" <+> PP.pretty name
         PP.<$>
-        PP.text "type:" <+> PP.pretty tipe
-        PP.<$>
         PP.text "args:" <+> PP.pretty args
+        PP.<$>
+        PP.text "type:" <+> PP.pretty tipe
         PP.<$>
         PP.text "body:" <+> PP.pretty body
       )

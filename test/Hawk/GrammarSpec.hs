@@ -33,8 +33,6 @@ spec = do
           r <- Parser.parseFromFile P.moduleInfo "example/main.hk"
           print $ show r
       
-      
-      {-  
       it "Simple Type" $ do
           
           let str = ":: (Foo F32 -> F32 -> (I32, F64 -> Bool) -> ())"
@@ -62,7 +60,6 @@ spec = do
           
           let str = "main foo :: IO () :=\n\n  car_a ^= Car 12 124\n  !car_b ^= Car 19 103\n  // Drive some cars\n  drive car_a\n  drive car_b"
           P.function # str
-      -}
 
 main :: IO ()
 main = hspec spec

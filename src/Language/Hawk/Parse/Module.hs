@@ -20,7 +20,7 @@ moduleUnits =
 
 moduleInfo :: MonadicParsing m => m Module.SourceInfo
 moduleInfo = do
-      its <- items
+      its <- ws >> items
       let imps = Items.findImports its
       
       pure $ Module.SourceInfo [] imps its

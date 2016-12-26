@@ -98,16 +98,7 @@ getComment = do
 
 class (LayoutState m, DeltaParsing m, LookAheadParsing m) => LayoutParsing m where
     ws :: m ()
-    ws = do
-      padding
-      (_, curCol) <- getCurPos
-      (_, layCol) <- peekPos
-      
-      if layCol <= curCol then
-        return ()
-      
-      else  
-        fail $ "Is not in layout!\n    Current column: " ++ show curCol ++ "\n    Layout Column: " ++ show layCol
+    ws = padding
 
 
 
@@ -154,26 +145,43 @@ getLayAndCurRow = do
   return (layRow, curRow)
 
 
--- Thinking about how this parser should more...
--- Reading the docs for Text.Parsec.Indent has made me realize that
--- the layout api should be the primary backbone of the syntax parser.
---
--- So, the layout needs to provide a few kinds of parsers to accomplish this goal.
---   topLevel
---   notTopLevel
---   withBlock
---   block
---   indented
---   same
---   sameOrIndented
---   checkIndent
---   withPos
---
+-- -----------------------------------------------------------------------------
+-- Padding Combinators
+
+
+padding :: LayoutParsing m => m ()
+padding = do
+  optional (try spaces)
+  processComments <?> "padding"
+
+
+pad :: LayoutParsing m => m a -> m a
+pad p =
+  ws *> p <* ws
+
+
+lpad :: LayoutParsing m => m a -> m a
+lpad p =
+  ws *> p
+
+rpad :: LayoutParsing m => m a -> m a
+rpad p =
+  p <* ws
+
 
 -- -----------------------------------------------------------------------------
 -- Layout combinators
 
 
+topLevel :: LayoutParsing m => m ()
+topLevel = do
+  (_, curCol) <- getCurPos
+  unless (curCol == 0) $ unexpected "indentation"
+  
+notTopLevel :: LayoutParsing m => m ()
+notTopLevel = do
+  (_, curCol) <- getCurPos
+  when (curCol == 0) $ unexpected "top-level"
 
 indented :: LayoutParsing m => m ()
 indented = do 
@@ -192,7 +200,7 @@ same = do
 
 
 block :: LayoutParsing m => m a -> m [a]
-block p = withPos $ some (checkIndent >> p)
+block p = withPos $ some (ws >> checkIndent >> p)
 
 
 withPos :: LayoutParsing m => m a -> m a
@@ -209,18 +217,14 @@ checkIndent = do
         (fail $ showIndent curPos)
 
 
-lpad :: LayoutParsing m => m a -> m a
-lpad p =
-  ws *> p
 
-pad :: LayoutParsing m => m a -> m a
-pad p =
-  ws *> p <* ws
-
-padding :: LayoutParsing m => m ()
-padding = do
-  optional (try spaces)
-  processComments <?> "padding"
+-- Thinking about how this parser should more...
+-- Reading the docs for Text.Parsec.Indent has made me realize that
+-- the layout api should be the primary backbone of the syntax parser.
+--   withBlock
+--   sameOrIndented
+--   paddedSame
+--   paddedSameOrIndented
 
 
 -- -----------------------------------------------------------------------------

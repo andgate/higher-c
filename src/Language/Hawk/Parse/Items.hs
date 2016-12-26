@@ -19,7 +19,7 @@ import qualified Language.Hawk.Syntax.Items as Items
 
 items :: MonadicParsing m => m Items.Source
 items =
-   (block item) <?> "items"
+   block item
   
   
 item :: MonadicParsing m => m Items.SourceItem
