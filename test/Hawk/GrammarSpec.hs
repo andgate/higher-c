@@ -30,10 +30,11 @@ spec = do
     context "AST Generation" $ do
     
       it "example/grammar.hk" $ do
-          r <- Parser.parseFromFile P.moduleUnits "example/main.hk"
+          r <- Parser.parseFromFile P.moduleInfo "example/main.hk"
           print $ show r
       
-          
+      
+      {-  
       it "Simple Type" $ do
           
           let str = ":: (Foo F32 -> F32 -> (I32, F64 -> Bool) -> ())"
@@ -42,7 +43,7 @@ spec = do
           
       it "Simple Variable Binding" $ do
           
-          let str = "sum :: I32 $= add 13 13"
+          let str = "sum :: I32 ^= add 13 13"
           P.var # str
           
           
@@ -54,8 +55,14 @@ spec = do
           
       it "Add and Double Function" $ do
           
-          let str = "doubleSum x y :: I32 -> I32 -> I32 :=\n  sum :: I32 $= add_i32 x y\n  sum = mul_i32 sum 2\n  return sum"
+          let str = "doubleSum x y :: I32 -> I32 -> I32 :=\n  sum :: I32 ^= add_i32 x y\n  sum = mul_i32 sum 2\n  return sum"
           P.function # str
+      
+      it "Test Function" $ do
+          
+          let str = "main foo :: IO () :=\n\n  car_a ^= Car 12 124\n  !car_b ^= Car 19 103\n  // Drive some cars\n  drive car_a\n  drive car_b"
+          P.function # str
+      -}
 
 main :: IO ()
 main = hspec spec

@@ -18,18 +18,12 @@ import qualified Language.Hawk.Syntax.Statement as Stmt
 import qualified Language.Hawk.Report.Region as R
 
 
-block :: MonadicParsing m => m Stmt.SourceBlock
-block =
-  withLayout $ some statement
-
+stmtblock :: MonadicParsing m => m Stmt.SourceBlock
+stmtblock =
+  block statement
 
 statement :: MonadicParsing m => m Stmt.Source
-statement =
-  freshLine >> statement'
-
-
-statement' :: MonadicParsing m => m Stmt.Source
-statement' = 
+statement = 
       try stmtAssign
   <|> try stmtVarBind
   <|> try stmtRet

@@ -9,21 +9,47 @@ import Text.Trifecta.Delta
 
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Parse.Layout
-import qualified Language.Hawk.Parse.Function as Fn
+import Language.Hawk.Parse.Function
+import Language.Hawk.Parse.ModuleName
+import Language.Hawk.Parse.Record
+import Language.Hawk.Parse.Variable
 import qualified Language.Hawk.Syntax.Items as Items
 
 
 
 items :: MonadicParsing m => m Items.Source
 items =
-   concat <$> (withLayout . some) item
+   (block item) <?> "items"
   
   
-item :: MonadicParsing m => m Items.Source
-item =
-  functionItem
+item :: MonadicParsing m => m Items.SourceItem
+item = do
+  c <- getComment
+  idat <- itemData
+  return $ Items.basic c idat
+  
+itemData :: MonadicParsing m => m Items.SourceItemData
+itemData =
+      (impItem)
+  <|> (recordItem)
+  <|> (functionItem)
+  <|> (varItem)
 
-functionItem :: MonadicParsing m => m Items.Source
-functionItem = do
-  fn <- (Items.itemizeFunction <$> Fn.function)
-  pure [fn]
+
+functionItem :: MonadicParsing m => m Items.SourceItemData
+functionItem =
+  Items.FunctionItem <$> try function
+
+recordItem :: MonadicParsing m => m Items.SourceItemData
+recordItem = 
+  Items.RecordItem <$> try record
+  
+varItem :: MonadicParsing m => m Items.SourceItemData
+varItem = 
+  Items.VarItem <$> try var
+  
+impItem :: MonadicParsing m =>  m Items.SourceItemData
+impItem = do
+  try $ string "->"
+  Items.ImportItem <$> lpad moduleNameRaw
+  

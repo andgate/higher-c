@@ -19,12 +19,8 @@ moduleUnits =
   some (moduleInfo)
 
 moduleInfo :: MonadicParsing m => m Module.SourceInfo
-moduleInfo =
-  do
-      string "mod"
-      
-      n <- lpad moduleNameRaw
+moduleInfo = do
       its <- items
       let imps = Items.findImports its
       
-      pure $ Module.SourceInfo n imps its
+      pure $ Module.SourceInfo [] imps its

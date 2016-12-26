@@ -17,6 +17,9 @@ import qualified Language.Hawk.Report.Region as R
 
 type Source = 
   Items Name.Source Expr.Source (Maybe Type.Source)
+  
+type SourceItem = 
+  Item Name.Source Expr.Source (Maybe Type.Source)
  
 type Valid = 
   Items Name.Valid Expr.Valid (Maybe Type.Valid)
@@ -47,6 +50,9 @@ data Visibility
   deriving (Show)
 
 
+type SourceItemData = 
+  ItemData Name.Source Expr.Source (Maybe Type.Source)
+
 data ItemData n e t
   = ImportItem (ModuleName.Raw)
   | FunctionItem (Fn.Function n e t)
@@ -56,9 +62,14 @@ data ItemData n e t
   deriving (Show)
 
 
-itemizeFunction :: Fn.Function n e t -> Item n e t
-itemizeFunction fn =
-  basic (FunctionItem fn)
+itemizeFunction :: String -> Fn.Function n e t -> Item n e t
+itemizeFunction c fn =
+  basic c (FunctionItem fn)
+
+
+itemizeRecord :: String -> Record.Record n -> Item n e t
+itemizeRecord c rec =
+  basic c (RecordItem rec)
 
 
 findImports :: Source -> Source
@@ -70,5 +81,5 @@ emptyComment = Comment ""
 noComment :: Visibility -> ItemData n e t -> Item n e t
 noComment = Item emptyComment
 
-basic :: ItemData n e t -> Item n e t
-basic = Item emptyComment Public
+basic :: String -> ItemData n e t -> Item n e t
+basic c = Item (Comment c) Public

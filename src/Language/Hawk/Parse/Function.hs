@@ -33,14 +33,14 @@ function =
       
 fnBody :: MonadicParsing m => m Stmt.SourceBlock
 fnBody =
-  fnBlock <|> fnExpr
+  fnBlock
 
 
 fnBlock :: MonadicParsing m => m Stmt.SourceBlock
 fnBlock =
-  string ":=" *> block <?> "Statement block"
+  fndefsym *> stmtblock <?> "Statement block"
 
 
-fnExpr :: MonadicParsing m => m Stmt.SourceBlock
-fnExpr =
-  string ":=" *> withLayout (Stmt.mkRetBlk <$> expr)
+--fnExpr :: MonadicParsing m => m Stmt.SourceBlock
+--fnExpr =
+--  string ":=" *> withLayout (Stmt.mkRetBlk <$> expr)

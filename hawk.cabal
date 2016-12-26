@@ -99,6 +99,7 @@ library
                         Language.Hawk.Parse.Module
                         Language.Hawk.Parse.ModuleName
                         Language.Hawk.Parse.Name
+                        Language.Hawk.Parse.Record
                         Language.Hawk.Parse.Statement
                         Language.Hawk.Parse.Type
                         Language.Hawk.Parse.Variable

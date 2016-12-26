@@ -24,7 +24,7 @@ import qualified Language.Hawk.Report.Region as R
 type IParser a = StateT LayoutEnv Trifecta.Parser a
 
 type MonadicParsing m
-  = (DeltaParsing m, LookAheadParsing m, LayoutParsing m, Monad m)
+  = (DeltaParsing m, LayoutParsing m, Monad m)
 
 
 defDelta :: String -> Delta
@@ -119,7 +119,12 @@ equals =
   
 vardefsym :: MonadicParsing m => m String
 vardefsym =
-  string "$=" <?> "a variable definition symbol '$='"
+  string "^=" <?> "a variable definition symbol '$='"
+
+
+condefsym :: MonadicParsing m => m String
+condefsym =
+  string ":-" <?> "a type definition symbol '$='"
     
 fndefsym :: MonadicParsing m => m String
 fndefsym =

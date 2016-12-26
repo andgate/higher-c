@@ -45,6 +45,7 @@ aexpr :: MonadicParsing m => m Expr.Source
 aexpr = 
       litExpr
   <|> varExpr
+  <|> conExpr
   <|> nestedExpr
 
 
@@ -52,6 +53,10 @@ varExpr :: MonadicParsing m => m Expr.Source
 varExpr =
   locate $ Expr.Var <$> varName
 
+
+conExpr :: MonadicParsing m => m Expr.Source
+conExpr =
+  locate $ Expr.Var <$> conName
 
 litExpr :: MonadicParsing m => m Expr.Source
 litExpr =
