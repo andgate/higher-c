@@ -20,15 +20,14 @@ import qualified Language.Hawk.Report.Region as R
 
 stmtblock :: MonadicParsing m => m Stmt.SourceBlock
 stmtblock =
-  block statement
+  blockLayout statement
 
 statement :: MonadicParsing m => m Stmt.Source
-statement = 
-      try stmtAssign
-  <|> try stmtVarBind
-  <|> try stmtRet
-  <|> stmtCall
-  <?> "Statement"
+statement =
+      (try stmtRet <?> "Return Statement")
+  <|> (try stmtCall <?> "Call Statement")
+  <|> (try stmtAssign <?> "Assign Statement")
+  <|> (stmtVarBind <?> "Variable Bind Statement")
 
   
 stmtCall :: MonadicParsing m => m Stmt.Source
@@ -41,18 +40,10 @@ stmtVarBind =
   locate $ Stmt.Let <$> var <?> "Variable Binding"
   
 stmtAssign :: MonadicParsing m => m Stmt.Source
-stmtAssign =
-  locate $ do
-    n <- ws >> varName
-    t <- ws >> typesig0
-    
-    pad equals
-    
-    e <- expr
-    
-    (return $ Stmt.Assign n t e)
+stmtAssign = locate $
+  Stmt.Assign <$> varName <*> typesig0 <* equals <*> (ws >> expr)
   
   
 stmtRet :: MonadicParsing m => m Stmt.Source
 stmtRet =
-  locate $ Stmt.Return <$> (string "return" *> ws *> expr)
+  locate $ Stmt.Return <$> (string "return" >> try ws >> expr)

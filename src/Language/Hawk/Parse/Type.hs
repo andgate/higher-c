@@ -17,24 +17,24 @@ import qualified Language.Hawk.Report.Region as R
 
 typesig0 :: MonadicParsing m => m (Maybe Type.Source)
 typesig0 =
-  optional (try typesig)
+  optional $ try typesig
 
 typesig :: MonadicParsing m => m Type.Source
 typesig =
-  hasType *> ws *> typ2
+  hasType >> typ2
 
 
 -- Single Type
 typ0 :: MonadicParsing m => m Type.Source
 typ0 =
-      tyPrim
-  <|> tyTuple
-  <|> tyCon
+      (try tyPrim <?> "Primitive Type")
+  <|> (try tyTuple <?> "Type Tuple")
+  <|> (tyCon <?> "Type Constructor")
 
 
 typ1 :: MonadicParsing m => m Type.Source
 typ1 = 
-  Type.apply <$> typ0 <*> many (try (ws *> typ0))
+  Type.apply <$> typ0 <*> many typ0
 
 
 typ2 :: MonadicParsing m => m Type.Source
@@ -47,13 +47,13 @@ typ2 = withRegion arrArgs Type.arrow
 -- Primitive Type
 tyPrim :: MonadicParsing m => m Type.Source
 tyPrim =
-  locate $ Type.Con <$> tyPrimName
+  locate . try $ Type.Con <$> tyPrimName
 
   
 tyTuple :: MonadicParsing m => m Type.Source
 tyTuple = withRegion tupleArgs Type.tuple
   where
-    tupleArgs = parens (commaSep1 typ2)
+    tupleArgs = parens (commaSep typ2)
     
 
 tyCon :: MonadicParsing m => m Type.Source
@@ -62,14 +62,13 @@ tyCon = locate $ Type.Con <$> conName
 
 tyPrimName :: MonadicParsing m => m Name.Source
 tyPrimName =
-      string "()"
-  <|> string "I1"
-  <|> string "I8"
-  <|> string "I16"
-  <|> string "I32"
-  <|> string "I64"
-  <|> string "I128"
-  <|> string "F16"
-  <|> string "F32"
-  <|> string "F64"
-  <|> string "F128" 
+      stringTok "I1"
+  <|> stringTok "I8"
+  <|> stringTok "I16"
+  <|> stringTok "I32"
+  <|> stringTok "I64"
+  <|> stringTok "I128"
+  <|> stringTok "F16"
+  <|> stringTok "F32"
+  <|> stringTok "F64"
+  <|> stringTok "F128" 

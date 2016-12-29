@@ -20,6 +20,9 @@ type Source =
   
 type SourceItem = 
   Item Name.Source Expr.Source (Maybe Type.Source)
+  
+type SourceItem' = 
+  Item' Name.Source Expr.Source (Maybe Type.Source)
  
 type Valid = 
   Items Name.Valid Expr.Valid (Maybe Type.Valid)
@@ -34,52 +37,42 @@ type Items n e t
   = [Item n e t]
   
 
+type Item n e t = A.Commented (Item' n e t) 
    
-   
-data Item n e t
-  = Item Comment Visibility (ItemData n e t)
+data Item' n e t
+  = ImportItem Visibility (ModuleName.Raw)
+  | FunctionItem Visibility (Fn.Function n e t)
+  | VarItem Visibility (Var.Variable n e t)
+  | RecordItem Visibility (Record.Record n)
+  | AliasItem Visibility (Alias.Alias n)
   deriving (Show)
-
-data Comment
-  = Comment String
-  deriving (Show)
+  
   
 data Visibility
   = Public
   | Private
   deriving (Show)
 
+impItem :: ModuleName.Raw -> Item' n e t
+impItem = ImportItem Public
 
-type SourceItemData = 
-  ItemData Name.Source Expr.Source (Maybe Type.Source)
+fnItem :: Fn.Function n e t -> Item' n e t
+fnItem = FunctionItem Public
 
-data ItemData n e t
-  = ImportItem (ModuleName.Raw)
-  | FunctionItem (Fn.Function n e t)
-  | VarItem (Var.Variable n e t)
-  | RecordItem (Record.Record n)
-  | AliasItem (Alias.Alias n)
-  deriving (Show)
+varItem :: Var.Variable n e t -> Item' n e t
+varItem = VarItem Public
 
+recItem :: Record.Record n -> Item' n e t
+recItem = RecordItem Public
 
-itemizeFunction :: String -> Fn.Function n e t -> Item n e t
-itemizeFunction c fn =
-  basic c (FunctionItem fn)
-
-
-itemizeRecord :: String -> Record.Record n -> Item n e t
-itemizeRecord c rec =
-  basic c (RecordItem rec)
+aliasItem :: Alias.Alias n -> Item' n e t
+aliasItem = AliasItem Public
 
 
 findImports :: Source -> Source
-findImports = id
+findImports = filter isImport
+
+isImport :: Item n e t -> Bool
+isImport (A.A _ (ImportItem _ _)) = True
+isImport _ = False
   
-emptyComment :: Comment
-emptyComment = Comment ""
-
-noComment :: Visibility -> ItemData n e t -> Item n e t
-noComment = Item emptyComment
-
-basic :: String -> ItemData n e t -> Item n e t
-basic c = Item (Comment c) Public

@@ -19,34 +19,34 @@ import qualified Language.Hawk.Report.Region as R
 
 expr :: MonadicParsing m => m Expr.Source
 expr = 
-      try exprTyped
-  <|> expr0
+      (try exprTyped <?> "Typed Expression")
+  <|> (expr0 <?> "Expression")
 
 
 exprTyped :: MonadicParsing m => m Expr.Source
 exprTyped =
-  locate $ Expr.Cast <$> expr0 <*> lpad typesig
+  locate $ Expr.Cast <$> expr0 <*> typesig
 
 
 expr0 :: MonadicParsing m => m Expr.Source
 expr0 =
-      try fexpr
-  <|> aexpr
+      (try fexpr <?> "Function application expresion")
+  <|> (aexpr <?> "Basic Expression")
 
 
 fexpr :: MonadicParsing m => m Expr.Source
 fexpr =
   locate $ do
-    (call:args) <- spaceSep1 aexpr
+    (call:args) <- some aexpr
     return (Expr.App call args)
 
 
 aexpr :: MonadicParsing m => m Expr.Source
 aexpr = 
-      litExpr
-  <|> varExpr
-  <|> conExpr
-  <|> nestedExpr
+      (try litExpr <?> "Literal Expression")
+  <|> (try varExpr <?> "Variable Binding Expression")
+  <|> (try conExpr <?> "Constructor Expression")
+  <|> (nestedExpr <?> "Nested Expression")
 
 
 varExpr :: MonadicParsing m => m Expr.Source

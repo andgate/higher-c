@@ -16,14 +16,5 @@ import qualified Language.Hawk.Syntax.Variable as Var
 
 
 var :: MonadicParsing m => m Var.Source
-var = 
-  locate $ do
-      b <- ws >> binding
-      
-      t <- ws >> typesig0
-      
-      ws >> vardefsym
-      
-      e <- ws >> expr
-      
-      (return $ Var.Variable b t e)
+var = locate $
+  Var.Variable <$> binding <*> typesig0 <*> (vardefsym >> expr)

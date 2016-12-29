@@ -4,7 +4,6 @@
    but technically closer to C.
 */
 
-
 // Create a Car struct, with gas and a max speed
 Car :- 
   gas :: I32
@@ -14,8 +13,11 @@ Car :-
 // Automobile ^= Car
 
 
+// Import the 'IO' module
+-> IO
 
-// Variables are created using the "$=" operator.
+
+// Variables are created using the "^=" operator.
 // Type is set using "::" followed by a type signature.
 // The preceding plus sign gives public access to var_a.
 // Every module item is public by default
@@ -27,11 +29,6 @@ var_a :: I32 ^= 1
 !var_b :: I32 ^= 2
 
 
-// Import the 'IO' module
--> IO
-=> IO
-
-
 /* Function for driving car.
    Functions are created using the ":=" operator.
    Prints out the maxium speed of a given car.
@@ -39,21 +36,22 @@ var_a :: I32 ^= 1
    However, type signatures in Hawk come after function name and args.
   */
 drive car :: Car -> IO () :=
-  print (toString max_speed)
+  out ^= toString max_speed
+  print out
 
 doubleSum x y :: I32 -> I32 -> I32 :=
-  sum :: I32 ^= add_i32 x y
+  {sum :: I32 ^= add_i32 x y
   sum = mul_i32 sum 2
   return sum
 
 // Main function and default entry point of all programs.
 // An executable cannot compile without a main function.
 main foo :: IO () :=
-  
   // Create some cars
-  car_a ^= Car 12 124
-  !car_b ^= Car 19 103
+ {[ car_a :: Car ^= Car 12 124 ]
+  [ !car_b :: Car ^= Car 19 103 ]
   
   // Drive some cars
-  drive car_a
-  drive car_b // If drive mutated car_b, and error should be thrown.
+  [ drive car_a ]
+  [ drive car_b ] // If drive mutated car_b, and error should be thrown. 
+}

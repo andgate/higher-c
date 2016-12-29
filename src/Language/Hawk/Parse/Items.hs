@@ -19,37 +19,34 @@ import qualified Language.Hawk.Syntax.Items as Items
 
 items :: MonadicParsing m => m Items.Source
 items =
-   block item
+  blockLayout item
   
   
 item :: MonadicParsing m => m Items.SourceItem
-item = do
-  c <- getComment
-  idat <- itemData
-  return $ Items.basic c idat
-  
-itemData :: MonadicParsing m => m Items.SourceItemData
-itemData =
-      (impItem)
-  <|> (recordItem)
-  <|> (functionItem)
-  <|> (varItem)
+item =
+      (try impItem <?> "Import Item")
+  <|> (try recordItem <?> "Record Item")
+  <|> (try varItem <?> "Variable Item")
+  <|> (functionItem <?> "Function Item")
 
 
-functionItem :: MonadicParsing m => m Items.SourceItemData
-functionItem =
-  Items.FunctionItem <$> try function
+itemize :: MonadicParsing m => m Items.SourceItem' -> m Items.SourceItem
+itemize = commented . lineLayout
 
-recordItem :: MonadicParsing m => m Items.SourceItemData
-recordItem = 
-  Items.RecordItem <$> try record
+
+functionItem :: MonadicParsing m => m Items.SourceItem
+functionItem = itemize $
+  Items.fnItem <$> function
+
+recordItem :: MonadicParsing m => m Items.SourceItem
+recordItem = itemize $
+  Items.recItem <$> record
   
-varItem :: MonadicParsing m => m Items.SourceItemData
-varItem = 
-  Items.VarItem <$> try var
+varItem :: MonadicParsing m => m Items.SourceItem
+varItem = itemize $
+  Items.varItem <$> var
   
-impItem :: MonadicParsing m =>  m Items.SourceItemData
-impItem = do
-  try $ string "->"
-  Items.ImportItem <$> lpad moduleNameRaw
+impItem :: MonadicParsing m =>  m Items.SourceItem
+impItem = itemize $
+  stringTok "->" >> (Items.impItem <$> moduleNameRaw)
   

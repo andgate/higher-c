@@ -45,7 +45,7 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Variable' n e t) 
     PP.indent 2
       ( PP.text "name:" <+> PP.pretty name
         PP.<$>
-        PP.text "args:" <+> PP.pretty tipe
+        PP.text "type:" <+> PP.pretty tipe
         PP.<$>
         PP.text "rhs:" <+> PP.pretty rhs
       )

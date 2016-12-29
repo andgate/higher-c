@@ -14,13 +14,13 @@ import qualified Language.Hawk.Syntax.Binding as Binding
 
 binding :: MonadicParsing m => m Binding.Source
 binding =
-  locate $ (Binding.Binding <$> bindingMode <*> varName) <?> "Name Binding"
+  locate $ (Binding.Binding <$> evaluation <*> varName) <?> "Name Binding"
 
 
 
-bindingMode :: MonadicParsing m => m Binding.Mode
-bindingMode =
-  byRef <|> byVal <?> "Binding Mode"
+evaluation :: MonadicParsing m => m Binding.Mode
+evaluation =
+  byRef <|> byVal
 
 byVal :: MonadicParsing m => m Binding.Mode
 byVal = 
@@ -28,20 +28,19 @@ byVal =
 
 byRef :: MonadicParsing m => m Binding.Mode
 byRef =
-  char '&' *>
+  try (charTok '&') *>
   pure Binding.ByRef <*> mutability
-                    <?> "Reference Binding"
   
 
 mutability :: MonadicParsing m => m Binding.Mutability
 mutability =
-  immutable <|> mutable <?> "Mutability Modifier"
+  immutable <|> mutable
   
 immutable :: MonadicParsing m => m Binding.Mutability
 immutable =
-  char '!' *>
-  pure Binding.Immutable <?> "Immutable Binding Modifier"
+  try (charTok '!') *>
+  pure Binding.Immutable
 
 mutable :: MonadicParsing m => m Binding.Mutability
 mutable = 
-  pure Binding.Mutable <?> "Mutable Binding"
+  pure Binding.Mutable <?> "Mutable symbol"

@@ -18,6 +18,8 @@ import qualified Language.Hawk.Report.Result as Result
 
 import  Language.Hawk.Parse.Helpers ((#))
 import qualified Language.Hawk.Parse.Helpers as Parser
+
+import qualified Language.Hawk.Parse.Binding as P
 import qualified Language.Hawk.Parse.Type as P
 import qualified Language.Hawk.Parse.Variable as P
 import qualified Language.Hawk.Parse.Function as P
@@ -27,27 +29,78 @@ spec :: Spec
 spec = do
   describe "Parsing Examples" $ do
   
-    context "AST Generation" $ do
-    
-      it "example/grammar.hk" $ do
-          r <- Parser.parseFromFile P.moduleInfo "example/main.hk"
-          print $ show r
+    context "Bindings Parsing" $ do
+      it "Mutable Binding" $ do
+          let str = ""
+          P.mutable # str
+        
+      it "Immutable Binding" $ do
+          let str = "!"
+          P.immutable # str
+      it "Immutable Binding (fails)" $ do
+          let str = ""
+          (P.immutable # str) `shouldThrow` anyErrorCall    
+      it "Mutability: Mutable Binding" $ do
+          let str = ""
+          P.mutability # str
+      it "Mutability: Immutable Binding" $ do
+          let str = "!"
+          P.mutability # str
+          
+      it "Mutable Binding By Value" $ do
+          let str = ""
+          P.byVal # str
+      it "Mutable Binding By Reference" $ do
+          let str = "&"
+          P.byRef # str
+      it "Evaluation: By Value" $ do
+          let str = ""
+          P.mutability # str
+      it "Mutability: Immutable Binding" $ do
+          let str = "!"
+          P.mutability # str
+          
+          
+    context "Type Parsing" $ do
       
       it "Simple Type" $ do
           
           let str = ":: (Foo F32 -> F32 -> (I32, F64 -> Bool) -> ())"
           P.typesig # str
           
+    
+    context "Variable Parsing" $ do
+    
+      it "Mutable Variable Binding with type" $ do
           
-      it "Simple Variable Binding" $ do
-          
-          let str = "sum :: I32 ^= add 13 13"
+          let str = "sum :: I32 ^= 13"
           P.var # str
           
+      it "Mutable Variable Binding without type" $ do
           
+          let str = "sum ^= add 13 13"
+          P.var # str
+      
+      it "Constant Variable Binding" $ do
+          
+          let str = "!sum :: I32 ^= add 13 13"
+          P.var # str
+          
+      it "Mutable Reference Variable Binding" $ do
+          
+          let str = "&sum :: I32 ^= add 13 13"
+          P.var # str    
+          
+      it "Constant Reference Variable Binding" $ do
+          
+          let str = "&!sum :: I32 ^= add 13 13"
+          P.var # str
+      
+    context "Function Parsing" $ do
+           
       it "Simple Function" $ do
           
-          let str = "id x :: F64 -> F64 := x"
+          let str = "id x :: F64 -> F64 := return x"
           P.function # str
           
           
@@ -60,6 +113,12 @@ spec = do
           
           let str = "main foo :: IO () :=\n\n  car_a ^= Car 12 124\n  !car_b ^= Car 19 103\n  // Drive some cars\n  drive car_a\n  drive car_b"
           P.function # str
+          
+    context "Module Parsing" $ do
+    
+      it "example/grammar.hk" $ do
+          r <- Parser.parseFromFile P.moduleInfo "example/main.hk"
+          print $ show r
 
 main :: IO ()
 main = hspec spec

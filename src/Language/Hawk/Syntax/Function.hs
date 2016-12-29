@@ -40,7 +40,7 @@ data Function' n e t
   
   
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Function' n e t) where
-  pretty (Function name tipe args body) =
+  pretty (Function name args tipe body) =
     PP.text "Function:"
     PP.<$>
     PP.indent 2

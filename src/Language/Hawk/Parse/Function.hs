@@ -21,14 +21,7 @@ import qualified Language.Hawk.Syntax.Statement as Stmt
 function :: MonadicParsing m => m Fn.Source
 function =
   locate $
-      Fn.Function <$>
-        (ws >> varName)
-        <*>
-        spacePrefix binding   -- args
-        <*>
-        (ws >> typesig0)      -- type
-        <*>
-        (ws >> fndefsym >> ws >> stmtblock) -- statements
+    Fn.Function <$> (varName <* ws) <*> (spaceSep binding <* ws) <*> (typesig0 <* (ws >> fndefsym)) <*> stmtblock
   
 
 

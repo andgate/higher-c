@@ -53,7 +53,15 @@ parseString p fn str =
   do  putStr "\nFile parsed:\n"
       case (parseString parser "(test)" input) of
         Success result -> print $ pretty result
-        Failure errMsg -> print errMsg
+        Failure errMsg -> error $ show errMsg
+
+
+-- -----------------------------------------------------------------------------
+-- Token
+
+token :: MonadicParsing m => m a -> m a
+token p = 
+  p <* optional ws
 
 -- -----------------------------------------------------------------------------
 -- Identifiers
@@ -64,35 +72,39 @@ parseString p fn str =
 -- consist of upper and lowercase letters, numbers, underscores, and tick marks.
 varId :: MonadicParsing m => m String
 varId = 
-  lowNumSymId <?> "a variable id"
+  token lowNumSymId
 
 -- A constructor id must start with an uppercase letter, and the body may
 -- consist of upper and lowercase letters, numbers, underscores, and tick marks.
 conId :: MonadicParsing m => m String
 conId = 
-  capNumSymId <?> "a constructor id"
+  token capNumSymId
 
 
 -- A module id must start with an uppercase letter, and the body may
 -- consist of upper and lowercase letters
 modId :: MonadicParsing m => m String
 modId = 
-  capId <?> "a module id"
+  token capId
 
 
 -- Bases for each id.
 capId :: MonadicParsing m => m String
 capId =
-  makeId upper letter
+  makeId (try upper) letter
 
 capNumSymId :: MonadicParsing m => m String
 capNumSymId =
-  makeId upper $ alphaNum  <|> char '_' <|> char '`'
+  makeId (try upper) idBodyChar
 
 lowNumSymId :: MonadicParsing m => m String
 lowNumSymId =
-  makeId lower $ alphaNum  <|> char '_' <|> char '`'
+  makeId (try lower) idBodyChar
 
+
+idBodyChar :: MonadicParsing m => m Char
+idBodyChar =
+  alphaNum  <|> char '_' <|> char '`'
 
 -- Make an id parser given a parser for the first character and a body character.
 makeId :: MonadicParsing m => m Char -> m Char -> m String
@@ -108,6 +120,13 @@ makeId firstChar bodyChar =
 -- Characters
 
 
+charTok :: MonadicParsing m => Char -> m Char
+charTok str =
+  token $ char str
+
+stringTok :: MonadicParsing m => String -> m String
+stringTok str =
+  token $ string str
 
 
 -- -----------------------------------------------------------------------------
@@ -115,40 +134,40 @@ makeId firstChar bodyChar =
 
 equals :: MonadicParsing m => m String
 equals =
-  string "=" <?> "an equals sign '='"
+  stringTok "=" <?> "an equals sign '='"
   
 vardefsym :: MonadicParsing m => m String
 vardefsym =
-  string "^=" <?> "a variable definition symbol '$='"
+  stringTok "^=" <?> "a variable definition symbol '^='"
 
 
 condefsym :: MonadicParsing m => m String
 condefsym =
-  string ":-" <?> "a type definition symbol '$='"
+  stringTok ":-" <?> "a type definition symbol ':-'"
     
 fndefsym :: MonadicParsing m => m String
 fndefsym =
-  string ":=" <?> "a function definition symbol ':='"
+  stringTok ":=" <?> "a function definition symbol ':='"
 
 
 rightArrow :: MonadicParsing m => m String
 rightArrow = 
-  string "->" <?> "an arrow '->'"
+  stringTok "->" <?> "an arrow '->'"
 
 
 hasType :: MonadicParsing m => m String
 hasType =
-  string "::" <?> "the \"has type\" symbol '::'"
+  stringTok "::" <?> "the \"has type\" symbol '::'"
     
     
 comma :: MonadicParsing m => m String
 comma =
-  string "," <?> "a comma symbol ','"
+  stringTok "," <?> "a comma symbol ','"
   
   
 period :: MonadicParsing m => m String
 period =
-  string "." <?> "a period symbol '.'"
+  stringTok "." <?> "a period symbol '.'"
 
 -- -----------------------------------------------------------------------------
 -- Grouping
@@ -173,12 +192,12 @@ spaceySepBy1 p sep =
     
 spaceyPrefixBy :: MonadicParsing m => m a -> m b -> m [a]
 spaceyPrefixBy p sep =
-  many $ commitIf (lpad sep) (pad sep >> p)
+  many $ commitIf (sep) (sep >> p)
 
   
 arrowSep1 :: MonadicParsing m => m a -> m [a]
 arrowSep1 p =
-  p `spaceySepBy1` (try rightArrow)
+  p `spaceySepBy1` rightArrow
   
 
 
@@ -204,7 +223,7 @@ periodSep1 p =
 
 spaceSep :: MonadicParsing m => m a -> m [a]
 spaceSep p =
-  try (spaceSep1 p) <|> pure []
+  spaceSep1 p <|> pure []
  
 
 spaceSep1 :: MonadicParsing m => m a -> m [a]
@@ -213,8 +232,8 @@ spaceSep1 p =
 
 
 spacePrefix :: MonadicParsing m => m a -> m [a]
-spacePrefix =
-  many . try . lpad
+spacePrefix p =
+  many (try p)
 
   
   
@@ -224,7 +243,7 @@ spacePrefix =
 
 surround :: MonadicParsing m => String -> String -> String -> m a -> m a
 surround l r name p =
-  string l *> pad p <* (string r <?> unwords ["a closing", name, " '", show r, "'"])
+  try (stringTok l) *> p <* (stringTok r <?> unwords ["a closing", name, " '", show r, "'"])
 
 
 parens :: MonadicParsing m => m a -> m a

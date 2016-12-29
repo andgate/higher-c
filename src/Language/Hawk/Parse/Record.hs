@@ -18,22 +18,17 @@ import qualified Language.Hawk.Syntax.Name as Name
 
 
 record :: MonadicParsing m => m Rec.Source
-record = 
-  locate $ do
-    n <- ws >> conName
-    ws >> condefsym
-    xs <- ws >> record_fields
-    
-    return $ Rec.Record n xs
+record = locate $ do
+  n <- try $ conName <* condefsym
+  rfs <- record_fields
+  return $ Rec.Record n rfs
     
     
 record_fields :: MonadicParsing m => m [Rec.RecordField Name.Source]
 record_fields =
-  block record_field
+  blockLayout record_field
 
 
 record_field :: MonadicParsing m => m (Rec.RecordField Name.Source)
-record_field = locate $ do
-  n <- ws >> varName
-  t <- ws >> typesig
-  return $ Rec.RecordField n t
+record_field = locate $
+    Rec.RecordField <$> varName <*> typesig
