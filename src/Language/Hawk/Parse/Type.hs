@@ -34,7 +34,7 @@ typ0 =
 
 typ1 :: MonadicParsing m => m Type.Source
 typ1 = 
-  Type.apply <$> typ0 <*> many typ0
+  Type.apply <$> typ0 <*> spaceSep typ0
 
 
 typ2 :: MonadicParsing m => m Type.Source

@@ -16,51 +16,58 @@ import qualified Language.Hawk.Compile.Package as Package
 import qualified Language.Hawk.Compile as Compile
 import qualified Language.Hawk.Report.Result as Result
 
-import  Language.Hawk.Parse.Helpers ((#))
+import  Language.Hawk.Parse.Helpers ((<#>), (#))
 import qualified Language.Hawk.Parse.Helpers as Parser
 
 import qualified Language.Hawk.Parse.Binding as P
 import qualified Language.Hawk.Parse.Type as P
-import qualified Language.Hawk.Parse.Variable as P
+import qualified Language.Hawk.Parse.Object as P
 import qualified Language.Hawk.Parse.Function as P
 import qualified Language.Hawk.Parse.Module as P
 
 spec :: Spec
 spec = do
-  describe "Parsing Examples" $ do
-  
-    context "Bindings Parsing" $ do
-      it "Mutable Binding" $ do
-          let str = ""
-          P.mutable # str
-        
-      it "Immutable Binding" $ do
-          let str = "!"
-          P.immutable # str
-      it "Immutable Binding (fails)" $ do
-          let str = ""
-          (P.immutable # str) `shouldThrow` anyErrorCall    
-      it "Mutability: Mutable Binding" $ do
+  describe "Parser" $ do
+
+-- -----------------------------------------------------------------------------
+-- Bindings Parser  
+    describe "Bindings Parser" $ do
+      context "When parsing mutability flags" $ do
+        it "can parse nothing as mutable" $ do
           let str = ""
           P.mutability # str
-      it "Mutability: Immutable Binding" $ do
+            
+        it "can parse '!' as immutable" $ do
           let str = "!"
           P.mutability # str
+            
+        it "can't parse a string!" $ do
+          let str = "wasd"
+          (P.mutability # str)  `shouldThrow` anyErrorCall
           
-      it "Mutable Binding By Value" $ do
+      
+      context "When parsing evalulation flags" $ do         
+            
+        it "can parse nothing as by-val" $ do
           let str = ""
-          P.byVal # str
-      it "Mutable Binding By Reference" $ do
+          P.bindMode # str
+          
+        it "can parse '&' as by-ref" $ do
           let str = "&"
-          P.byRef # str
-      it "Evaluation: By Value" $ do
-          let str = ""
-          P.mutability # str
-      it "Mutability: Immutable Binding" $ do
+          P.bindMode # str
+          
+      
+      context "When parsing bindings" $ do
+      
+        it "can't parse with no name" $ do
           let str = "!"
-          P.mutability # str
-          
-          
+          (P.binding # str) `shouldThrow` anyErrorCall
+
+-- -----------------------------------------------------------------------------
+-- Literal Parser 
+
+-- -----------------------------------------------------------------------------
+-- Type Parser           
     context "Type Parsing" $ do
       
       it "Simple Type" $ do
@@ -68,34 +75,37 @@ spec = do
           let str = ":: (Foo F32 -> F32 -> (I32, F64 -> Bool) -> ())"
           P.typesig # str
           
-    
+-- -----------------------------------------------------------------------------
+-- Variable Parser      
     context "Variable Parsing" $ do
     
       it "Mutable Variable Binding with type" $ do
           
           let str = "sum :: I32 ^= 13"
-          P.var # str
+          P.obj # str
           
       it "Mutable Variable Binding without type" $ do
           
           let str = "sum ^= add 13 13"
-          P.var # str
+          P.obj # str
       
       it "Constant Variable Binding" $ do
           
           let str = "!sum :: I32 ^= add 13 13"
-          P.var # str
+          P.obj # str
           
       it "Mutable Reference Variable Binding" $ do
           
           let str = "&sum :: I32 ^= add 13 13"
-          P.var # str    
+          P.obj # str    
           
       it "Constant Reference Variable Binding" $ do
           
           let str = "&!sum :: I32 ^= add 13 13"
-          P.var # str
+          P.obj # str
       
+-- -----------------------------------------------------------------------------
+-- Variable Parser
     context "Function Parsing" $ do
            
       it "Simple Function" $ do

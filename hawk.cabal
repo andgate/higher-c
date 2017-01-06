@@ -66,10 +66,10 @@ library
                         Language.Hawk.Syntax.Module
                         Language.Hawk.Syntax.ModuleName
                         Language.Hawk.Syntax.Name
+                        Language.Hawk.Syntax.Object
                         Language.Hawk.Syntax.Record
                         Language.Hawk.Syntax.Statement
                         Language.Hawk.Syntax.Type
-                        Language.Hawk.Syntax.Variable
                         
                         -- Old Syntax
                         --Language.Hawk.Syntax.AST
@@ -99,10 +99,10 @@ library
                         Language.Hawk.Parse.Module
                         Language.Hawk.Parse.ModuleName
                         Language.Hawk.Parse.Name
+                        Language.Hawk.Parse.Object
                         Language.Hawk.Parse.Record
                         Language.Hawk.Parse.Statement
                         Language.Hawk.Parse.Type
-                        Language.Hawk.Parse.Variable
                       
                         Language.Hawk.Report.Annotation
                         Language.Hawk.Report.Error

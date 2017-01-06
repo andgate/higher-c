@@ -9,7 +9,7 @@ import qualified Language.Hawk.Syntax.ModuleName as ModuleName
 import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Syntax.Record as Record
 import qualified Language.Hawk.Syntax.Type as Type
-import qualified Language.Hawk.Syntax.Variable as Var
+import qualified Language.Hawk.Syntax.Object as Obj
 import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
   
@@ -42,7 +42,7 @@ type Item n e t = A.Commented (Item' n e t)
 data Item' n e t
   = ImportItem Visibility (ModuleName.Raw)
   | FunctionItem Visibility (Fn.Function n e t)
-  | VarItem Visibility (Var.Variable n e t)
+  | ObjItem Visibility (Obj.Object n e t)
   | RecordItem Visibility (Record.Record n)
   | AliasItem Visibility (Alias.Alias n)
   deriving (Show)
@@ -59,8 +59,8 @@ impItem = ImportItem Public
 fnItem :: Fn.Function n e t -> Item' n e t
 fnItem = FunctionItem Public
 
-varItem :: Var.Variable n e t -> Item' n e t
-varItem = VarItem Public
+objItem :: Obj.Object n e t -> Item' n e t
+objItem = ObjItem Public
 
 recItem :: Record.Record n -> Item' n e t
 recItem = RecordItem Public

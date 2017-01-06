@@ -14,12 +14,12 @@ import qualified Language.Hawk.Syntax.Binding as Binding
 
 binding :: MonadicParsing m => m Binding.Source
 binding =
-  locate $ (Binding.Binding <$> evaluation <*> varName) <?> "Name Binding"
+  locate $ (Binding.Binding <$> bindMode <*> varName) <?> "Name Binding"
 
 
 
-evaluation :: MonadicParsing m => m Binding.Mode
-evaluation =
+bindMode :: MonadicParsing m => m Binding.Mode
+bindMode =
   byRef <|> byVal
 
 byVal :: MonadicParsing m => m Binding.Mode

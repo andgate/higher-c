@@ -41,6 +41,11 @@ data Mutability
   deriving (Show)
   
   
+getLabel :: Binding n -> n
+getLabel (A.A _ b) = label b
+  
+  
+
 instance (PP.Pretty n) => PP.Pretty (Binding' n) where
   pretty (Binding mode label) =
     PP.text "Binding:"
@@ -55,7 +60,7 @@ instance (PP.Pretty n) => PP.Pretty (Binding' n) where
   
 instance PP.Pretty Mode where
   pretty (ByRef mut) =
-    PP.text "*" <> PP.pretty mut
+    PP.text "&" <> PP.pretty mut
 
   pretty (ByVal mut) =
     PP.pretty mut

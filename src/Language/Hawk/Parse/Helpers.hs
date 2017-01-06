@@ -1,6 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE ExistentialQuantification #-}
 module Language.Hawk.Parse.Helpers where
 
 import Control.Applicative
@@ -47,13 +48,24 @@ parseString p fn str =
   Trifecta.parseString (evalStateT p defLayoutEnv) (defDelta fn) str
 
 
+parseTestString :: IParser a -> String -> Result a
+parseTestString parser input =
+  parseString parser "(test)" input
+
 -- Test Parser with String
+infixl 4 <#>, #
+
+(<#>) :: IParser a -> String -> a
+(<#>) parser input =
+  case (parseTestString parser input) of
+    Success result -> result
+    Failure errMsg -> error $ show errMsg
+
 (#) :: Pretty a => IParser a -> String -> IO ()
 (#) parser input =
-  do  putStr "\nFile parsed:\n"
-      case (parseString parser "(test)" input) of
-        Success result -> print $ pretty result
-        Failure errMsg -> error $ show errMsg
+  do  let result = parser <#> input 
+      putStr "\n\nFile parsed:\n"
+      print $ pretty result
 
 
 -- -----------------------------------------------------------------------------
@@ -61,7 +73,7 @@ parseString p fn str =
 
 token :: MonadicParsing m => m a -> m a
 token p = 
-  p <* optional ws
+  p <* optional (try ws)
 
 -- -----------------------------------------------------------------------------
 -- Identifiers
@@ -136,8 +148,8 @@ equals :: MonadicParsing m => m String
 equals =
   stringTok "=" <?> "an equals sign '='"
   
-vardefsym :: MonadicParsing m => m String
-vardefsym =
+objdefsym :: MonadicParsing m => m String
+objdefsym =
   stringTok "^=" <?> "a variable definition symbol '^='"
 
 

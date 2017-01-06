@@ -18,10 +18,8 @@ import qualified Language.Hawk.Syntax.Name as Name
 
 
 record :: MonadicParsing m => m Rec.Source
-record = locate $ do
-  n <- try $ conName <* condefsym
-  rfs <- record_fields
-  return $ Rec.Record n rfs
+record = locate $
+  Rec.Record <$> conName <*> (condefsym >> record_fields)
     
     
 record_fields :: MonadicParsing m => m [Rec.RecordField Name.Source]

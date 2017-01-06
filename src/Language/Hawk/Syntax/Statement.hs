@@ -6,7 +6,7 @@ import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import qualified Language.Hawk.Syntax.Expression as Expr
 import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Syntax.Type as Type
-import qualified Language.Hawk.Syntax.Variable as Var
+import qualified Language.Hawk.Syntax.Object as Obj
 import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
 
@@ -49,7 +49,7 @@ type Statement n e t =
 data Statement' n e t
   = Do (Block n e t)
   | Call e
-  | Let (Var.Variable n e t)
+  | Let (Obj.Object n e t)
   | Assign n t e
   | Break
   | Return e
@@ -76,11 +76,11 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Statement' n e t)
     PP.indent 2 
         ( PP.pretty e )
         
-  pretty (Let variable) =
+  pretty (Let object) =
     PP.text "Let Statement:"
     PP.<$>
     PP.indent 2
-      ( PP.string "Var:" <+> PP.pretty variable
+      ( PP.string "Obj:" <+> PP.pretty object
       )
       
   pretty (Assign name tipe e) =

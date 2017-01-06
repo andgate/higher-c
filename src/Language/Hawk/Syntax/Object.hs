@@ -1,4 +1,4 @@
-module Language.Hawk.Syntax.Variable where
+module Language.Hawk.Syntax.Object where
 
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
@@ -13,23 +13,23 @@ import qualified Language.Hawk.Report.Region as R
 
 
 type Source =
-  Variable Name.Source Expr.Source (Maybe Type.Source)
+  Object Name.Source Expr.Source (Maybe Type.Source)
   
 type Valid =
-  Variable Name.Valid Expr.Valid (Maybe Type.Valid)
+  Object Name.Valid Expr.Valid (Maybe Type.Valid)
   
 type Canonical =
-  Variable Name.Canonical Expr.Canonical (Maybe Type.Canonical)
+  Object Name.Canonical Expr.Canonical (Maybe Type.Canonical)
   
 type Typed =
-  Variable Name.Typed Expr.Typed Type.Typed
+  Object Name.Typed Expr.Typed Type.Typed
 
-type Variable n e t =
-  A.Located (Variable' n e t)
+type Object n e t =
+  A.Located (Object' n e t)
 
 
-data Variable' n e t
-  = Variable
+data Object' n e t
+  = Object
     { name  :: Binding.Binding n 
     , tipe  :: t
     , rhs   :: e
@@ -38,9 +38,9 @@ data Variable' n e t
   
   
   
-instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Variable' n e t) where
-  pretty (Variable name tipe rhs) =
-    PP.text "Variable:"
+instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Object' n e t) where
+  pretty (Object name tipe rhs) =
+    PP.text "Object:"
     PP.<$>
     PP.indent 2
       ( PP.text "name:" <+> PP.pretty name

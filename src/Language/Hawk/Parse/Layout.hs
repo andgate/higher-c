@@ -160,14 +160,7 @@ getLayAndCurRow = do
   (layRow, _) <- peekLayPos
   curRow <- getCurRow
   return (layRow, curRow)
-
-
-processIndentation :: LayoutParsing m => m ()
-processIndentation = do
-  (layRow, layCol) <- peekLayPos
-  (curRow, curCol) <- getCurPos
-  when (curCol < layCol && curRow > layRow)
-       (popLay >> processIndentation)
+  
 
 -- -----------------------------------------------------------------------------
 -- Comments
@@ -198,16 +191,16 @@ comment =
 
 singleLineComment :: LayoutParsing m => m String
 singleLineComment = do
-  try spaces >> string "//"
-  c <- manyTill anyChar newline
+  string "//"
+  c <- manyTill anyChar (try newline)
   try spaces
   return c
 
 multiLineComment :: LayoutParsing m => m String
 multiLineComment = do
-  try $ spaces >> string "/*"
-  c <- manyTill anyChar (string "*/")
-  spaces
+  string "/*"
+  c <- manyTill anyChar (try $ string "*/")
+  try spaces
   return c <?> "Multi-Line Comment"
   
   
@@ -216,47 +209,10 @@ notComment =
   manyTill anyChar $ lookAhead (void comment <|> eof <|> spaces) 
 
 
--- -----------------------------------------------------------------------------
--- Layout combinators
-
-
-topLevel :: LayoutParsing m => m ()
-topLevel = do
-  (_, curCol) <- getCurPos
-  unless (curCol == 0) $ unexpected "indentation"
-  
-notTopLevel :: LayoutParsing m => m ()
-notTopLevel = do
-  (_, curCol) <- getCurPos
-  when (curCol == 0) $ unexpected "top-level"
-
-indented :: LayoutParsing m => m ()
-indented = do 
-  (_, layCol) <- peekLayPos
-  curPos@(_, curCol) <- getCurPos
-  when (curCol <= layCol)
-    $ unexpected ("not indented. " ++ showIndent curPos)
-    
-    
-same :: LayoutParsing m => m ()
-same = do 
-  (layRow, _) <- peekLayPos
-  curRow <- getCurRow
-  when (curRow /= layRow)
-    $ unexpected "line break"
-
-sameOrIndented :: LayoutParsing m => m ()
-sameOrIndented = do
-  layPos@(layRow, layCol) <- peekLayPos
-  curPos@(curRow, curCol) <- getCurPos
-  when (curCol <= layCol || curRow /= layRow) $
-        unexpected (showIndent curPos ++ ":Layout not same line or indented @ " ++ showIndent layPos)
-
-
 
 blockLayout :: LayoutParsing m => m a -> m [a]
 blockLayout p = 
- enterBlock *> some p <* exitBlockLayout
+ enterBlock *> some (try p) <* exitBlockLayout
 
 lineLayout :: LayoutParsing m => m a -> m a
 lineLayout p = 
@@ -281,17 +237,15 @@ exitLayout = do
 
 exitBlockLayout :: LayoutParsing m => m ()
 exitBlockLayout = do
-  (layCol, curCol) <- getLayAndCurCol
-  when (layCol > curCol)
-       (fail $ "Cannot exit block")
+  p <- isBlockValid
+  when p (fail $ "Cannot exit block.")
   void popLay
 
     
 exitLineLayout :: LayoutParsing m => m ()
 exitLineLayout = do
-  (layCol, curCol) <- getLayAndCurCol
-  when (layCol >= curCol)
-       (fail $ "Cannot exit line")
+  p <- isLineValid
+  when p (fail $ "Cannot exit line.")
   void popLay
 
 
@@ -305,25 +259,24 @@ checkLayout = do
     
 checkBlockLayout :: LayoutParsing m => m ()
 checkBlockLayout = do
-  (layCol, curCol) <- getLayAndCurCol
-  when (layCol > curCol)
-       (fail $ "Block layout invalidated")
+  p <- isBlockValid
+  unless p (fail $ "Block layout invalidated")
   void popLay
 
     
 checkLineLayout :: LayoutParsing m => m ()
 checkLineLayout = do
-  (layCol, curCol) <- getLayAndCurCol
-  when (layCol >= curCol)
-       (fail $ "Line layout invalidated")
+  p <- isLineValid
+  unless p (fail $ "Line layout invalidated")
   void popLay
+  
 
-
-
--- Thinking about how this parser should more...
--- Reading the docs for Text.Parsec.Indent has made me realize that
--- the layout api should be the primary backbone of the syntax parser.
---   withBlock
---   sameOrIndented
---   paddedSame
---   paddedSameOrIndented
+isBlockValid :: LayoutParsing m => m Bool
+isBlockValid = do
+  (layCol, curCol) <- getLayAndCurCol
+  return (layCol <= curCol)
+  
+isLineValid :: LayoutParsing m => m Bool
+isLineValid = do
+  (layCol, curCol) <- getLayAndCurCol
+  return (layCol < curCol)
