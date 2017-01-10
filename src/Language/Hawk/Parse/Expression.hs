@@ -1,13 +1,10 @@
 module Language.Hawk.Parse.Expression where
 
 import Control.Applicative
-import Text.Parser.Char
-import Text.Parser.Combinators
-import Text.Trifecta.Combinators
-import Text.Trifecta.Delta
+import Text.Megaparsec
+import Text.Megaparsec.String
 
 import Language.Hawk.Parse.Helpers
-import Language.Hawk.Parse.Layout
 import Language.Hawk.Parse.Literal
 import Language.Hawk.Parse.Name
 import Language.Hawk.Parse.Type
@@ -17,31 +14,31 @@ import qualified Language.Hawk.Syntax.Expression as Expr
 import qualified Language.Hawk.Report.Region as R
 
 
-expr :: MonadicParsing m => m Expr.Source
+expr :: Parser Expr.Source
 expr = 
       (try exprTyped <?> "Typed Expression")
   <|> (expr0 <?> "Expression")
 
 
-exprTyped :: MonadicParsing m => m Expr.Source
+exprTyped :: Parser Expr.Source
 exprTyped =
   locate $ Expr.Cast <$> expr0 <*> typesig
 
 
-expr0 :: MonadicParsing m => m Expr.Source
+expr0 :: Parser Expr.Source
 expr0 =
       (try fexpr <?> "Function application expresion")
   <|> (aexpr <?> "Basic Expression")
 
 
-fexpr :: MonadicParsing m => m Expr.Source
+fexpr :: Parser Expr.Source
 fexpr =
   locate $ do
     (call:args) <- some (try aexpr)
     return (Expr.App call args)
 
 
-aexpr :: MonadicParsing m => m Expr.Source
+aexpr :: Parser Expr.Source
 aexpr = 
       (try litExpr <?> "Literal Expression")
   <|> (try varExpr <?> "Variable Binding Expression")
@@ -49,20 +46,20 @@ aexpr =
   <|> (nestedExpr <?> "Nested Expression")
 
 
-varExpr :: MonadicParsing m => m Expr.Source
+varExpr :: Parser Expr.Source
 varExpr =
   locate $ Expr.Var <$> varName
 
 
-conExpr :: MonadicParsing m => m Expr.Source
+conExpr :: Parser Expr.Source
 conExpr =
   locate $ Expr.Var <$> conName
 
-litExpr :: MonadicParsing m => m Expr.Source
+litExpr :: Parser Expr.Source
 litExpr =
   locate $ Expr.Lit <$> literal
   
 
-nestedExpr :: MonadicParsing m => m Expr.Source
+nestedExpr :: Parser Expr.Source
 nestedExpr =
   parens $ expr

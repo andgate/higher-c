@@ -278,5 +278,5 @@ isBlockValid = do
   
 isLineValid :: LayoutParsing m => m Bool
 isLineValid = do
-  (layCol, curCol) <- getLayAndCurCol
-  return (layCol < curCol)
+  ((layRow, layCol), (curRow, curCol)) <- getLayAndCurPos
+  return (layCol < curCol || (layCol == curCol && layRow == curRow))

@@ -10,8 +10,12 @@ import qualified Language.Hawk.Syntax.Object as Obj
 import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
 
+
 type Source
   = Statement Name.Source Expr.Source (Maybe Type.Source)
+  
+type Source'
+  = Statement' Name.Source Expr.Source (Maybe Type.Source)
   
 type SourceBlock
   = Block Name.Source Expr.Source (Maybe Type.Source)

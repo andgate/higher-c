@@ -16,7 +16,7 @@ import qualified Language.Hawk.Compile.Package as Package
 import qualified Language.Hawk.Compile as Compile
 import qualified Language.Hawk.Report.Result as Result
 
-import  Language.Hawk.Parse.Helpers ((<#>), (#))
+import  Language.Hawk.Parse.Helpers ((#))
 import qualified Language.Hawk.Parse.Helpers as Parser
 
 import qualified Language.Hawk.Parse.Binding as P

@@ -5,9 +5,9 @@ import Data.Aeson ((.=))
 import qualified Data.Aeson as Json
 import Data.Binary
 import Data.Int
+import Text.Megaparsec
 import Text.PrettyPrint.ANSI.Leijen ((<>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
-import qualified Text.Trifecta.Delta as Trifecta
 
 
 data Region
@@ -26,7 +26,7 @@ data Position
     deriving (Eq, Show)
     
 mkRegion :: HasPosition a => a -> a -> Region
-mkRegion start end = Region (getPosition start) (getPosition end)
+mkRegion start end = Region (toPosition start) (toPosition end)
     
 merge :: Region -> Region -> Region
 merge (Region start _) (Region _ end) =
@@ -46,38 +46,27 @@ toString (Region start end) =
 
 
 class HasPosition a where
-    getPosition :: a -> Position     
+    toPosition :: a -> Position     
 
 instance HasPosition Position where
-    getPosition = id
-    
+    toPosition = id
 
 
 class HasRegion a where
-    getRegion :: a -> Region
+    toRegion :: a -> Region
     
 
 instance HasRegion Region where
-    getRegion = id
+    toRegion = id
   
 instance HasPosition a => HasRegion (a, a) where
-    getRegion =
+    toRegion =
       (uncurry mkRegion)
-      
-      
-instance HasPosition Trifecta.Delta where
-  getPosition (Trifecta.Columns _ _) =
-    error "Delta Columns constructor does not have position"
-    
-  getPosition (Trifecta.Tab _ _ _) =
-    error "Delta Tab constuctor does not have position"
-    
-  getPosition (Trifecta.Lines line column _ _) =
-    Position line column
-    
-  getPosition (Trifecta.Directed _ line column _ _) =
-    Position line column
-      
+
+
+instance HasPosition SourcePos where
+    toPosition (SourcePos n l c) =
+      Position (fromIntegral $ unPos l) (fromIntegral $ unPos c)   
       
 instance Json.ToJSON Region where
   toJSON (Region start end) =

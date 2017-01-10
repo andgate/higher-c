@@ -1,17 +1,15 @@
 module Language.Hawk.Parse.Literal where
 
 import Control.Applicative
-import Text.Parser.Char
-import Text.Parser.Combinators
-import Text.Parser.Token
-import Text.Trifecta.Combinators
-import Text.Trifecta.Delta
+import Text.Megaparsec
+import Text.Megaparsec.String
+import qualified Text.Megaparsec.Lexer as L
 
 import Language.Hawk.Parse.Helpers
 import qualified Language.Hawk.Syntax.Literal as Lit
 
 
-literal :: MonadicParsing m => m Lit.Literal
+literal :: Parser Lit.Literal
 literal =
       floatLit
   <|> intLit
@@ -20,29 +18,30 @@ literal =
   <|> boolLit
   <?> "Literal"
 
-intLit :: MonadicParsing m => m Lit.Literal
-intLit = Lit.IntNum <$> try integer <?> "Integer Literal"
+
+intLit :: Parser Lit.Literal
+intLit = Lit.IntNum <$> signedInteger <?> "Integer Literal"
 
 
-floatLit :: MonadicParsing m => m Lit.Literal
-floatLit = Lit.FloatNum <$> try double <?> "Double Literal"
+floatLit :: Parser Lit.Literal
+floatLit = Lit.FloatNum <$> signedFloat <?> "Double Literal"
 
 
-charLit :: MonadicParsing m => m Lit.Literal
-charLit = Lit.Chr <$> try charLiteral <?> "Character Literal"
+charLit :: Parser Lit.Literal
+charLit = Lit.Chr <$> qchar <?> "Character Literal"
 
 
-stringLit :: MonadicParsing m => m Lit.Literal
-stringLit = Lit.Str <$> try stringLiteral <?> "String Literal"
+stringLit :: Parser Lit.Literal
+stringLit = Lit.Str <$> qstring <?> "String Literal"
 
 
-boolLit :: MonadicParsing m => m Lit.Literal
-boolLit = Lit.Boolean <$> (trueBool <|> falseBool) <?> "Boolean Literal"
+boolLit :: Parser Lit.Literal
+boolLit = Lit.Boolean <$> (try trueBool <|> falseBool) <?> "Boolean Literal"
 
 
-trueBool :: MonadicParsing m => m Bool
-trueBool = try (string "true") *> pure True
+trueBool :: Parser Bool
+trueBool = string "true" *> pure True
 
 
-falseBool :: MonadicParsing m => m Bool
-falseBool = try (string "false") *> pure False
+falseBool :: Parser Bool
+falseBool = string "false" *> pure False

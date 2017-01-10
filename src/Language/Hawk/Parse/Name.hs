@@ -2,17 +2,16 @@ module Language.Hawk.Parse.Name where
 
 
 import Control.Applicative
-import Text.Parser.Char
-import Text.Parser.Combinators
-import Text.Trifecta.Combinators
-import Text.Trifecta.Delta
+import Text.Megaparsec
+import Text.Megaparsec.String
+import qualified Text.Megaparsec.Lexer as L
 
 import Language.Hawk.Parse.Helpers
 import qualified Language.Hawk.Syntax.Name as Name
 
 
-varName :: MonadicParsing m => m Name.Source
+varName :: Parser Name.Source
 varName = varId <?> "Variable Name"
 
-conName :: MonadicParsing m => m Name.Source
+conName :: Parser Name.Source
 conName = conId <?> "Constructor Name"

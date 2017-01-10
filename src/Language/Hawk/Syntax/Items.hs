@@ -37,7 +37,7 @@ type Items n e t
   = [Item n e t]
   
 
-type Item n e t = A.Commented (Item' n e t) 
+type Item n e t = A.Located (Item' n e t) 
    
 data Item' n e t
   = ImportItem Visibility (ModuleName.Raw)

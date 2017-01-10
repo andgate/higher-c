@@ -1,5 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE ExistentialQuantification #-}
 module Language.Hawk.Parse.Helpers where
@@ -8,72 +8,37 @@ import Control.Applicative
 import Control.Arrow
 import Control.Monad.State
 import qualified Data.ByteString.UTF8 as UTF8
-import Text.Parser.Char
-import Text.Parser.Combinators
-import Text.Parser.LookAhead
 import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty)
-import Text.Trifecta.Combinators
-import Text.Trifecta.Delta
-import qualified Text.Trifecta.Parser as Trifecta
-import Text.Trifecta.Result
+import Text.Megaparsec
+import Text.Megaparsec.String
+import qualified Text.Megaparsec.Lexer as L
 
-import Language.Hawk.Parse.Layout
 import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
 
 
-type IParser a = StateT LayoutEnv Trifecta.Parser a
+sc :: Parser ()
+sc = L.space (void spaceChar) lineCmnt blockCmnt
+  where lineCmnt  = L.skipLineComment "//"
+        blockCmnt = L.skipBlockComment "/*" "*/"
 
-type MonadicParsing m
-  = (DeltaParsing m, LayoutParsing m, Monad m)
+lexeme :: Parser a -> Parser a
+lexeme = L.lexeme sc
 
+symbol :: String -> Parser String
+symbol = L.symbol sc
 
-defDelta :: String -> Delta
-defDelta fn =
-  Directed (UTF8.fromString fn) 0 0 0 0
+list :: Parser m -> Parser [m] -- header and list items
+list i = do
+  (i1, is) <- L.nonIndented sc (L.indentBlock sc p)
+  return $ i1:is
+  where
+    p = do
+      i1 <- i
+      return (L.IndentMany Nothing (return . (i1, )) i)
+      
+      
 
-
-parseFromFile :: MonadIO m => IParser a -> String -> m (Maybe a)
-parseFromFile p fn =
-  Trifecta.parseFromFile (evalStateT p defLayoutEnv) fn
-  
-
-parseFromFileEx :: MonadIO m => IParser a -> String -> m (Result a)
-parseFromFileEx p fn =
-  Trifecta.parseFromFileEx (evalStateT p defLayoutEnv) fn
-
-
-parseString :: IParser a -> String -> String -> Result a
-parseString p fn str =
-  Trifecta.parseString (evalStateT p defLayoutEnv) (defDelta fn) str
-
-
-parseTestString :: IParser a -> String -> Result a
-parseTestString parser input =
-  parseString parser "(test)" input
-
--- Test Parser with String
-infixl 4 <#>, #
-
-(<#>) :: IParser a -> String -> a
-(<#>) parser input =
-  case (parseTestString parser input) of
-    Success result -> result
-    Failure errMsg -> error $ show errMsg
-
-(#) :: Pretty a => IParser a -> String -> IO ()
-(#) parser input =
-  do  let result = parser <#> input 
-      putStr "\n\nFile parsed:\n"
-      print $ pretty result
-
-
--- -----------------------------------------------------------------------------
--- Token
-
-token :: MonadicParsing m => m a -> m a
-token p = 
-  p <* optional (try ws)
 
 -- -----------------------------------------------------------------------------
 -- Identifiers
@@ -82,217 +47,171 @@ token p =
 
 -- A constructor id must start with a lowercase letter, and the body may
 -- consist of upper and lowercase letters, numbers, underscores, and tick marks.
-varId :: MonadicParsing m => m String
+varId :: Parser String
 varId = 
-  token lowNumSymId
+  lexeme lowNumSymId
 
 -- A constructor id must start with an uppercase letter, and the body may
 -- consist of upper and lowercase letters, numbers, underscores, and tick marks.
-conId :: MonadicParsing m => m String
+conId :: Parser String
 conId = 
-  token capNumSymId
+  lexeme capNumSymId
 
 
 -- A module id must start with an uppercase letter, and the body may
 -- consist of upper and lowercase letters
-modId :: MonadicParsing m => m String
+modId :: Parser String
 modId = 
-  token capId
+  lexeme capId
 
 
 -- Bases for each id.
-capId :: MonadicParsing m => m String
+capId :: Parser String
 capId =
-  makeId (try upper) letter
+  makeId upperChar letterChar
 
-capNumSymId :: MonadicParsing m => m String
+capNumSymId :: Parser String
 capNumSymId =
-  makeId (try upper) idBodyChar
+  makeId upperChar idBodyChar
 
-lowNumSymId :: MonadicParsing m => m String
+lowNumSymId :: Parser String
 lowNumSymId =
-  makeId (try lower) idBodyChar
+  makeId lowerChar idBodyChar
 
 
-idBodyChar :: MonadicParsing m => m Char
+idBodyChar :: Parser Char
 idBodyChar =
-  alphaNum  <|> char '_' <|> char '`'
+  alphaNumChar  <|> char '_' <|> char '`'
 
 -- Make an id parser given a parser for the first character and a body character.
-makeId :: MonadicParsing m => m Char -> m Char -> m String
+makeId :: Parser Char -> Parser Char -> Parser String
 makeId firstChar bodyChar =
-  (:) <$> firstChar <*> many bodyChar 
-
+  (:) <$> firstChar <*> many bodyChar
 
 -- -----------------------------------------------------------------------------
 -- Numbers
 
+integer :: Parser Integer
+integer = lexeme L.integer
 
--- -----------------------------------------------------------------------------
--- Characters
+float :: Parser Double
+float = lexeme L.float
 
+signedInteger :: Parser Integer
+signedInteger = L.signed sc integer
 
-charTok :: MonadicParsing m => Char -> m Char
-charTok str =
-  token $ char str
-
-stringTok :: MonadicParsing m => String -> m String
-stringTok str =
-  token $ string str
+signedFloat :: Parser Double
+signedFloat = L.signed sc float
 
 
 -- -----------------------------------------------------------------------------
 -- Common Symbols
 
-equals :: MonadicParsing m => m String
+
+equals :: Parser String
 equals =
-  stringTok "=" <?> "an equals sign '='"
+  symbol "=" <?> "an equals sign '='"
   
-objdefsym :: MonadicParsing m => m String
+objdefsym :: Parser String
 objdefsym =
-  stringTok "^=" <?> "a variable definition symbol '^='"
+  symbol "^=" <?> "a variable definition symbol '^='"
 
 
-condefsym :: MonadicParsing m => m String
+condefsym :: Parser String
 condefsym =
-  stringTok ":-" <?> "a type definition symbol ':-'"
+  symbol ":-" <?> "a type definition symbol ':-'"
     
-fndefsym :: MonadicParsing m => m String
+fndefsym :: Parser String
 fndefsym =
-  stringTok ":=" <?> "a function definition symbol ':='"
+  symbol ":=" <?> "a function definition symbol ':='"
 
 
-rightArrow :: MonadicParsing m => m String
+rightArrow :: Parser String
 rightArrow = 
-  stringTok "->" <?> "an arrow '->'"
+  symbol "->" <?> "an arrow '->'"
 
 
-hasType :: MonadicParsing m => m String
+hasType :: Parser String
 hasType =
-  stringTok "::" <?> "the \"has type\" symbol '::'"
+  symbol "::" <?> "the \"has type\" symbol '::'"
     
     
-comma :: MonadicParsing m => m String
+comma :: Parser String
 comma =
-  stringTok "," <?> "a comma symbol ','"
+  symbol "," <?> "a comma symbol ','"
   
   
-period :: MonadicParsing m => m String
+period :: Parser String
 period =
-  stringTok "." <?> "a period symbol '.'"
+  symbol "." <?> "a period symbol '.'"
+
 
 -- -----------------------------------------------------------------------------
--- Grouping
-
-commitIf :: MonadicParsing m => m b -> m a -> m a
-commitIf check p =
-    commit <|> try p
-  where
-    commit =
-      try (lookAhead check) >> p
+-- Seperated
 
 
-spaceySepBy :: MonadicParsing m => m a -> m b -> m [a]
-spaceySepBy p sep = 
-  option [] ((try p) `spaceySepBy1` sep)
+sep :: Parser a -> Parser [a]
+sep = many
 
-
-spaceySepBy1 :: MonadicParsing m => m a -> m b -> m [a]
-spaceySepBy1 p sep =
-  (:) <$> p <*> p `spaceyPrefixBy` sep
-    
-    
-spaceyPrefixBy :: MonadicParsing m => m a -> m b -> m [a]
-spaceyPrefixBy p sep =
-  many $ commitIf (sep) (sep >> p)
-
-  
-arrowSep1 :: MonadicParsing m => m a -> m [a]
-arrowSep1 p =
-  p `spaceySepBy1` rightArrow
-  
-
-
-commaSep :: MonadicParsing m => m a -> m [a]
-commaSep p =
-  p `spaceySepBy` comma
+commaSep :: Parser a -> Parser [a]
+commaSep = 
+  (`sepBy` comma)
   
   
-commaSep1 :: MonadicParsing m => m a -> m [a]
-commaSep1 p =
-  p `spaceySepBy1` comma
-  
-  
-periodSep :: MonadicParsing m => m a -> m [a]
-periodSep p =
-  p `spaceySepBy` period
-  
-  
-periodSep1 :: MonadicParsing m => m a -> m [a]
-periodSep1 p =
-  p `spaceySepBy1` period
-
-
-spaceSep :: MonadicParsing m => m a -> m [a]
-spaceSep p =
-  spaceSep1 p <|> pure []
- 
-
-spaceSep1 :: MonadicParsing m => m a -> m [a]
-spaceSep1 p =
-  (:) <$> p <*> spacePrefix p
-
-
-spacePrefix :: MonadicParsing m => m a -> m [a]
-spacePrefix p =
-  many (try p)
-
-  
-  
+rightArrowSep :: Parser a -> Parser [a]
+rightArrowSep = 
+  (`sepBy` rightArrow)
 
 -- -----------------------------------------------------------------------------
 -- Containers
 
-surround :: MonadicParsing m => String -> String -> String -> m a -> m a
-surround l r name p =
-  try (stringTok l) *> p <* (stringTok r <?> unwords ["a closing", name, " '", show r, "'"])
+betweenSymbol :: String -> String -> Parser a -> Parser a
+betweenSymbol s e =
+  between (symbol s) (symbol e)
 
-
-parens :: MonadicParsing m => m a -> m a
+parens :: Parser a -> Parser a
 parens =
-  surround "(" ")" "paren"
+  betweenSymbol "(" ")"
   
 
-brackets :: MonadicParsing m => m a -> m a
+brackets :: Parser a -> Parser a
 brackets =
-  surround "[" "]" "bracket"
+  betweenSymbol "[" "]"
 
  
-braces :: MonadicParsing m => m a -> m a
+braces :: Parser a -> Parser a
 braces =
-  surround "{" "}" "brace"
+  betweenSymbol "{" "}"
   
 
-chevrons :: MonadicParsing m => m a -> m a
+chevrons :: Parser a -> Parser a
 chevrons =
-  surround "<" ">" "chevron"
+  betweenSymbol "<" ">"
+
+qchar :: Parser Char
+qchar = lexeme $ 
+  between (char '\'') (char '\'') anyChar
+
+qstring :: Parser String
+qstring = lexeme $
+  between (char '\"') (char '\"') (many $ noneOf "\"")
   
 
 -- -----------------------------------------------------------------------------
 -- Location
 
-locate :: MonadicParsing m => m a -> m (A.Located a)
+locate :: Parser a -> Parser (A.Located a)
 locate p = do
-  p1 <- position
+  p1 <- getPosition
   r <- p
-  p2 <- position
+  p2 <- getPosition
   return $ A.A (R.mkRegion p1 p2) r
   
   
-withRegion :: MonadicParsing m => m a -> (R.Region -> a -> b) -> m b
+withRegion :: Parser a -> (R.Region -> a -> b) -> Parser b
 withRegion p func = do
-  p1 <- position
+  p1 <- getPosition
   result <- p
-  region <- R.mkRegion p1 <$> position
+  region <- R.mkRegion p1 <$> getPosition
   return $ func region result
   

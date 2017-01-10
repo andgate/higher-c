@@ -12,6 +12,9 @@ import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
 
 
+type Meta
+  = Function Name.Source () (Maybe Type.Source)
+
 type Source
   = Function Name.Source Expr.Source (Maybe Type.Source)
 

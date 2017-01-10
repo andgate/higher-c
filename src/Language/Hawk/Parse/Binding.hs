@@ -1,46 +1,44 @@
 module Language.Hawk.Parse.Binding where
 
 import Control.Applicative
-import Text.Parser.Char
-import Text.Parser.Combinators
-import Text.Trifecta.Combinators
-import Text.Trifecta.Delta
+import Text.Megaparsec
+import Text.Megaparsec.String
+import qualified Text.Megaparsec.Lexer as L
 
 import Language.Hawk.Parse.Helpers
-import Language.Hawk.Parse.Layout
 import Language.Hawk.Parse.Name
 import qualified Language.Hawk.Syntax.Binding as Binding
 
 
-binding :: MonadicParsing m => m Binding.Source
-binding =
-  locate $ (Binding.Binding <$> bindMode <*> varName) <?> "Name Binding"
+binding :: Parser Binding.Source
+binding = locate $ Binding.Binding <$> bindMode <*> varName
 
 
-
-bindMode :: MonadicParsing m => m Binding.Mode
+bindMode :: Parser Binding.Mode
 bindMode =
-  byRef <|> byVal
+  try byRef <|> byVal
 
-byVal :: MonadicParsing m => m Binding.Mode
+
+byVal :: Parser Binding.Mode
 byVal = 
   Binding.ByVal <$> mutability
 
-byRef :: MonadicParsing m => m Binding.Mode
+byRef :: Parser Binding.Mode
 byRef =
-  try (charTok '&') *>
+  char '&' *>
   pure Binding.ByRef <*> mutability
   
 
-mutability :: MonadicParsing m => m Binding.Mutability
+mutability :: Parser Binding.Mutability
 mutability =
-  immutable <|> mutable
+  try immutable <|> mutable
   
-immutable :: MonadicParsing m => m Binding.Mutability
+  
+immutable :: Parser Binding.Mutability
 immutable =
-  try (charTok '!') *>
+  char '!' *>
   pure Binding.Immutable
 
-mutable :: MonadicParsing m => m Binding.Mutability
+mutable :: Parser Binding.Mutability
 mutable = 
   pure Binding.Mutable <?> "Mutable symbol"

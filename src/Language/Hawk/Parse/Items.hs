@@ -1,16 +1,12 @@
 module Language.Hawk.Parse.Items where
 
 import Control.Applicative
-import Text.Parser.Char
-import Text.Parser.Combinators
-import Text.Trifecta.Combinators
-import Text.Trifecta.Delta
-
+import Text.Megaparsec
+import Text.Megaparsec.String
 
 import Language.Hawk.Parse.Binding
 import Language.Hawk.Parse.Expression
 import Language.Hawk.Parse.Helpers
-import Language.Hawk.Parse.Layout
 import Language.Hawk.Parse.Name
 import Language.Hawk.Parse.Statement
 import Language.Hawk.Parse.Function
@@ -26,44 +22,38 @@ import qualified Language.Hawk.Syntax.Type as Ty
 
 
 
-
-items :: MonadicParsing m => m Items.Source
+items :: Parser Items.Source
 items =
-  blockLayout item
+  list item
   
-  
-item :: MonadicParsing m => m Items.SourceItem
+item :: Parser Items.SourceItem
 item =
       (try impItem <?> "Import")
   <|> (try recordItem <?> "Record")
   <|> (varItem <?> "Function or Object Definition")
 
 
-itemize :: MonadicParsing m => m Items.SourceItem' -> m Items.SourceItem
-itemize = commented
-
-
-recordItem :: MonadicParsing m => m Items.SourceItem
-recordItem = itemize $
+recordItem :: Parser Items.SourceItem
+recordItem = locate $
   Items.recItem <$> record
   
-varItem :: MonadicParsing m => m Items.SourceItem
-varItem = itemize $ do
+varItem :: Parser Items.SourceItem
+varItem = locate $ do
   bs <- many (try binding)
   t <- typesig0
   (try (declFnItem bs t) <?> "Function")
     <|> ((declObjItem bs t) <?> "Object")
  
  
-declFnItem :: MonadicParsing m => [B.Source] -> Maybe Ty.Source -> m Items.SourceItem'
+declFnItem :: [B.Source] -> Maybe Ty.Source -> Parser Items.SourceItem'
 declFnItem bs t =
   Items.fnItem <$> declareFunction bs t
   
-declObjItem :: MonadicParsing m => [B.Source] -> Maybe Ty.Source -> m Items.SourceItem'
+declObjItem :: [B.Source] -> Maybe Ty.Source -> Parser Items.SourceItem'
 declObjItem bs t =
   Items.objItem <$> declareObj bs t
   
-impItem :: MonadicParsing m =>  m Items.SourceItem
-impItem = itemize $
-  stringTok "->" >> (Items.impItem <$> moduleNameRaw)
+impItem :: Parser Items.SourceItem
+impItem = locate $
+  rightArrow >> (Items.impItem <$> moduleNameRaw)
   
