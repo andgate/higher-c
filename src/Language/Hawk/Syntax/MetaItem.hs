@@ -41,7 +41,7 @@ data MetaItem' n t
 
   
 instance (Binary n, Binary t) => Binary (MetaItem' n t) where
-  get = do t <- get :: Get Word8
+  get = do t <- getWord8
            case t of
                 0 -> Import <$> get
                 1 -> Function <$> get <*> get <*> get
@@ -51,12 +51,12 @@ instance (Binary n, Binary t) => Binary (MetaItem' n t) where
     
   put t = case t of
       Import n ->
-          put (0 :: Word8) >> put n
+          putWord8 0 >> put n
       Function n args t ->
-          put (1 :: Word8) >> put n
+          putWord8 1 >> put n >> put args >> put t
       Object n t ->
-          put (2 :: Word8) >> put n >> put t
+          putWord8 2 >> put n >> put t
       Record n fs ->
-          put (3 :: Word8) >> put n >> put fs
+          putWord8 3 >> put n >> put fs
       Alias n t ->
-          put (2 :: Word8) >> put n >> put t
+          putWord8 4 >> put n >> put t

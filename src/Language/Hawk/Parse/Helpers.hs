@@ -36,9 +36,6 @@ list i = do
     p = do
       i1 <- i
       return (L.IndentMany Nothing (return . (i1, )) i)
-      
-      
-
 
 -- -----------------------------------------------------------------------------
 -- Identifiers

@@ -160,9 +160,10 @@ test-suite spec
   build-depends:        base
                         , bytestring
                         , ansi-wl-pprint
+                        , containers
                         , hspec
                         , hawk
-                        , containers
+                        , megaparsec
                         , yaml
   
   ghc-options:          -threaded
