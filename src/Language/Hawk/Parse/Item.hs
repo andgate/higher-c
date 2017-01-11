@@ -1,4 +1,4 @@
-module Language.Hawk.Parse.Items where
+module Language.Hawk.Parse.Item where
 
 import Control.Applicative
 import Text.Megaparsec
@@ -16,28 +16,28 @@ import Language.Hawk.Parse.Object
 import Language.Hawk.Parse.Type
 import qualified Language.Hawk.Syntax.Function as Fn
 import qualified Language.Hawk.Syntax.Binding as B
-import qualified Language.Hawk.Syntax.Items as Items
+import qualified Language.Hawk.Syntax.Item as I
 import qualified Language.Hawk.Syntax.Statement as Stmt
 import qualified Language.Hawk.Syntax.Type as Ty
 
 
 
-items :: Parser Items.Source
+items :: Parser [I.Source]
 items =
   list item
   
-item :: Parser Items.SourceItem
+item :: Parser I.Source
 item =
       (try impItem <?> "Import")
   <|> (try recordItem <?> "Record")
   <|> (varItem <?> "Function or Object Definition")
 
 
-recordItem :: Parser Items.SourceItem
+recordItem :: Parser I.Source
 recordItem = locate $
-  Items.recItem <$> record
+  I.recItem <$> record
   
-varItem :: Parser Items.SourceItem
+varItem :: Parser I.Source
 varItem = locate $ do
   bs <- many (try binding)
   t <- typesig0
@@ -45,15 +45,15 @@ varItem = locate $ do
     <|> ((declObjItem bs t) <?> "Object")
  
  
-declFnItem :: [B.Source] -> Maybe Ty.Source -> Parser Items.SourceItem'
+declFnItem :: [B.Source] -> Maybe Ty.Source -> Parser I.Source'
 declFnItem bs t =
-  Items.fnItem <$> declareFunction bs t
+  I.fnItem <$> declareFunction bs t
   
-declObjItem :: [B.Source] -> Maybe Ty.Source -> Parser Items.SourceItem'
+declObjItem :: [B.Source] -> Maybe Ty.Source -> Parser I.Source'
 declObjItem bs t =
-  Items.objItem <$> declareObj bs t
+  I.objItem <$> declareObj bs t
   
-impItem :: Parser Items.SourceItem
+impItem :: Parser I.Source
 impItem = locate $
-  rightArrow >> (Items.impItem <$> moduleNameRaw)
+  rightArrow >> (I.impItem <$> moduleNameRaw)
   

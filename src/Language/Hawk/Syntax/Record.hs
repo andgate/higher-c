@@ -1,5 +1,8 @@
 module Language.Hawk.Syntax.Record where
 
+import Data.Data
+import Data.Typeable
+
 import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Syntax.Type as Type
 import qualified Language.Hawk.Report.Annotation as A
@@ -25,7 +28,7 @@ data Record' n
     { name :: n
     , fields :: [RecordField n]
     }
-  deriving (Show)
+  deriving (Eq, Show, Data, Typeable)
 
 
 type RecordField n
@@ -33,4 +36,4 @@ type RecordField n
 
 data RecordField' n
   = RecordField n (Type.Type n)
-  deriving (Show)
+  deriving (Eq, Show, Data, Typeable)

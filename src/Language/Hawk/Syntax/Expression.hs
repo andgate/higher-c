@@ -1,5 +1,8 @@
 module Language.Hawk.Syntax.Expression where
 
+import Data.Data
+import Data.Typeable
+
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
@@ -46,7 +49,7 @@ data Expr' n t
   -- disable case for now, patterns are too complicated
   -- | Case (Expr n t) [(Pattern.Pattern n, Expr n t)]
   
-  deriving (Show)
+  deriving (Eq, Show, Data, Typeable)
   
   
   

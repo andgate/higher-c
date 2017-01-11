@@ -3,7 +3,7 @@ module Language.Hawk.Compile where
 import qualified Data.Map as Map
 import Data.Function ((&))
 
-import qualified Language.Hawk.Syntax.Items as Items
+import qualified Language.Hawk.Syntax.Item as I
 import qualified Language.Hawk.Syntax.Expression as Expr
 import qualified Language.Hawk.Syntax.Module as Module
 import qualified Language.Hawk.Syntax.ModuleName as ModuleName

@@ -1,5 +1,8 @@
 module Language.Hawk.Syntax.Statement where
 
+import Data.Data
+import Data.Typeable
+
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
@@ -59,7 +62,7 @@ data Statement' n e t
   | Return e
   | If [(e, Block n e t)] (Block n e t)
   | While e (Block n e t)
-  deriving (Show)
+  deriving (Eq, Show, Data, Typeable)
   
   
 mkRetBlk :: Expr.Source -> SourceBlock

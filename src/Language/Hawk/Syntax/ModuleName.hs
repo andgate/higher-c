@@ -1,6 +1,8 @@
 module Language.Hawk.Syntax.ModuleName where
 
 import Data.Binary
+import Data.Data
+import Data.Typeable
 import qualified Data.List as List
 
 import qualified Language.Hawk.Compile.Package as Package
@@ -11,8 +13,7 @@ data Name
   = Name
     { _package  :: Package.Name
     , _module   :: Raw
-    }
-    deriving (Eq, Ord, Show)
+    } deriving(Eq, Ord, Show, Data, Typeable)
     
     
 inCore :: [String] -> Name

@@ -3,9 +3,11 @@ module Language.Hawk.Compile.Package where
 import Data.Aeson
 import Data.Binary
 import qualified Data.Char as Char
+import Data.Data
 import Data.Function (on)
 import qualified Data.List as List
 import qualified Data.Text as T
+import Data.Typeable
 import System.FilePath ((</>))
 
 
@@ -18,7 +20,7 @@ data Name
     { user    :: String
     , project :: String
     }
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data, Typeable)
 
 
 dummyName :: Name
@@ -112,7 +114,7 @@ data Version
     , _minor :: Int
     , _patch :: Int
     }
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Data, Typeable)
     
 
 initialVersion :: Version

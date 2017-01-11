@@ -6,13 +6,11 @@ import Text.Megaparsec.String
 
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Parse.ModuleName
-import Language.Hawk.Parse.Items
-import qualified Language.Hawk.Syntax.Items as Items
-import qualified Language.Hawk.Syntax.Module as Module
+import Language.Hawk.Parse.Item
+import qualified Language.Hawk.Syntax.Item as I
+import qualified Language.Hawk.Syntax.Module as M
 
 
-moduleInfo :: Parser Module.SourceInfo
-moduleInfo = do
-      its <- items <* eof
-      let imps = Items.findImports its
-      pure $ Module.SourceInfo [] imps its
+moduleInfo :: Parser M.Source
+moduleInfo = 
+  M.Module "" <$> items <* eof

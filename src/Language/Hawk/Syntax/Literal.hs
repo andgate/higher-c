@@ -1,5 +1,8 @@
 module Language.Hawk.Syntax.Literal where
 
+import Data.Data
+import Data.Typeable
+
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
@@ -9,7 +12,7 @@ data Literal
   | Chr Char
   | Str String
   | Boolean Bool
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Data, Typeable)
   
   
 toString :: Literal -> String

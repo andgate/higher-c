@@ -1,5 +1,8 @@
 module Language.Hawk.Syntax.Binding where
 
+import Data.Data
+import Data.Typeable
+
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
@@ -28,17 +31,17 @@ data Binding' n
     { mode  :: Mode
     , label :: n
     }
-  deriving (Show)
+  deriving (Eq, Show, Data, Typeable)
   
 data Mode
   = ByRef Mutability
   | ByVal Mutability
-  deriving (Show)
+  deriving (Eq, Show, Data, Typeable)
   
 data Mutability
   = Mutable
   | Immutable
-  deriving (Show)
+  deriving (Eq, Show, Data, Typeable)
   
   
 getLabel :: Binding n -> n

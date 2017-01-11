@@ -60,9 +60,10 @@ library
                         Language.Hawk.Syntax.Function
                         Language.Hawk.Syntax.Helpers
                         Language.Hawk.Syntax.Instance
-                        Language.Hawk.Syntax.Items
+                        Language.Hawk.Syntax.Item
                         Language.Hawk.Syntax.Literal
-                        Language.Hawk.Syntax.MetaItems
+                        Language.Hawk.Syntax.MetaItem
+                        Language.Hawk.Syntax.MetaModule
                         Language.Hawk.Syntax.Module
                         Language.Hawk.Syntax.ModuleName
                         Language.Hawk.Syntax.Name
@@ -94,9 +95,10 @@ library
                         Language.Hawk.Parse.Expression
                         Language.Hawk.Parse.Function
                         Language.Hawk.Parse.Helpers
-                        Language.Hawk.Parse.Items
+                        Language.Hawk.Parse.Item
                         Language.Hawk.Parse.Literal
-                        Language.Hawk.Parse.MetaItems
+                        Language.Hawk.Parse.MetaItem
+                        Language.Hawk.Parse.MetaModule
                         Language.Hawk.Parse.Module
                         Language.Hawk.Parse.ModuleName
                         Language.Hawk.Parse.Name
@@ -127,6 +129,9 @@ library
   --build-tools:          alex, happy
   --other-modules:        Hawk.Parser,
   --                      Hawk.Lexer
+  
+  default-extensions:           DeriveDataTypeable 
+                        
 
 executable              hkc
   main-is:              Main.hs
@@ -158,7 +163,6 @@ test-suite spec
                         , hspec
                         , hawk
                         , containers
-                        , trifecta
                         , yaml
   
   ghc-options:          -threaded

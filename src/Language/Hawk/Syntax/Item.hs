@@ -1,6 +1,8 @@
-module Language.Hawk.Syntax.Items where
+module Language.Hawk.Syntax.Item where
 
 import Data.Binary
+import Data.Data
+import Data.Typeable
 
 import qualified Language.Hawk.Syntax.Alias as Alias
 import qualified Language.Hawk.Syntax.Expression as Expr
@@ -14,28 +16,21 @@ import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
   
 -- Items Structure
-
-type Source = 
-  Items Name.Source Expr.Source (Maybe Type.Source)
   
-type SourceItem = 
+type Source = 
   Item Name.Source Expr.Source (Maybe Type.Source)
   
-type SourceItem' = 
+type Source' = 
   Item' Name.Source Expr.Source (Maybe Type.Source)
  
 type Valid = 
-  Items Name.Valid Expr.Valid (Maybe Type.Valid)
+  Item Name.Valid Expr.Valid (Maybe Type.Valid)
   
 type Canonical =
-  Items Name.Canonical Expr.Canonical (Maybe Type.Canonical)
+  Item Name.Canonical Expr.Canonical (Maybe Type.Canonical)
   
 type Typed =
-  Items Name.Typed Expr.Typed Type.Typed
- 
-type Items n e t
-  = [Item n e t]
-  
+  Item Name.Typed Expr.Typed Type.Typed
 
 type Item n e t = A.Located (Item' n e t) 
    
@@ -45,13 +40,13 @@ data Item' n e t
   | ObjItem Visibility (Obj.Object n e t)
   | RecordItem Visibility (Record.Record n)
   | AliasItem Visibility (Alias.Alias n)
-  deriving (Show)
+  deriving (Eq, Show, Data, Typeable)
   
   
 data Visibility
   = Public
   | Private
-  deriving (Show)
+  deriving (Eq, Show, Data, Typeable)
 
 impItem :: ModuleName.Raw -> Item' n e t
 impItem = ImportItem Public
@@ -69,7 +64,7 @@ aliasItem :: Alias.Alias n -> Item' n e t
 aliasItem = AliasItem Public
 
 
-findImports :: Source -> Source
+findImports :: [Source] -> [Source]
 findImports = filter isImport
 
 isImport :: Item n e t -> Bool

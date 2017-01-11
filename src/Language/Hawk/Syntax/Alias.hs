@@ -1,5 +1,8 @@
 module Language.Hawk.Syntax.Alias where
 
+import Data.Data
+import Data.Typeable
+
 import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Syntax.Type as Type
 import qualified Language.Hawk.Report.Annotation as A
@@ -23,4 +26,4 @@ type Alias n =
 
 data Alias' n
   = Alias n (Type.Type n)
-  deriving (Show)
+  deriving (Eq, Show, Data, Typeable)

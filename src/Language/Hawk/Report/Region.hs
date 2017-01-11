@@ -1,6 +1,9 @@
 {-# LANGUAGE OverloadedStrings, FlexibleInstances #-}
 module Language.Hawk.Report.Region where
 
+import Data.Data
+import Data.Typeable
+
 import Data.Aeson ((.=))
 import qualified Data.Aeson as Json
 import Data.Binary
@@ -15,7 +18,7 @@ data Region
     { start :: Position
     , end   :: Position
     }
-    deriving (Eq, Show)
+    deriving (Eq, Show, Data, Typeable)
     
 
 data Position
@@ -23,7 +26,7 @@ data Position
     { line    :: {-# UNPACK #-} !Int64
     , column  :: {-# UNPACK #-} !Int64
     }
-    deriving (Eq, Show)
+    deriving (Eq, Show, Data, Typeable)
     
 mkRegion :: HasPosition a => a -> a -> Region
 mkRegion start end = Region (toPosition start) (toPosition end)

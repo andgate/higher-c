@@ -1,5 +1,8 @@
 module Language.Hawk.Syntax.Function where
 
+import Data.Data
+import Data.Typeable
+
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
@@ -38,7 +41,7 @@ data Function' n e t
     , fn_type :: t
     , fn_body :: Stmt.Block n e t
     }
-  deriving (Show)
+  deriving (Eq, Show, Data, Typeable)
   
   
   

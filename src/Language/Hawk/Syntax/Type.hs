@@ -1,6 +1,9 @@
 {-# LANGUAGE OverloadedStrings, FlexibleInstances #-}
 module Language.Hawk.Syntax.Type where
 
+import Data.Data
+import Data.Typeable
+
 import Control.Arrow (second)
 import Data.Aeson ((.=))
 import qualified Data.Aeson as Json
@@ -35,7 +38,7 @@ type Type n = A.Located (Type' n)
 data Type' n
   = App (Type n) [Type n]
   | Con n
-  deriving (Show)
+  deriving (Eq, Show, Data, Typeable)
 -- Type variables will require at least monomorphization,
 -- and won't be possible for a while.
 --  | Var TVar a

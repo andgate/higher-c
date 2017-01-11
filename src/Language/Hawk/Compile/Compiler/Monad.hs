@@ -48,7 +48,7 @@ type Msg = String
 -- Compiler State
 
 data CompilerState = CompilerState
-  { _fnames        :: [FilePath]
-  , _imports       :: [FilePath]
-  , _ast            :: Maybe M.Source
+  { _fnames   :: [FilePath]
+  , _imports  :: [FilePath]
+  , _ast      :: M.Source
   } deriving (Eq, Show)

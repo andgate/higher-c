@@ -7,13 +7,15 @@ import qualified Data.Aeson as Json
 import Data.Binary
 import Text.PrettyPrint.ANSI.Leijen ((<+>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
+import Data.Data
+import Data.Typeable
 
 import qualified Language.Hawk.Report.Region as R
 
 
 data Annotated annot a
   = A annot a
-  deriving (Eq, Show)
+  deriving (Eq, Show, Data, Typeable)
   
 type Located a =
   Annotated R.Region a
@@ -22,6 +24,7 @@ type Located a =
 type Commented a =
   Annotated (R.Region, Maybe String) a
   
+
   
 at :: R.Position -> R.Position -> a -> Located a
 at start end value =
