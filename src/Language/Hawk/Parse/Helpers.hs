@@ -109,8 +109,8 @@ equals :: Parser String
 equals =
   symbol "=" <?> "an equals sign '='"
   
-objdefsym :: Parser String
-objdefsym =
+vardefsym :: Parser String
+vardefsym =
   symbol "^=" <?> "a variable definition symbol '^='"
 
 

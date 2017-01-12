@@ -1,5 +1,6 @@
 module Language.Hawk.Syntax.Binding where
 
+import Data.Binary
 import Data.Data
 import Data.Typeable
 
@@ -72,7 +73,35 @@ instance PP.Pretty Mode where
 instance PP.Pretty Mutability where
   pretty Mutable =
     PP.text ""
-    
 
   pretty Immutable =
     PP.text "!"
+    
+    
+      
+instance (Binary n) => Binary (Binding' n) where
+  get =
+    Binding <$> get <*> get
+
+  put (Binding m l) =
+    put m >> put l
+    
+    
+instance Binary Mode where
+  get = do  t <- getWord8
+            case t of
+                0 -> ByRef <$> get
+                1 -> ByVal <$> get
+
+  put (ByRef m) = putWord8 0 >> put m
+  put (ByVal m) = putWord8 1 >> put m
+  
+  
+instance Binary Mutability where
+  get = do  t <- getWord8
+            case t of
+                0 -> return Mutable
+                1 -> return Immutable
+
+  put Mutable = putWord8 0
+  put Immutable = putWord8 1

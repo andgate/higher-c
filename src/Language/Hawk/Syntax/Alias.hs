@@ -1,5 +1,6 @@
 module Language.Hawk.Syntax.Alias where
 
+import Data.Binary
 import Data.Data
 import Data.Typeable
 
@@ -27,3 +28,12 @@ type Alias n =
 data Alias' n
   = Alias n (Type.Type n)
   deriving (Eq, Show, Data, Typeable)
+  
+  
+instance (Binary n) => Binary (Alias' n) where
+  get =
+    Alias <$> get <*> get
+
+  put (Alias n t) =
+    put n >> put t
+    

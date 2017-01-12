@@ -22,7 +22,7 @@ import qualified Language.Hawk.Report.Result as Result
 import qualified Language.Hawk.Parse.Helpers as Parser
 import qualified Language.Hawk.Parse.Binding as P
 import qualified Language.Hawk.Parse.Type as P
-import qualified Language.Hawk.Parse.Object as P
+import qualified Language.Hawk.Parse.Variable as P
 import qualified Language.Hawk.Parse.Function as P
 import qualified Language.Hawk.Parse.Module as P
 
@@ -68,13 +68,14 @@ spec = do
 -- Literal Parser 
 
 -- -----------------------------------------------------------------------------
--- Type Parser           
-    context "Type Parsing" $ do
-      
-      it "Simple Type" $ do
-          
-          let str = ":: (Foo F32 -> F32 -> (I32, F64 -> Bool) -> ())"
-          parseTest P.typesig str
+-- Type Parser
+    describe "Type Parser" $ do
+      context "When parsing types" $ do
+        
+        it "can parse simple type signatures" $ do
+            
+            let str = ":: (Foo F32 -> F32 -> (I32, F64 -> Bool) -> ())"
+            parseTest P.typesig str
           
 -- -----------------------------------------------------------------------------
 -- Variable Parser      
@@ -83,27 +84,27 @@ spec = do
       it "Mutable Variable Binding with type" $ do
           
           let str = "sum :: I32 ^= 13"
-          parseTest P.obj str
+          parseTest P.var str
           
       it "Mutable Variable Binding without type" $ do
           
           let str = "sum ^= add 13 13"
-          parseTest P.obj str
+          parseTest P.var str
       
       it "Constant Variable Binding" $ do
           
           let str = "!sum :: I32 ^= add 13 13"
-          parseTest P.obj str
+          parseTest P.var str
           
       it "Mutable Reference Variable Binding" $ do
           
           let str = "&sum :: I32 ^= add 13 13"
-          parseTest P.obj str    
+          parseTest P.var str    
           
       it "Constant Reference Variable Binding" $ do
           
           let str = "&!sum :: I32 ^= add 13 13"
-          parseTest P.obj str
+          parseTest P.var str
       
 -- -----------------------------------------------------------------------------
 -- Variable Parser
@@ -129,7 +130,7 @@ spec = do
     
       it "example/grammar.hk" $ do
           str <- readFile "example/main.hk"
-          parseTest P.moduleInfo str
+          parseTest P.modl str
 
 main :: IO ()
 main = hspec spec

@@ -1,5 +1,6 @@
 module Language.Hawk.Syntax.Function where
 
+import Data.Binary
 import Data.Data
 import Data.Typeable
 
@@ -15,11 +16,11 @@ import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
 
 
-type Meta
-  = Function Name.Source () (Maybe Type.Source)
-
 type Source
   = Function Name.Source Expr.Source (Maybe Type.Source)
+  
+type SourceInfo
+  = FunctionInfo Name.Source (Maybe Type.Source)
 
 type Valid
   = Function Name.Valid Expr.Valid (Maybe Type.Valid)
@@ -36,18 +37,39 @@ type Function n e t =
 
 data Function' n e t
   = Function 
+    { fn_info :: FunctionInfo n t
+    , fn_body :: Stmt.Block n e t
+    }
+  deriving (Eq, Show, Data, Typeable)
+ 
+ 
+type FunctionInfo n t =
+  A.Located (FunctionInfo' n t) 
+  
+data FunctionInfo' n t
+  = FunctionInfo 
     { fn_name :: n
     , fn_args :: [B.Binding n]
     , fn_type :: t
-    , fn_body :: Stmt.Block n e t
     }
   deriving (Eq, Show, Data, Typeable)
   
   
   
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Function' n e t) where
-  pretty (Function name args tipe body) =
+  pretty (Function info body) =
     PP.text "Function:"
+    PP.<$>
+    PP.indent 2
+      ( PP.text "info:" <+> PP.pretty info
+        PP.<$>
+        PP.text "body:" <+> PP.pretty body
+      )
+      
+      
+instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (FunctionInfo' n t) where
+  pretty (FunctionInfo name args tipe) =
+    PP.text "FunctionInfo:"
     PP.<$>
     PP.indent 2
       ( PP.text "name:" <+> PP.pretty name
@@ -55,6 +77,12 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Function' n e t) 
         PP.text "args:" <+> PP.pretty args
         PP.<$>
         PP.text "type:" <+> PP.pretty tipe
-        PP.<$>
-        PP.text "body:" <+> PP.pretty body
       )
+  
+  
+instance (Binary n, Binary t) => Binary (FunctionInfo' n t) where
+  get =
+      FunctionInfo <$> get <*> get <*> get
+      
+  put (FunctionInfo n as t) =
+      put n >> put as >> put t

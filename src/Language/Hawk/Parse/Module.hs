@@ -11,6 +11,6 @@ import qualified Language.Hawk.Syntax.Item as I
 import qualified Language.Hawk.Syntax.Module as M
 
 
-moduleInfo :: Parser M.Source
-moduleInfo = 
+modl :: Parser M.Source
+modl = 
   M.Module "" <$> items <* eof

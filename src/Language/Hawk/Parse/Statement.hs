@@ -9,7 +9,7 @@ import Language.Hawk.Parse.Expression
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Parse.Name
 import Language.Hawk.Parse.Type
-import Language.Hawk.Parse.Object
+import Language.Hawk.Parse.Variable
 import qualified Language.Hawk.Syntax.Statement as Stmt
 import qualified Language.Hawk.Report.Region as R
 
@@ -23,7 +23,7 @@ statement =
       (try stmtRet <?> "Return Statement")
   <|> (try stmtCall <?> "Call Statement")
   <|> (try stmtAssign <?> "Assign Statement")
-  <|> (stmtObjBind <?> "Object Bind Statement")
+  <|> (stmtVarBind <?> "Variable Bind Statement")
 
  
 mkStmt :: Parser Stmt.Source' -> Parser Stmt.Source 
@@ -35,9 +35,9 @@ stmtCall = mkStmt $
   Stmt.Call <$> fexpr
 
 
-stmtObjBind :: Parser Stmt.Source
-stmtObjBind = mkStmt $ 
-  Stmt.Let <$> obj
+stmtVarBind :: Parser Stmt.Source
+stmtVarBind = mkStmt $ 
+  Stmt.Let <$> var
 
   
 stmtAssign :: Parser Stmt.Source

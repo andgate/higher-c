@@ -18,18 +18,13 @@ import qualified Language.Hawk.Syntax.Statement as Stmt
 import qualified Language.Hawk.Report.Annotation as A
 
 
-declareFunction :: [B.Source] -> Maybe Ty.Source -> Parser Fn.Source
-declareFunction [] _ = error "cannot declare function with no name"
-declareFunction ((A.A _ n):bs) t = locate $
-  (fndefsym >> (Fn.Function (B.label n) bs t <$> stmtblock))
-
-
 function :: Parser Fn.Source
 function =
   locate $
-    Fn.Function <$> varName <*> many binding <*> typesig0 <*> (fndefsym >> stmtblock)
+    Fn.Function <$> (functionInfo <* fndefsym) <*> stmtblock
 
 
---fnExpr :: Parser Stmt.SourceBlock
---fnExpr =
---  string ":=" *> withLayout (Stmt.mkRetBlk <$> expr)
+functionInfo :: Parser Fn.SourceInfo
+functionInfo = 
+  locate $
+    Fn.FunctionInfo <$> varName <*> many (try binding) <*> typesig0

@@ -1,5 +1,6 @@
 module Language.Hawk.Syntax.Record where
 
+import Data.Binary
 import Data.Data
 import Data.Typeable
 
@@ -37,3 +38,19 @@ type RecordField n
 data RecordField' n
   = RecordField n (Type.Type n)
   deriving (Eq, Show, Data, Typeable)
+  
+  
+instance (Binary n) => Binary (Record' n) where
+  get =
+    Record <$> get <*> get
+
+  put (Record n rfs) =
+    put n >> put rfs
+          
+          
+instance (Binary n) => Binary (RecordField' n) where
+  get =
+    RecordField <$> get <*> get
+
+  put (RecordField n t) =
+    put n >> put t
