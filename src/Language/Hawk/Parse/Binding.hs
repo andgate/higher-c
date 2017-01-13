@@ -10,35 +10,35 @@ import Language.Hawk.Parse.Name
 import qualified Language.Hawk.Syntax.Binding as Binding
 
 
-binding :: Parser Binding.Source
+binding :: HkParsing m => m Binding.Source
 binding = locate $ Binding.Binding <$> bindMode <*> varName
 
 
-bindMode :: Parser Binding.Mode
+bindMode :: HkParsing m => m Binding.Mode
 bindMode =
   try byRef <|> byVal
 
 
-byVal :: Parser Binding.Mode
+byVal :: HkParsing m => m Binding.Mode
 byVal = 
   Binding.ByVal <$> mutability
 
-byRef :: Parser Binding.Mode
+byRef :: HkParsing m => m Binding.Mode
 byRef =
   char '&' *>
   pure Binding.ByRef <*> mutability
   
 
-mutability :: Parser Binding.Mutability
+mutability :: HkParsing m => m Binding.Mutability
 mutability =
   try immutable <|> mutable
   
   
-immutable :: Parser Binding.Mutability
+immutable :: HkParsing m => m Binding.Mutability
 immutable =
   char '!' *>
   pure Binding.Immutable
 
-mutable :: Parser Binding.Mutability
+mutable :: HkParsing m => m Binding.Mutability
 mutable = 
   pure Binding.Mutable <?> "Mutable symbol"

@@ -13,16 +13,16 @@ import qualified Language.Hawk.Syntax.Record as Rec
 import qualified Language.Hawk.Syntax.Name as Name
 
 
-record :: Parser Rec.Source
+record :: HkParsing m => m Rec.Source
 record = locate $
   Rec.Record <$> conName <*> (condefsym >> record_fields)
     
     
-record_fields :: Parser [Rec.RecordField Name.Source]
+record_fields :: HkParsing m => m [Rec.RecordField Name.Source]
 record_fields =
-  list record_field
+  list $ lineFold record_field
 
 
-record_field :: Parser (Rec.RecordField Name.Source)
+record_field :: HkParsing m => m (Rec.RecordField Name.Source)
 record_field = locate $
     Rec.RecordField <$> varName <*> typesig

@@ -20,6 +20,7 @@ import qualified Language.Hawk.Compile as Compile
 import qualified Language.Hawk.Report.Result as Result
 
 import qualified Language.Hawk.Parse.Helpers as Parser
+import qualified Language.Hawk.Parse.Alias as P
 import qualified Language.Hawk.Parse.Binding as P
 import qualified Language.Hawk.Parse.Type as P
 import qualified Language.Hawk.Parse.Variable as P
@@ -29,6 +30,14 @@ import qualified Language.Hawk.Parse.Module as P
 spec :: Spec
 spec = do
   describe "Parser" $ do
+
+-- -----------------------------------------------------------------------------
+-- Bindings Parser  
+    describe "Alias Parser" $ do
+      context "When parsing a type alias" $ do
+        it "can parse a simple alias" $ do
+          let str = "Name = String"
+          parseTest P.alias str
 
 -- -----------------------------------------------------------------------------
 -- Bindings Parser  
@@ -118,7 +127,7 @@ spec = do
           
       it "Add and Double Function" $ do
           
-          let str = "doubleSum x y :: I32 -> I32 -> I32 :=\n  sum :: I32 ^= add_i32 x y\n  sum = mul_i32 sum 2\n  return sum"
+          let str = "doubleSum x y :: I32 -> I32 -> I32 :=\n sum :: I32 ^= add_i32 x y\n sum = mul_i32 sum 2\n return sum"
           parseTest P.function str
       
       it "Test Function" $ do

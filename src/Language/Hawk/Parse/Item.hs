@@ -23,11 +23,11 @@ import qualified Language.Hawk.Syntax.Type as Ty
 
 
 
-items :: Parser [I.Source]
+items :: HkParsing m => m  [I.Source]
 items = 
-  list item
+  nonIndented $ list item
   
-item :: Parser I.Source
+item :: HkParsing m => m  I.Source
 item =
       (try impItem <?> "Import")
   <|> (try recordItem <?> "Record")
@@ -36,19 +36,19 @@ item =
 
 
   
-impItem :: Parser I.Source
+impItem :: HkParsing m => m  I.Source
 impItem = locate $
   rightArrow >> (I.impItem <$> moduleNameRaw)
   
-recordItem :: Parser I.Source
+recordItem :: HkParsing m => m  I.Source
 recordItem = locate $
   I.recItem <$> record
 
-fnItem :: Parser I.Source   
+fnItem :: HkParsing m => m  I.Source   
 fnItem = locate $
   I.fnItem <$> function
   
-varItem :: Parser I.Source   
+varItem :: HkParsing m => m I.Source   
 varItem = locate $
   I.varItem <$> var
   

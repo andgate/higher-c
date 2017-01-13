@@ -14,11 +14,11 @@ import qualified Language.Hawk.Syntax.Type as Ty
   
 
 
-var :: Parser Var.Source
+var :: HkParsing m => m Var.Source
 var = locate $
   Var.Variable <$> (varInfo <* vardefsym) <*> expr
   
   
-varInfo  :: Parser Var.SourceInfo
+varInfo  :: HkParsing m => m Var.SourceInfo
 varInfo = locate $
   Var.VariableInfo <$> binding <*> typesig0

@@ -12,29 +12,29 @@ import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
 
 
-typesig0 :: Parser (Maybe Type.Source)
+typesig0 :: HkParsing m => m (Maybe Type.Source)
 typesig0 =
   optional $ try typesig
 
-typesig :: Parser Type.Source
+typesig :: HkParsing m => m Type.Source
 typesig =
   hasType >> typ2
 
 
 -- Single Type
-typ0 :: Parser Type.Source
+typ0 :: HkParsing m => m Type.Source
 typ0 =
       (try tyPrim <?> "Primitive Type")
   <|> (try tyTuple <?> "Type Tuple")
   <|> (tyCon <?> "Type Constructor")
 
 
-typ1 :: Parser Type.Source
+typ1 :: HkParsing m => m Type.Source
 typ1 = 
   Type.apply <$> typ0 <*> many typ0
 
 
-typ2 :: Parser Type.Source
+typ2 :: HkParsing m => m Type.Source
 typ2 = withRegion arrArgs Type.arrow
   where
     arrArgs = rightArrowSep typ1
@@ -42,22 +42,22 @@ typ2 = withRegion arrArgs Type.arrow
 
 
 -- Primitive Type
-tyPrim :: Parser Type.Source
+tyPrim :: HkParsing m => m Type.Source
 tyPrim =
   locate . try $ Type.Con <$> tyPrimName
 
   
-tyTuple :: Parser Type.Source
+tyTuple :: HkParsing m => m Type.Source
 tyTuple = withRegion tupleArgs Type.tuple
   where
     tupleArgs = parens (commaSep typ1)
     
 
-tyCon :: Parser Type.Source
+tyCon :: HkParsing m => m Type.Source
 tyCon = locate $ Type.Con <$> conName
 
 
-tyPrimName :: Parser Name.Source
+tyPrimName :: HkParsing m => m Name.Source
 tyPrimName =
       symbol "I1"
   <|> symbol "I8"

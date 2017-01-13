@@ -2,14 +2,19 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Language.Hawk.Parse.Helpers where
 
 import Control.Applicative
 import Control.Arrow
-import Control.Monad.State
+import Control.Monad.Reader
 import qualified Data.ByteString.UTF8 as UTF8
 import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty)
 import Text.Megaparsec
+import Text.Megaparsec.Prim
 import Text.Megaparsec.String
 import qualified Text.Megaparsec.Lexer as L
 
@@ -17,25 +22,64 @@ import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Region as R
 
 
-sc :: Parser ()
-sc = L.space (void spaceChar) lineCmnt blockCmnt
+-- -----------------------------------------------------------------------------
+-- Parser type
+
+type HkParser a = ReaderT (Parser ()) Parser a
+
+
+
+parseString :: HkParser a -> String -> String -> Either (ParseError (Token String) Dec) a
+parseString p n str = 
+  parse (runReaderT p scDef) n str
+
+
+scDef :: Parser ()
+scDef = L.space (void spaceChar) lineCmnt blockCmnt
   where lineCmnt  = L.skipLineComment "//"
         blockCmnt = L.skipBlockComment "/*" "*/"
 
-lexeme :: Parser a -> Parser a
-lexeme = L.lexeme sc
+thisOr :: HkParser a -> HkParser a -> HkParser a
+thisOr p q = try p <|> q
 
-symbol :: String -> Parser String
-symbol = L.symbol sc
 
-list :: Parser m -> Parser [m] -- header and list items
+lexeme :: HkParser a -> HkParser a
+lexeme p = do
+  sc <- lift <$> ask
+  L.lexeme sc p
+  
+symbol :: String -> HkParser String
+symbol str = do
+  sc <- lift <$> ask
+  L.symbol sc str
+  
+
+list :: HkParser a -> HkParser [a] -- header and list items
 list i = do
-  (i1, is) <- L.nonIndented sc (L.indentBlock sc p)
+  sc <- ask
+  (i1, is) <- (L.indentBlock sc p) :: Parser (a, [a])
   return $ i1:is
   where
     p = do
       i1 <- i
-      return (L.IndentMany Nothing (return . (i1, )) i)
+      return (L.IndentSome Nothing (return . (i1, )) i)
+      
+lineFold :: HkParser a -> HkParser a
+lineFold p = do
+  sc <- ask
+  L.lineFold sc $
+      \sc' -> local (\sc -> thisOr sc' sc) p
+      
+      
+nonIndented :: HkParser a -> HkParser a
+nonIndented =
+  withSpace L.nonIndented
+  
+withSpace :: (HkParser () -> HkParser a -> HkParser a) -> HkParser a -> HkParser a
+withSpace f p = 
+  ask >>= (flip f) p
+
+
 
 -- -----------------------------------------------------------------------------
 -- Identifiers
@@ -44,101 +88,101 @@ list i = do
 
 -- A constructor id must start with a lowercase letter, and the body may
 -- consist of upper and lowercase letters, numbers, underscores, and tick marks.
-varId :: Parser String
+varId :: HkParser String
 varId = 
   lexeme lowNumSymId
 
 -- A constructor id must start with an uppercase letter, and the body may
 -- consist of upper and lowercase letters, numbers, underscores, and tick marks.
-conId :: Parser String
+conId :: HkParser String  
 conId = 
   lexeme capNumSymId
 
 
 -- A module id must start with an uppercase letter, and the body may
 -- consist of upper and lowercase letters
-modId :: Parser String
+modId :: HkParser String
 modId = 
   lexeme capId
 
 
 -- Bases for each id.
-capId :: Parser String
+capId :: HkParser String
 capId =
   makeId upperChar letterChar
 
-capNumSymId :: Parser String
+capNumSymId :: HkParser String
 capNumSymId =
   makeId upperChar idBodyChar
 
-lowNumSymId :: Parser String
+lowNumSymId :: HkParser String
 lowNumSymId =
   makeId lowerChar idBodyChar
 
 
-idBodyChar :: Parser Char
+idBodyChar :: HkParser Char
 idBodyChar =
   alphaNumChar  <|> char '_' <|> char '`'
 
 -- Make an id parser given a parser for the first character and a body character.
-makeId :: Parser Char -> Parser Char -> Parser String
+makeId :: HkParser Char -> HkParser Char -> HkParser String
 makeId firstChar bodyChar =
   (:) <$> firstChar <*> many bodyChar
 
 -- -----------------------------------------------------------------------------
 -- Numbers
 
-integer :: Parser Integer
+integer :: HkParser Integer
 integer = lexeme L.integer
 
-float :: Parser Double
-float = lexeme L.float
+float :: HkParser Double
+float  = lexeme L.float
 
-signedInteger :: Parser Integer
-signedInteger = L.signed sc integer
+signedInteger :: HkParser Integer
+signedInteger = L.signed (pure ()) integer
 
-signedFloat :: Parser Double
-signedFloat = L.signed sc float
+signedFloat :: HkParser Double
+signedFloat = L.signed (pure ()) float
 
 
 -- -----------------------------------------------------------------------------
 -- Common Symbols
 
 
-equals :: Parser String
+equals :: HkParser String
 equals =
   symbol "=" <?> "an equals sign '='"
   
-vardefsym :: Parser String
+vardefsym :: HkParser String
 vardefsym =
   symbol "^=" <?> "a variable definition symbol '^='"
 
 
-condefsym :: Parser String
+condefsym :: HkParser String
 condefsym =
   symbol ":-" <?> "a type definition symbol ':-'"
     
-fndefsym :: Parser String
+fndefsym :: HkParser String
 fndefsym =
   symbol ":=" <?> "a function definition symbol ':='"
 
 
-rightArrow :: Parser String
+rightArrow :: HkParser String
 rightArrow = 
   symbol "->" <?> "an arrow '->'"
 
 
-hasType :: Parser String
+hasType :: HkParser String
 hasType =
   symbol "::" <?> "the \"has type\" symbol '::'"
     
     
-comma :: Parser String
+comma :: HkParser String
 comma =
   symbol "," <?> "a comma symbol ','"
   
   
-period :: Parser String
+period :: HkParser String
 period =
   symbol "." <?> "a period symbol '.'"
 
@@ -147,49 +191,49 @@ period =
 -- Seperated
 
 
-sep :: Parser a -> Parser [a]
+sep :: HkParser a -> HkParser [a]
 sep = many
 
-commaSep :: Parser a -> Parser [a]
+commaSep :: HkParser a -> HkParser [a]
 commaSep = 
   (`sepBy` comma)
   
   
-rightArrowSep :: Parser a -> Parser [a]
+rightArrowSep :: HkParser a -> HkParser [a]
 rightArrowSep = 
   (`sepBy` rightArrow)
 
 -- -----------------------------------------------------------------------------
 -- Containers
 
-betweenSymbol :: String -> String -> Parser a -> Parser a
+betweenSymbol :: String -> String -> HkParser a -> HkParser a
 betweenSymbol s e =
   between (symbol s) (symbol e)
 
-parens :: Parser a -> Parser a
+parens :: HkParser a -> HkParser a
 parens =
   betweenSymbol "(" ")"
   
 
-brackets :: Parser a -> Parser a
+brackets :: HkParser a -> HkParser a
 brackets =
   betweenSymbol "[" "]"
 
  
-braces :: Parser a -> Parser a
+braces :: HkParser a -> HkParser a
 braces =
   betweenSymbol "{" "}"
   
 
-chevrons :: Parser a -> Parser a
+chevrons :: HkParser a -> HkParser a
 chevrons =
   betweenSymbol "<" ">"
 
-qchar :: Parser Char
+qchar :: HkParser Char
 qchar = lexeme $ 
   between (char '\'') (char '\'') anyChar
 
-qstring :: Parser String
+qstring :: HkParser String
 qstring = lexeme $
   between (char '\"') (char '\"') (many $ noneOf "\"")
   
@@ -197,7 +241,7 @@ qstring = lexeme $
 -- -----------------------------------------------------------------------------
 -- Location
 
-locate :: Parser a -> Parser (A.Located a)
+locate :: HkParser a -> HkParser (A.Located a)
 locate p = do
   p1 <- getPosition
   r <- p
@@ -205,7 +249,7 @@ locate p = do
   return $ A.A (R.mkRegion p1 p2) r
   
   
-withRegion :: Parser a -> (R.Region -> a -> b) -> Parser b
+withRegion :: HkParser a -> (R.Region -> a -> b) -> HkParser b
 withRegion p func = do
   p1 <- getPosition
   result <- p

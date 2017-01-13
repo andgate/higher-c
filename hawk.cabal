@@ -35,13 +35,14 @@ library
                         , lens
                         , llvm-general         >= 3.5.0.0
                         , llvm-general-pure    >= 3.5.0
-                        , megaparsec
+                        , megaparsec           >= 5
                         , mtl
                         , safe
                         , syb
                         , text
+                        , transformers
                         , uniplate
-                        , utf8-string
+                        , utf8-string          >= 0.5
                         , yaml
 
   ghc-options:          -Wall
@@ -91,6 +92,7 @@ library
                         --Language.Hawk.Parse.Lexer
                         
                         Language.Hawk.Parse
+                        Language.Hawk.Parse.Alias
                         Language.Hawk.Parse.Binding
                         Language.Hawk.Parse.Expression
                         Language.Hawk.Parse.Function
@@ -130,7 +132,8 @@ library
   --other-modules:        Hawk.Parser,
   --                      Hawk.Lexer
   
-  default-extensions:           DeriveDataTypeable 
+  default-extensions:           DeriveDataTypeable
+                                FlexibleContexts
                         
 
 executable              hkc

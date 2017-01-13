@@ -18,13 +18,13 @@ import qualified Language.Hawk.Syntax.Statement as Stmt
 import qualified Language.Hawk.Report.Annotation as A
 
 
-function :: Parser Fn.Source
+function :: HkParsing m => m Fn.Source
 function =
   locate $
     Fn.Function <$> (functionInfo <* fndefsym) <*> stmtblock
 
 
-functionInfo :: Parser Fn.SourceInfo
+functionInfo :: HkParsing m => m Fn.SourceInfo
 functionInfo = 
   locate $
     Fn.FunctionInfo <$> varName <*> many (try binding) <*> typesig0
