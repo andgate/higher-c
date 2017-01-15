@@ -8,7 +8,7 @@ import qualified Text.Megaparsec.Lexer as L
 import Language.Hawk.Parse.Helpers
 import qualified Language.Hawk.Syntax.Literal as Lit
 
-literal :: HkParsing m => m Lit.Literal
+literal :: HkParser Lit.Literal
 literal =
       floatLit 
   <|> intLit
@@ -18,29 +18,29 @@ literal =
   <?> "Literal"
 
 
-intLit ::  HkParsing m => m Lit.Literal
+intLit :: HkParser Lit.Literal
 intLit = Lit.IntNum <$> signedInteger <?> "Integer Literal"
 
 
-floatLit :: HkParsing m => m Lit.Literal
+floatLit :: HkParser Lit.Literal
 floatLit = Lit.FloatNum <$> signedFloat <?> "Double Literal"
 
 
-charLit :: HkParsing m => m Lit.Literal
+charLit :: HkParser Lit.Literal
 charLit = Lit.Chr <$> qchar <?> "Character Literal"
 
 
-stringLit :: HkParsing m => m Lit.Literal
+stringLit :: HkParser Lit.Literal
 stringLit = Lit.Str <$> qstring <?> "String Literal"
 
 
-boolLit :: HkParsing m => m Lit.Literal
+boolLit :: HkParser Lit.Literal
 boolLit = Lit.Boolean <$> (try trueBool <|> falseBool) <?> "Boolean Literal"
 
 
-trueBool :: HkParsing m => m Bool
+trueBool :: HkParser Bool
 trueBool = string "true" *> pure True
 
 
-falseBool :: HkParsing m => m Bool
+falseBool :: HkParser Bool
 falseBool = string "false" *> pure False

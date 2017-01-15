@@ -10,11 +10,11 @@ import qualified Language.Hawk.Compile.Package as Pkg
 import qualified Language.Hawk.Syntax.ModuleName as ModuleName
 
 
-moduleName :: HkParsing m => Pkg.Name -> m ModuleName.Name
+moduleName :: Pkg.Name -> HkParser ModuleName.Name
 moduleName pkgName =
   ModuleName.Name pkgName <$> moduleNameRaw
 
-moduleNameRaw :: HkParsing m => m ModuleName.Raw
+moduleNameRaw :: HkParser ModuleName.Raw
 moduleNameRaw =
   modId `sepBy1` period
   

@@ -14,11 +14,11 @@ import qualified Language.Hawk.Syntax.Statement as Stmt
 import qualified Language.Hawk.Report.Region as R
 
 
-stmtblock :: HkParsing m => m Stmt.SourceBlock
+stmtblock :: HkParser Stmt.SourceBlock
 stmtblock =
   list statement
 
-statement :: HkParsing m => m Stmt.Source
+statement :: HkParser Stmt.Source
 statement =
       (try stmtRet <?> "Return Statement")
   <|> (try stmtCall <?> "Call Statement")
@@ -26,25 +26,25 @@ statement =
   <|> (stmtVarBind <?> "Variable Bind Statement")
 
  
-mkStmt :: HkParsing m => m Stmt.Source' -> m Stmt.Source 
+mkStmt :: HkParser Stmt.Source' -> HkParser Stmt.Source 
 mkStmt = locate . lineFold
   
   
-stmtCall :: HkParsing m => m Stmt.Source
+stmtCall :: HkParser Stmt.Source
 stmtCall = mkStmt $ 
   Stmt.Call <$> fexpr
 
 
-stmtVarBind :: HkParsing m => m Stmt.Source
+stmtVarBind :: HkParser Stmt.Source
 stmtVarBind = mkStmt $ 
   Stmt.Let <$> var
 
   
-stmtAssign :: HkParsing m => m Stmt.Source
+stmtAssign :: HkParser Stmt.Source
 stmtAssign = mkStmt $
   Stmt.Assign <$> varName <*> typesig0 <*> (equals >> expr)
   
   
-stmtRet :: HkParsing m => m Stmt.Source
+stmtRet :: HkParser Stmt.Source
 stmtRet = mkStmt $
   Stmt.Return <$> (symbol "return" >> expr)

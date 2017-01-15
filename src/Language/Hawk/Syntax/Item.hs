@@ -4,6 +4,9 @@ import Data.Binary
 import Data.Data
 import Data.Typeable
 
+import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
+
 import qualified Language.Hawk.Syntax.Alias as Alias
 import qualified Language.Hawk.Syntax.Expression as Expr
 import qualified Language.Hawk.Syntax.Function as Fn
@@ -71,3 +74,53 @@ isImport :: Item n e t -> Bool
 isImport (A.A _ (ImportItem _ _)) = True
 isImport _ = False
   
+instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item' n e t) where
+    pretty (ImportItem v n) =
+      PP.text "ImportItem:"
+      PP.<$>
+      PP.indent 2
+        ( PP.text "visibility:" <+> PP.pretty v
+          PP.<$>
+          PP.text "name:" <+> PP.pretty n
+        )
+        
+    pretty (FunctionItem v fn) =
+      PP.text "FunctionItem:"
+      PP.<$>
+      PP.indent 2
+        ( PP.text "visibility:" <+> PP.pretty v
+          PP.<$>
+          PP.text "function:" <+> PP.pretty fn
+        )
+        
+    pretty (VarItem v var) =
+      PP.text "VarItem:"
+      PP.<$>
+      PP.indent 2
+        ( PP.text "visibility:" <+> PP.pretty v
+          PP.<$>
+          PP.text "var:" <+> PP.pretty var
+        )
+        
+    pretty (RecordItem v r) =
+      PP.text "RecordItem:"
+      PP.<$>
+      PP.indent 2
+        ( PP.text "visibility:" <+> PP.pretty v
+          PP.<$>
+          PP.text "record:" <+> PP.pretty r
+        )
+      
+    pretty (AliasItem v a) =
+      PP.text "AliasItem:"
+      PP.<$>
+      PP.indent 2
+        ( PP.text "visibility:" <+> PP.pretty v
+          PP.<$>
+          PP.text "alias:" <+> PP.pretty a
+        )
+        
+        
+instance PP.Pretty Visibility where
+  pretty Public = PP.text "Public"
+  pretty Private = PP.text "Private"

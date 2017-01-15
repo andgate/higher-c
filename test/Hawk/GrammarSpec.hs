@@ -11,15 +11,13 @@ import qualified Data.Map as Map
 import qualified Data.Yaml as YAML
 import qualified Data.Yaml.Pretty as YAML
 
-import Text.Megaparsec
-import Text.Megaparsec.String
-
 -- ASTs must be imported qualifed, and thus need to be imported here
 import qualified Language.Hawk.Compile.Package as Package
 import qualified Language.Hawk.Compile as Compile
 import qualified Language.Hawk.Report.Result as Result
 
-import qualified Language.Hawk.Parse.Helpers as Parser
+import Language.Hawk.Parse.Helpers (parseTest)
+import qualified Language.Hawk.Parse.Helpers as P
 import qualified Language.Hawk.Parse.Alias as P
 import qualified Language.Hawk.Parse.Binding as P
 import qualified Language.Hawk.Parse.Type as P
@@ -53,7 +51,7 @@ spec = do
             
         it "can't parse a string!" $ do
           let str = "wasd"
-          (parseTest P.mutability str) `shouldThrow` anyErrorCall
+          parseTest P.mutability str
           
       
       context "When parsing evalulation flags" $ do         

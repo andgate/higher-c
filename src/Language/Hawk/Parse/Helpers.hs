@@ -2,19 +2,18 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Language.Hawk.Parse.Helpers where
 
 import Control.Applicative
 import Control.Arrow
+import Control.Monad
 import Control.Monad.Reader
+import Control.Monad.Trans
 import qualified Data.ByteString.UTF8 as UTF8
-import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty)
+import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
 import Text.Megaparsec
-import Text.Megaparsec.Prim
+import Text.Megaparsec.Prim (MonadParsec)
 import Text.Megaparsec.String
 import qualified Text.Megaparsec.Lexer as L
 
@@ -25,51 +24,75 @@ import qualified Language.Hawk.Report.Region as R
 -- -----------------------------------------------------------------------------
 -- Parser type
 
-type HkParser a = ReaderT (Parser ()) Parser a
+type MonadParser = MonadParsec Dec String
 
+newtype HkParser a =
+  HkParser {
+    runHkParser :: ReaderT SpaceParser Parser a
+  } deriving (Functor, Applicative, Alternative, MonadPlus, Monad, MonadParser, MonadReader SpaceParser)
+
+type SpaceParser = HkParser ()
 
 
 parseString :: HkParser a -> String -> String -> Either (ParseError (Token String) Dec) a
 parseString p n str = 
-  parse (runReaderT p scDef) n str
+  parse (runReaderT (runHkParser p) scDef) n str
 
 
-scDef :: Parser ()
+parseTest :: Pretty a => HkParser a -> String -> IO ()
+parseTest p input =
+  case parseString p "" input of
+      Left  e -> error $ parseErrorPretty e
+      Right x -> putDoc $ pretty x
+    
+
+scDef :: SpaceParser
 scDef = L.space (void spaceChar) lineCmnt blockCmnt
   where lineCmnt  = L.skipLineComment "//"
         blockCmnt = L.skipBlockComment "/*" "*/"
 
-thisOr :: HkParser a -> HkParser a -> HkParser a
-thisOr p q = try p <|> q
+pOr :: HkParser a -> HkParser a -> HkParser a
+pOr p q =  p <|> q
 
 
 lexeme :: HkParser a -> HkParser a
 lexeme p = do
-  sc <- lift <$> ask
+  sc <- ask
   L.lexeme sc p
   
 symbol :: String -> HkParser String
 symbol str = do
-  sc <- lift <$> ask
+  sc <- ask
   L.symbol sc str
   
 
-list :: HkParser a -> HkParser [a] -- header and list items
+list :: HkParser a -> HkParser [a]
 list i = do
   sc <- ask
-  (i1, is) <- (L.indentBlock sc p) :: Parser (a, [a])
+  (i1, is) <- L.indentBlock sc p
   return $ i1:is
   where
-    p = do
-      i1 <- i
-      return (L.IndentSome Nothing (return . (i1, )) i)
+    p = do  i1 <- i
+            return (L.IndentSome Nothing (return . (i1, )) i)
       
 lineFold :: HkParser a -> HkParser a
 lineFold p = do
   sc <- ask
   L.lineFold sc $
-      \sc' -> local (\sc -> thisOr sc' sc) p
-      
+    \sc' -> local (\sc -> pOr sc' sc) p
+    
+foldedBlock :: HkParser a -> HkParser [a]
+foldedBlock i = do
+  sc <- ask
+  (i1, is) <- L.indentBlock sc (L.linfold s)
+  where
+    p = do  i1 <- i
+            return (L.IndentSome Nothing (return . (i1, )) i)
+    
+    lf p =         
+    p' i' sc' = local (\sc -> pOr sc' sc) i' 
+  
+
       
 nonIndented :: HkParser a -> HkParser a
 nonIndented =

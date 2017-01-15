@@ -10,8 +10,8 @@ import Language.Hawk.Parse.Helpers
 import qualified Language.Hawk.Syntax.Name as Name
 
 
-varName :: HkParsing m => m Name.Source
+varName :: HkParser Name.Source
 varName = varId <?> "Variable Name"
 
-conName :: HkParsing m => m Name.Source
+conName :: HkParser Name.Source
 conName = conId <?> "Constructor Name"

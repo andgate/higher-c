@@ -11,6 +11,6 @@ import qualified Language.Hawk.Syntax.Alias as Al
   
 
 
-alias :: HkParsing m => m Al.Source
+alias :: HkParser Al.Source
 alias = locate $
   Al.Alias <$> (conName <* equals) <*> typ2

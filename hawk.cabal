@@ -21,6 +21,7 @@ library
   default-language:     Haskell2010
 
   build-depends:        aeson
+                        , alex
                         , ansi-wl-pprint
                         , array
                         , base
@@ -29,13 +30,13 @@ library
                         , bytestring
                         , containers
                         , convertible
+                        , Earley
                         , edit-distance
                         , filepath
                         , indents
                         , lens
                         , llvm-general         >= 3.5.0.0
                         , llvm-general-pure    >= 3.5.0
-                        , megaparsec           >= 5
                         , mtl
                         , safe
                         , syb
@@ -92,22 +93,7 @@ library
                         --Language.Hawk.Parse.Lexer
                         
                         Language.Hawk.Parse
-                        Language.Hawk.Parse.Alias
-                        Language.Hawk.Parse.Binding
-                        Language.Hawk.Parse.Expression
-                        Language.Hawk.Parse.Function
-                        Language.Hawk.Parse.Helpers
-                        Language.Hawk.Parse.Item
-                        Language.Hawk.Parse.Literal
-                        Language.Hawk.Parse.MetaItem
-                        Language.Hawk.Parse.MetaModule
-                        Language.Hawk.Parse.Module
-                        Language.Hawk.Parse.ModuleName
-                        Language.Hawk.Parse.Name
-                        Language.Hawk.Parse.Variable
-                        Language.Hawk.Parse.Record
-                        Language.Hawk.Parse.Statement
-                        Language.Hawk.Parse.Type
+                        Language.Hawk.Parse.Parser
                       
                         Language.Hawk.Report.Annotation
                         Language.Hawk.Report.Error
@@ -128,9 +114,8 @@ library
                         Paths_hawk
                         
 
-  --build-tools:          alex, happy
-  --other-modules:        Hawk.Parser,
-  --                      Hawk.Lexer
+  build-tools:          alex
+  other-modules:        Language.Hawk.Parse.Lexer
   
   default-extensions:           DeriveDataTypeable
                                 FlexibleContexts
@@ -164,9 +149,9 @@ test-suite spec
                         , bytestring
                         , ansi-wl-pprint
                         , containers
+                        , Earley
                         , hspec
                         , hawk
-                        , megaparsec
                         , yaml
   
   ghc-options:          -threaded

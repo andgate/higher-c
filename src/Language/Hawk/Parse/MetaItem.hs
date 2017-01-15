@@ -22,12 +22,12 @@ import qualified Language.Hawk.Syntax.MetaItem as MI
 import qualified Language.Hawk.Syntax.Type as Ty
 
   
-metaItems :: HkParsing m => m [MI.Source]
+metaItems :: HkParser [MI.Source]
 metaItems = 
   list metaItem
 
 
-metaItem :: HkParsing m => m MI.Source
+metaItem :: HkParser MI.Source
 metaItem =
       (try impMItem <?> "Import")
   <|> (try aliasMItem <?> "Type Alias")
@@ -36,25 +36,25 @@ metaItem =
   <|> (varMItem <?> "Variable Metadata")
 
 
-impMItem :: HkParsing m => m MI.Source
+impMItem :: HkParser MI.Source
 impMItem = locate $
   rightArrow >> (MI.Import <$> moduleNameRaw)  
 
 
-aliasMItem :: HkParsing m => m MI.Source
+aliasMItem :: HkParser MI.Source
 aliasMItem = locate $
   MI.Alias <$> alias
 
 
-recMItem :: HkParsing m => m MI.Source
+recMItem :: HkParser MI.Source
 recMItem = locate $
   MI.Record <$> record
  
 
-fnMItem :: HkParsing m => m MI.Source
+fnMItem :: HkParser MI.Source
 fnMItem =locate $ 
   MI.Function <$> functionInfo <* fndefsym <* stmtblock
   
-varMItem :: HkParsing m => m MI.Source
+varMItem :: HkParser MI.Source
 varMItem = locate $
   MI.Variable <$> varInfo <* vardefsym <* expr

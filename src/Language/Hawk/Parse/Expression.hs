@@ -14,31 +14,31 @@ import qualified Language.Hawk.Syntax.Expression as Expr
 import qualified Language.Hawk.Report.Region as R
 
 
-expr :: HkParsing m => m Expr.Source
+expr :: HkParser Expr.Source
 expr = 
       (try exprTyped <?> "Typed Expression")
   <|> (expr0 <?> "Expression")
 
 
-exprTyped :: HkParsing m => m Expr.Source
+exprTyped :: HkParser Expr.Source
 exprTyped =
   locate $ Expr.Cast <$> expr0 <*> typesig
 
 
-expr0 :: HkParsing m => m Expr.Source
+expr0 :: HkParser Expr.Source
 expr0 =
       (try fexpr <?> "Function application expresion")
   <|> (aexpr <?> "Basic Expression")
 
 
-fexpr :: HkParsing m => m Expr.Source
+fexpr :: HkParser Expr.Source
 fexpr =
   locate $ do
     (call:args) <- some (try aexpr)
     return (Expr.App call args)
 
 
-aexpr :: HkParsing m => m Expr.Source
+aexpr :: HkParser Expr.Source
 aexpr = 
       (try litExpr <?> "Literal Expression")
   <|> (try varExpr <?> "Variable Binding Expression")
@@ -46,20 +46,20 @@ aexpr =
   <|> (nestedExpr <?> "Nested Expression")
 
 
-varExpr :: HkParsing m => m Expr.Source
+varExpr :: HkParser Expr.Source
 varExpr =
   locate $ Expr.Var <$> varName
 
 
-conExpr :: HkParsing m => m Expr.Source
+conExpr :: HkParser Expr.Source
 conExpr =
   locate $ Expr.Var <$> conName
 
-litExpr :: HkParsing m => m Expr.Source
+litExpr :: HkParser Expr.Source
 litExpr =
   locate $ Expr.Lit <$> literal
   
 
-nestedExpr :: HkParsing m => m Expr.Source
+nestedExpr :: HkParser Expr.Source
 nestedExpr =
   parens $ expr

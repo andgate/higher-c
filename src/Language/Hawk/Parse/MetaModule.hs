@@ -11,6 +11,6 @@ import qualified Language.Hawk.Syntax.MetaItem as MI
 import qualified Language.Hawk.Syntax.MetaModule as MM
 
 
-metamodl :: HkParsing m => m MM.Source
+metamodl :: HkParser MM.Source
 metamodl = 
   MM.MetaModule <$> metaItems <* eof

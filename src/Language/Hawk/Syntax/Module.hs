@@ -5,6 +5,9 @@ import Data.Data
 import Data.Typeable
 import qualified Data.Map as Map
 
+import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
+
 import qualified Language.Hawk.Syntax.Item as I
 import qualified Language.Hawk.Syntax.Expression as Expression
 import qualified Language.Hawk.Syntax.ModuleName as ModuleName
@@ -23,3 +26,14 @@ type Source =
 data Module n e t
   = Module String [I.Item n e t] 
     deriving(Eq, Show, Data, Typeable)
+    
+    
+instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Module n e t) where
+  pretty (Module n its) =
+    PP.text "Binding:"
+    PP.<$>
+    PP.indent 2
+      ( PP.text "name:" <+> PP.pretty n
+        PP.<$>
+        PP.text "items:" <+> PP.pretty its
+      )
