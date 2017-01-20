@@ -7,7 +7,6 @@ import Text.PrettyPrint.ANSI.Leijen (text)
 
 import qualified Language.Hawk.Syntax.ModuleName as ModuleName
 import qualified Language.Hawk.Syntax.Type as Type
-import qualified Language.Hawk.Report.Annotation as A
 import qualified Language.Hawk.Report.Error.Helpers as Help
 import qualified Language.Hawk.Report.Report as Report
 

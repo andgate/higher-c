@@ -10,8 +10,6 @@ import qualified Language.Hawk.Syntax.Literal as Literal
 import qualified Language.Hawk.Syntax.ModuleName as ModuleName
 import qualified Language.Hawk.Syntax.Type as Type
 import qualified Language.Hawk.Syntax.Name as Name
-import qualified Language.Hawk.Report.Annotation as A
-import qualified Language.Hawk.Report.Region as R
 
 
 type Source
@@ -26,10 +24,7 @@ type Canonical
 type Typed
   = Expr Name.Typed Type.Typed
 
-type Expr n t =
-  A.Located (Expr' n t)
-
-data Expr' n t
+data Expr n t
   = Lit Literal.Literal
   | Var n
   | Con n
@@ -50,10 +45,10 @@ data Expr' n t
   -- | Case (Expr n t) [(Pattern.Pattern n, Expr n t)]
   
   deriving (Eq, Show, Data, Typeable)
-  
-  
-  
-instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (Expr' n t) where
+
+
+
+instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (Expr n t) where
   pretty (Lit lit) =
     PP.text "Literal Expression:"
     PP.<$>

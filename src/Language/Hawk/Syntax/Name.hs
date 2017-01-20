@@ -4,88 +4,66 @@ module Language.Hawk.Syntax.Name where
 import Data.Aeson ((.=))
 import qualified Data.Aeson as Json
 import Data.Binary
+import Data.Data
+import Data.Typeable
 import qualified Data.Maybe as Maybe
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 import qualified Language.Hawk.Syntax.Helpers as Help
 import qualified Language.Hawk.Syntax.ModuleName as ModuleName
+import qualified Language.Hawk.Report.Region as R
 
 -- -----------------------------------------------------------------------------
 -- | Name
 
 type Source
-  = Raw
+  = Name
   
 type Valid
-  = Raw
+  = Name
   
 type Canonical
-  = Name Home
+  = Name
   
 type Typed
-  = Name Home
-
-
-type Raw = String
-
-data Name h
   = Name
-    { home :: h
-    , name :: Raw
+  
+
+data Name
+  = Name
+    { home :: Home
+    , name :: String
     }
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Show, Data, Typeable)
 
 -- | Canonical Home
 data Home
   = BuiltIn
-  | Module ModuleName.Name
-  | Local
-  deriving (Eq, Ord)
+  | Local R.Position
+  deriving (Eq, Ord, Show, Data, Typeable)
 
     
 -- -----------------------------------------------------------------------------
 -- Name helpers
 
-local :: Raw -> Name Home
-local =
-  Name Local
+local :: R.Position -> String -> Name
+local p n =
+  Name (Local p) n
   
   
-builtin :: Raw -> Name Home
+builtin :: String -> Name
 builtin =
   Name BuiltIn
-  
-  
-fromModule :: ModuleName.Name -> Raw -> Name Home
-fromModule home =
-  Name (Module home)
-
 
 
 isLocalHome :: Home -> Bool
-isLocalHome home =
-  case home of
+isLocalHome h =
+  case h of
     BuiltIn ->
       False
       
-    Module _ ->
-      False
-      
-      
-    Local ->
+    Local _ ->
       True
-
-
-      
-      
-isLocal :: (String -> Bool) -> Name Home -> Bool
-isLocal check (Name home name) =
-  case home of
-    Local ->
-      check name
-      
-    _ ->
-      False
       
       
 -- | Name toString
@@ -93,66 +71,49 @@ class ToString a where
   toString :: a -> String
     
 
-instance (ToString h) => ToString (Name h) where
-  toString (Name home name) =
-    toString home ++ name
+instance ToString Name where
+  toString (Name h n) =
+    n ++ " @ " ++ toString h
     
 instance ToString Home where
-  toString home =
-    case home of
-      BuiltIn ->
-        ""
-        
-      Module moduleName ->
-        toString moduleName ++ "."
-        
-      Local ->
-        ""
+    toString h =
+      case h of
+        BuiltIn ->
+          "Builtin"
+          
+        Local (R.Position r c) ->
+          show r ++ ":" ++ show c
         
 
 instance ToString (ModuleName.Name) where
-  toString = ModuleName.toString
+    toString = ModuleName.toString
 
 
-instance (ToString h) => PP.Pretty (Name h) where
-  pretty n =
-    PP.string (toString n)
+instance PP.Pretty Name where
+    pretty n =
+      PP.string (toString n)
 
-
-instance (Json.ToJSON h) => Json.ToJSON (Name h) where
-  toJSON (Name name home) =
-    Json.object
-      [ "name" .= name
-      , "home" .= Json.toJSON home
-      ]
-  
- 
     
-instance (Binary h) => Binary (Name h) where
-  put (Name name home) =
-    put name >> put home
-        
-  get =
-    Name <$> get <*> get
+instance Binary Name where
+    put (Name h n) =
+      put h >> put n
+          
+    get =
+      Name <$> get <*> get
 
 
 
 instance Binary Home where
-  put home =
-    case home of
-      BuiltIn ->
-        putWord8 0
-        
-      Module path ->
-        putWord8 1 >> put path
-        
-      Local ->
-        putWord8 2
-        
-  get =
-    do  tag <- getWord8
-        case tag of
-          0 -> return BuiltIn
-          1 -> Module <$> get
-          2 -> return Local
-          _ -> error "Unexpected tag when deserializing name home"
+    put h =
+      case h of
+        BuiltIn ->
+          putWord8 0
+        Local p ->
+          putWord8 1 >> put p
+          
+    get =
+      do  tag <- getWord8
+          case tag of
+            0 -> return BuiltIn
+            1 -> Local <$> get
+            _ -> error "Unexpected tag when deserializing name home"

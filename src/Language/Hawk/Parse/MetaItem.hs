@@ -1,9 +1,7 @@
 module Language.Hawk.Parse.MetaItem where
 
 import Control.Applicative
-import Text.Megaparsec
-import Text.Megaparsec.String
-import qualified Text.Megaparsec.Lexer as L
+import Text.Earley
 
 import Language.Hawk.Parse.Alias
 import Language.Hawk.Parse.Binding
@@ -20,6 +18,7 @@ import qualified Language.Hawk.Syntax.Binding as B
 import qualified Language.Hawk.Syntax.Statement as Stmt
 import qualified Language.Hawk.Syntax.MetaItem as MI
 import qualified Language.Hawk.Syntax.Type as Ty
+import qualified Language.Hawk.Parse.Lexer as L
 
   
 metaItems :: HkParser [MI.Source]

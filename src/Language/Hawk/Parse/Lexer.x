@@ -50,15 +50,17 @@ $idchar    = [$small $large]
 -- -----------------------------------------------------------------------------
 -- Alex "Regular expression macros"
 
-@id_lower               = $small+
-@id_cap_uscore          = $large [$idchar\_]*
-@id_uscore_num_tick     = $small [$idchar\_$digit]*  \`?
-@id_cap_uscore_num_tick = $large [$idchar\_$digit]*  \`?
+@id_body            = [$idchar\_$digit]*  \`?
+
+@id_var             = $small @id_body
+@id_con             = $large @id_body
 
 @negative           = \-
 @decimal            = $digit+
 @integer            = @negative? @decimal
-@double           = @negative? @decimal \. @decimal
+@double             = @negative? @decimal \. @decimal
+
+@sym                = [$symbol]
 
 -- -----------------------------------------------------------------------------
 -- Alex "Identifier"
@@ -78,118 +80,12 @@ $tab                            ;
 
 -- 0 is the toplevel parser
 <0> {
-  "mod"                         { lex' TokenModule }
-  "use"                         { lex' TokenUse }
-  "use!"                        { lex' TokenUseQualified }
-  "as"                          { lex' TokenAs }
-    
-  "pub"                         { lex' TokenPublic }
-  "priv"                        { lex' TokenPrivate }
-  "link"                        { lex' TokenLink }
-
-  "rec"                         { lex' TokenRecord }
-  "data"                        { lex' TokenData }
-  "type"                        { lex' TokenType }
-  "class"                       { lex' TokenClass }
-  "inst"                        { lex' TokenInst }
-  "fn"                          { lex' TokenFunction }
-  "let"                         { lex' TokenLet }
-  
-  "do"                          { lex' TokenDo }
-  "return"                      { lex' TokenReturn }
-  
-  "if"                          { lex' TokenIf }
-  "then"                        { lex' TokenThen }
-  "else"                        { lex' TokenElse }
-  "elif"                        { lex' TokenElif }
-  "while"                       { lex' TokenWhile }
-  "for"                         { lex' TokenFor }
-  "in"                          { lex' TokenIn }
-  "match"                       { lex' TokenMatch }
-  "of"                          { lex' TokenOf }
-  
-  "()"                          { lex' TokenParenPair }
-  "bool"                        { lex' TokenBoolTy }
-  "w8"                          { lex' TokenW8Ty }
-  "w16"                         { lex' TokenW16Ty }
-  "w32"                         { lex' TokenW32Ty }
-  "w64"                         { lex' TokenW64Ty }
-  "i8"                          { lex' TokenI8Ty }
-  "i16"                         { lex' TokenI16Ty }
-  "i32"                         { lex' TokenI32Ty }
-  "i64"                         { lex' TokenI64Ty }
-  "f32"                         { lex' TokenF32Ty }
-  "f64"                         { lex' TokenF64Ty }
-  "char"                        { lex' TokenCharTy }
-  "string"                      { lex' TokenStringTy }
-  
-  "@"                           { lex' TokenAtSign }
-  "#"                           { lex' TokenPound }
-  \:                            { lex' TokenColon }
-  \:\:                          { lex' TokenDblColon }
-  "_"                           { lex' TokenUnderscore }
-  
-  \<\-                          { lex' TokenLArrow }
-  \-\>                          { lex' TokenRArrow }
-  \<\=                          { lex' TokenThickLArrow }
-  \=\>                          { lex' TokenThickRArrow }
-  \<\:                          { lex' TokenLSubArrow }
-  \:\>                          { lex' TokenRSubArrow }
   
   
-  \(                            { lex' TokenLParen }
-  \)                            { lex' TokenRParen }
-  \[                            { lex' TokenLBracket }
-  \]                            { lex' TokenRBracket }
-  \{                            { lex' TokenLCurlyBrace }
-  \}                            { lex' TokenRCurlyBrace }
+  @id_var                       { lex TokenVarId }
+  @id_con                       { lex TokenConId }
   
-  \.                            { lex' TokenPeriod }
-  \,                            { lex' TokenComma }
-  
-  "="                           { lex' TokenEquals }
-  "*="                          { lex' TokenStarEquals }
-  "/="                          { lex' TokenSlashEquals }
-  "%="                          { lex' TokenPercentEquals }
-  "+="                          { lex' TokenPlusEquals }
-  "-="                          { lex' TokenMinusEquals }
-  "<<="                         { lex' TokenShlEq }
-  ">>="                         { lex' TokenShrEq }
-  "&="                          { lex' TokenAmpersandEquals }
-  "|="                          { lex' TokenBarEquals }
-  "^="                          { lex' TokenCaretEquals }
-  
-  "*"                           { lex' TokenStar }
-  "/"                           { lex' TokenSlash }
-  "%"                           { lex' TokenPercent }
-  "+"                           { lex' TokenPlus }
-  "-"                           { lex' TokenMinus }
-  "<<"                          { lex' TokenShl }
-  ">>"                          { lex' TokenShr }
-  "<"                           { lex' TokenLesser }
-  ">"                           { lex' TokenGreater }
-  ">="                          { lex' TokenGreaterEquals }
-  "=="                          { lex' TokenDblEquals }
-  "!="                          { lex' TokenExclaimEquals }
-  "&"                           { lex' TokenAmpersand }
-  "^"                           { lex' TokenCaret }
-  "|"                           { lex' TokenBar }
-  "&&"                          { lex' TokenAmpAmp }
-  "||"                          { lex' TokenBarBar }
-  
-  "++"                          { lex' TokenDblPlus }
-  "--"                          { lex' TokenDblMinus }
-  "~"                           { lex' TokenTilde }
-  "!"                           { lex' TokenExclaim }
-  
-  "\\"                          { lex' TokenBackslash }
-  
-  @id_cap_uscore                { lex TokenIdCapUscore }
-  @id_cap_uscore_num_tick       { lex TokenIdCapUScoreNumTick }
-  @id_lower                     { lex TokenIdLower }
-  @id_uscore_num_tick           { lex TokenIdUScoreNumTick }
-  
-  
+  @sym                          { lex TokenSymbol }
   
   @integer                      { lex (TokenInteger . read) }
   @double                       { lex (TokenDouble . read) }
@@ -321,131 +217,16 @@ instance HkSpan Token where
 
 -- The token type:
 data TokenClass
-  = TokenModule
-  | TokenUse
-  | TokenUseQualified
-  | TokenAs
-    
-  | TokenPublic
-  | TokenPrivate
-  | TokenLink
+  = TokenSymbol String
   
-  | TokenRecord
-  | TokenData
-  | TokenType
-  | TokenClass
-  | TokenInst
-  | TokenFunction
-  | TokenLet
-  
-  | TokenDo
-  | TokenReturn
-  
-  | TokenIf
-  | TokenThen
-  | TokenElse
-  | TokenElif
-  | TokenWhile
-  | TokenFor
-  | TokenIn
-  | TokenMatch
-  | TokenOf
-  
-  | TokenParenPair
-  | TokenBoolTy
-  | TokenW8Ty
-  | TokenW16Ty
-  | TokenW32Ty
-  | TokenW64Ty
-  | TokenI8Ty
-  | TokenI16Ty
-  | TokenI32Ty
-  | TokenI64Ty
-  | TokenF32Ty
-  | TokenF64Ty
-  | TokenCharTy
-  | TokenStringTy
-  
-  | TokenAtSign
-  | TokenPound
-  | TokenColon
-  | TokenDblColon
-  | TokenUnderscore
-  
-  | TokenLArrow
-  | TokenThickLArrow
-  | TokenRArrow
-  | TokenThickRArrow
-  | TokenLSubArrow
-  | TokenRSubArrow
-  
-  | TokenLParen
-  | TokenRParen
-  | TokenLBracket
-  | TokenRBracket
-  | TokenLCurlyBrace
-  | TokenRCurlyBrace
-  
-  | TokenPeriod
-  | TokenComma
-  
-  | TokenEquals
-  | TokenStarEquals
-  | TokenSlashEquals
-  | TokenPercentEquals
-  | TokenPlusEquals
-  | TokenMinusEquals
-  | TokenShlEq
-  | TokenShrEq
-  | TokenAmpersandEquals
-  | TokenBarEquals
-  | TokenCaretEquals
-    
-  | TokenStar
-  | TokenSlash
-  | TokenPercent
-  | TokenPlus
-  | TokenMinus
-  | TokenShl
-  | TokenShr
-  | TokenLesser
-  | TokenGreater
-  | TokenGreaterEquals
-  | TokenDblEquals
-  | TokenExclaimEquals
-  | TokenAmpersand
-  | TokenCaret
-  | TokenBar
-  | TokenAmpAmp
-  | TokenBarBar
-  
-  | TokenDblPlus
-  | TokenDblMinus
-  | TokenTilde
-  | TokenExclaim
-  
-  | TokenBackslash
-  
-  | TokenIdLower String
-  | TokenIdCapUscore String
-  | TokenIdUScoreNumTick String
-  | TokenIdCapUScoreNumTick String
-  
-  
-  | TokenI8 Integer
-  | TokenI16 Integer
-  | TokenI32 Integer
-  | TokenI64 Integer
-  | TokenF16 Double
-  | TokenF32 Double
-  | TokenF64 Double
-  | TokenF80 Double
-  | TokenF128 Double
+  | TokenVarId String
+  | TokenConId String
   
   | TokenInteger Integer
   | TokenDouble Double
   | TokenChar Char
   | TokenString String
+  | TokenBool Bool
   
   | TokenOpenBlock
   | TokenCloseBlock
@@ -454,7 +235,7 @@ data TokenClass
   
   | TokenEof
   deriving ( Eq, Show )
-
+  
 
 tokPos :: Token -> AlexPosn
 tokPos (Token (TokenInfo _ p _) _) = p

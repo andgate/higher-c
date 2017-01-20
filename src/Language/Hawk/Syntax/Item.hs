@@ -15,16 +15,11 @@ import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Syntax.Record as Record
 import qualified Language.Hawk.Syntax.Type as Type
 import qualified Language.Hawk.Syntax.Variable as Var
-import qualified Language.Hawk.Report.Annotation as A
-import qualified Language.Hawk.Report.Region as R
   
 -- Items Structure
   
 type Source = 
   Item Name.Source Expr.Source (Maybe Type.Source)
-  
-type Source' = 
-  Item' Name.Source Expr.Source (Maybe Type.Source)
  
 type Valid = 
   Item Name.Valid Expr.Valid (Maybe Type.Valid)
@@ -34,10 +29,8 @@ type Canonical =
   
 type Typed =
   Item Name.Typed Expr.Typed Type.Typed
-
-type Item n e t = A.Located (Item' n e t) 
    
-data Item' n e t
+data Item n e t
   = ImportItem Visibility (ModuleName.Raw)
   | FunctionItem Visibility (Fn.Function n e t)
   | VarItem Visibility (Var.Variable n e t)
@@ -51,19 +44,19 @@ data Visibility
   | Private
   deriving (Eq, Show, Data, Typeable)
 
-impItem :: ModuleName.Raw -> Item' n e t
+impItem :: ModuleName.Raw -> Item n e t
 impItem = ImportItem Public
 
-fnItem :: Fn.Function n e t -> Item' n e t
+fnItem :: Fn.Function n e t -> Item n e t
 fnItem = FunctionItem Public
 
-varItem :: Var.Variable n e t -> Item' n e t
+varItem :: Var.Variable n e t -> Item n e t
 varItem = VarItem Public
 
-recItem :: Record.Record n -> Item' n e t
+recItem :: Record.Record n -> Item n e t
 recItem = RecordItem Public
 
-aliasItem :: Alias.Alias n -> Item' n e t
+aliasItem :: Alias.Alias n -> Item n e t
 aliasItem = AliasItem Public
 
 
@@ -71,10 +64,10 @@ findImports :: [Source] -> [Source]
 findImports = filter isImport
 
 isImport :: Item n e t -> Bool
-isImport (A.A _ (ImportItem _ _)) = True
+isImport (ImportItem _ _) = True
 isImport _ = False
   
-instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item' n e t) where
+instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
     pretty (ImportItem v n) =
       PP.text "ImportItem:"
       PP.<$>

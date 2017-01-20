@@ -3,15 +3,14 @@ module Language.Hawk.Docs.AST where
 import qualified Data.Map as Map
 
 import qualified Language.Hawk.Compile.Compiler.Type as Type
-import qualified Language.Hawk.Report.Annotation as A
 
 
 data Docs t
   = Docs
     { comment :: String
-    , aliases :: Map.Map String (A.Located Alias)
-    , types   :: Map.Map String (A.Located Union)
-    , values  :: Map.Map String (A.Located (Value t))
+    , aliases :: Map.Map String Alias
+    , types   :: Map.Map String Union
+    , values  :: Map.Map String (Value t)
     }
     
     

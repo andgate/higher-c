@@ -10,15 +10,10 @@ import qualified Language.Hawk.Syntax.Expression as Expr
 import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Syntax.Type as Type
 import qualified Language.Hawk.Syntax.Variable as Var
-import qualified Language.Hawk.Report.Annotation as A
-import qualified Language.Hawk.Report.Region as R
 
 
 type Source
   = Statement Name.Source Expr.Source (Maybe Type.Source)
-  
-type Source'
-  = Statement' Name.Source Expr.Source (Maybe Type.Source)
   
 type SourceBlock
   = Block Name.Source Expr.Source (Maybe Type.Source)
@@ -49,11 +44,7 @@ type TypedBlock
 type Block n e t = [Statement n e t]
 
 
-type Statement n e t =
-  A.Located (Statement' n e t)
-
-
-data Statement' n e t
+data Statement n e t
   = Do (Block n e t)
   | Call e
   | Let (Var.Variable n e t)
@@ -65,13 +56,8 @@ data Statement' n e t
   deriving (Eq, Show, Data, Typeable)
   
   
-mkRetBlk :: Expr.Source -> SourceBlock
-mkRetBlk e@(A.A r _) =
-  [A.A r (Return e)]
-  
-  
 
-instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Statement' n e t) where
+instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Statement n e t) where
   pretty (Do e) =
     PP.text "Do Statement:"
     PP.<$>

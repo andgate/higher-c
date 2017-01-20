@@ -8,8 +8,6 @@ import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 import qualified Language.Hawk.Syntax.Name as Name
-import qualified Language.Hawk.Report.Annotation as A
-
 
 type Source =
   Binding Name.Source
@@ -22,12 +20,8 @@ type Canonical =
 
 type Typed =
   Binding Name.Typed
-  
 
-type Binding n =
-  A.Located (Binding' n)
-
-data Binding' n
+data Binding n
   = Binding
     { mode  :: Mode
     , label :: n
@@ -45,19 +39,15 @@ data Mutability
   deriving (Eq, Show, Data, Typeable)
   
   
-getLabel :: Binding n -> n
-getLabel (A.A _ b) = label b
-  
-  
 
-instance (PP.Pretty n) => PP.Pretty (Binding' n) where
-  pretty (Binding mode label) =
+instance (PP.Pretty n) => PP.Pretty (Binding n) where
+  pretty (Binding m l) =
     PP.text "Binding:"
     PP.<$>
     PP.indent 2
-      ( PP.text "mode:" <+> PP.pretty mode
+      ( PP.text "mode:" <+> PP.pretty m
         PP.<$>
-        PP.text "label:" <+> PP.pretty label
+        PP.text "label:" <+> PP.pretty l
       )
   
   
@@ -79,7 +69,7 @@ instance PP.Pretty Mutability where
     
     
       
-instance (Binary n) => Binary (Binding' n) where
+instance (Binary n) => Binary (Binding n) where
   get =
     Binding <$> get <*> get
 

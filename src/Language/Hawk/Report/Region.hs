@@ -8,9 +8,9 @@ import Data.Aeson ((.=))
 import qualified Data.Aeson as Json
 import Data.Binary
 import Data.Int
-import Text.Megaparsec
 import Text.PrettyPrint.ANSI.Leijen ((<>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
+import qualified Language.Hawk.Parse.Lexer as L
 
 
 data Region
@@ -18,7 +18,7 @@ data Region
     { start :: Position
     , end   :: Position
     }
-    deriving (Eq, Show, Data, Typeable)
+    deriving (Eq, Ord, Show, Data, Typeable)
     
 
 data Position
@@ -26,7 +26,7 @@ data Position
     { line    :: {-# UNPACK #-} !Int64
     , column  :: {-# UNPACK #-} !Int64
     }
-    deriving (Eq, Show, Data, Typeable)
+    deriving (Eq, Ord, Show, Data, Typeable)
     
 mkRegion :: HasPosition a => a -> a -> Region
 mkRegion start end = Region (toPosition start) (toPosition end)
@@ -67,9 +67,9 @@ instance HasPosition a => HasRegion (a, a) where
       (uncurry mkRegion)
 
 
-instance HasPosition SourcePos where
-    toPosition (SourcePos n l c) =
-      Position (fromIntegral $ unPos l) (fromIntegral $ unPos c)   
+instance HasPosition L.AlexPosn where
+    toPosition (L.AlexPn _ l c) =
+      Position (fromIntegral l) (fromIntegral c)   
       
 instance Json.ToJSON Region where
   toJSON (Region start end) =

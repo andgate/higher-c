@@ -12,8 +12,6 @@ import qualified Language.Hawk.Syntax.Expression as Expr
 import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Syntax.Statement as Stmt
 import qualified Language.Hawk.Syntax.Type as Type
-import qualified Language.Hawk.Report.Annotation as A
-import qualified Language.Hawk.Report.Region as R
 
 
 type Source
@@ -32,21 +30,15 @@ type Typed
   = Function Name.Typed Expr.Typed Type.Typed
 
 
-type Function n e t =
-  A.Located (Function' n e t)
-
-data Function' n e t
+data Function n e t
   = Function 
     { fn_info :: FunctionInfo n t
     , fn_body :: Stmt.Block n e t
     }
   deriving (Eq, Show, Data, Typeable)
  
- 
-type FunctionInfo n t =
-  A.Located (FunctionInfo' n t) 
   
-data FunctionInfo' n t
+data FunctionInfo n t
   = FunctionInfo 
     { fn_name :: n
     , fn_args :: [B.Binding n]
@@ -56,7 +48,7 @@ data FunctionInfo' n t
   
   
   
-instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Function' n e t) where
+instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Function n e t) where
   pretty (Function info body) =
     PP.text "Function:"
     PP.<$>
@@ -67,7 +59,7 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Function' n e t) 
       )
       
       
-instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (FunctionInfo' n t) where
+instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (FunctionInfo n t) where
   pretty (FunctionInfo name args tipe) =
     PP.text "FunctionInfo:"
     PP.<$>
@@ -80,7 +72,7 @@ instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (FunctionInfo' n t) where
       )
   
   
-instance (Binary n, Binary t) => Binary (FunctionInfo' n t) where
+instance (Binary n, Binary t) => Binary (FunctionInfo n t) where
   get =
       FunctionInfo <$> get <*> get <*> get
       

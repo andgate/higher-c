@@ -12,17 +12,12 @@ import qualified Language.Hawk.Syntax.Function as Fn
 import qualified Language.Hawk.Syntax.Variable as Var
 import qualified Language.Hawk.Syntax.Record as Rec
 import qualified Language.Hawk.Syntax.Type as Type
-import qualified Language.Hawk.Report.Annotation as A
-import qualified Language.Hawk.Report.Region as R
 
 
 -- MetaItems Structure
 
 type Source = 
   MetaItem Name.Source (Maybe Type.Source)
-  
-type Source' = 
-  MetaItem' Name.Source (Maybe Type.Source)
  
 type Valid = 
   MetaItem Name.Valid (Maybe Type.Valid)
@@ -30,10 +25,8 @@ type Valid =
 type Typed =
   MetaItem Name.Typed Type.Typed
 
-  
-type MetaItem n t = A.Located (MetaItem' n t) 
    
-data MetaItem' n t
+data MetaItem n t
   = Import (ModuleName.Raw)
   | Function (Fn.FunctionInfo n t)
   | Variable (Var.VariableInfo n t)
@@ -42,7 +35,7 @@ data MetaItem' n t
   deriving (Eq, Show, Data, Typeable)
 
   
-instance (Binary n, Binary t) => Binary (MetaItem' n t) where
+instance (Binary n, Binary t) => Binary (MetaItem n t) where
   get = do t <- getWord8
            case t of
                 0 -> Import <$> get

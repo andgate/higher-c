@@ -2,7 +2,7 @@
 module Language.Hawk.Parse where
 
 import Language.Hawk.Parse.Helpers
-import Language.Hawk.Parse.Module
+import Language.Hawk.Parse.Grammar
 import qualified Language.Hawk.Compile.Package as Package
 import qualified Language.Hawk.Syntax.Module as Module
 

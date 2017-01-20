@@ -21,7 +21,6 @@ library
   default-language:     Haskell2010
 
   build-depends:        aeson
-                        , alex
                         , ansi-wl-pprint
                         , array
                         , base
@@ -74,9 +73,6 @@ library
                         Language.Hawk.Syntax.Statement
                         Language.Hawk.Syntax.Type
                         
-                        -- Old Syntax
-                        --Language.Hawk.Syntax.AST
-                        
                         
                         Language.Hawk.Compile
                         Language.Hawk.Compile.Package
@@ -89,13 +85,12 @@ library
                         Language.Hawk.Data.Node
                         Language.Hawk.Data.Span
                         
-                        --Language.Hawk.Parse.Parser
-                        --Language.Hawk.Parse.Lexer
                         
                         Language.Hawk.Parse
-                        Language.Hawk.Parse.Parser
+                        Language.Hawk.Parse.Lexer
+                        Language.Hawk.Parse.Grammar
+                        Language.Hawk.Parse.Helpers
                       
-                        Language.Hawk.Report.Annotation
                         Language.Hawk.Report.Error
                         Language.Hawk.Report.Error.Helpers
                         Language.Hawk.Report.Error.Syntax
@@ -115,10 +110,11 @@ library
                         
 
   build-tools:          alex
-  other-modules:        Language.Hawk.Parse.Lexer
+  --other-modules:        Language.Hawk.Parse.Lexer
   
   default-extensions:           DeriveDataTypeable
                                 FlexibleContexts
+                                RecursiveDo
                         
 
 executable              hkc

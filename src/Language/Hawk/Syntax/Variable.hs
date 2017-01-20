@@ -12,9 +12,6 @@ import qualified Language.Hawk.Syntax.Expression as Expr
 import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Syntax.Type as Type
 
-import qualified Language.Hawk.Report.Annotation as A
-import qualified Language.Hawk.Report.Region as R
-
 
 type Source =
   Variable Name.Source Expr.Source (Maybe Type.Source)
@@ -31,22 +28,15 @@ type Canonical =
 type Typed =
   Variable Name.Typed Expr.Typed Type.Typed
 
-type Variable n e t =
-  A.Located (Variable' n e t)
 
-
-data Variable' n e t
+data Variable n e t
   = Variable
     { info   :: VariableInfo n t
     , rhs    :: e
     }
   deriving (Eq, Show, Data, Typeable)
-
-
-type VariableInfo n t =
-  A.Located (VariableInfo' n t)
   
-data VariableInfo' n t
+data VariableInfo n t
   = VariableInfo
     { name  :: Binding.Binding n 
     , tipe  :: t
@@ -55,7 +45,7 @@ data VariableInfo' n t
   
   
   
-instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Variable' n e t) where
+instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Variable n e t) where
   pretty (Variable info rhs) =
     PP.text "Variable:"
     PP.<$>
@@ -65,7 +55,7 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Variable' n e t) 
         PP.text "rhs:" <+> PP.pretty rhs
       )
 
-instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (VariableInfo' n t) where
+instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (VariableInfo n t) where
   pretty (VariableInfo n t) =
     PP.text "VariableInfo:"
     PP.<$>
@@ -77,7 +67,7 @@ instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (VariableInfo' n t) where
 
 
 
-instance (Binary n, Binary t) => Binary (VariableInfo' n t) where
+instance (Binary n, Binary t) => Binary (VariableInfo n t) where
   get =
     VariableInfo <$> get <*> get
 

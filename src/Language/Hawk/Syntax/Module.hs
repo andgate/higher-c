@@ -16,8 +16,6 @@ import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Docs.AST as Docs
 import qualified Language.Hawk.Compile.Package as Package
 import qualified Language.Hawk.Compile.Compiler.Version as Compiler
-import qualified Language.Hawk.Report.Annotation as A
-import qualified Language.Hawk.Report.Region as R
 
 
 type Source =
