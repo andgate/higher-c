@@ -1,66 +1,38 @@
 {
+{-# LANGUAGE OverloadedStrings #-}
+-- Much of this source code was lifted from the Morte library.
 module Language.Hawk.Parse.Lexer where
 
-import Prelude hiding (lex)
-import Control.Monad ( liftM )
-import qualified Data.ByteString.Lazy as B
+import Control.Monad.Trans.State.Strict (State)
+import Data.Bits (shiftR, (.&.))
+import Data.Char (digitToInt, ord)
+import Data.Text.Lazy (Text)
+import Data.Word (Word8)
+import Filesystem.Path.CurrentOS (FilePath)
+import Lens.Micro.Mtl ((.=), (+=))
+import Pipes (Producer, for, lift, yield)
+import Prelude hiding (FilePath)
 
-import Language.Hawk.Data.Node
+import qualified Control.Monad.Trans.State.Strict as State
+import qualified Data.Text.Lazy                   as Text
+import qualified Filesystem.Path.CurrentOS        as Filesystem
 
 }
-
-%wrapper "monadUserState"
 
 
 -- -----------------------------------------------------------------------------
 -- Alex "Character set macros"
 
--- NB: The logic behind these definitions is also reflected in basicTypes/Lexeme.hs
--- Any changes here should likely be reflected there.
-$unispace    = \x05 -- Trick Alex into handling Unicode. See alexGetByte.
-$nl          = [\n\r\f]
-$whitechar   = [$nl\v\ $unispace]
-$white_no_nl = $whitechar # \n -- TODO #8424
-$tab         = \t
+$digit = 0-9
 
+$opchar = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~]
 
-$ascdigit  = 0-9
-$unidigit  = \x03 -- Trick Alex into handling Unicode. See alexGetByte.
-$digit     = [$ascdigit $unidigit]
+$fstLow       = [a-z]
+$fstCap       = [A-Z]
+$idchar = [A-Za-z0-9\_]
 
-$special   = [\(\)\,\;\[\]\`\{\}]
-$ascsymbol = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~\:]
-$unisymbol = \x04 -- Trick Alex into handling Unicode. See alexGetByte.
-$symbol    = [$ascsymbol $unisymbol] # [$special \_\"\']
-
-$unilarge  = \x01 -- Trick Alex into handling Unicode. See alexGetByte.
-$asclarge  = [A-Z]
-$large     = [$asclarge $unilarge]
-
-$unismall  = \x02 -- Trick Alex into handling Unicode. See alexGetByte.
-$ascsmall  = [a-z]
-$small     = [$ascsmall $unismall]
-
-$unigraphic = \x06 -- Trick Alex into handling Unicode. See alexGetByte.
-$graphic   = [$small $large $symbol $digit $special $unigraphic \"\']
-
--- TODO #10196. Only allow modifier letters in the suffix of an identifier.
-$idchar    = [$small $large]
-
--- -----------------------------------------------------------------------------
--- Alex "Regular expression macros"
-
-@id_body            = [$idchar\_$digit]*  \`?
-
-@id_var             = $small @id_body
-@id_con             = $large @id_body
-
-@negative           = \-
-@decimal            = $digit+
-@integer            = @negative? @decimal
-@double             = @negative? @decimal \. @decimal
-
-@sym                = [$symbol]
+$nonwhite       = ~$white
+$whiteNoNewline = $white # \n
 
 -- -----------------------------------------------------------------------------
 -- Alex "Identifier"
@@ -70,157 +42,121 @@ hawk :-
 -- -----------------------------------------------------------------------------
 -- Alex "Rules"
 
--- Skip whitespace everywhere
-$white+                         ;
-$tab                            ;
-
-"//".*                          ;
-
-<0, commentSC> "/*"             { enterStartCode commentSC }
-
--- 0 is the toplevel parser
-<0> {
+  -- Skip whitespace everywhere
+  $whiteNoNewline                 ;
+  \n                              { \_    -> lift (do
+                                      line   += 1
+                                      column .= 0 ) }
+  "//".*                          ;
   
+  $fstLow $idchar*                { \text -> yield (TokenVarId text) }
+  $fstCap $idchar*                { \text -> yield (TokenConId text) }
+  $opchar+                        { \text -> yield (TokenOpId text) }
   
-  @id_var                       { lex TokenVarId }
-  @id_con                       { lex TokenConId }
+  $digit+                         { \text -> yield (TokenInteger $ toInt text) }
   
-  @sym                          { lex TokenSymbol }
-  
-  @integer                      { lex (TokenInteger . read) }
-  @double                       { lex (TokenDouble . read) }
-  "'"                           { enterStartCode charSC }
-}
-
-<charSC> {
-  .                             { lex (TokenChar . head) }
-  \'                            { exitStartCode }
-}
-
-<commentSC>
-{
-    "*/"                        { exitStartCode }
-    [.\n]                       ;
-}
+  -- Need support for multi-line comments, chars, strings and floats.
+  -- Note: It may be possible to parse char, strings, and floats with Earley.
 
 
 {
 
-data AlexUserState
-  = AlexUserState
-  { filePath    :: FilePath
-  , scopes      :: [Int]
-  , startCodes  :: [Int]
-  , stringBuf   :: String
-  }
+toInt :: Text -> Integer
+toInt = Text.foldl' (\x c -> 10 * x + fromIntegral (digitToInt c)) 0
 
-alexInitUserState :: AlexUserState
-alexInitUserState = AlexUserState "<unknown>" [0] [0] ""
+-- This was lifted almost intact from the @alex@ source code
+encode :: Char -> (Word8, [Word8])
+encode c = (fromIntegral h, map fromIntegral t)
+  where
+    (h, t) = go (ord c)
+    go n
+        | n <= 0x7f   = (n, [])
+        | n <= 0x7ff  = (0xc0 + (n `shiftR` 6), [0x80 + n .&. 0x3f])
+        | n <= 0xffff =
+            (   0xe0 + (n `shiftR` 12)
+            ,   [   0x80 + ((n `shiftR` 6) .&. 0x3f)
+                ,   0x80 + n .&. 0x3f
+                ]
+            )
+        | otherwise   =
+            (   0xf0 + (n `shiftR` 18)
+            ,   [   0x80 + ((n `shiftR` 12) .&. 0x3f)
+                ,   0x80 + ((n `shiftR` 6) .&. 0x3f)
+                ,   0x80 + n .&. 0x3f
+                ]
+            )
 
-alexGetFilePath :: Alex FilePath
-alexGetFilePath = liftM filePath alexGetUserState
+-- | The cursor's location while lexing the text
+data Position = P
+    { lineNo    :: {-# UNPACK #-} !Int
+    , columnNo  :: {-# UNPACK #-} !Int
+    } deriving (Show)
 
-alexSetFilePath :: FilePath -> Alex ()
-alexSetFilePath f = do
-  aus <- alexGetUserState
-  alexSetUserState (aus { filePath = f } )
+-- line :: Lens' Position Int
+line :: Functor f => (Int -> f Int) -> Position -> f Position
+line k (P l c) = fmap (\l' -> P l' c) (k l)
+-- column :: Lens' Position Int
+column :: Functor f => (Int -> f Int) -> Position -> f Position
+column k (P l c) = fmap (\c' -> P l c') (k c)
 
+{- @alex@ does not provide a `Text` wrapper, so the following code just modifies
+   the code from their @basic@ wrapper to work with `Text`
 
-alexPeekScope :: Alex Int
-alexPeekScope = liftM (head . scopes) alexGetUserState
+   I could not get the @basic-bytestring@ wrapper to work; it does not correctly
+   recognize Unicode regular expressions.
+-}
+data AlexInput = AlexInput
+    { prevChar  :: Char
+    , currBytes :: [Word8]
+    , currInput :: Text
+    }
 
-alexPushScope :: Int -> Alex ()
-alexPushScope s = do
-  aus <- alexGetUserState
-  let ss = scopes aus
-      ss' = s : ss
-  alexSetUserState (aus { scopes = ss' })
+alexGetByte :: AlexInput -> Maybe (Word8,AlexInput)
+alexGetByte (AlexInput c bytes text) = case bytes of
+    b:ytes -> Just (b, AlexInput c ytes text)
+    []     -> case Text.uncons text of
+        Nothing       -> Nothing
+        Just (t, ext) -> case encode t of
+            (b, ytes) -> Just (b, AlexInput t ytes ext)
 
-alexPopScope :: Alex Int
-alexPopScope = do
-  aus <- alexGetUserState
-  let ss  = scopes aus
-      ss' = tail ss
-      s   = headOrZero ss
-      --s'  = headOrZero ss'
-  alexSetUserState (aus { scopes = ss' })
-  return s
+alexInputPrevChar :: AlexInput -> Char
+alexInputPrevChar = prevChar
 
-alexUpdateScope :: Int -> Alex ()
-alexUpdateScope s' = do
-  s <- alexPeekScope
-  if s' > s
-    then alexPushScope s'
-    else if s' < s
-      then do alexPopScope
-              -- If new scope is less, pop current startcode
-              alexPopStartCode
-              alexUpdateScope s'
-      else return ()
+{-| Convert a text representation of a module into a stream of tokens
 
+    `lexModl` keeps track of position and returns the remainder of the input if
+    lexing fails.
+-}
+lexModl :: Text -> Producer LocatedToken (State Position) (Maybe Text)
+lexModl text = for (go (AlexInput '\n' [] text)) tag
+  where
+    tag token = do
+        pos <- lift State.get
+        yield (LocatedToken token pos)
 
-alexPeekStartCode :: Alex Int
-alexPeekStartCode = liftM (head . startCodes) alexGetUserState
+    go input = case alexScan input 0 of
+        AlexEOF                        -> return Nothing
+        AlexError (AlexInput _ _ text) -> return (Just text)
+        AlexSkip  input' len           -> do
+            lift (column += len)
+            go input'
+        AlexToken input' len act       -> do
+            -- Could possibly process whitespace at this point
+            act (Text.take (fromIntegral len) (currInput input))
+            lift (column += len)
+            go input'
 
-alexPushStartCode :: Int -> Alex ()
-alexPushStartCode sc = do
-  aus <- alexGetUserState
-  let scs  = startCodes aus
-      scs' = sc : scs
-  alexSetUserState (aus { startCodes = scs' })
-  alexSetStartCode sc
-
-alexPopStartCode :: Alex Int
-alexPopStartCode = do
-  aus <- alexGetUserState
-  let scs  = startCodes aus
-      scs' = tail scs
-      sc   = headOrZero scs
-      sc'  = headOrZero scs'
-  alexSetUserState (aus { startCodes = scs' })
-  alexSetStartCode sc'
-  return sc
-
-headOrZero :: [Int] -> Int
-headOrZero (x:_) = x
-headOrZero [] = 0
-
-getLineNum :: AlexPosn -> Int
-getLineNum (AlexPn _ lineNum _) = lineNum
-
-getColumnNum :: AlexPosn -> Int
-getColumnNum (AlexPn _ _ colNum) = colNum
-
-data Token = Token TokenInfo TokenClass
-  deriving (Eq, Show)
-  
-data TokenInfo
-  = TokenInfo 
-  { tokiFilename :: String
-  , tokiPos      :: AlexPosn
-  , tokiLength   :: Int
-  }
-  deriving (Eq, Show)
-  
-instance HkNode TokenInfo where
-  nodeInfo toki@(TokenInfo n _ _) = NodeInfo n (spanOf toki)
-  
-instance HkSpan TokenInfo where
-  spanOf (TokenInfo _ (AlexPn _ lineNum colNum) l)
-    = Span lineNum lineNum colNum (colNum + l)
-
-instance HkNode Token where
-  nodeInfo (Token toki _) = nodeInfo toki
-  
-instance HkSpan Token where
-  spanOf (Token toki _) = spanOf toki
+-- | A `Token` augmented with `Position` information
+data LocatedToken = LocatedToken
+    { token    ::                !Token
+    , position :: {-# UNPACK #-} !Position
+    } deriving (Show)
 
 -- The token type:
-data TokenClass
-  = TokenSymbol String
-  
-  | TokenVarId String
-  | TokenConId String
+data Token
+  = TokenOpId Text
+  | TokenVarId Text
+  | TokenConId Text
   
   | TokenInteger Integer
   | TokenDouble Double
@@ -228,89 +164,12 @@ data TokenClass
   | TokenString String
   | TokenBool Bool
   
-  | TokenOpenBlock
-  | TokenCloseBlock
-  | TokenOpenStmt
-  | TokenCloseStmt
+  | TokenBlk
+  | TokenBlk'
+  | TokenLn
+  | TokenLn'
   
   | TokenEof
   deriving ( Eq, Show )
-  
-
-tokPos :: Token -> AlexPosn
-tokPos (Token (TokenInfo _ p _) _) = p
-
-tokLineNum :: Token -> Int
-tokLineNum = getLineNum . tokPos
-
-tokColumnNum :: Token -> Int
-tokColumnNum = getColumnNum . tokPos
-
-tokFilePath :: Token -> String
-tokFilePath (Token (TokenInfo n _ _) _) = n
-
-alexEOF :: Alex Token
-alexEOF = do
-  (p,_,_,_) <- alexGetInput
-  n <- alexGetFilePath
-  return $ Token (TokenInfo n p 0) TokenEof
-
-lex :: (String -> TokenClass) -> AlexAction Token
-lex f = \(p,_,_,s) i -> do
-  n <- alexGetFilePath
-  return $ Token (TokenInfo n p i) (f (take i s))
-
-lex' :: TokenClass -> AlexAction Token
-lex' = lex . const
-
-enterStartCode :: Int -> AlexAction Token
-enterStartCode code input len = do
-  alexPushStartCode code
-  alexMonadScan'
-
-exitStartCode :: AlexAction Token
-exitStartCode input len = do
-  alexPopStartCode
-  alexMonadScan'
-
-andEnter :: AlexAction Token -> Int -> AlexAction Token
-andEnter act code input len = do
-  alexPushStartCode code
-  act input len
-
-exitAfter :: AlexAction Token -> AlexAction Token
-exitAfter act input len = do
-  alexPopStartCode
-  act input len
-
-enterBOL :: AlexAction Token
-enterBOL (_,_,_,istr) len = do
-  let s' = length $ take len istr
-  alexUpdateScope s'
-  alexMonadScan'
-
-
-alexMonadScan' :: Alex Token
-alexMonadScan' = do
-  inp <- alexGetInput
-  sc <- alexGetStartCode
-  case alexScan inp sc of
-    AlexEOF -> alexEOF
-    AlexError (p, _, _, s) ->
-      alexError' p ("lexical error at chracter '" ++ take 1 s ++ "'")
-    AlexSkip inp' len -> do
-      alexSetInput inp'
-      alexMonadScan'
-    AlexToken inp' len action -> do
-      alexSetInput inp'
-      action (ignorePendingBytes inp) len
-
-alexError' :: AlexPosn -> String -> Alex a
-alexError' (AlexPn _ l c) msg = do
-  fp <- alexGetFilePath
-  alexError (fp ++ ": " ++ show l ++ ": " ++ show c ++ ": " ++ msg)
-
-runAlex' :: Alex a -> FilePath -> String -> Either String a
-runAlex' a fp input = runAlex input (alexSetFilePath fp >> a)
 
 }

@@ -4,28 +4,30 @@ module Language.Hawk.Parse.Helpers where
 import Control.Applicative
 import Control.Arrow
 import Control.Monad
-import Control.Monad.Reader
-import Control.Monad.Trans
+import Control.Monad.Trans.Class  (lift)
+import Control.Monad.Trans.Except (Except, throwE, runExceptT)
+import Control.Monad.Trans.State.Strict (evalState)
+import Data.Text.Buildable (Buildable(..))
+import Data.Text.Lazy (Text)
+import Data.Text.Lazy.Builder (toLazyText)
 import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
 import Text.Earley
 import Text.Earley.Mixfix
-import Data.Text.Lazy (Text)
 
 import qualified Data.ByteString.UTF8         as UTF8
 import qualified Data.Text.Lazy               as Text
 import qualified Language.Hawk.Parse.Lexer    as L
 import qualified Language.Hawk.Report.Region  as R
+import qualified Language.Hawk.Syntax.Module  as M
 import qualified Language.Hawk.Syntax.Name    as Name
 import qualified Language.Hawk.Syntax.Type    as Ty
+import qualified Pipes.Prelude                as Pipes
 
 -- -----------------------------------------------------------------------------
 -- Parser type
 --type HkProd a = forall r. Prod r L.Token L.Token a
 --type HkGrammar a = forall r. Grammar r (Prod r L.Token L.Token a)
-
-parseTest :: T 
-parseTest i =
-  print $ fullParses (parser expr) i
+        
 
 
 -- -----------------------------------------------------------------------------

@@ -252,3 +252,25 @@ grammar pkgName = mdo
     nestedExpr <- rule $ parens expr
     
     return modl
+    
+
+-- -----------------------------------------------------------------------------
+-- Parsing functions  
+parseTest :: Text -> IO ()
+parseTest =
+  print . pretty . parseText
+  
+  
+parseText :: Text -> M.Source
+parseText text = evalState (runExceptT m) (L.P 1 0)
+  where
+    m = do
+        (locatedTokens, mtxt) <- lift (Pipes.toListM' (L.lexExpr text))
+        case mtxt of
+            Nothing  -> return ()
+            Just txt -> error "Lex failed"
+        let (parses, Report _ needed found) =
+                fullParses (parser grammar) locatedTokens
+        case parses of
+            parse:[] -> return parse
+            _      -> error "Parsing failed"
