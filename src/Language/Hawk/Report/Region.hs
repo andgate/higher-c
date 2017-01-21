@@ -31,11 +31,12 @@ data Position
 mkRegion :: HasPosition a => a -> a -> Region
 mkRegion start end = Region (toPosition start) (toPosition end)
 
-spanRegion :: HasPosition a => a -> Int -> Region
-spanRegion a n = mkRegion p1 p2
+stretch :: HasPosition a => a -> Int64 -> Region
+stretch a n = mkRegion p1 p2
   where
-    p1@(l c) = toPosition a
+    p1@(Position l c) = toPosition a
     p2 = Position l (c + n)
+    
     
 merge :: Region -> Region -> Region
 merge (Region start _) (Region _ end) =

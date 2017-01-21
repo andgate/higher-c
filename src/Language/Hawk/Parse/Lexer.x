@@ -144,8 +144,6 @@ lexModl text = for (go (AlexInput '\n' [] text)) tag
             lift (column += len)
             go input'
         AlexToken input' len act       -> do
-            -- analyze token position, determine if blocks should be closed or not
-            -- depending on lexer state
             act (Text.take (fromIntegral len) (currInput input))
             lift (column += len)
             go input'
