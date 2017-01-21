@@ -91,6 +91,9 @@ data Position = P
     { lineNo    :: {-# UNPACK #-} !Int
     , columnNo  :: {-# UNPACK #-} !Int
     } deriving (Show)
+    
+defPos :: Position
+defPos = P 1 0
 
 -- line :: Lens' Position Int
 line :: Functor f => (Int -> f Int) -> Position -> f Position
@@ -127,12 +130,12 @@ alexInputPrevChar = prevChar
     `lexModl` keeps track of position and returns the remainder of the input if
     lexing fails.
 -}
-lexModl :: Text -> Producer LocatedToken (State Position) (Maybe Text)
+lexModl :: Text -> Producer Token (State Position) (Maybe Text)
 lexModl text = for (go (AlexInput '\n' [] text)) tag
   where
     tag token = do
         pos <- lift State.get
-        yield (LocatedToken token pos)
+        yield (Token token pos)
 
     go input = case alexScan input 0 of
         AlexEOF                        -> return Nothing
@@ -141,19 +144,20 @@ lexModl text = for (go (AlexInput '\n' [] text)) tag
             lift (column += len)
             go input'
         AlexToken input' len act       -> do
-            -- Could possibly process whitespace at this point
+            -- analyze token position, determine if blocks should be closed or not
+            -- depending on lexer state
             act (Text.take (fromIntegral len) (currInput input))
             lift (column += len)
             go input'
 
 -- | A `Token` augmented with `Position` information
-data LocatedToken = LocatedToken
-    { token    ::                !Token
+data Token = Token
+    { token    ::                !TokenClass
     , position :: {-# UNPACK #-} !Position
     } deriving (Show)
 
 -- The token type:
-data Token
+data TokenClass
   = TokenOpId Text
   | TokenVarId Text
   | TokenConId Text

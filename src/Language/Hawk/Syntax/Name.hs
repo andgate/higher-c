@@ -5,13 +5,14 @@ import Data.Aeson ((.=))
 import qualified Data.Aeson as Json
 import Data.Binary
 import Data.Data
+import Data.Text.Lazy (Text)
 import Data.Typeable
 import qualified Data.Maybe as Maybe
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
-import qualified Language.Hawk.Syntax.Helpers as Help
+import qualified Data.Text.Lazy as Text
 import qualified Language.Hawk.Syntax.ModuleName as ModuleName
 import qualified Language.Hawk.Report.Region as R
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 -- -----------------------------------------------------------------------------
 -- | Name
@@ -32,7 +33,7 @@ type Typed
 data Name
   = Name
     { home :: Home
-    , name :: String
+    , name :: Text
     }
     deriving (Eq, Ord, Show, Data, Typeable)
 
@@ -46,12 +47,12 @@ data Home
 -- -----------------------------------------------------------------------------
 -- Name helpers
 
-local :: R.Position -> String -> Name
+local :: R.Position -> Text -> Name
 local p n =
   Name (Local p) n
   
   
-builtin :: String -> Name
+builtin :: Text -> Name
 builtin =
   Name BuiltIn
 
@@ -73,7 +74,7 @@ class ToString a where
 
 instance ToString Name where
   toString (Name h n) =
-    n ++ " @ " ++ toString h
+    Text.unpack n ++ " @ " ++ toString h
     
 instance ToString Home where
     toString h =

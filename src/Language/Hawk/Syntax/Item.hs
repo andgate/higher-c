@@ -7,6 +7,7 @@ import Data.Typeable
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
+import qualified Data.Text.Lazy as Text
 import qualified Language.Hawk.Syntax.Alias as Alias
 import qualified Language.Hawk.Syntax.Expression as Expr
 import qualified Language.Hawk.Syntax.Function as Fn
@@ -74,7 +75,7 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
       PP.indent 2
         ( PP.text "visibility:" <+> PP.pretty v
           PP.<$>
-          PP.text "name:" <+> PP.pretty n
+          PP.text "name:" <+> PP.pretty (ModuleName.toStringRaw n)
         )
         
     pretty (FunctionItem v fn) =

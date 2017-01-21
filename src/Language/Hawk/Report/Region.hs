@@ -67,8 +67,8 @@ instance HasPosition a => HasRegion (a, a) where
       (uncurry mkRegion)
 
 
-instance HasPosition L.AlexPosn where
-    toPosition (L.AlexPn _ l c) =
+instance HasPosition L.Position where
+    toPosition (L.P l c) =
       Position (fromIntegral l) (fromIntegral c)   
       
 instance Json.ToJSON Region where

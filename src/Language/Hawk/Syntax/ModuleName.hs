@@ -1,13 +1,16 @@
+{-# LANGUAGE TypeSynonymInstances #-}
 module Language.Hawk.Syntax.ModuleName where
 
 import Data.Binary
 import Data.Data
+import Data.Text.Lazy (Text)
 import Data.Typeable
-import qualified Data.List as List
 
+import qualified Data.Text.Lazy as Text
 import qualified Language.Hawk.Compile.Package as Package
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
-type Raw = [String]
+type Raw = [Text]
   
 data Name
   = Name
@@ -16,16 +19,23 @@ data Name
     } deriving(Eq, Ord, Show, Data, Typeable)
     
     
-inCore :: [String] -> Name
+inCore :: [Text] -> Name
 inCore raw =
   Name Package.core raw
   
-
+  
+toStringRaw :: Raw -> String
+toStringRaw = Text.unpack . Text.intercalate "."
+      
 toString :: Name -> String
-toString (Name _ name) =
-  List.intercalate "." name
-      
-      
+toString (Name _ n) = toStringRaw n
+
+
+instance PP.Pretty Name where
+    pretty =
+      PP.pretty . toString
+
+
 instance Binary Name where
   put (Name pkg name) =
     put pkg >> put name

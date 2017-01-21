@@ -10,6 +10,7 @@ import Control.Monad.Trans.State.Strict (evalState)
 import Data.Text.Buildable (Buildable(..))
 import Data.Text.Lazy (Text)
 import Data.Text.Lazy.Builder (toLazyText)
+import Data.Word (Word8)
 import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
 import Text.Earley
 import Text.Earley.Mixfix
@@ -38,7 +39,7 @@ type OpTable expr ident = [[(Holey ident, Associativity, (Holey ident -> [expr] 
 holey :: String -> Holey (Prod r L.Token L.Token L.Token)
 holey ""       = []
 holey ('_':xs) = Nothing : holey xs
-holey xs       = Just (sym i) : holey rest
+holey xs       = Just (op $ Text.pack i) : holey rest
   where (i, rest) = span (/= '_') xs
 
 exprOpsTable :: [[(Holey (Prod r L.Token L.Token L.Token), Associativity)]]
@@ -70,25 +71,17 @@ typDollar _ = Ty.typeCon "_$_"
 -- Terminal Production Helpers
 match :: L.TokenClass -> Prod r e L.Token L.Token
 match c = satisfy p
-  where p (L.Token _ c') = c == c'
-  
-sym :: String -> Prod r e L.Token L.Token
-sym str = satisfy p
-  where p (L.Token _ (L.TokenSymbol str')) = str == str' 
-        p _ = False
-        
-sym' :: String -> Prod r e L.Token String
-sym' str = sym str *> pure str
+  where p (L.Token c' _) = c == c'
         
 parens :: Prod r e L.Token a -> Prod r e L.Token a
 parens p =
-  sym "(" *> p <* sym ")"
+  op "(" *> p <* op ")"
 
-sep :: String -> Prod r e L.Token a -> Prod r e L.Token [a]
+sep :: Prod r e L.Token b -> Prod r e L.Token a -> Prod r e L.Token [a]
 sep s p =
-  (:) <$> p <*> many (sym s *> p)
+  (:) <$> p <*> many (s *> p)
   
-sep' :: String -> Prod r e L.Token a -> Prod r e L.Token [a]
+sep' :: Prod r e L.Token b -> Prod r e L.Token a -> Prod r e L.Token [a]
 sep' s p =
   sep s p <|> pure []
 
@@ -98,61 +91,70 @@ sep' s p =
 varId :: Prod r e L.Token Name.Source
 varId = fmap unsafeExtract (satisfy p)
   where
-    p (L.Token _ (L.TokenVarId _)) = True
+    p (L.Token (L.TokenVarId _) _) = True
     p  _                             = False
-    unsafeExtract (L.Token i (L.TokenVarId v)) = Name.Name (Name.Local . R.toPosition $ L.tokiPos i) v
+    unsafeExtract (L.Token (L.TokenVarId v) p) = Name.Name (Name.Local $ R.toPosition p) v
 
 conId :: Prod r e L.Token Name.Source
 conId = fmap unsafeExtract (satisfy p)
   where
-    p (L.Token _ (L.TokenConId _)) = True
+    p (L.Token (L.TokenConId _) _) = True
     p  _                           = False
-    unsafeExtract (L.Token i (L.TokenConId v)) = Name.Name (Name.Local . R.toPosition $ L.tokiPos i) v
+    unsafeExtract (L.Token (L.TokenConId v) p) = Name.Name (Name.Local $ R.toPosition p) v
 
 
-modId :: Prod r e L.Token String
+modId :: Prod r e L.Token Text
 modId = fmap unsafeExtract (satisfy p)
   where
-    p (L.Token _ (L.TokenConId _)) = True
+    p (L.Token (L.TokenConId _) _) = True
     p  _                           = False
-    unsafeExtract (L.Token _ (L.TokenConId v)) = v
+    unsafeExtract (L.Token (L.TokenConId v) _) = v
+    
+
+op :: Text -> Prod r e L.Token L.Token
+op str = satisfy p
+  where p (L.Token (L.TokenOpId str') _) = str == str' 
+        p _ = False
+        
+op' :: Text -> Prod r e L.Token Text
+op' str = op str *> pure str
 
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Literal Tokens
 tInteger :: Prod r e L.Token Integer
 tInteger = fmap unsafeExtract (satisfy p)
   where
-    p (L.Token _ (L.TokenInteger _)) = True
+    p (L.Token (L.TokenInteger _) _) = True
     p  _                             = False
-    unsafeExtract (L.Token _ (L.TokenInteger v)) = v
+    unsafeExtract (L.Token (L.TokenInteger v) _) = v
 
 tReal :: Prod r e L.Token Double
 tReal = fmap unsafeExtract (satisfy p)
   where
-    p (L.Token _ (L.TokenDouble _)) = True
+    p (L.Token (L.TokenDouble _) _) = True
     p  _                             = False
-    unsafeExtract (L.Token _ (L.TokenDouble v)) = v
+    unsafeExtract (L.Token (L.TokenDouble v) _) = v
 
 tChar :: Prod r e L.Token Char
 tChar = fmap unsafeExtract (satisfy p)
   where
-    p (L.Token _ (L.TokenChar _)) = True
+    p (L.Token (L.TokenChar _) _) = True
     p  _                             = False
-    unsafeExtract (L.Token _ (L.TokenChar v)) = v
+    unsafeExtract (L.Token (L.TokenChar v) _) = v
 
 tString :: Prod r e L.Token String
 tString = fmap unsafeExtract (satisfy p)
   where
-    p (L.Token _ (L.TokenString _)) = True
+    p (L.Token (L.TokenString _) _) = True
     p  _                             = False
-    unsafeExtract (L.Token _ (L.TokenString v)) = v
+    unsafeExtract (L.Token (L.TokenString v) _) = v
 
 tBool :: Prod r e L.Token Bool
 tBool = fmap unsafeExtract (satisfy p)
   where
-    p (L.Token _ (L.TokenBool _)) = True
+    p (L.Token (L.TokenBool _) _) = True
     p  _                             = False
-    unsafeExtract (L.Token _ (L.TokenBool v)) = v
+    unsafeExtract (L.Token (L.TokenBool v) _) = v
 
 
 -- -----------------------------------------------------------------------------

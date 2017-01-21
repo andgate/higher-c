@@ -43,6 +43,7 @@ instance (Binary n, Binary t) => Binary (MetaItem n t) where
                 2 -> Variable <$> get
                 3 -> Record <$> get
                 4 -> Alias <$> get
+                _ -> error "unreachable statement"
     
   put t = case t of
       Import n ->

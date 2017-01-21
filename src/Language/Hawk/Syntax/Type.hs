@@ -1,10 +1,10 @@
-{-# LANGUAGE OverloadedStrings, FlexibleInstances #-}
 module Language.Hawk.Syntax.Type where
 
 import Control.Arrow (second)
 import Data.Aeson ((.=))
 import Data.Binary
 import Data.Data
+import Data.Text.Lazy (Text)
 import Data.Typeable
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
@@ -71,7 +71,7 @@ fn types region =
 -}
 
 
-typeCon :: String -> [Source] -> Source
+typeCon :: Text -> [Source] -> Source
 typeCon n [] = Con $ Name.builtin n
 typeCon n args = App (Con $ Name.builtin n) args
 
@@ -88,7 +88,7 @@ tuple :: [Source] -> Source
 tuple (arg:[]) = arg
 tuple args = variadic "_Tuple" args
 
-variadic :: String -> [Source] -> Source
+variadic :: Text -> [Source] -> Source
 variadic n ts =
     App (Con $ Name.builtin n) ts
     

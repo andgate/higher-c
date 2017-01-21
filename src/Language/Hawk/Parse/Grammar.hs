@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes, ScopedTypeVariables, RecursiveDo #-}
+{-# LANGUAGE RecursiveDo #-}
 module Language.Hawk.Parse.Grammar where
 
 import Control.Applicative
@@ -46,7 +46,7 @@ grammar pkgName = mdo
     
     modName' <- rule ((:) <$> modNameHead <*> many modNameRest)
     modNameHead <- rule modId
-    modNameRest <- rule (sym "." *> modNameHead)
+    modNameRest <- rule (op "." *> modNameHead)
 
 -- -----------------------------------------------------------------------------
 -- Item Rules
@@ -62,7 +62,7 @@ grammar pkgName = mdo
     
     
     impItem <- rule $
-      I.impItem <$> (sym "->" *> modName')
+      I.impItem <$> (op "->" *> modName')
       
     aliasItem <- rule $
       I.aliasItem <$> typAlias
@@ -89,7 +89,7 @@ grammar pkgName = mdo
       <|> varMItem
     
     impMItem <- rule $
-      MI.Import <$> (sym "->" *> modName')
+      MI.Import <$> (op "->" *> modName')
        
     aliasMItem <- rule $
       MI.Alias <$> typAlias
@@ -98,10 +98,10 @@ grammar pkgName = mdo
       MI.Record <$> record
     
     fnMItem <- rule $ 
-      MI.Function <$> (functionInfo <* sym ":=" <* stmtblock)
+      MI.Function <$> (functionInfo <* op ":=" <* stmtblock)
     
     varMItem <- rule $
-      MI.Variable <$> (varInfo <* sym "^=" <* expr)
+      MI.Variable <$> (varInfo <* op "^=" <* expr)
 
 -- -----------------------------------------------------------------------------
 -- Name rules
@@ -123,14 +123,14 @@ grammar pkgName = mdo
         B.ByVal <$> mutability
     
     byRef <- rule $
-        sym "&" *>
+        op "&" *>
         (pure B.ByRef <*> mutability)
       
     mutability <- rule $
         immutable <|> mutable
       
     immutable <- rule $
-        sym "!" *>
+        op "!" *>
         pure B.Immutable
     
     mutable <- rule $
@@ -142,7 +142,7 @@ grammar pkgName = mdo
     typesig0 <- rule $
       (Just <$> typesig) <|> pure Nothing
     
-    typesig <- rule $ sym "::" *> typ
+    typesig <- rule $ op "::" *> typ
     
     typ <- mixfixExpressionSeparate typeOpsTable typApp
     
@@ -151,19 +151,19 @@ grammar pkgName = mdo
     
     typVal <- rule $ tyTuple <|> typCon
       
-    tyTuple <- rule $ Ty.tuple <$> (parens $ sep "," typApp)
+    tyTuple <- rule $ Ty.tuple <$> (parens $ sep (op ",") typApp)
         
     typCon <- rule $ Ty.Con <$> conName
 
 -- -----------------------------------------------------------------------------
 -- Type Alias Rules
     typAlias <- rule $
-      A.Alias <$> (conName <* sym "=") <*> typ
+      A.Alias <$> (conName <* op "=") <*> typ
 
 -- -----------------------------------------------------------------------------
 -- Record Rules
     record <- rule $
-      R.Record <$> (conName <* sym ":-") <*> record_fields
+      R.Record <$> (conName <* op ":-") <*> record_fields
     
     record_fields <- rule $
       many record_field
@@ -183,7 +183,7 @@ grammar pkgName = mdo
 -- -----------------------------------------------------------------------------
 -- Function Rules
     function <- rule $
-        F.Function <$> (functionInfo <* sym ":=") <*> stmtblock
+        F.Function <$> (functionInfo <* op ":=") <*> stmtblock
         
     functionInfo <- rule $
         F.FunctionInfo <$> varName <*> many binding <*> typesig0
@@ -191,7 +191,7 @@ grammar pkgName = mdo
 -- -----------------------------------------------------------------------------
 -- Variables Rules   
     var <- rule $
-      V.Variable <$> (varInfo <* sym "^=") <*> expr
+      V.Variable <$> (varInfo <* op "^=") <*> expr
     
     varInfo <- rule $
       V.VariableInfo <$> binding <*> typesig0
@@ -214,10 +214,10 @@ grammar pkgName = mdo
       Stmt.Let <$> var
     
     stmtAssign <- rule $
-      Stmt.Assign <$> varName <*> typesig0 <*> (sym "=" *> expr)
+      Stmt.Assign <$> varName <*> typesig0 <*> (op "=" *> expr)
     
     stmtRet <- rule $
-      Stmt.Return <$> (sym "return" *> expr)
+      Stmt.Return <$> (op "return" *> expr)
     
 
 -- -----------------------------------------------------------------------------
@@ -254,23 +254,3 @@ grammar pkgName = mdo
     return modl
     
 
--- -----------------------------------------------------------------------------
--- Parsing functions  
-parseTest :: Text -> IO ()
-parseTest =
-  print . pretty . parseText
-  
-  
-parseText :: Text -> M.Source
-parseText text = evalState (runExceptT m) (L.P 1 0)
-  where
-    m = do
-        (locatedTokens, mtxt) <- lift (Pipes.toListM' (L.lexExpr text))
-        case mtxt of
-            Nothing  -> return ()
-            Just txt -> error "Lex failed"
-        let (parses, Report _ needed found) =
-                fullParses (parser grammar) locatedTokens
-        case parses of
-            parse:[] -> return parse
-            _      -> error "Parsing failed"
