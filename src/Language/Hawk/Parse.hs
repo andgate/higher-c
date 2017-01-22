@@ -16,15 +16,19 @@ module Language.Hawk.Parse where
 import Control.Monad.Trans.Class  (lift)
 import Control.Monad.Trans.Except (Except, throwE, runExceptT)
 import Control.Monad.Trans.State.Strict (evalState, get)
+import Data.Functor.Identity (runIdentity)
 import Data.Text.Lazy (Text)
+import Pipes
 import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
 
 import qualified Data.Text.Lazy as Text
 import qualified Language.Hawk.Compile.Package as Package
+import qualified Language.Hawk.Parse.Layout as LO
 import qualified Language.Hawk.Parse.Lexer as L
 import qualified Language.Hawk.Parse.Grammar as G
 import qualified Language.Hawk.Syntax.Module as M
 import qualified Pipes.Prelude  as Pipes
+import qualified Pipes.Lift  as Pipes
 import qualified Text.Earley as E
 
 -- -----------------------------------------------------------------------------
@@ -32,15 +36,12 @@ import qualified Text.Earley as E
 
 program :: Package.Name -> Text -> IO M.Source
 program pkgName txt = do
-  let lex_p = Pipes.toListM' $ L.lexModl txt
-      (locatedTokens, mtxt) = evalState lex_p L.defPos
-      
-  case mtxt of
-      Just e -> error $ Text.unpack e
-      Nothing -> return ()
+  let lexModl' = Pipes.evalStateP L.defPos (L.lexModl txt)
+      layout' = Pipes.evalStateP LO.defState LO.layout
+      (toks, ()) = runIdentity $ Pipes.toListM' $ lexModl' >-> layout'
             
   let (parses, E.Report _ needed found) =
-          E.fullParses (E.parser $ G.grammar pkgName) locatedTokens
+          E.fullParses (E.parser $ G.grammar pkgName) toks
   case parses of
       parse:[] -> return parse
       _      -> error "Parsing failed"

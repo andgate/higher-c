@@ -1,7 +1,7 @@
 module Language.Hawk.Parse.Layout where
 
 import Control.Monad (forever, mapM)
-import Control.Monad.Trans.State.Strict (State)
+import Control.Monad.Trans.State.Strict (State, evalStateT, get)
 import Lens.Micro.Mtl ((.=), (+=))
 import Safe (headMay)
 import Pipes (Pipe, await, yield, lift)
@@ -16,6 +16,9 @@ data Layout =
 
 
 type LayoutState = State [Layout]
+
+defState :: [Layout]
+defState = []
 
 getIndent :: LayoutState Int
 getIndent = do

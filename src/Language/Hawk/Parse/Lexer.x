@@ -130,7 +130,7 @@ alexInputPrevChar = prevChar
     `lexModl` keeps track of position and returns the remainder of the input if
     lexing fails.
 -}
-lexModl :: Text -> Producer Token (State Position) (Maybe Text)
+lexModl :: Text -> Producer Token (State Position) ()
 lexModl text = for (go (AlexInput '\n' [] text)) tag
   where
     tag token = do
@@ -138,8 +138,8 @@ lexModl text = for (go (AlexInput '\n' [] text)) tag
         yield (Token token pos)
 
     go input = case alexScan input 0 of
-        AlexEOF                        -> return Nothing
-        AlexError (AlexInput _ _ text) -> return (Just text)
+        AlexEOF                        -> return ()
+        AlexError (AlexInput _ _ text) -> return ()
         AlexSkip  input' len           -> do
             lift (column += len)
             go input'
