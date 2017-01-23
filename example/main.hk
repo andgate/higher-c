@@ -26,7 +26,7 @@ var_a :: I32 ^= 1
 // Variables are mutable by default, but can be set to
 // immutable with a "!" operator on the name of the variable.
 // The preceding minus sign gives private access to var_b.
-!var_b :: I32 ^= 2
+var_b :: I32 ^= 2
 
 
 /* Function for driving car.
@@ -52,7 +52,7 @@ doubleSum x y
 main foo :: IO () :=
   // Create some cars
   car_a :: Car ^= Car 12 124
-  !car_b :: Car ^= Car 19 103
+  car_b :: Car ^= Car 19 103
   
   // Drive some cars
   drive car_a
