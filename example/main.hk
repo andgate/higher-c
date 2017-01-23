@@ -47,7 +47,7 @@ doubleSum x y
   return sum
     
 
-_*+_(5r)
+_*+_
  :: I32 -> I32 -> I32
  := doubleSum
 

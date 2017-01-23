@@ -162,6 +162,36 @@ tBool = fmap unsafeExtract (satisfy p)
 
 
 -- -----------------------------------------------------------------------------
+-- Layout Helpers
+
+eof :: Prod r e L.Token L.Token
+eof = match L.TokenEof
+
+block :: Prod r e L.Token a -> Prod r e L.Token [a]
+block p = blk *> linefolds p <* blk'
+
+linefolds :: Prod r e L.Token a -> Prod r e L.Token [a]
+linefolds p = some $ linefold p
+
+linefold :: Prod r e L.Token a -> Prod r e L.Token a
+linefold p = ln *> p <* ln'
+
+
+blk :: Prod r e L.Token L.Token
+blk = match L.TokenBlk
+
+blk' :: Prod r e L.Token L.Token
+blk' = match L.TokenBlk'
+
+
+ln :: Prod r e L.Token L.Token
+ln = match L.TokenLn
+
+ln' :: Prod r e L.Token L.Token
+ln' = match L.TokenLn'
+
+
+-- -----------------------------------------------------------------------------
 -- Location
 
 -- Old location algorithms from the old parsec-style parser

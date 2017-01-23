@@ -35,9 +35,9 @@ grammar pkgName = mdo
 
 -- -----------------------------------------------------------------------------
 -- Module Rules
-    modl <- rule $ M.Module "" <$> items
+    modl <- rule $ M.Module "" <$> items <* eof
 
-    metamodl <- rule $ MM.MetaModule <$> metaItems
+    metamodl <- rule $ MM.MetaModule <$> metaItems <* eof
       
 
 -- -----------------------------------------------------------------------------
@@ -51,7 +51,7 @@ grammar pkgName = mdo
 -- -----------------------------------------------------------------------------
 -- Item Rules
     items <- rule $
-      many item
+      linefolds item
 
     item <- rule $
           impItem
@@ -166,7 +166,7 @@ grammar pkgName = mdo
       R.Record <$> (conName <* rsvp ":-") <*> record_fields
     
     record_fields <- rule $
-      many record_field
+      block record_field
     
     record_field <- rule $
       R.RecordField <$> varName <*> typesig
@@ -199,7 +199,7 @@ grammar pkgName = mdo
 
 -- -----------------------------------------------------------------------------
 -- Statement Rules   
-    stmtblock <- rule $ many statement
+    stmtblock <- rule $ block statement
     
     statement <- rule $
           stmtRet
