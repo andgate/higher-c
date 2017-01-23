@@ -1,4 +1,4 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE RecursiveDo, RankNTypes #-}
 module Language.Hawk.Parse.Grammar where
 
 import Control.Applicative
@@ -6,7 +6,6 @@ import Data.Monoid
 import Language.Hawk.Parse.Helpers
 import Text.Earley
 import Text.Earley.Mixfix
-
 
 
 import qualified Language.Hawk.Compile.Package as Pkg
@@ -30,14 +29,18 @@ import qualified Language.Hawk.Syntax.Variable as V
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-grammar :: Pkg.Name -> Grammar r (Prod r L.Token L.Token M.Source)
-grammar pkgName = mdo
+grammar :: Bool       -- ^ Parse as meta grammar?
+        -> Pkg.Name
+        -> TypeOpTable
+        -> ExprOpTable
+        -> Grammar r (Prod r L.Token L.Token (Either MM.Source M.Source))
+grammar isMeta pkgName typOps exprOps = mdo
 
 -- -----------------------------------------------------------------------------
 -- Module Rules
-    modl <- rule $ M.Module "" <$> items <* eof
+    modl <- rule $ Right . M.Module "" <$> items <* eof
 
-    metamodl <- rule $ MM.MetaModule <$> metaItems <* eof
+    metamodl <- rule $ Left . MM.MetaModule <$> metaItems <* eof
       
 
 -- -----------------------------------------------------------------------------
@@ -55,10 +58,10 @@ grammar pkgName = mdo
 
     item <- rule $
           impItem
+      <|> aliasItem
       <|> recordItem
       <|> fnItem
       <|> varItem
-      <|> aliasItem
     
     
     impItem <- rule $
@@ -79,7 +82,8 @@ grammar pkgName = mdo
 
 -- -----------------------------------------------------------------------------
 -- Meta Item Rules
-    metaItems <- rule $ many metaItem
+    metaItems <- rule $
+      linefolds metaItem
     
     metaItem <- rule $ 
           impMItem
@@ -144,7 +148,7 @@ grammar pkgName = mdo
     
     typesig <- rule $ rsvp "::" *> typ
     
-    typ <- mixfixExpressionSeparate typeOpsTable typ'
+    typ <- mixfixExpressionSeparate typOps typ'
     
     typ' <- rule $ parens typApp <|> typApp
     
@@ -226,7 +230,9 @@ grammar pkgName = mdo
 
 -- -----------------------------------------------------------------------------
 -- Expression Rules
-    expr <- rule $
+    expr <- mixfixExpressionSeparate exprOps expr'
+
+    expr' <- rule $
           exprTyped
       <|> expr0
     
@@ -257,6 +263,6 @@ grammar pkgName = mdo
     litExpr <- rule $ E.Lit <$> lit
     nestedExpr <- rule $ parens expr
     
-    return modl
-    
-
+    if isMeta
+      then return metamodl
+      else return modl

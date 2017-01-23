@@ -3,9 +3,7 @@ module Language.Hawk.Syntax.Item where
 import Data.Binary
 import Data.Data
 import Data.Typeable
-
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 import qualified Data.Text.Lazy as Text
 import qualified Language.Hawk.Syntax.Alias as Alias
@@ -16,6 +14,8 @@ import qualified Language.Hawk.Syntax.Name as Name
 import qualified Language.Hawk.Syntax.Record as Record
 import qualified Language.Hawk.Syntax.Type as Type
 import qualified Language.Hawk.Syntax.Variable as Var
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
+
   
 -- Items Structure
   

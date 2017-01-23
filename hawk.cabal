@@ -31,6 +31,7 @@ library
                         , convertible
                         , Earley
                         , edit-distance
+                        , either-unwrap
                         , filepath
                         , indents
                         , lens

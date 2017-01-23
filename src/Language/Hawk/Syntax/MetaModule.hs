@@ -3,12 +3,14 @@ module Language.Hawk.Syntax.MetaModule where
 import Data.Binary
 import Data.Data
 import Data.Typeable
-import qualified Data.Map as Map
+import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
-import qualified Language.Hawk.Syntax.MetaItem as MT
-import qualified Language.Hawk.Syntax.ModuleName as ModuleName
-import qualified Language.Hawk.Syntax.Type as Type
-import qualified Language.Hawk.Syntax.Name as Name
+import qualified Data.Map                         as Map
+import qualified Language.Hawk.Syntax.MetaItem    as MT
+import qualified Language.Hawk.Syntax.ModuleName  as ModuleName
+import qualified Language.Hawk.Syntax.Name        as Name
+import qualified Language.Hawk.Syntax.Type        as Type
+import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 
 
 type Source =
@@ -25,6 +27,17 @@ data MetaModule n t
     deriving(Eq, Show, Data, Typeable)
 
 
+
+instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (MetaModule n t) where
+  pretty (MetaModule its) =
+    PP.text "Meta-Module:"
+    PP.<$>
+    PP.indent 2
+      ( 
+        PP.text "items:" <+> PP.pretty its
+      )
+      
+      
 instance (Binary n, Binary t) => Binary (MetaModule n t) where
   get =
     MetaModule <$> get

@@ -15,26 +15,27 @@ import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
 import Text.Earley
 import Text.Earley.Mixfix
 
-import qualified Data.ByteString.UTF8         as UTF8
-import qualified Data.Text.Lazy               as Text
-import qualified Language.Hawk.Parse.Lexer    as L
-import qualified Language.Hawk.Report.Region  as R
-import qualified Language.Hawk.Syntax.Module  as M
-import qualified Language.Hawk.Syntax.Name    as Name
-import qualified Language.Hawk.Syntax.Type    as Ty
-import qualified Pipes.Prelude                as Pipes
+import qualified Data.ByteString.UTF8             as UTF8
+import qualified Data.Text.Lazy                   as Text
+import qualified Language.Hawk.Parse.Lexer        as L
+import qualified Language.Hawk.Report.Region      as R
+import qualified Language.Hawk.Syntax.Expression  as E
+import qualified Language.Hawk.Syntax.Module      as M
+import qualified Language.Hawk.Syntax.Name        as Name
+import qualified Language.Hawk.Syntax.Type        as Ty
+import qualified Pipes.Prelude                    as Pipes
 
 -- -----------------------------------------------------------------------------
 -- Parser type
 --type HkProd a = forall r. Prod r L.Token L.Token a
 --type HkGrammar a = forall r. Grammar r (Prod r L.Token L.Token a)
         
-
+type OpTable a = forall r. [[(Holey (Prod r L.Token L.Token L.Token), Associativity, Holey L.Token -> [a] -> a)]]
+type TypeOpTable = OpTable Ty.Source
+type ExprOpTable = OpTable E.Source
 
 -- -----------------------------------------------------------------------------
 -- Helpers for parsing expressions
-
-type OpTable expr ident = [[(Holey ident, Associativity, (Holey ident -> [expr] -> expr))]]
 
 holey :: String -> Holey (Prod r L.Token L.Token L.Token)
 holey ""       = []
@@ -42,16 +43,12 @@ holey ('_':xs) = Nothing : holey xs
 holey xs       = Just (op $ Text.pack i) : holey rest
   where (i, rest) = span (/= '_') xs
 
-exprOpsTable :: [[(Holey (Prod r L.Token L.Token L.Token), Associativity)]]
-exprOpsTable =
-  [ [(holey "if_then_else_", RightAssoc)]
-  , [(holey "_+_", LeftAssoc), (holey "_-_", LeftAssoc)]
-  , [(holey "_*_", LeftAssoc), (holey "_/_", LeftAssoc)]
-  , [(holey "_$_", RightAssoc)]
-  ]
+defExprOps :: ExprOpTable
+defExprOps =
+  []
   
-typeOpsTable :: [[(Holey (Prod r L.Token L.Token L.Token), Associativity, Holey L.Token -> [Ty.Source] -> Ty.Source)]]
-typeOpsTable =
+defTypeOps :: TypeOpTable
+defTypeOps =
   [ [(holey "_->_", RightAssoc, typArrow)]
   , [(holey "_$_", RightAssoc, typDollar)]
   ]

@@ -4,6 +4,7 @@ module Language.Hawk.Syntax.MetaItem where
 import Data.Binary
 import Data.Data
 import Data.Typeable
+import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
 import qualified Language.Hawk.Syntax.Alias as Alias
 import qualified Language.Hawk.Syntax.ModuleName as ModuleName
@@ -12,6 +13,7 @@ import qualified Language.Hawk.Syntax.Function as Fn
 import qualified Language.Hawk.Syntax.Variable as Var
 import qualified Language.Hawk.Syntax.Record as Rec
 import qualified Language.Hawk.Syntax.Type as Type
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 
 -- MetaItems Structure
@@ -34,6 +36,48 @@ data MetaItem n t
   | Alias (Alias.Alias n)
   deriving (Eq, Show, Data, Typeable)
 
+
+instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (MetaItem n t) where
+    pretty (Import n) =
+      PP.text "ImportItem:"
+      PP.<$>
+      PP.indent 2
+        ( 
+          PP.text "name:" <+> PP.pretty (ModuleName.toStringRaw n)
+        )
+        
+    pretty (Function fn) =
+      PP.text "FunctionItem:"
+      PP.<$>
+      PP.indent 2
+        ( 
+          PP.text "function info:" <+> PP.pretty fn
+        )
+        
+    pretty (Variable var) =
+      PP.text "VarItem:"
+      PP.<$>
+      PP.indent 2
+        ( 
+          PP.text "var info:" <+> PP.pretty var
+        )
+        
+    pretty (Record r) =
+      PP.text "RecordItem:"
+      PP.<$>
+      PP.indent 2
+        ( 
+          PP.text "record info:" <+> PP.pretty r
+        )
+      
+    pretty (Alias a) =
+      PP.text "AliasItem:"
+      PP.<$>
+      PP.indent 2
+        ( 
+          PP.text "alias info:" <+> PP.pretty a
+        )
+        
   
 instance (Binary n, Binary t) => Binary (MetaItem n t) where
   get = do t <- getWord8
