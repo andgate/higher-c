@@ -28,7 +28,7 @@ data Module n e t
     
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Module n e t) where
   pretty (Module n its) =
-    PP.text "Binding:"
+    PP.text "Module:"
     PP.<$>
     PP.indent 2
       ( PP.text "name:" <+> PP.pretty n

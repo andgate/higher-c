@@ -162,7 +162,7 @@ grammar pkgName = mdo
 -- -----------------------------------------------------------------------------
 -- Type Alias Rules
     typAlias <- rule $
-      A.Alias <$> (conName <* op "=") <*> typ
+      A.Alias <$> (conName <* rsvp "=") <*> typ
 
 -- -----------------------------------------------------------------------------
 -- Record Rules
@@ -221,7 +221,7 @@ grammar pkgName = mdo
       Stmt.Assign <$> varName <*> typesig0 <*> (op "=" *> expr)
     
     stmtRet <- rule $
-      Stmt.Return <$> (op "return" *> expr)
+      Stmt.Return <$> (rsvp "return" *> expr)
     
 
 -- -----------------------------------------------------------------------------
@@ -241,12 +241,14 @@ grammar pkgName = mdo
     
     
     fexpr <- rule $
-        (\ (call:args) -> E.App call args) <$> some aexpr
-    
+        E.App <$> bexpr <*> many aexpr
     
     aexpr <- rule $
           litExpr
-      <|> varExpr
+      <|> bexpr
+      
+    bexpr <- rule $ 
+          varExpr
       <|> conExpr
       <|> nestedExpr
     

@@ -43,15 +43,13 @@ program pkgName txt = do
       
   print toks
             
-  let (parses, report@(E.Report _ needed found)) =
+  let (parses, r@(E.Report _ needed found)) =
           E.fullParses (E.parser $ G.grammar pkgName) toks
   
-        
-  mapM_ print parses
-  
   case parses of
-      parse:[] -> return parse
-      _        -> error $ "Parsing failed.\n" ++ show report
+      []       -> error $ "No parses found.\n" ++ show r
+      p:[]      -> return p
+      ps        -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)
 
 
 parseTest :: Text -> IO ()
