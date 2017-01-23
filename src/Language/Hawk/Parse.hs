@@ -36,12 +36,15 @@ import qualified Text.Earley as E
 
 program :: Package.Name -> Text -> IO M.Source
 program pkgName txt = do
-  let lexModl' = Pipes.evalStateP L.defPos (L.lexModl txt)
+  let lexModl' = Pipes.evalStateP L.defState (L.lexModl txt)
       layout' = Pipes.evalStateP LO.defState LO.layout
       (toks, ()) = runIdentity $ Pipes.toListM' $ lexModl' >-> layout'
+      
+  print toks
             
   let (parses, E.Report _ needed found) =
           E.fullParses (E.parser $ G.grammar pkgName) toks
+  
   case parses of
       parse:[] -> return parse
       _      -> error "Parsing failed"

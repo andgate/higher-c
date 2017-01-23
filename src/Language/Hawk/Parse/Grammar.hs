@@ -98,10 +98,10 @@ grammar pkgName = mdo
       MI.Record <$> record
     
     fnMItem <- rule $ 
-      MI.Function <$> (functionInfo <* op ":=" <* stmtblock)
+      MI.Function <$> (functionInfo <* rsvp ":=" <* stmtblock)
     
     varMItem <- rule $
-      MI.Variable <$> (varInfo <* op "^=" <* expr)
+      MI.Variable <$> (varInfo <* rsvp "^=" <* expr)
 
 -- -----------------------------------------------------------------------------
 -- Name rules
@@ -142,7 +142,7 @@ grammar pkgName = mdo
     typesig0 <- rule $
       (Just <$> typesig) <|> pure Nothing
     
-    typesig <- rule $ op "::" *> typ
+    typesig <- rule $ rsvp "::" *> typ
     
     typ <- mixfixExpressionSeparate typeOpsTable typApp
     
@@ -163,7 +163,7 @@ grammar pkgName = mdo
 -- -----------------------------------------------------------------------------
 -- Record Rules
     record <- rule $
-      R.Record <$> (conName <* op ":-") <*> record_fields
+      R.Record <$> (conName <* rsvp ":-") <*> record_fields
     
     record_fields <- rule $
       many record_field
@@ -183,7 +183,7 @@ grammar pkgName = mdo
 -- -----------------------------------------------------------------------------
 -- Function Rules
     function <- rule $
-        F.Function <$> (functionInfo <* op ":=") <*> stmtblock
+        F.Function <$> (functionInfo <* rsvp ":=") <*> stmtblock
         
     functionInfo <- rule $
         F.FunctionInfo <$> varName <*> many binding <*> typesig0
@@ -191,7 +191,7 @@ grammar pkgName = mdo
 -- -----------------------------------------------------------------------------
 -- Variables Rules   
     var <- rule $
-      V.Variable <$> (varInfo <* op "^=") <*> expr
+      V.Variable <$> (varInfo <* rsvp "^=") <*> expr
     
     varInfo <- rule $
       V.VariableInfo <$> binding <*> typesig0

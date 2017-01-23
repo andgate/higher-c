@@ -6,11 +6,11 @@
 
 // Create a Car struct, with gas and a max speed
 Car :- 
-  gas : I32
-  max_speed : I32
+  gas :: I32
+  max_speed :: I32
 
 // Alias binding, set type Automobile as synonym for Car
-// Automobile ^= Car
+// Automobile = Car
 
 
 // Import the 'IO' module
@@ -21,12 +21,12 @@ Car :-
 // Type is set using "::" followed by a type signature.
 // The preceding plus sign gives public access to var_a.
 // Every module item is public by default
-var_a : I32 ^= 1
+var_a :: I32 ^= 1
  
 // Variables are mutable by default, but can be set to
 // immutable with a "!" operator on the name of the variable.
 // The preceding minus sign gives private access to var_b.
-!var_b : I32 ^= 2
+!var_b :: I32 ^= 2
 
 
 /* Function for driving car.
@@ -35,19 +35,20 @@ var_a : I32 ^= 1
    Functions use a type signature similar to haskell as well.
    However, type signatures in Hawk come after function name and args.
   */
-drive car : Car -> IO () :=
+drive car :: Car -> IO () :=
   out ^= toString max_speed
   print out
 
 doubleSum x y
- : I32 -> I32 -> I32
- := sum : I32 ^= add_i32 x y
-    sum = mul_i32 sum 2
-    return sum
+ :: I32 -> I32 -> I32
+ := 
+  sum : I32 ^= add_i32 x y
+  sum = mul_i32 sum 2
+  return sum
     
 
 _*+_(5r)
- : I32 -> I32 -> I32
+ :: I32 -> I32 -> I32
  := doubleSum
 
 // Macro aka compile-time meta-expression
@@ -55,17 +56,17 @@ _*+_(5r)
 // Macros are evaluated at compile time,
 // and are allowed to modify the source ast.
 // Macros do not have types, and are expected to return some sort of syntax
-aFoo stx .=
-  # "I am a foo"
+//aFoo stx .=
+//  # "I am a foo"
   
 
 
 // Main function and default entry point of all programs.
 // An executable cannot compile without a main function.
-main foo : IO () :=
+main foo :: IO () :=
   // Create some cars
-  car_a : Car ^= Car 12 124
-  !car_b : Car ^= Car 19 103
+  car_a :: Car ^= Car 12 124
+  !car_b :: Car ^= Car 19 103
   
   // Drive some cars
   drive car_a

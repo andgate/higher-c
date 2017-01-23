@@ -72,6 +72,10 @@ typDollar _ = Ty.typeCon "_$_"
 match :: L.TokenClass -> Prod r e L.Token L.Token
 match c = satisfy p
   where p (L.Token c' _) = c == c'
+  
+rsvp :: Text -> Prod r e L.Token L.Token
+rsvp text =
+  match $ L.TokenRsvp text
         
 parens :: Prod r e L.Token a -> Prod r e L.Token a
 parens p =

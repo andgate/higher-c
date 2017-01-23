@@ -9,7 +9,6 @@ import Data.Char (digitToInt, ord)
 import Data.Text.Lazy (Text)
 import Data.Word (Word8)
 import Filesystem.Path.CurrentOS (FilePath)
-import Lens.Micro.Mtl ((.=), (+=))
 import Pipes (Producer, for, lift, yield)
 import Prelude hiding (FilePath)
 
@@ -19,13 +18,12 @@ import qualified Filesystem.Path.CurrentOS        as Filesystem
 
 }
 
-
 -- -----------------------------------------------------------------------------
 -- Alex "Character set macros"
 
 $digit = 0-9
 
-$opchar = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~]
+$opchar = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~\_]
 
 $fstLow       = [a-z]
 $fstCap       = [A-Z]
@@ -42,24 +40,120 @@ hawk :-
 -- -----------------------------------------------------------------------------
 -- Alex "Rules"
 
+<0> {
   -- Skip whitespace everywhere
   $whiteNoNewline                 ;
-  \n                              { \_    -> lift (do
-                                      line   += 1
-                                      column .= 0 ) }
+  \n                              { \ _ -> lift startNextLine}
   "//".*                          ;
+  
+  \"                              { beginString }
+  "/*"                            { beginComment }
+  
+  ":-"                            { rsvp }
+  "^="                            { rsvp }
+  ":="                            { rsvp }
+  "::"                            { rsvp }
+  ":"                             { rsvp }
+  
+  "("                             { rsvp }
+  ")"                             { rsvp }
   
   $fstLow $idchar*                { \text -> yield (TokenVarId text) }
   $fstCap $idchar*                { \text -> yield (TokenConId text) }
   $opchar+                        { \text -> yield (TokenOpId text) }
   
   $digit+                         { \text -> yield (TokenInteger $ toInt text) }
-  
-  -- Need support for multi-line comments, chars, strings and floats.
-  -- Note: It may be possible to parse char, strings, and floats with Earley.
+}
 
+<stringSC>  .                     { appendString }
+<stringSC>  \\[nt\"]              { escapeString }
+<stringSC>  \"                    { endString }
+
+<commentSC> {
+  "/*"                            { beginComment }
+  "*/"                            { endComment }
+  [.\n]                           ;
+}
 
 {
+
+
+data LexState =
+  LexState  { curPos :: Position
+            , startcode :: Int
+            , commentDepth :: Int
+            , stringBuf :: String
+            } deriving Show
+            
+defState :: LexState
+defState = LexState (P 0 0) 0 0 ""
+            
+type Lex = State LexState
+  
+type LexAction = Text -> Producer TokenClass Lex ()
+
+growColumn :: Int -> Lex ()
+growColumn len = do
+  s <- State.get
+  let (P l c) = curPos s
+  State.put s{curPos = (P l (c+len))}
+  
+startNextLine :: Lex ()
+startNextLine = do
+  s <- State.get
+  let (P l _) = curPos s
+  State.put s{curPos = (P (l+1) 0)}
+
+
+rsvp :: LexAction
+rsvp text = yield (TokenRsvp text)
+
+
+beginString :: LexAction
+beginString _ = lift $ do
+  s <- State.get
+  State.put s{startcode = stringSC}
+  
+appendString :: LexAction
+appendString text = do
+  s <- lift State.get
+  let c = Text.head text
+  lift $ State.put s{stringBuf = c:(stringBuf s)}
+
+escapeString :: LexAction
+escapeString text = do
+  let c = Text.head $ Text.tail text
+      unesc =
+        case c of
+          'n' -> '\n'
+          't' -> '\t'
+          '"' -> '"'
+  lift $ do
+    s <- State.get
+    State.put s{stringBuf = unesc:(stringBuf s)}
+  
+endString :: LexAction
+endString _ = do
+  s <- lift State.get
+  let buf = stringBuf s
+  lift $ State.put s{startcode = 0, stringBuf = ""}
+  yield (TokenString $ reverse buf)
+
+
+beginComment :: LexAction
+beginComment _ = lift $ do
+  s <- State.get
+  State.put s {startcode = commentSC,
+         commentDepth = (commentDepth s)+1}
+         
+         
+endComment :: LexAction         
+endComment _ = lift $ do
+  s <- State.get
+  let cd = commentDepth s
+  let sc' = if cd == 1 then 0 else commentSC
+  State.put s {startcode = sc', commentDepth = cd-1}
+
 
 toInt :: Text -> Integer
 toInt = Text.foldl' (\x c -> 10 * x + fromIntegral (digitToInt c)) 0
@@ -95,12 +189,7 @@ data Position = P
 defPos :: Position
 defPos = P 1 0
 
--- line :: Lens' Position Int
-line :: Functor f => (Int -> f Int) -> Position -> f Position
-line k (P l c) = fmap (\l' -> P l' c) (k l)
--- column :: Lens' Position Int
-column :: Functor f => (Int -> f Int) -> Position -> f Position
-column k (P l c) = fmap (\c' -> P l c') (k c)
+
 
 {- @alex@ does not provide a `Text` wrapper, so the following code just modifies
    the code from their @basic@ wrapper to work with `Text`
@@ -125,28 +214,6 @@ alexGetByte (AlexInput c bytes text) = case bytes of
 alexInputPrevChar :: AlexInput -> Char
 alexInputPrevChar = prevChar
 
-{-| Convert a text representation of a module into a stream of tokens
-
-    `lexModl` keeps track of position and returns the remainder of the input if
-    lexing fails.
--}
-lexModl :: Text -> Producer Token (State Position) ()
-lexModl text = for (go (AlexInput '\n' [] text)) tag
-  where
-    tag token = do
-        pos <- lift State.get
-        yield (Token token pos)
-
-    go input = case alexScan input 0 of
-        AlexEOF                        -> return ()
-        AlexError (AlexInput _ _ text) -> return ()
-        AlexSkip  input' len           -> do
-            lift (column += len)
-            go input'
-        AlexToken input' len act       -> do
-            act (Text.take (fromIntegral len) (currInput input))
-            lift (column += len)
-            go input'
 
 -- | A `Token` augmented with `Position` information
 data Token = Token
@@ -156,7 +223,8 @@ data Token = Token
 
 -- The token type:
 data TokenClass
-  = TokenOpId Text
+  = TokenRsvp Text
+  | TokenOpId Text
   | TokenVarId Text
   | TokenConId Text
   
@@ -166,6 +234,7 @@ data TokenClass
   | TokenString String
   | TokenBool Bool
   
+  | TokenTop
   | TokenBlk
   | TokenBlk'
   | TokenLn
@@ -173,5 +242,32 @@ data TokenClass
   
   | TokenEof
   deriving ( Eq, Show )
+  
 
+{-| Convert a text representation of a module into a stream of tokens
+
+    `lexModl` keeps track of position and returns the remainder of the input if
+    lexing fails.
+-}
+lexModl :: Text -> Producer Token Lex ()
+lexModl text = for (go (AlexInput '\n' [] text)) tag
+  where
+    tag token = do
+        s <- lift State.get
+        yield (Token token (curPos s))
+
+    go input = do
+      s <- lift State.get
+      case alexScan input (startcode s) of
+        AlexEOF                        ->
+            yield TokenEof
+        AlexError (AlexInput _ _ text) ->
+            error $ "Lexical Error: Cannot tokenize rest of file: \"" ++ Text.unpack text ++ "\""
+        AlexSkip  input' len           -> do
+            lift $ growColumn len
+            go input'
+        AlexToken input' len act       -> do
+            act (Text.take (fromIntegral len) (currInput input))
+            lift $ growColumn len
+            go input'
 }
