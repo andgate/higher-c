@@ -79,14 +79,16 @@ apply :: Source -> [Source] -> Source
 apply con [] = con
 apply con args = App con args
 
+unit :: Source
+unit = typeCon "_#_Unit_#_" []
 
 arrow :: [Source] -> Source
 arrow (arg:[]) = arg
-arrow args = variadic "_Arr" args
+arrow args = variadic "_#Arr_#_" args
 
 tuple :: [Source] -> Source
 tuple (arg:[]) = arg
-tuple args = variadic "_Tuple" args
+tuple args = variadic "_#_Tuple_#_" args
 
 variadic :: Text -> [Source] -> Source
 variadic n ts =

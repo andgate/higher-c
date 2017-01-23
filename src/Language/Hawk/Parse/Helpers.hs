@@ -47,13 +47,13 @@ exprOpsTable =
   [ [(holey "if_then_else_", RightAssoc)]
   , [(holey "_+_", LeftAssoc), (holey "_-_", LeftAssoc)]
   , [(holey "_*_", LeftAssoc), (holey "_/_", LeftAssoc)]
-  , [(holey "(_)", NonAssoc), (holey"_$_", RightAssoc)]
+  , [(holey "_$_", RightAssoc)]
   ]
   
 typeOpsTable :: [[(Holey (Prod r L.Token L.Token L.Token), Associativity, Holey L.Token -> [Ty.Source] -> Ty.Source)]]
 typeOpsTable =
-  [ [(holey "->", RightAssoc, typArrow)]
-  , [(holey "(_)", NonAssoc, typParens), (holey "_$_", RightAssoc, typDollar)]
+  [ [(holey "_->_", RightAssoc, typArrow)]
+  , [(holey "_$_", RightAssoc, typDollar)]
   ]
 
   
@@ -79,7 +79,7 @@ rsvp text =
         
 parens :: Prod r e L.Token a -> Prod r e L.Token a
 parens p =
-  op "(" *> p <* op ")"
+  rsvp "(" *> p <* rsvp ")"
 
 sep :: Prod r e L.Token b -> Prod r e L.Token a -> Prod r e L.Token [a]
 sep s p =

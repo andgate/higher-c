@@ -42,23 +42,9 @@ drive car :: Car -> IO () :=
 doubleSum x y
  :: I32 -> I32 -> I32
  := 
-  sum : I32 ^= add_i32 x y
+  sum :: I32 ^= add_i32 x y
   sum = mul_i32 sum 2
   return sum
-    
-
-_*+_
- :: I32 -> I32 -> I32
- := doubleSum
-
-// Macro aka compile-time meta-expression
-// The .= op is used to declare macros.
-// Macros are evaluated at compile time,
-// and are allowed to modify the source ast.
-// Macros do not have types, and are expected to return some sort of syntax
-//aFoo stx .=
-//  # "I am a foo"
-  
 
 
 // Main function and default entry point of all programs.

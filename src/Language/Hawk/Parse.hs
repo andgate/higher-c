@@ -10,7 +10,8 @@
 -- is actually a pipe between the lexer and the parser,
 -- that filters the token stream and outputs layout tokens
 -- when necessary.
--- 
+--
+{-# LANGUAGE StandaloneDeriving #-}
 module Language.Hawk.Parse where
 
 import Control.Monad.Trans.Class  (lift)
@@ -32,7 +33,7 @@ import qualified Pipes.Lift  as Pipes
 import qualified Text.Earley as E
 
 -- -----------------------------------------------------------------------------
--- Parsing functions  
+-- Parsing functions
 
 program :: Package.Name -> Text -> IO M.Source
 program pkgName txt = do
@@ -42,12 +43,16 @@ program pkgName txt = do
       
   print toks
             
-  let (parses, E.Report _ needed found) =
+  let (parses, report@(E.Report _ needed found)) =
           E.fullParses (E.parser $ G.grammar pkgName) toks
+  
+        
+  mapM_ print parses
   
   case parses of
       parse:[] -> return parse
-      _      -> error "Parsing failed"
+      _        -> error $ "Parsing failed.\n" ++ show report
+
 
 parseTest :: Text -> IO ()
 parseTest txt =

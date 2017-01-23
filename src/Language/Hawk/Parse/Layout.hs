@@ -17,7 +17,7 @@ data Layout =
   deriving (Eq, Ord, Show)
 
 defLay :: Layout
-defLay = Block 0
+defLay = Block 1
 
 type LayoutState = State [Layout]
 

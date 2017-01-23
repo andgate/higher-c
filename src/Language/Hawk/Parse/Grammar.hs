@@ -144,16 +144,20 @@ grammar pkgName = mdo
     
     typesig <- rule $ rsvp "::" *> typ
     
-    typ <- mixfixExpressionSeparate typeOpsTable typApp
+    typ <- mixfixExpressionSeparate typeOpsTable typ'
+    
+    typ' <- rule $ parens typApp <|> typApp
     
     typApp <- rule $ 
       Ty.apply <$> typVal <*> many typVal
     
-    typVal <- rule $ tyTuple <|> typCon
+    typVal <- rule $ tyTuple <|> typCon <|> typUnit
       
-    tyTuple <- rule $ Ty.tuple <$> (parens $ sep (op ",") typApp)
+    tyTuple <- rule $ Ty.tuple <$> (parens $ sep (rsvp ",") typApp)
         
     typCon <- rule $ Ty.Con <$> conName
+    
+    typUnit <- rule $ rsvp "(" *> rsvp ")" *> pure Ty.unit
 
 -- -----------------------------------------------------------------------------
 -- Type Alias Rules
