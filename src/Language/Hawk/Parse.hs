@@ -61,6 +61,10 @@ parse pkgName typOps exprOps txt = do
       ps        -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)
 
 
+mangledParse :: Text -> IO M.Source
+mangledParse txt =
+  parse Pkg.dummyName defTypeOps defExprOps txt
+
 -- -----------------------------------------------------------------------------
 -- Test Parser
 parseTest :: Text -> IO ()

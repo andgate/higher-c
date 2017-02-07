@@ -43,13 +43,15 @@ MFnItem
     name Text
     opInfo ByteString
     params [MBindingId]
-    typesig ByteString Maybe
+    typesig ByteString Maybe -- This field may not get added until type-inference
+    body ByteString Maybe -- This field may not be set until the expressions are demangled
     deriving Show
     
 MVarItem
     modId MModuleId
     bindingId MBindingId
     typesig ByteString Maybe
+    body ByteString Maybe
     deriving Show
     
 MRecItem
@@ -73,7 +75,7 @@ MAliasItem
 
 
 store :: M.Source -> Text -> IO ()
-store (M.Module n its) src = runSqlite ":memory:" $ do
+store (M.Module n its) src = runSqlite "hk.db" $ do
   runMigration migrateAll
   modId <- insert $ MModule n src (I.getDeps its) []
   mapM_ (storeItem modId) its
@@ -88,29 +90,38 @@ store (M.Module n its) src = runSqlite ":memory:" $ do
         I.Alias _ a -> storeAlias modId a
         
       
-    storeBinding (B.Binding m (N.Name _ n)) =
-      insert $ MBinding n (B.isRef m) (B.isMut m)
+    mkBinding (B.Binding m (N.Name _ n)) = 
+      MBinding n (B.isRef m) (B.isMut m)
+      
+    storeBinding = 
+      insert . mkBinding
         
     storeFn modId (F.Function oi (N.Name _ n) args t b) = do
-      let tdat = toStrict $ encode t
       let oidat = toStrict $ encode oi
-      argIds <- mapM storeBinding args
-      insert_ $ MFnItem modId n oidat argIds (Just tdat)
+          tdat  = toStrict $ encode t
+          bdat  = toStrict $ encode b
+          
+      argIds <- insertMany (map mkBinding args)
+      insert_ $ MFnItem modId n oidat argIds (Just tdat) (Just bdat)
       
     storeVar modId (V.Variable n t b) = do
       let tdat = toStrict $ encode t
+          bdat = toStrict $ encode b
       bindingId <- storeBinding n
-      insert_ $ MVarItem modId bindingId (Just tdat)
+      insert_ $ MVarItem modId bindingId (Just tdat) (Just bdat)
     
     storeRec modId (R.Record (N.Name _ n) fs) = do
       recId <- insert $ MRecItem modId n []
-      fldIds <- mapM (storeRecField recId) fs
+      fldIds <- insertMany $ map (mkRecField recId) fs
       update recId [MRecItemFieldIds =. fldIds]
       
-    storeRecField recId (R.RecordField (N.Name _ n) t) = do
+    mkRecField recId (R.RecordField (N.Name _ n) t) =
       let tdat = toStrict $ encode t
-      insert $ MRecField recId n tdat
+      in MRecField recId n tdat
+      
+    mkAlias modId (A.Alias (N.Name _ n) t) =
+      let tdat = toStrict $ encode t
+      in MAliasItem modId n tdat
     
-    storeAlias modId (A.Alias (N.Name _ n) t) = do
-      let tdat = toStrict $ encode t
-      insert_ $ MAliasItem modId n tdat
+    storeAlias modId a =
+      insert_ $ mkAlias modId a
