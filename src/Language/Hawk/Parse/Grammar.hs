@@ -16,8 +16,6 @@ import qualified Language.Hawk.Syntax.Expression as E
 import qualified Language.Hawk.Syntax.Function as F
 import qualified Language.Hawk.Syntax.Item as I
 import qualified Language.Hawk.Syntax.Literal as Lit
-import qualified Language.Hawk.Syntax.MetaItem as MI
-import qualified Language.Hawk.Syntax.MetaModule as MM
 import qualified Language.Hawk.Syntax.Module as M
 import qualified Language.Hawk.Syntax.ModuleName as MN
 import qualified Language.Hawk.Syntax.Name as N
@@ -29,19 +27,15 @@ import qualified Language.Hawk.Syntax.Variable as V
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-grammar :: Bool       -- ^ Parse as meta grammar?
-        -> Pkg.Name
+grammar :: Pkg.Name
         -> TypeOpTable
         -> ExprOpTable
-        -> Grammar r (Prod r L.Token L.Token (Either MM.Source M.Source))
-grammar isMeta pkgName typOps exprOps = mdo
+        -> Grammar r (Prod r L.Token L.Token M.Source)
+grammar pkgName typOps exprOps = mdo
 
 -- -----------------------------------------------------------------------------
 -- Module Rules
-    modl <- rule $ Right . M.Module "" <$> items <* eof
-
-    metamodl <- rule $ Left . MM.MetaModule <$> metaItems <* eof
-      
+    modl <- rule $ M.Module "" <$> items <* eof
 
 -- -----------------------------------------------------------------------------
 -- Module Name Rules
@@ -79,39 +73,13 @@ grammar isMeta pkgName typOps exprOps = mdo
     varItem <- rule $
       I.varItem <$> var
 
-
--- -----------------------------------------------------------------------------
--- Meta Item Rules
-    metaItems <- rule $
-      linefolds metaItem
-    
-    metaItem <- rule $ 
-          impMItem
-      <|> aliasMItem
-      <|> recMItem
-      <|> fnMItem
-      <|> varMItem
-    
-    impMItem <- rule $
-      MI.Import <$> (op "->" *> modName')
-       
-    aliasMItem <- rule $
-      MI.Alias <$> typAlias
-    
-    recMItem <- rule $
-      MI.Record <$> record
-    
-    fnMItem <- rule $ 
-      MI.Function <$> (functionInfo <* rsvp ":=" <* stmtblock)
-    
-    varMItem <- rule $
-      MI.Variable <$> (varInfo <* rsvp "^=" <* expr)
-
 -- -----------------------------------------------------------------------------
 -- Name rules
     varName <- rule $ varId
     
     conName <- rule $ conId
+    
+    opName <- rule $ opId
     
     name <- rule $ varName <|> conName
     
@@ -191,18 +159,21 @@ grammar isMeta pkgName typOps exprOps = mdo
 -- -----------------------------------------------------------------------------
 -- Function Rules
     function <- rule $
-        F.Function <$> (functionInfo <* rsvp ":=") <*> stmtblock
+        F.Function <$> opInfo0 <*> (varName <|> parens opName) <*> many binding <*> typesig0 <*> functionBody
+    
+    opInfo0 <- rule $
+        opInfo <|> pure F.defOpInfo
+    
+    opInfo <- rule $
+        parens (F.OpInfo <$> tInteger <*> (F.assocFromName <$> varId))
         
-    functionInfo <- rule $
-        F.FunctionInfo <$> varName <*> many binding <*> typesig0
+    functionBody <- rule $
+        rsvp ":=" *> stmtblock
    
 -- -----------------------------------------------------------------------------
 -- Variables Rules   
     var <- rule $
-      V.Variable <$> (varInfo <* rsvp "^=") <*> expr
-    
-    varInfo <- rule $
-      V.VariableInfo <$> binding <*> typesig0
+      V.Variable <$> binding <*> typesig0 <*> (rsvp "^=" *> expr)
 
 
 -- -----------------------------------------------------------------------------
@@ -263,6 +234,5 @@ grammar isMeta pkgName typOps exprOps = mdo
     litExpr <- rule $ E.Lit <$> lit
     nestedExpr <- rule $ parens expr
     
-    if isMeta
-      then return metamodl
-      else return modl
+    
+    return modl

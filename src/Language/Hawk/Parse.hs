@@ -31,7 +31,6 @@ import qualified Language.Hawk.Compile.Package as Pkg
 import qualified Language.Hawk.Parse.Layout as LO
 import qualified Language.Hawk.Parse.Lexer as L
 import qualified Language.Hawk.Parse.Grammar as G
-import qualified Language.Hawk.Syntax.MetaModule as MM
 import qualified Language.Hawk.Syntax.Module as M
 import qualified Pipes.Prelude  as Pipes
 import qualified Pipes.Lift  as Pipes
@@ -39,42 +38,14 @@ import qualified Text.Earley as E
 import qualified Text.Earley.Mixfix as E
 
 
-
--- -----------------------------------------------------------------------------
--- Parsing ---------------------------------------------------------------------
--- -----------------------------------------------------------------------------
-
--- -----------------------------------------------------------------------------
--- Meta Syntax Parser
-parseMeta :: Pkg.Name
-          -> TypeOpTable
-          -> ExprOpTable
-          -> Text
-          -> IO MM.Source
-parseMeta pkgName typOps exprOps txt =
-  fromLeft <$> parse' True pkgName typOps exprOps txt
-  
-  
--- -----------------------------------------------------------------------------
--- Syntax Parser
-parse :: Pkg.Name
-      -> TypeOpTable
-      -> ExprOpTable
-      -> Text
-      -> IO M.Source
-parse pkgName typOps exprOps txt =
-  fromRight <$> parse' False pkgName typOps exprOps txt 
-
-
 -- -----------------------------------------------------------------------------
 -- Parser
-parse' :: Bool       -- Parse as meta grammar?
-       -> Pkg.Name   -- Package name
+parse :: Pkg.Name   -- Package name
        -> TypeOpTable  -- type symbol table
        -> ExprOpTable    -- var symbol table
        -> Text -- Source input
-       -> IO (Either MM.Source M.Source)
-parse' isMeta pkgName typOps exprOps txt = do
+       -> IO M.Source
+parse pkgName typOps exprOps txt = do
   let lexModl' = Pipes.evalStateP L.defState (L.lexModl txt)
       layout' = Pipes.evalStateP LO.defState LO.layout
       (toks, ()) = runIdentity $ Pipes.toListM' $ lexModl' >-> layout'
@@ -82,22 +53,16 @@ parse' isMeta pkgName typOps exprOps txt = do
   print toks
             
   let (parses, r@(Report _ needed found)) =
-          E.fullParses (E.parser $ G.grammar isMeta pkgName typOps exprOps) toks
+          E.fullParses (E.parser $ G.grammar pkgName typOps exprOps) toks
   
   case parses of
       []       -> error $ "No parses found.\n" ++ show r
       p:[]      -> return p
-      ps        -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map (either pretty pretty) ps)
+      ps        -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)
 
 
 -- -----------------------------------------------------------------------------
 -- Test Parser
 parseTest :: Text -> IO ()
 parseTest txt =
-  parseMeta Pkg.dummyName defTypeOps defExprOps txt >>= print . pretty
-  
-parseTestMeta :: Text -> IO ()
-parseTestMeta txt =
-  parseMeta Pkg.dummyName defTypeOps defExprOps txt >>= print . pretty
-  
-  
+  parse Pkg.dummyName defTypeOps defExprOps txt >>= print . pretty

@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Hawk.GrammarSpec where
 
-import Language.Hawk.Parse (parseTest, parseTestMeta)
+import Language.Hawk.Parse (parseTest)
 import SpecHelper
 
 import qualified Data.ByteString as BS
@@ -22,7 +22,7 @@ spec = do
     context "Test Files" $ do
       it "Can parse example/main.hk" $ do
           str <- Text.readFile "example/main.hk"
-          parseTestMeta str
+          parseTest str
 
 main :: IO ()
 main = hspec spec

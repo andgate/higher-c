@@ -1,5 +1,6 @@
 module Language.Hawk.Syntax.Literal where
 
+import Data.Binary
 import Data.Data
 import Data.Typeable
 
@@ -42,3 +43,23 @@ instance PP.Pretty Literal where
       
       Boolean v ->
         PP.string "Literal Bool:" <+> PP.string (show v)
+        
+        
+instance Binary Literal where
+  get = do
+    n <- getWord8
+    case n of
+      1 -> IntNum <$> get
+      2 -> FloatNum <$> get
+      3 -> Chr <$> get
+      4 -> Str <$> get
+      5 -> Boolean <$> get
+      _ -> error "unexpected input"
+
+  put literal =
+    case literal of
+      IntNum v    -> putWord8 1 >> put v
+      FloatNum v  -> putWord8 2 >> put v
+      Chr v       -> putWord8 3 >> put v
+      Str v       -> putWord8 4 >> put v
+      Boolean v   -> putWord8 5 >> put v

@@ -3,78 +3,132 @@ module Language.Hawk.Syntax.Function where
 import Data.Binary
 import Data.Data
 import Data.Typeable
-
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
-import qualified Language.Hawk.Syntax.Binding as B
-import qualified Language.Hawk.Syntax.Expression as Expr
-import qualified Language.Hawk.Syntax.Name as Name
-import qualified Language.Hawk.Syntax.Statement as Stmt
-import qualified Language.Hawk.Syntax.Type as Type
+import qualified Data.Text.Lazy                   as Text
+import qualified Text.PrettyPrint.ANSI.Leijen     as PP
+import qualified Language.Hawk.Syntax.Binding     as B
+import qualified Language.Hawk.Syntax.Expression  as Expr
+import qualified Language.Hawk.Syntax.Name        as N
+import qualified Language.Hawk.Syntax.Statement   as Stmt
+import qualified Language.Hawk.Syntax.Type        as Type
 
 
 type Source
-  = Function Name.Source Expr.Source (Maybe Type.Source)
-  
-type SourceInfo
-  = FunctionInfo Name.Source (Maybe Type.Source)
+  = Function N.Source Expr.Source (Maybe Type.Source)
 
 type Valid
-  = Function Name.Valid Expr.Valid (Maybe Type.Valid)
+  = Function N.Valid Expr.Valid (Maybe Type.Valid)
 
 type Canonical
-  = Function Name.Valid Expr.Canonical (Maybe Type.Canonical)
+  = Function N.Valid Expr.Canonical (Maybe Type.Canonical)
 
 type Typed
-  = Function Name.Typed Expr.Typed Type.Typed
+  = Function N.Typed Expr.Typed Type.Typed
 
 
 data Function n e t
   = Function 
-    { fn_info :: FunctionInfo n t
-    , fn_body :: Stmt.Block n e t
-    }
-  deriving (Eq, Show, Data, Typeable)
- 
-  
-data FunctionInfo n t
-  = FunctionInfo 
-    { fn_name :: n
+    { fn_op   :: OpInfo
+    , fn_name :: n
     , fn_args :: [B.Binding n]
     , fn_type :: t
+    , fn_body :: Stmt.Block n e t
     }
-  deriving (Eq, Show, Data, Typeable)
+  deriving (Eq, Show, Ord, Data, Typeable)
+
+ 
+
+data OpInfo
+  = OpInfo
+    { prec :: Integer
+    , assoc :: Assoc
+    }
+  deriving (Eq, Show, Ord, Data, Typeable)
   
-  
-  
+data Assoc = AssocL | AssocR | AssocN
+  deriving (Eq, Show, Ord, Data, Typeable)
+
+
+defOpInfo :: OpInfo
+defOpInfo = OpInfo 5 AssocR
+
+assocToString :: Assoc -> String
+assocToString a =
+  case a of
+      AssocL -> "l"
+      AssocR -> "r"
+      AssocN -> "n"
+      
+
+assocFromName :: N.Name -> Assoc
+assocFromName (N.Name _ t) =
+  assocFromString $ Text.unpack t
+      
+assocFromString :: String -> Assoc
+assocFromString t =
+  case t of
+      "l" -> AssocL
+      "r" -> AssocR
+      "n" -> AssocN
+      
+      
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Function n e t) where
-  pretty (Function info body) =
+  pretty (Function name opinf args tipe body) =
     PP.text "Function:"
     PP.<$>
     PP.indent 2
-      ( PP.text "info:" <+> PP.pretty info
+      ( PP.text "name:" <+> PP.pretty name
+        PP.<$>
+        PP.text "op info:" <+> PP.pretty opinf
+        PP.<$>
+        PP.text "args:" <+> PP.pretty args
+        PP.<$>
+        PP.text "type:" <+> PP.pretty tipe
         PP.<$>
         PP.text "body:" <+> PP.pretty body
       )
       
       
-instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (FunctionInfo n t) where
-  pretty (FunctionInfo name args tipe) =
-    PP.text "FunctionInfo:"
+instance PP.Pretty OpInfo where
+  pretty (OpInfo p a) =
+    PP.text "OpInfo:"
     PP.<$>
     PP.indent 2
-      ( PP.text "name:" <+> PP.pretty name
+      ( PP.text "precedence:" <+> PP.pretty p
         PP.<$>
-        PP.text "args:" <+> PP.pretty args
-        PP.<$>
-        PP.text "type:" <+> PP.pretty tipe
+        PP.text "associativity:" <+> PP.pretty (assocToString a)
       )
   
   
-instance (Binary n, Binary t) => Binary (FunctionInfo n t) where
+instance (Binary n, Binary e, Binary t) => Binary (Function n e t) where
   get =
-      FunctionInfo <$> get <*> get <*> get
+      Function <$> get <*> get <*> get <*> get <*> get
       
-  put (FunctionInfo n as t) =
-      put n >> put as >> put t
+  put (Function n oi as t b) =
+      put n >> put oi >> put as >> put t >> put b
+      
+      
+instance Binary OpInfo where
+  get =
+      OpInfo <$> get <*> get
+      
+  put (OpInfo p a) =
+      put p >> put a
+      
+      
+instance Binary Assoc where
+  get = do
+      v <- getWord8
+      case v of
+          1 -> return AssocL
+          2 -> return AssocR
+          3 -> return AssocN
+          _ -> error "Expected Assoc, unexpected binary value."
+      
+  put a =
+      case a of
+          AssocL -> putWord8 1
+          AssocR -> putWord8 2
+          AssocN -> putWord8 3
+        

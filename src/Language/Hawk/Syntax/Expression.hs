@@ -1,5 +1,6 @@
 module Language.Hawk.Syntax.Expression where
 
+import Data.Binary
 import Data.Data
 import Data.Typeable
 
@@ -90,6 +91,33 @@ instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (Expr n t) where
         PP.<$>
         PP.string "type:" <+> PP.pretty t
       )
+      
+
+instance (Binary n, Binary t) => Binary (Expr n t) where
+  get = do
+    n <- getWord8
+    case n of
+      1 -> Lit <$> get
+      2 -> Var <$> get
+      3 -> Con <$> get
+      4 -> App <$> get <*> get
+      5 -> Let <$> get <*> get <*> get
+      6 -> If <$> get <*> get
+      7 -> Access <$> get <*> get
+      8 -> RefAccess <$> get <*> get
+      9 -> Cast <$> get <*> get
+      
+  put e =
+    case e of
+      Lit v           -> putWord8 1 >> put v
+      Var n           -> putWord8 2 >> put n
+      Con n           -> putWord8 3 >> put n
+      App f a         -> putWord8 4 >> put f >> put a
+      Let n e1 e2     -> putWord8 5 >> put n >> put e1 >> put e2
+      If ps d         -> putWord8 6 >> put ps >> put d
+      Access e1 e2    -> putWord8 7 >> put e1 >> put e2
+      RefAccess e1 e2 -> putWord8 8 >> put e1 >> put e2
+      Cast e1 t       -> putWord8 9 >> put e1 >> put t
               
   
           

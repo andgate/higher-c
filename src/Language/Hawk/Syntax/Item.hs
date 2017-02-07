@@ -1,85 +1,88 @@
 module Language.Hawk.Syntax.Item where
 
-import Data.Binary
 import Data.Data
+import Data.Maybe
+import Data.Text.Lazy (Text)
 import Data.Typeable
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
 import qualified Data.Text.Lazy as Text
-import qualified Language.Hawk.Syntax.Alias as Alias
-import qualified Language.Hawk.Syntax.Expression as Expr
-import qualified Language.Hawk.Syntax.Function as Fn
-import qualified Language.Hawk.Syntax.ModuleName as ModuleName
-import qualified Language.Hawk.Syntax.Name as Name
-import qualified Language.Hawk.Syntax.Record as Record
-import qualified Language.Hawk.Syntax.Type as Type
-import qualified Language.Hawk.Syntax.Variable as Var
+import qualified Language.Hawk.Syntax.Alias as A
+import qualified Language.Hawk.Syntax.Expression as E
+import qualified Language.Hawk.Syntax.Function as F
+import qualified Language.Hawk.Syntax.ModuleName as MN
+import qualified Language.Hawk.Syntax.Name as N
+import qualified Language.Hawk.Syntax.Record as R
+import qualified Language.Hawk.Syntax.Type as T
+import qualified Language.Hawk.Syntax.Variable as V
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
   
 -- Items Structure
   
 type Source = 
-  Item Name.Source Expr.Source (Maybe Type.Source)
+  Item N.Source E.Source (Maybe T.Source)
  
 type Valid = 
-  Item Name.Valid Expr.Valid (Maybe Type.Valid)
+  Item N.Valid E.Valid (Maybe T.Valid)
   
 type Canonical =
-  Item Name.Canonical Expr.Canonical (Maybe Type.Canonical)
+  Item N.Canonical E.Canonical (Maybe T.Canonical)
   
 type Typed =
-  Item Name.Typed Expr.Typed Type.Typed
+  Item N.Typed E.Typed T.Typed
    
 data Item n e t
-  = ImportItem Visibility (ModuleName.Raw)
-  | FunctionItem Visibility (Fn.Function n e t)
-  | VarItem Visibility (Var.Variable n e t)
-  | RecordItem Visibility (Record.Record n)
-  | AliasItem Visibility (Alias.Alias n)
-  deriving (Eq, Show, Data, Typeable)
+  = Import Visibility (MN.Raw)
+  | Function Visibility (F.Function n e t)
+  | Variable Visibility (V.Variable n e t)
+  | Record Visibility (R.Record n)
+  | Alias Visibility (A.Alias n)
+  deriving (Eq, Show, Ord, Data, Typeable)
   
   
 data Visibility
   = Public
   | Private
-  deriving (Eq, Show, Data, Typeable)
+  deriving (Eq, Show, Ord, Data, Typeable)
 
-impItem :: ModuleName.Raw -> Item n e t
-impItem = ImportItem Public
+impItem :: MN.Raw -> Item n e t
+impItem = Import Public
 
-fnItem :: Fn.Function n e t -> Item n e t
-fnItem = FunctionItem Public
+fnItem :: F.Function n e t -> Item n e t
+fnItem = Function Public
 
-varItem :: Var.Variable n e t -> Item n e t
-varItem = VarItem Public
+varItem :: V.Variable n e t -> Item n e t
+varItem = Variable Public
 
-recItem :: Record.Record n -> Item n e t
-recItem = RecordItem Public
+recItem :: R.Record n -> Item n e t
+recItem = Record Public
 
-aliasItem :: Alias.Alias n -> Item n e t
-aliasItem = AliasItem Public
+aliasItem :: A.Alias n -> Item n e t
+aliasItem = Alias Public
 
 
-findImports :: [Source] -> [Source]
-findImports = filter isImport
+getDeps :: [Item n e t] -> [Text]   
+getDeps = mapMaybe getDep
+    
+getDep :: Item n e t -> Maybe Text
+getDep (Import _ n) = q n
+  where q = Just . Text.pack . MN.toStringRaw
+getDep _ = Nothing
 
-isImport :: Item n e t -> Bool
-isImport (ImportItem _ _) = True
-isImport _ = False
   
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
-    pretty (ImportItem v n) =
-      PP.text "ImportItem:"
+    pretty (Import v n) =
+      PP.text "Import:"
       PP.<$>
       PP.indent 2
         ( PP.text "visibility:" <+> PP.pretty v
           PP.<$>
-          PP.text "name:" <+> PP.pretty (ModuleName.toStringRaw n)
+          PP.text "name:" <+> PP.pretty (MN.toStringRaw n)
         )
         
-    pretty (FunctionItem v fn) =
-      PP.text "FunctionItem:"
+    pretty (Function v fn) =
+      PP.text "Function:"
       PP.<$>
       PP.indent 2
         ( PP.text "visibility:" <+> PP.pretty v
@@ -87,8 +90,8 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
           PP.text "function:" <+> PP.pretty fn
         )
         
-    pretty (VarItem v var) =
-      PP.text "VarItem:"
+    pretty (Variable v var) =
+      PP.text "Variable:"
       PP.<$>
       PP.indent 2
         ( PP.text "visibility:" <+> PP.pretty v
@@ -96,8 +99,8 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
           PP.text "var:" <+> PP.pretty var
         )
         
-    pretty (RecordItem v r) =
-      PP.text "RecordItem:"
+    pretty (Record v r) =
+      PP.text "Record:"
       PP.<$>
       PP.indent 2
         ( PP.text "visibility:" <+> PP.pretty v
@@ -105,8 +108,8 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
           PP.text "record:" <+> PP.pretty r
         )
       
-    pretty (AliasItem v a) =
-      PP.text "AliasItem:"
+    pretty (Alias v a) =
+      PP.text "Alias:"
       PP.<$>
       PP.indent 2
         ( PP.text "visibility:" <+> PP.pretty v

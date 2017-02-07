@@ -1,7 +1,6 @@
-resolver: lts-5.17
+resolver: lts-7.18
 packages:
 - '.'
 extra-deps:
-- earley-0.11.0.1
-- llvm-general-3.5.1.2
-- llvm-general-pure-3.5.1.0
+- Earley-0.11.0.1
+- llvm-tf-3.1.0.1

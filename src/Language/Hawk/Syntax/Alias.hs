@@ -25,7 +25,7 @@ type Typed =
 
 data Alias n
   = Alias n (Type.Type n)
-  deriving (Eq, Show, Data, Typeable)
+  deriving (Eq, Show, Ord, Data, Typeable)
   
 
 instance (PP.Pretty n) => PP.Pretty (Alias n) where

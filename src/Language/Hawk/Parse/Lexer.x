@@ -23,7 +23,8 @@ import qualified Filesystem.Path.CurrentOS        as Filesystem
 
 $digit = 0-9
 
-$opchar = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~\_]
+$opchar = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~]
+$opBodychar = [$opchar\_]
 
 $fstLow       = [a-z]
 $fstCap       = [A-Z]
@@ -60,7 +61,7 @@ hawk :-
   
   $fstLow $idchar*                { \text -> yield (TokenVarId text) }
   $fstCap $idchar*                { \text -> yield (TokenConId text) }
-  $opchar+                        { \text -> yield (TokenOpId text) }
+  $opchar $opBodychar*            { \text -> yield (TokenOpId text) }
   
   $digit+                         { \text -> yield (TokenInteger $ toInt text) }
 }

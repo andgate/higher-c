@@ -9,10 +9,10 @@ import Data.Text.Lazy (Text)
 import Data.Typeable
 import qualified Data.Maybe as Maybe
 
-import qualified Data.Text.Lazy as Text
-import qualified Language.Hawk.Syntax.ModuleName as ModuleName
-import qualified Language.Hawk.Report.Region as R
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
+import qualified Data.Text.Lazy                   as Text
+import qualified Language.Hawk.Syntax.ModuleName  as ModuleName
+import qualified Language.Hawk.Report.Region      as R
+import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 
 -- -----------------------------------------------------------------------------
 -- | Name
@@ -46,6 +46,11 @@ data Home
     
 -- -----------------------------------------------------------------------------
 -- Name helpers
+
+
+exLocal :: Name -> Text
+exLocal (Name _ t) = t
+
 
 local :: R.Position -> Text -> Name
 local p n =

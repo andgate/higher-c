@@ -20,12 +20,12 @@ source-repository head
 library
   default-language:     Haskell2010
 
-  build-depends:        aeson
+  build-depends:          aeson
                         , ansi-wl-pprint
                         , array
                         , base
                         , binary
-                        , bound
+                       -- , bound
                         , bytestring
                         , containers
                         , convertible
@@ -35,21 +35,24 @@ library
                         , filepath
                         , indents
                         , lens
-                        , llvm-general         >= 3.5.0.0
-                        , llvm-general-pure    >= 3.5.0
-                        , microlens            >= 0.2.0.0  && < 0.5
-                        , microlens-mtl        >= 0.1.3.1  && < 0.2
+                        , microlens             >= 0.2.0.0  && < 0.5
+                        , microlens-mtl         >= 0.1.3.1  && < 0.2
+                        , monad-control
+                        , monad-logger
                         , mtl
+                        , persistent 
+                        , persistent-sqlite
+                        , persistent-template
                         , pipes
                         , safe
                         , syb
-                        , system-filepath      >= 0.3.1    && < 0.5
-                        , system-fileio        >= 0.2.1    && < 0.4
+                        , system-filepath       >= 0.3.1    && < 0.5
+                        , system-fileio         >= 0.2.1    && < 0.4
                         , text
                         , text-format
                         , transformers
                         , uniplate
-                        , utf8-string          >= 0.5
+                        , utf8-string           >= 0.5
                         , yaml
 
   ghc-options:          -Wall
@@ -58,39 +61,23 @@ library
                         -fno-warn-unused-imports
                         -fno-warn-type-defaults
                         -fno-warn-orphans
+                        -ddump-splices
 
   hs-source-dirs:       src
 
-  exposed-modules:      Language.Hawk.Syntax.Alias
-                        Language.Hawk.Syntax.Class
-                        Language.Hawk.Syntax.Binding
-                        Language.Hawk.Syntax.Expression
-                        Language.Hawk.Syntax.Function
-                        Language.Hawk.Syntax.Instance
-                        Language.Hawk.Syntax.Item
-                        Language.Hawk.Syntax.Literal
-                        Language.Hawk.Syntax.MetaItem
-                        Language.Hawk.Syntax.MetaModule
-                        Language.Hawk.Syntax.Module
-                        Language.Hawk.Syntax.ModuleName
-                        Language.Hawk.Syntax.Name
-                        Language.Hawk.Syntax.Variable
-                        Language.Hawk.Syntax.Record
-                        Language.Hawk.Syntax.Statement
-                        Language.Hawk.Syntax.Type
-                        
-                        
-                        Language.Hawk.Compile
+  exposed-modules:      Language.Hawk.Compile
                         Language.Hawk.Compile.Package
                         Language.Hawk.Compile.Compiler.Monad
                         Language.Hawk.Compile.Compiler.Type
                         Language.Hawk.Compile.Compiler.Version
-              
+                        
+                        -- Results depend on bag, but maybe that will change soon
                         Language.Hawk.Data.Bag
                         Language.Hawk.Data.Emittable
-                        Language.Hawk.Data.Node
-                        Language.Hawk.Data.Span
                         
+                        Language.Hawk.Docs.AST
+                        
+                        Language.Hawk.Metadata
                         
                         Language.Hawk.Parse
                         Language.Hawk.Parse.Layout
@@ -108,8 +95,24 @@ library
                         Language.Hawk.Report.Result
                         Language.Hawk.Report.Warning
                         
-                        Language.Hawk.Target.LLVM.Codegen
-                        Language.Hawk.Target.LLVM.Emit
+                        Language.Hawk.Syntax.Alias
+                        Language.Hawk.Syntax.Class
+                        Language.Hawk.Syntax.Binding
+                        Language.Hawk.Syntax.Expression
+                        Language.Hawk.Syntax.Function
+                        Language.Hawk.Syntax.Instance
+                        Language.Hawk.Syntax.Item
+                        Language.Hawk.Syntax.Literal
+                        Language.Hawk.Syntax.Module
+                        Language.Hawk.Syntax.ModuleName
+                        Language.Hawk.Syntax.Name
+                        Language.Hawk.Syntax.Variable
+                        Language.Hawk.Syntax.Record
+                        Language.Hawk.Syntax.Statement
+                        Language.Hawk.Syntax.Type
+                        
+                        --Language.Hawk.Target.LLVM.Codegen
+                        --Language.Hawk.Target.LLVM.Emit
                         
                         Language.Hawk.Validate
                         
@@ -162,6 +165,9 @@ test-suite spec
                         -with-rtsopts=-N
   
   default-language:     Haskell2010
+  
+  other-modules:        Hawk.GrammarSpec
+                        SpecHelper
   
 benchmark crit
   default-language:     Haskell2010

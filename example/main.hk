@@ -39,7 +39,7 @@ drive car :: Car -> IO () :=
   out ^= toString max_speed
   print out
 
-doubleSum x y
+(6r) doubleSum x y
  :: I32 -> I32 -> I32
  := 
   sum :: I32 ^= add_i32 x y

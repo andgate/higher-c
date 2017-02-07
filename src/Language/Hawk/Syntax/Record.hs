@@ -28,12 +28,12 @@ data Record n
     { name :: n
     , fields :: [RecordField n]
     }
-  deriving (Eq, Show, Data, Typeable)
+  deriving (Eq, Show, Ord, Data, Typeable)
 
 
 data RecordField n
   = RecordField n (Type.Type n)
-  deriving (Eq, Show, Data, Typeable)
+  deriving (Eq, Show, Ord, Data, Typeable)
   
   
 instance (PP.Pretty n) => PP.Pretty (Record n) where

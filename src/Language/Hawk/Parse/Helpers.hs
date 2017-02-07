@@ -112,13 +112,18 @@ modId = fmap unsafeExtract (satisfy p)
     unsafeExtract (L.Token (L.TokenConId v) _) = v
     
 
+opId :: Prod r e L.Token Name.Source
+opId = fmap unsafeExtract (satisfy p)
+  where
+    p (L.Token (L.TokenOpId _) _) = True
+    p _                           = False
+    unsafeExtract (L.Token (L.TokenOpId v) p) = Name.Name (Name.Local $ R.toPosition p) v
+
+
 op :: Text -> Prod r e L.Token L.Token
 op str = satisfy p
   where p (L.Token (L.TokenOpId str') _) = str == str' 
         p _ = False
-        
-op' :: Text -> Prod r e L.Token Text
-op' str = op str *> pure str
 
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Literal Tokens

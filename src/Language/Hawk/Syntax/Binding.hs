@@ -26,18 +26,27 @@ data Binding n
     { mode  :: Mode
     , label :: n
     }
-  deriving (Eq, Show, Data, Typeable)
+  deriving (Eq, Show, Ord, Data, Typeable)
   
 data Mode
   = ByRef Mutability
   | ByVal Mutability
-  deriving (Eq, Show, Data, Typeable)
+  deriving (Eq, Show, Ord, Data, Typeable)
   
 data Mutability
   = Mutable
   | Immutable
-  deriving (Eq, Show, Data, Typeable)
+  deriving (Eq, Show, Ord, Data, Typeable)
   
+  
+isRef :: Mode -> Bool
+isRef (ByRef _) = True
+isRef _ = False
+
+isMut :: Mode -> Bool
+isMut (ByRef Mutable) = True
+isMut (ByVal Mutable) = True
+isMut _ = False
   
 
 instance (PP.Pretty n) => PP.Pretty (Binding n) where

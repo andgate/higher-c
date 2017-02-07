@@ -1,5 +1,6 @@
 module Language.Hawk.Syntax.Statement where
 
+import Data.Binary
 import Data.Data
 import Data.Typeable
 
@@ -53,7 +54,7 @@ data Statement n e t
   | Return e
   | If [(e, Block n e t)] (Block n e t)
   | While e (Block n e t)
-  deriving (Eq, Show, Data, Typeable)
+  deriving (Eq, Show, Ord, Data, Typeable)
   
   
 
@@ -92,3 +93,26 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Statement n e t) 
         ( PP.pretty e )        
   
   
+instance (Binary n, Binary e, Binary t) => Binary (Statement n e t) where
+    get = do
+        n <- getWord8
+        case n of
+          1 -> Do <$> get
+          2 -> Call <$> get
+          3 -> Let <$> get
+          4 -> Assign <$> get <*> get <*> get
+          5 -> return Break
+          6 -> Return <$> get
+          7 -> If <$> get <*> get
+          8 -> While <$> get <*> get
+      
+    put e =
+        case e of
+          Do blk        -> putWord8 1 >> put blk
+          Call e        -> putWord8 2 >> put e
+          Let v         -> putWord8 3 >> put v
+          Assign n t e  -> putWord8 4 >> put n >> put t >> put e
+          Break         -> putWord8 5
+          Return e      -> putWord8 6 >> put e
+          If ps e       -> putWord8 7 >> put ps >> put e
+          While e blk   -> putWord8 8 >> put e >> put blk

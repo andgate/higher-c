@@ -29,7 +29,7 @@ type Typed
 data Type n
   = App (Type n) [Type n]
   | Con n
-  deriving (Eq, Show, Data, Typeable)
+  deriving (Eq, Show, Ord, Data, Typeable)
 -- Type variables will require at least monomorphization,
 -- and won't be possible for a while.
 --  | Var TVar a
