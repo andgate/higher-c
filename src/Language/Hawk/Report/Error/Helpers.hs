@@ -15,7 +15,7 @@ import qualified Text.EditDistance as Dist
 import Text.PrettyPrint.ANSI.Leijen
   ( Doc, (<>), dullyellow, fillSep, hardline, text, vcat )
   
-import qualified Language.Hawk.Compile.Compiler.Version as Compiler
+import qualified Language.Hawk.Compile.Version as Compiler
 import qualified Language.Hawk.Compile.Package as Pkg
 
 

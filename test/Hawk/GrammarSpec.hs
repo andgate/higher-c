@@ -11,7 +11,7 @@ import qualified Data.Text.Lazy.IO as Text
 import qualified Data.Yaml as YAML
 import qualified Data.Yaml.Pretty as YAML
 import qualified Language.Hawk.Compile.Package as Package
-import qualified Language.Hawk.Compile as Compile
+import qualified Language.Hawk.Compile as C
 import qualified Language.Hawk.Metadata as MD
 import qualified Language.Hawk.Parse.Helpers as P
 import qualified Language.Hawk.Parse.Grammar as P
@@ -22,15 +22,19 @@ spec = do
   describe "Parser" $ do
     context "Test Files" $ do
       it "Can parse example/main.hk" $ do
-          str <- Text.readFile "example/main.hk"
-          parseTest str
+        str <- Text.readFile "example/main.hk"
+        parseTest str
           
       it "Can store in db" $ do 
         src <- Text.readFile "example/main.hk" 
         m <- mangledParse src
         MD.store m src
-          
-          
+        
+      it "Can compile with state" $ do
+        let s = C.CompilerState "def" ["main.hk"] C.InitialPhase
+        C.compile s
+        
+
 
 main :: IO ()
 main = hspec spec

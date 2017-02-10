@@ -13,6 +13,7 @@ import Data.Text.Lazy (Text)
 import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
+import Language.Hawk.Compile.Monad
 
 import qualified Language.Hawk.Syntax.Alias as A
 import qualified Language.Hawk.Syntax.Binding as B
@@ -72,6 +73,47 @@ MAliasItem
     typesig ByteString
     deriving Show
 |]
+
+
+{-
+  This phase collects modules and stores them into a sqlite db on disk
+  for fast look-up and sharing with other projects.
+-}
+collect :: Compiler ()
+collect = do
+  collectGlobal
+  buildSymbolTables
+  collectExprs
+
+
+{-
+  Global collection consists of storing only the global information.
+  This phase will make symbol information available in the database.
+  This phase does not parse expressions, since it doesn't have access
+  to enough information to make a symbol table.
+-}
+collectGlobal :: Compiler ()
+collectGlobal = undefined
+
+{-
+  This is an intermediate step between global collection and expression collection.
+  Once the global collection occurs, symbol information like names and operator precedence
+  are then available in the database. This information can be used to generate
+  expressions in the correct form.
+  Symbol tables basically consist of a name and operator precedence information.
+  This information is queried for each module and stored into the db in the module
+  description.
+-}
+buildSymbolTables :: Compiler ()
+buildSymbolTables = undefined
+
+{-
+  Expression collection is run after symbol tables are generated.
+  These symbol tables are used to parse expressions in the
+  correct forms.  
+-}
+collectExprs :: Compiler ()
+collectExprs = undefined
 
 
 store :: M.Source -> Text -> IO ()

@@ -67,9 +67,9 @@ library
 
   exposed-modules:      Language.Hawk.Compile
                         Language.Hawk.Compile.Package
-                        Language.Hawk.Compile.Compiler.Monad
-                        Language.Hawk.Compile.Compiler.Type
-                        Language.Hawk.Compile.Compiler.Version
+                        Language.Hawk.Compile.Monad
+                        Language.Hawk.Compile.Type
+                        Language.Hawk.Compile.Version
                         
                         -- Results depend on bag, but maybe that will change soon
                         Language.Hawk.Data.Bag

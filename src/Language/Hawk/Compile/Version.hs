@@ -1,4 +1,4 @@
-module Language.Hawk.Compile.Compiler.Version (version) where
+module Language.Hawk.Compile.Version (version) where
 
 import qualified Data.Version as Version
 import qualified Paths_hawk as This

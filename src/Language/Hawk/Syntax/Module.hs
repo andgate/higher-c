@@ -16,7 +16,7 @@ import qualified Language.Hawk.Syntax.Type              as T
 import qualified Language.Hawk.Syntax.Name              as N
 import qualified Language.Hawk.Docs.AST                 as Docs
 import qualified Language.Hawk.Compile.Package          as Package
-import qualified Language.Hawk.Compile.Compiler.Version as Compiler
+import qualified Language.Hawk.Compile.Version          as C
 import qualified Text.PrettyPrint.ANSI.Leijen           as PP
 
 

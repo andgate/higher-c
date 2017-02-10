@@ -2,7 +2,7 @@ module Language.Hawk.Docs.AST where
 
 import qualified Data.Map as Map
 
-import qualified Language.Hawk.Compile.Compiler.Type as Type
+import qualified Language.Hawk.Compile.Type as Type
 
 
 data Docs t

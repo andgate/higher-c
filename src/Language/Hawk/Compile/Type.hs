@@ -1,4 +1,4 @@
-module Language.Hawk.Compile.Compiler.Type where
+module Language.Hawk.Compile.Type where
 
 
 data Type
