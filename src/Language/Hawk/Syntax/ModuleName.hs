@@ -4,18 +4,22 @@ module Language.Hawk.Syntax.ModuleName where
 import Data.Binary
 import Data.Data
 import Data.Text.Lazy (Text)
+import Data.Tree
 import Data.Typeable
 
 import qualified Data.Text.Lazy as Text
 import qualified Language.Hawk.Compile.Package as Package
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
-type Raw = [Text]
+
+type Name = Text
+
+data Path = Tree Name
   
 data Name
   = Name
     { _package  :: Package.Name
-    , _module   :: Raw
+    , _module   :: Text
     } deriving(Eq, Ord, Show, Data, Typeable)
     
     

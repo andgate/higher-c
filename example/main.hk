@@ -1,40 +1,22 @@
-
 /* Sample of a basic Hawk program.
    Hawk is similar in syntax to Haskell,
    but technically closer to C.
 */
 
-// Create a Car struct, with gas and a max speed
-Car :- 
-  gas :: I32
-  max_speed :: I32
-
-// Alias binding, set type Automobile as synonym for Car
-// Automobile = Car
-
-
-// Import the 'IO' module
+<- IO, car, drive, doubleSum
 -> IO
 
+// Record
+Car :-
+  gas       :: I32
+  max_speed :: I32
 
-// Variables are created using the "^=" operator.
-// Type is set using "::" followed by a type signature.
-// The preceding plus sign gives public access to var_a.
-// Every module item is public by default
+
+// Variables
 var_a :: I32 ^= 1
- 
-// Variables are mutable by default, but can be set to
-// immutable with a "!" operator on the name of the variable.
-// The preceding minus sign gives private access to var_b.
-var_b :: I32 ^= 2
 
 
-/* Function for driving car.
-   Functions are created using the ":=" operator.
-   Prints out the maxium speed of a given car.
-   Functions use a type signature similar to haskell as well.
-   However, type signatures in Hawk come after function name and args.
-  */
+// Functions
 drive car :: Car -> IO () :=
   out ^= toString max_speed
   print out

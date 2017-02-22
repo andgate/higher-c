@@ -4,6 +4,7 @@ module Language.Hawk.Metadata where
 
 import Data.Binary (encode, decode)
 
+import Control.Monad (forM_)
 import Control.Monad.IO.Class  (liftIO)
 import Control.Monad.Trans.Control
 import Data.ByteString (ByteString)
@@ -15,6 +16,10 @@ import Database.Persist.Sqlite
 import Database.Persist.TH
 import Language.Hawk.Compile.Monad
 
+
+import qualified Data.Text.Lazy.IO as Text
+import qualified Control.Monad.Trans.State.Strict as St
+import qualified Language.Hawk.Parse as P
 import qualified Language.Hawk.Syntax.Alias as A
 import qualified Language.Hawk.Syntax.Binding as B
 import qualified Language.Hawk.Syntax.Function as F
@@ -32,6 +37,20 @@ MModule
     deps [Text]
     depIds [MModuleId] -- Generated after all modules are loaded
     deriving Show
+
+MTypeOp
+    op  MOpId
+    rec MRecItemId
+
+MVarOp
+    op  MOpId
+    fn  MFnItemId
+    
+MOp
+    src MModuleId
+    name Text
+    prec Int
+    assoc F.Assoc
     
 MBinding
     name Text
@@ -93,19 +112,12 @@ collect = do
   to enough information to make a symbol table.
 -}
 collectGlobal :: Compiler ()
-collectGlobal = undefined
-
-{-
-  This is an intermediate step between global collection and expression collection.
-  Once the global collection occurs, symbol information like names and operator precedence
-  are then available in the database. This information can be used to generate
-  expressions in the correct form.
-  Symbol tables basically consist of a name and operator precedence information.
-  This information is queried for each module and stored into the db in the module
-  description.
--}
-buildSymbolTables :: Compiler ()
-buildSymbolTables = undefined
+collectGlobal = do
+  xs <- srcFiles <$> St.get
+  forM_ xs $ \x -> liftIO $ do
+      src <- Text.readFile x
+      m <- P.mangledParse src
+      store m src
 
 {-
   Expression collection is run after symbol tables are generated.
@@ -113,12 +125,16 @@ buildSymbolTables = undefined
   correct forms.  
 -}
 collectExprs :: Compiler ()
-collectExprs = undefined
+collectExprs = 
+take error "Collect expressions not implemented"
+  For each module
 
 
 store :: M.Source -> Text -> IO ()
 store (M.Module n its) src = runSqlite "hk.db" $ do
   runMigration migrateAll
+  tyOpId <- insert $ MOp[]
+  varOpId <- insert $ MOp []
   modId <- insert $ MModule n src (I.getDeps its) []
   mapM_ (storeItem modId) its
   
@@ -144,7 +160,15 @@ store (M.Module n its) src = runSqlite "hk.db" $ do
           bdat  = toStrict $ encode b
           
       argIds <- insertMany (map mkBinding args)
-      insert_ $ MFnItem modId n oidat argIds (Just tdat) (Just bdat)
+      fnId <- insert $ MFnItem modId n oidat argIds (Just tdat) (Just bdat)
+      
+      storeVarOp modId fnId n oi
+      
+      
+    storeVarOp modId fnId n (F.OpInfo p a) = do
+      opId <- insert $ MOp modId n p a
+      insert_ $ MVarOp opId fnId
+      
       
     storeVar modId (V.Variable n t b) = do
       let tdat = toStrict $ encode t
@@ -164,6 +188,7 @@ store (M.Module n its) src = runSqlite "hk.db" $ do
     mkAlias modId (A.Alias (N.Name _ n) t) =
       let tdat = toStrict $ encode t
       in MAliasItem modId n tdat
+      
     
     storeAlias modId a =
       insert_ $ mkAlias modId a

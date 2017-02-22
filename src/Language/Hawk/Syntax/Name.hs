@@ -2,13 +2,14 @@
 module Language.Hawk.Syntax.Name where
 
 import Data.Aeson ((.=))
-import qualified Data.Aeson as Json
 import Data.Binary
 import Data.Data
 import Data.Text.Lazy (Text)
+import Data.Tree
 import Data.Typeable
-import qualified Data.Maybe as Maybe
 
+import qualified Data.Aeson                       as Json
+import qualified Data.Maybe                       as Maybe
 import qualified Data.Text.Lazy                   as Text
 import qualified Language.Hawk.Syntax.ModuleName  as ModuleName
 import qualified Language.Hawk.Report.Region      as R
@@ -21,29 +22,42 @@ type Source
   = Name
   
 type Valid
-  = Name
-  
-type Canonical
-  = Name
+  = QName
   
 type Typed
-  = Name
-  
+  = QName
+
+type RName = Text
+
+type Paths = Tree RName
+type Path = [RName]
 
 data Name
-  = Name
-    { home :: Home
-    , name :: Text
-    }
+  = Name RName (Maybe R.Position)
     deriving (Eq, Ord, Show, Data, Typeable)
 
--- | Canonical Home
-data Home
-  = BuiltIn
-  | Local R.Position
-  deriving (Eq, Ord, Show, Data, Typeable)
-
+data QName
+  = QName RName Path (Maybe R.Position)
+    deriving (Eq, Ord, Show, Data, Typeable)
     
+
+data Package =
+  Package
+    { version :: Version
+    , author :: Text
+    , name :: Text
+    } deriving (Eq, Ord, Show, Data, Typeable)
+
+
+-- | Package Version
+data Version
+  = Version
+    { _major :: Int
+    , _minor :: Int
+    , _patch :: Int
+    } deriving (Eq, Ord, Show, Data, Typeable)
+
+
 -- -----------------------------------------------------------------------------
 -- Name helpers
 

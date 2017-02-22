@@ -2,18 +2,17 @@
 
 ## Building with Stack
 
-Using the LLVM-3.5 toolchain requires several system libraries:
+Install stack and then initalize the project with
 
 ```bash
-$ apt-get install llvm-3.5
-$ apt-get install libedit-dev
+$ stack setup
+$ stack build
 ```
 
-The hawk compiler, hkc, can then be built and run.
+Once you have a successful build, you can test changes with
 
 ```bash
-$ stack build
-$ stack exec hkc
+$ stack test
 ```
 
 ## Learn

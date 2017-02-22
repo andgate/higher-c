@@ -32,7 +32,7 @@ runCompiler = flip evalStateT
 data CompilerState = 
   CompilerState
   { packageName :: Text
-  , srcFiles :: [Text]
+  , srcFiles :: [FilePath]
   , currentStage :: CompilerPhase
   }
   

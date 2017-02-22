@@ -31,7 +31,7 @@ spec = do
         MD.store m src
         
       it "Can compile with state" $ do
-        let s = C.CompilerState "def" ["main.hk"] C.InitialPhase
+        let s = C.CompilerState "def" ["example/main.hk"] C.InitialPhase
         C.compile s
         
 

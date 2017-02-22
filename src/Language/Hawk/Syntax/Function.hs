@@ -1,8 +1,10 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Language.Hawk.Syntax.Function where
 
 import Data.Binary
 import Data.Data
 import Data.Typeable
+import Database.Persist.TH
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
 import qualified Data.Text.Lazy                   as Text
@@ -47,7 +49,9 @@ data OpInfo
   deriving (Eq, Show, Ord, Data, Typeable)
   
 data Assoc = AssocL | AssocR | AssocN
-  deriving (Eq, Show, Ord, Data, Typeable)
+  deriving (Eq, Show, Read, Ord, Data, Typeable)
+
+derivePersistField "Assoc"
 
 
 defOpInfo :: OpInfo

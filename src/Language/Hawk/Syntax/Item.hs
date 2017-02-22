@@ -33,18 +33,14 @@ type Typed =
   Item N.Typed E.Typed T.Typed
    
 data Item n e t
-  = Import Visibility (MN.Raw)
-  | Function Visibility (F.Function n e t)
-  | Variable Visibility (V.Variable n e t)
-  | Record Visibility (R.Record n)
-  | Alias Visibility (A.Alias n)
+  = Import (MN.Raw)
+  | Export (MN.Raw)
+  | Function (F.Function n e t)
+  | Variable (V.Variable n e t)
+  | Record (R.Record n)
+  | Alias (A.Alias n)
   deriving (Eq, Show, Ord, Data, Typeable)
   
-  
-data Visibility
-  = Public
-  | Private
-  deriving (Eq, Show, Ord, Data, Typeable)
 
 impItem :: MN.Raw -> Item n e t
 impItem = Import Public

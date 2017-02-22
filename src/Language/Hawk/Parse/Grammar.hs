@@ -230,7 +230,7 @@ grammar pkgName typOps exprOps = mdo
       <|> nestedExpr
     
     varExpr <- rule $ E.Var <$> varName
-    conExpr <- rule $ E.Var <$> conName
+    conExpr <- rule $ E.Con <$> conName
     litExpr <- rule $ E.Lit <$> lit
     nestedExpr <- rule $ parens expr
     
