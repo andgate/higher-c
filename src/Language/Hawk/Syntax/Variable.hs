@@ -19,9 +19,6 @@ type Source =
 type Valid =
   Variable Name.Valid Expr.Valid (Maybe Type.Valid)
   
-type Canonical =
-  Variable Name.Canonical Expr.Canonical (Maybe Type.Canonical)
-  
 type Typed =
   Variable Name.Typed Expr.Typed Type.Typed
 

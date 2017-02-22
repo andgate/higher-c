@@ -21,7 +21,7 @@ import qualified Language.Hawk.Parse.Lexer        as L
 import qualified Language.Hawk.Report.Region      as R
 import qualified Language.Hawk.Syntax.Expression  as E
 import qualified Language.Hawk.Syntax.Module      as M
-import qualified Language.Hawk.Syntax.Name        as Name
+import qualified Language.Hawk.Syntax.Name        as N
 import qualified Language.Hawk.Syntax.Type        as Ty
 import qualified Pipes.Prelude                    as Pipes
 
@@ -89,35 +89,27 @@ sep' s p =
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Name Tokens
 
-varId :: Prod r e L.Token Name.Source
+varId :: Prod r e L.Token N.Source
 varId = fmap unsafeExtract (satisfy p)
   where
     p (L.Token (L.TokenVarId _) _) = True
     p  _                             = False
-    unsafeExtract (L.Token (L.TokenVarId v) p) = Name.Name (Name.Local $ R.toPosition p) v
+    unsafeExtract (L.Token (L.TokenVarId v) p) = N.Name v (Just $ R.toPosition p)
 
-conId :: Prod r e L.Token Name.Source
+conId :: Prod r e L.Token N.Source
 conId = fmap unsafeExtract (satisfy p)
   where
     p (L.Token (L.TokenConId _) _) = True
     p  _                           = False
-    unsafeExtract (L.Token (L.TokenConId v) p) = Name.Name (Name.Local $ R.toPosition p) v
-
-
-modId :: Prod r e L.Token Text
-modId = fmap unsafeExtract (satisfy p)
-  where
-    p (L.Token (L.TokenConId _) _) = True
-    p  _                           = False
-    unsafeExtract (L.Token (L.TokenConId v) _) = v
+    unsafeExtract (L.Token (L.TokenConId v) p) = N.Name v (Just $ R.toPosition p)
     
 
-opId :: Prod r e L.Token Name.Source
+opId :: Prod r e L.Token N.Source
 opId = fmap unsafeExtract (satisfy p)
   where
     p (L.Token (L.TokenOpId _) _) = True
     p _                           = False
-    unsafeExtract (L.Token (L.TokenOpId v) p) = Name.Name (Name.Local $ R.toPosition p) v
+    unsafeExtract (L.Token (L.TokenOpId v) p) = N.Name v (Just $ R.toPosition p)
 
 
 op :: Text -> Prod r e L.Token L.Token

@@ -22,9 +22,6 @@ type Source
 type Valid
   = Function N.Valid Expr.Valid (Maybe Type.Valid)
 
-type Canonical
-  = Function N.Valid Expr.Canonical (Maybe Type.Canonical)
-
 type Typed
   = Function N.Typed Expr.Typed Type.Typed
 
@@ -66,7 +63,7 @@ assocToString a =
       
 
 assocFromName :: N.Name -> Assoc
-assocFromName (N.Name _ t) =
+assocFromName (N.Name t _) =
   assocFromString $ Text.unpack t
       
 assocFromString :: String -> Assoc

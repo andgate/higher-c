@@ -11,12 +11,8 @@ import qualified Data.Map                               as Map
 import qualified Data.Text.Lazy                         as Text
 import qualified Language.Hawk.Syntax.Item              as I
 import qualified Language.Hawk.Syntax.Expression        as E
-import qualified Language.Hawk.Syntax.ModuleName        as MN
 import qualified Language.Hawk.Syntax.Type              as T
 import qualified Language.Hawk.Syntax.Name              as N
-import qualified Language.Hawk.Docs.AST                 as Docs
-import qualified Language.Hawk.Compile.Package          as Package
-import qualified Language.Hawk.Compile.Version          as C
 import qualified Text.PrettyPrint.ANSI.Leijen           as PP
 
 
@@ -31,7 +27,7 @@ type Typed =
    
 data Module n e t
   = Module Text [I.Item n e t] 
-    deriving(Eq, Show, Ord, Data, Typeable)
+    deriving(Eq, Show, Data, Typeable)
 
     
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Module n e t) where

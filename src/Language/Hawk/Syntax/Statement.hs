@@ -27,13 +27,6 @@ type ValidBlock
   = Block Name.Valid Expr.Valid (Maybe Type.Valid)
 
 
-type Canonical
-  = Statement Name.Canonical Expr.Canonical (Maybe Type.Canonical)
-
-type CanonicalBlock
-  = Block Name.Canonical Expr.Canonical (Maybe Type.Canonical)
-
-
 type Typed
   = Statement Name.Typed Expr.Typed Type.Typed
   

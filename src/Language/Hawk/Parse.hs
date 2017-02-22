@@ -27,7 +27,6 @@ import Text.Earley.Mixfix (Holey, Associativity)
 import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
 
 import qualified Data.Text.Lazy as Text
-import qualified Language.Hawk.Compile.Package as Pkg
 import qualified Language.Hawk.Parse.Layout as LO
 import qualified Language.Hawk.Parse.Lexer as L
 import qualified Language.Hawk.Parse.Grammar as G
@@ -40,12 +39,11 @@ import qualified Text.Earley.Mixfix as E
 
 -- -----------------------------------------------------------------------------
 -- Parser
-parse :: Pkg.Name   -- Package name
-       -> TypeOpTable  -- type symbol table
-       -> ExprOpTable    -- var symbol table
-       -> Text -- Source input
-       -> IO M.Source
-parse pkgName typOps exprOps txt = do
+parse :: TypeOpTable  -- type symbol table
+      -> ExprOpTable    -- var symbol table
+      -> Text -- Source input
+      -> IO M.Source
+parse typOps exprOps txt = do
   let lexModl' = Pipes.evalStateP L.defState (L.lexModl txt)
       layout' = Pipes.evalStateP LO.defState LO.layout
       (toks, ()) = runIdentity $ Pipes.toListM' $ lexModl' >-> layout'
@@ -53,7 +51,7 @@ parse pkgName typOps exprOps txt = do
   print toks
             
   let (parses, r@(Report _ needed found)) =
-          E.fullParses (E.parser $ G.grammar pkgName typOps exprOps) toks
+          E.fullParses (E.parser $ G.grammar typOps exprOps) toks
   
   case parses of
       []       -> error $ "No parses found.\n" ++ show r
@@ -63,10 +61,10 @@ parse pkgName typOps exprOps txt = do
 
 mangledParse :: Text -> IO M.Source
 mangledParse txt =
-  parse Pkg.dummyName defTypeOps defExprOps txt
+  parse defTypeOps defExprOps txt
 
 -- -----------------------------------------------------------------------------
 -- Test Parser
 parseTest :: Text -> IO ()
 parseTest txt =
-  parse Pkg.dummyName defTypeOps defExprOps txt >>= print . pretty
+  parse defTypeOps defExprOps txt >>= print . pretty

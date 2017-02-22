@@ -16,9 +16,6 @@ type Source =
 type Valid =
   Record Name.Valid
   
-type Canonical =
-  Record Name.Canonical
-  
 type Typed =
   Record Name.Typed
   

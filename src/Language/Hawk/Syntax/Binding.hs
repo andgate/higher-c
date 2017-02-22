@@ -14,9 +14,6 @@ type Source =
   
 type Valid =
   Binding Name.Valid
-  
-type Canonical =
-  Binding Name.Canonical
 
 type Typed =
   Binding Name.Typed

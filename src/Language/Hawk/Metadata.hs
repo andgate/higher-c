@@ -101,7 +101,6 @@ MAliasItem
 collect :: Compiler ()
 collect = do
   collectGlobal
-  buildSymbolTables
   collectExprs
 
 
@@ -125,36 +124,39 @@ collectGlobal = do
   correct forms.  
 -}
 collectExprs :: Compiler ()
-collectExprs = 
-take error "Collect expressions not implemented"
-  For each module
+collectExprs = error "Collect expressions not implemented"
 
+
+{-
+  For each module
+    Get list of imports
+    
+-}
 
 store :: M.Source -> Text -> IO ()
 store (M.Module n its) src = runSqlite "hk.db" $ do
   runMigration migrateAll
-  tyOpId <- insert $ MOp[]
-  varOpId <- insert $ MOp []
   modId <- insert $ MModule n src (I.getDeps its) []
   mapM_ (storeItem modId) its
   
   where
     storeItem modId i =
       case i of
-        I.Import _ n -> return () -- Handled later
-        I.Function _ f -> storeFn modId f
-        I.Variable _ v -> storeVar modId v
-        I.Record _ r -> storeRec modId r
-        I.Alias _ a -> storeAlias modId a
+        I.Import n -> return () -- Handled later
+        I.Export n -> return () -- Handled later
+        I.Function f -> storeFn modId f
+        I.Variable v -> storeVar modId v
+        I.Record r -> storeRec modId r
+        I.Alias a -> storeAlias modId a
         
       
-    mkBinding (B.Binding m (N.Name _ n)) = 
+    mkBinding (B.Binding m (N.Name n p)) = 
       MBinding n (B.isRef m) (B.isMut m)
       
     storeBinding = 
       insert . mkBinding
         
-    storeFn modId (F.Function oi (N.Name _ n) args t b) = do
+    storeFn modId (F.Function oi (N.Name n p) args t b) = do
       let oidat = toStrict $ encode oi
           tdat  = toStrict $ encode t
           bdat  = toStrict $ encode b
@@ -166,7 +168,7 @@ store (M.Module n its) src = runSqlite "hk.db" $ do
       
       
     storeVarOp modId fnId n (F.OpInfo p a) = do
-      opId <- insert $ MOp modId n p a
+      opId <- insert $ MOp modId n (fromIntegral p) a
       insert_ $ MVarOp opId fnId
       
       
@@ -176,16 +178,16 @@ store (M.Module n its) src = runSqlite "hk.db" $ do
       bindingId <- storeBinding n
       insert_ $ MVarItem modId bindingId (Just tdat) (Just bdat)
     
-    storeRec modId (R.Record (N.Name _ n) fs) = do
+    storeRec modId (R.Record (N.Name n p) fs) = do
       recId <- insert $ MRecItem modId n []
       fldIds <- insertMany $ map (mkRecField recId) fs
       update recId [MRecItemFieldIds =. fldIds]
       
-    mkRecField recId (R.RecordField (N.Name _ n) t) =
+    mkRecField recId (R.RecordField (N.Name n p) t) =
       let tdat = toStrict $ encode t
       in MRecField recId n tdat
       
-    mkAlias modId (A.Alias (N.Name _ n) t) =
+    mkAlias modId (A.Alias (N.Name n p) t) =
       let tdat = toStrict $ encode t
       in MAliasItem modId n tdat
       

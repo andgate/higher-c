@@ -16,9 +16,6 @@ type Source =
 type Valid =
   Alias Name.Valid
   
-type Canonical =
-  Alias Name.Canonical
-  
 type Typed =
   Alias Name.Typed
 

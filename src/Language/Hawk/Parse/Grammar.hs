@@ -3,12 +3,12 @@ module Language.Hawk.Parse.Grammar where
 
 import Control.Applicative
 import Data.Monoid
+import Data.Tree
 import Language.Hawk.Parse.Helpers
 import Text.Earley
 import Text.Earley.Mixfix
 
 
-import qualified Language.Hawk.Compile.Package as Pkg
 import qualified Language.Hawk.Parse.Lexer as L
 import qualified Language.Hawk.Syntax.Alias as A
 import qualified Language.Hawk.Syntax.Binding as B
@@ -17,7 +17,6 @@ import qualified Language.Hawk.Syntax.Function as F
 import qualified Language.Hawk.Syntax.Item as I
 import qualified Language.Hawk.Syntax.Literal as Lit
 import qualified Language.Hawk.Syntax.Module as M
-import qualified Language.Hawk.Syntax.ModuleName as MN
 import qualified Language.Hawk.Syntax.Name as N
 import qualified Language.Hawk.Syntax.Record as R
 import qualified Language.Hawk.Syntax.Statement as Stmt
@@ -27,23 +26,42 @@ import qualified Language.Hawk.Syntax.Variable as V
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-grammar :: Pkg.Name
-        -> TypeOpTable
+grammar :: TypeOpTable
         -> ExprOpTable
         -> Grammar r (Prod r L.Token L.Token M.Source)
-grammar pkgName typOps exprOps = mdo
+grammar typOps exprOps = mdo
 
 -- -----------------------------------------------------------------------------
 -- Module Rules
     modl <- rule $ M.Module "" <$> items <* eof
 
+
 -- -----------------------------------------------------------------------------
--- Module Name Rules
-    modName <- rule $ MN.Name pkgName <$> modName'
+-- Name rules
+    varName <- rule $ varId
     
-    modName' <- rule ((:) <$> modNameHead <*> many modNameRest)
-    modNameHead <- rule modId
-    modNameRest <- rule (op "." *> modNameHead)
+    conName <- rule $ conId
+    
+    opName <- rule $ opId
+    
+    name <- rule $ varName <|> conName
+
+-- -----------------------------------------------------------------------------
+-- Module path rules
+    paths <- rule $
+        Node N.empty <$> paths_subs
+        
+    paths_subs <- rule $  
+        sep (rsvp ",") paths_base
+        
+    paths_base <- rule $
+          (Node <$> conName <*> paths_sub)
+      <|> (Node <$> varName <*> pure [])
+    
+    paths_sub <- rule $  
+          ((:[]) <$> (op "." *> paths_base))
+      <|> (rsvp "(" *> paths_subs <* rsvp ")")
+      <|> (pure [])
 
 -- -----------------------------------------------------------------------------
 -- Item Rules
@@ -59,29 +77,22 @@ grammar pkgName typOps exprOps = mdo
     
     
     impItem <- rule $
-      I.impItem <$> (op "->" *> modName')
+      I.Import <$> (op "->" *> paths)
       
-    aliasItem <- rule $
-      I.aliasItem <$> typAlias
+    expItem <- rule $
+      I.Export <$> (op "<-" *> paths)
       
-    recordItem <- rule $
-      I.recItem <$> record
-    
     fnItem <- rule $
-      I.fnItem <$> function
+      I.Function <$> function
        
     varItem <- rule $
-      I.varItem <$> var
-
--- -----------------------------------------------------------------------------
--- Name rules
-    varName <- rule $ varId
-    
-    conName <- rule $ conId
-    
-    opName <- rule $ opId
-    
-    name <- rule $ varName <|> conName
+      I.Variable <$> var
+      
+    recordItem <- rule $
+      I.Record <$> record
+      
+    aliasItem <- rule $
+      I.Alias <$> typAlias
     
 -- -----------------------------------------------------------------------------
 -- Binding rules  

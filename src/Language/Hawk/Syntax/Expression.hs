@@ -8,7 +8,6 @@ import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 import qualified Language.Hawk.Syntax.Literal as Literal
-import qualified Language.Hawk.Syntax.ModuleName as ModuleName
 import qualified Language.Hawk.Syntax.Type as Type
 import qualified Language.Hawk.Syntax.Name as Name
 
@@ -18,9 +17,6 @@ type Source
 
 type Valid
   = Expr Name.Valid (Maybe Type.Valid)
-
-type Canonical
-  = Expr Name.Canonical (Maybe Type.Canonical)
 
 type Typed
   = Expr Name.Typed Type.Typed

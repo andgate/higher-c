@@ -4,6 +4,7 @@ module Language.Hawk.Syntax.Name where
 import Data.Aeson ((.=))
 import Data.Binary
 import Data.Data
+import Data.Maybe (isJust)
 import Data.Text.Lazy (Text)
 import Data.Tree
 import Data.Typeable
@@ -11,7 +12,6 @@ import Data.Typeable
 import qualified Data.Aeson                       as Json
 import qualified Data.Maybe                       as Maybe
 import qualified Data.Text.Lazy                   as Text
-import qualified Language.Hawk.Syntax.ModuleName  as ModuleName
 import qualified Language.Hawk.Report.Region      as R
 import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 
@@ -29,15 +29,17 @@ type Typed
 
 type RName = Text
 
-type Paths = Tree RName
-type Path = [RName]
+type Paths = Tree Name
+type Path = [Name]
+
+type Home = Maybe R.Position
 
 data Name
-  = Name RName (Maybe R.Position)
+  = Name RName Home
     deriving (Eq, Ord, Show, Data, Typeable)
 
 data QName
-  = QName RName Path (Maybe R.Position)
+  = QName RName Path Home
     deriving (Eq, Ord, Show, Data, Typeable)
     
 
@@ -62,28 +64,25 @@ data Version
 -- Name helpers
 
 
+empty :: Name
+empty = Name "" Nothing
+
 exLocal :: Name -> Text
-exLocal (Name _ t) = t
+exLocal (Name t _) = t
 
 
 local :: R.Position -> Text -> Name
 local p n =
-  Name (Local p) n
+  Name n (Just p)
   
   
 builtin :: Text -> Name
-builtin =
-  Name BuiltIn
+builtin n =
+  Name n Nothing
 
 
 isLocalHome :: Home -> Bool
-isLocalHome h =
-  case h of
-    BuiltIn ->
-      False
-      
-    Local _ ->
-      True
+isLocalHome = isJust
       
       
 -- | Name toString
@@ -91,22 +90,24 @@ class ToString a where
   toString :: a -> String
     
 
+instance ToString Paths where
+  toString =
+    drawTree . fmap toString
+
 instance ToString Name where
-  toString (Name h n) =
-    Text.unpack n ++ " @ " ++ toString h
+  toString (Name n (Just (R.Position l c))) =
+    Text.unpack n ++ " @ " ++ show l ++ ":" ++ show c
+  toString (Name n Nothing) =
+    Text.unpack n
     
 instance ToString Home where
     toString h =
       case h of
-        BuiltIn ->
+        Nothing ->
           "Builtin"
           
-        Local (R.Position r c) ->
+        Just (R.Position r c) ->
           show r ++ ":" ++ show c
-        
-
-instance ToString (ModuleName.Name) where
-    toString = ModuleName.toString
 
 
 instance PP.Pretty Name where
@@ -120,20 +121,3 @@ instance Binary Name where
           
     get =
       Name <$> get <*> get
-
-
-
-instance Binary Home where
-    put h =
-      case h of
-        BuiltIn ->
-          putWord8 0
-        Local p ->
-          putWord8 1 >> put p
-          
-    get =
-      do  tag <- getWord8
-          case tag of
-            0 -> return BuiltIn
-            1 -> Local <$> get
-            _ -> error "Unexpected tag when deserializing name home"

@@ -66,16 +66,11 @@ library
   hs-source-dirs:       src
 
   exposed-modules:      Language.Hawk.Compile
-                        Language.Hawk.Compile.Package
                         Language.Hawk.Compile.Monad
-                        Language.Hawk.Compile.Type
-                        Language.Hawk.Compile.Version
                         
                         -- Results depend on bag, but maybe that will change soon
                         Language.Hawk.Data.Bag
                         Language.Hawk.Data.Emittable
-                        
-                        Language.Hawk.Docs.AST
                         
                         Language.Hawk.Metadata
                         
@@ -93,7 +88,6 @@ library
                         --Language.Hawk.Report.Render.Type
                         Language.Hawk.Report.Report
                         Language.Hawk.Report.Result
-                        Language.Hawk.Report.Warning
                         
                         Language.Hawk.Syntax.Alias
                         Language.Hawk.Syntax.Class
@@ -104,7 +98,6 @@ library
                         Language.Hawk.Syntax.Item
                         Language.Hawk.Syntax.Literal
                         Language.Hawk.Syntax.Module
-                        Language.Hawk.Syntax.ModuleName
                         Language.Hawk.Syntax.Name
                         Language.Hawk.Syntax.Variable
                         Language.Hawk.Syntax.Record

@@ -20,11 +20,8 @@ type Source
 type Valid
   = Type Name.Valid
 
-type Canonical
-  = Maybe (Type Name.Canonical)
-
 type Typed
-  = Type Name.Canonical
+  = Type Name.Typed
 
 data Type n
   = App (Type n) [Type n]
