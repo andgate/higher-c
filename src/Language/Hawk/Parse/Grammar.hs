@@ -70,6 +70,7 @@ grammar typOps exprOps = mdo
 
     item <- rule $
           impItem
+      <|> expItem
       <|> aliasItem
       <|> recordItem
       <|> fnItem

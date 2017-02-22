@@ -52,9 +52,13 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
       PP.text "Import:"
       PP.<$>
       PP.indent 2
-        (
-          PP.text "name:" <+> PP.pretty (N.toString ps)
-        )
+        ( PP.pretty (N.toString ps) )
+        
+    pretty (Export ps) =
+      PP.text "Export:"
+      PP.<$>
+      PP.indent 2
+        ( PP.pretty (N.toString ps) )
         
     pretty (Function fn) =
       PP.pretty fn
