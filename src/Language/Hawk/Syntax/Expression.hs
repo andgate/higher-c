@@ -3,17 +3,17 @@ module Language.Hawk.Syntax.Expression where
 import Data.Binary
 import Data.Data
 import Data.Typeable
-
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
+import qualified Language.Hawk.Parse.Lexer    as Lex
 import qualified Language.Hawk.Syntax.Literal as Literal
-import qualified Language.Hawk.Syntax.Type as Type
-import qualified Language.Hawk.Syntax.Name as Name
+import qualified Language.Hawk.Syntax.Type    as Type
+import qualified Language.Hawk.Syntax.Name    as Name
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 
 type Source
-  = Expr Name.Source (Maybe Type.Source)
+  = [Lex.Token]
 
 type Valid
   = Expr Name.Valid (Maybe Type.Valid)
@@ -41,7 +41,7 @@ data Expr n t
   -- disable case for now, patterns are too complicated
   -- | Case (Expr n t) [(Pattern.Pattern n, Expr n t)]
   
-  deriving (Eq, Show, Data, Typeable)
+  deriving (Eq, Show, Ord, Data, Typeable)
 
 
 

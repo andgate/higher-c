@@ -3,39 +3,84 @@
    but technically closer to C.
 */
 
-<- IO, car, drive, doubleSum
 -> IO
 
+<- Car
+
+
+SizeT = I32
+
+
+<- Car(..) Color(..) Automobile(..) 
+
 // Record
-Car :-
-  gas       :: I32
-  max_speed :: I32
+Car,
+  gas       : I32
+  max_speed : I32
+
+// Tagged Union
+Color, 
+    Red I32
+  | Green I32
+  | Blue I32
+ 
+// Alternative syntax for tagged union
+ColorAlt, Red : I32 -> Color
+     | Green : I32 -> Color
+     | Blue : I32 -> Color
 
 
-// Variables
-var_a :: I32 ^= 1
+// Type class (aka interface, polymorphic record)
+Automobile a,
+  drive : a -> IO ()
+  paint : a -> Color -> IO ()
 
 
-// Functions
-drive car :: Car -> IO () :=
-  out ^= toString max_speed
-  print out
 
-(6r) doubleSum x y
- :: I32 -> I32 -> I32
- := 
-  sum :: I32 ^= add_i32 x y
-  sum = mul_i32 sum 2
-  return sum
+// Instancing a typeclass  
+Automobile Car,
+  drive car = do
+    out ^= toString max_speed
+    print out
+
+  paint car color =
+    print
+      $ "Car painted " +
+      $ case color of
+          Red x -> x + "% Red"
+          Green x -> x + "% Green"
+          Blue x -> x + "% Blue"
+
+
+
+// Creating variables, which are all mutable by default.
+<- a b c
+a : I32 = 4
+b = 2
+c = 1 : I32
 
 
 // Main function and default entry point of all programs.
 // An executable cannot compile without a main function.
-main foo :: IO () :=
+main foo 
+  : IO ()
+  = do
   // Create some cars
-  car_a :: Car ^= Car 12 124
-  car_b :: Car ^= Car 19 103
+  car_a : Car = Car 12 124
+  car_b : Car = Car 19 103
   
   // Drive some cars
   drive car_a
   drive car_b // If drive mutated car_b, and error should be thrown.
+  
+
+
+<- if_then_else_ while_,_
+
+(6r) if_then_else_ p a b
+  : Bool -> [Expr a] -> [Expr a] -> Q (Expr a)
+  = undefined
+      
+while_,_ 
+  : Bool -> [Expr a] -> Q (Expr a)
+  = undefined

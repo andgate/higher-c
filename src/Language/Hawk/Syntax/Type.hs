@@ -8,20 +8,21 @@ import Data.Text.Lazy (Text)
 import Data.Typeable
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
-import qualified Data.Aeson as Json
-import qualified Data.Map as Map
-import qualified Language.Hawk.Syntax.Name as Name
+import qualified Data.Aeson                   as Json
+import qualified Data.Map                     as Map
+import qualified Language.Hawk.Parse.Lexer    as Lex
+import qualified Language.Hawk.Syntax.Name    as N
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 
 type Source
-  = Type Name.Source
+  = [Lex.Token]
 
 type Valid
-  = Type Name.Valid
+  = [Lex.Token]
 
 type Typed
-  = Type Name.Typed
+  = Type N.Typed
 
 data Type n
   = App (Type n) [Type n]
@@ -68,28 +69,28 @@ fn types region =
 -}
 
 
-typeCon :: Text -> [Source] -> Source
-typeCon n [] = Con $ Name.builtin n
-typeCon n args = App (Con $ Name.builtin n) args
+typeCon :: Text -> [Typed] -> Typed
+typeCon n [] = Con $ N.builtinQ n
+typeCon n args = App (Con $ N.builtinQ n) args
 
-apply :: Source -> [Source] -> Source
+apply :: Typed -> [Typed] -> Typed
 apply con [] = con
 apply con args = App con args
 
-unit :: Source
+unit :: Typed
 unit = typeCon "_#_Unit_#_" []
 
-arrow :: [Source] -> Source
+arrow :: [Typed] -> Typed
 arrow (arg:[]) = arg
 arrow args = variadic "_#Arr_#_" args
 
-tuple :: [Source] -> Source
+tuple :: [Typed] -> Typed
 tuple (arg:[]) = arg
 tuple args = variadic "_#_Tuple_#_" args
 
-variadic :: Text -> [Source] -> Source
+variadic :: Text -> [Typed] -> Typed
 variadic n ts =
-    App (Con $ Name.builtin n) ts
+    App (Con $ N.builtinQ n) ts
     
 
 

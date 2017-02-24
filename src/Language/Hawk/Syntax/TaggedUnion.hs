@@ -1,4 +1,4 @@
-module Language.Hawk.Syntax.Record where
+module Language.Hawk.Syntax.TaggedUnion where
 
 import qualified Language.Hawk.Syntax.Name as N
 import qualified Language.Hawk.Syntax.Type as T
@@ -6,13 +6,13 @@ import qualified Language.Hawk.Syntax.TypeDefinition as TD
 
 
 type Source = 
-  Record N.Source T.Source
+  TaggedUnion N.Source T.Source
   
 type Valid = 
-  Record N.Valid T.Valid
+  TaggedUnion N.Valid T.Valid
 
 type Typed = 
-  Record N.Typed T.Typed
+  TaggedUnion N.Typed T.Typed
 
-type Record n t =
+type TaggedUnion n t =
     TD.TypeDef n [(n, t)]

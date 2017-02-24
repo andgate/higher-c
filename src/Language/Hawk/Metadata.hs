@@ -15,6 +15,7 @@ import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import Language.Hawk.Compile.Monad
+import Language.Hawk.Metadata.Schema
 
 
 import qualified Data.Text.Lazy.IO as Text
@@ -30,78 +31,14 @@ import qualified Language.Hawk.Syntax.Record as R
 import qualified Language.Hawk.Syntax.Variable as V
 
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-MModule
-    name Text
-    source Text
-    deps [Text]
-    depIds [MModuleId] -- Generated after all modules are loaded
-    deriving Show
-
-MTypeOp
-    op  MOpId
-    rec MRecItemId
-
-MVarOp
-    op  MOpId
-    fn  MFnItemId
-    
-MOp
-    src MModuleId
-    name Text
-    prec Int
-    assoc F.Assoc
-    
-MBinding
-    name Text
-    isRef Bool
-    isMut Bool
-    deriving Show
-    
-MFnItem
-    modId MModuleId
-    name Text
-    opInfo ByteString
-    params [MBindingId]
-    typesig ByteString Maybe -- This field may not get added until type-inference
-    body ByteString Maybe -- This field may not be set until the expressions are demangled
-    deriving Show
-    
-MVarItem
-    modId MModuleId
-    bindingId MBindingId
-    typesig ByteString Maybe
-    body ByteString Maybe
-    deriving Show
-    
-MRecItem
-    modId MModuleId
-    name Text
-    fieldIds [MRecFieldId]
-    deriving Show
-    
-MRecField
-    recId MRecItemId
-    name Text
-    typesig ByteString
-    deriving Show
-    
-MAliasItem
-    modId MModuleId
-    name Text
-    typesig ByteString
-    deriving Show
-|]
-
-
 {-
   This phase collects modules and stores them into a sqlite db on disk
   for fast look-up and sharing with other projects.
 -}
 collect :: Compiler ()
 collect = do
-  collectGlobal
-  collectExprs
+  storeTopLevel
+  storeExprs
 
 
 {-
@@ -110,22 +47,13 @@ collect = do
   This phase does not parse expressions, since it doesn't have access
   to enough information to make a symbol table.
 -}
-collectGlobal :: Compiler ()
-collectGlobal = do
+storeTopLevel :: Compiler ()
+storeTopLevel = do
   xs <- srcFiles <$> St.get
   forM_ xs $ \x -> liftIO $ do
       src <- Text.readFile x
       m <- P.mangledParse src
-      store m src
-
-{-
-  Expression collection is run after symbol tables are generated.
-  These symbol tables are used to parse expressions in the
-  correct forms.  
--}
-collectExprs :: Compiler ()
-collectExprs = error "Collect expressions not implemented"
-
+      storeTopLevelFromModule m src
 
 {-
   For each module
@@ -133,8 +61,8 @@ collectExprs = error "Collect expressions not implemented"
     
 -}
 
-store :: M.Source -> Text -> IO ()
-store (M.Module n its) src = runSqlite "hk.db" $ do
+storeModule :: M.Source -> Text -> IO ()
+storeModule (M.Module n its) src = runSqlite "hk.db" $ do
   runMigration migrateAll
   modId <- insert $ MModule n src (I.getDeps its) []
   mapM_ (storeItem modId) its
@@ -194,3 +122,12 @@ store (M.Module n its) src = runSqlite "hk.db" $ do
     
     storeAlias modId a =
       insert_ $ mkAlias modId a
+      
+      
+{-
+  Expression collection is run after symbol tables are generated.
+  These symbol tables are used to parse expressions in the
+  correct forms.  
+-}
+storeExprs :: Compiler ()
+storeExprs = error "Collect expressions not implemented"

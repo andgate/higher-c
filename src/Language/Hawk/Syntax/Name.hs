@@ -67,6 +67,7 @@ data Version
 empty :: Name
 empty = Name "" Nothing
 
+
 exLocal :: Name -> Text
 exLocal (Name t _) = t
 
@@ -79,6 +80,10 @@ local p n =
 builtin :: Text -> Name
 builtin n =
   Name n Nothing
+  
+builtinQ :: Text -> QName
+builtinQ n =
+  QName n [] Nothing
 
 
 isLocalHome :: Home -> Bool

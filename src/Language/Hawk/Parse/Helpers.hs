@@ -31,7 +31,7 @@ import qualified Pipes.Prelude                    as Pipes
 --type HkGrammar a = forall r. Grammar r (Prod r L.Token L.Token a)
         
 type OpTable a = forall r. [[(Holey (Prod r L.Token L.Token L.Token), Associativity, Holey L.Token -> [a] -> a)]]
-type TypeOpTable = OpTable Ty.Source
+type TypeOpTable = OpTable Ty.Typed
 type ExprOpTable = OpTable E.Source
 
 -- -----------------------------------------------------------------------------
@@ -54,13 +54,13 @@ defTypeOps =
   ]
 
   
-typArrow :: Holey L.Token -> [Ty.Source] -> Ty.Source
+typArrow :: Holey L.Token -> [Ty.Typed] -> Ty.Typed
 typArrow _ = Ty.typeCon "_->_"
 
-typParens :: Holey L.Token -> [Ty.Source] -> Ty.Source
+typParens :: Holey L.Token -> [Ty.Typed] -> Ty.Typed
 typParens _ = Ty.typeCon "(_)"
 
-typDollar :: Holey L.Token  -> [Ty.Source] -> Ty.Source
+typDollar :: Holey L.Token  -> [Ty.Typed] -> Ty.Typed
 typDollar _ = Ty.typeCon "_$_"
   
 
@@ -183,6 +183,9 @@ ln = match L.TokenLn
 
 ln' :: Prod r e L.Token L.Token
 ln' = match L.TokenLn'
+
+any :: Prod r e L.Token L.Token
+any = satisfy (const True)
 
 
 -- -----------------------------------------------------------------------------

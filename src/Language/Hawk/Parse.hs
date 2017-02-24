@@ -29,7 +29,9 @@ import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
 import qualified Data.Text.Lazy as Text
 import qualified Language.Hawk.Parse.Layout as LO
 import qualified Language.Hawk.Parse.Lexer as L
-import qualified Language.Hawk.Parse.Grammar as G
+import qualified Language.Hawk.Parse.Grammar.TopLevel as G
+import qualified Language.Hawk.Parse.Grammar.ExprLevel as G
+import qualified Language.Hawk.Parse.Grammar.TypeLevel as G
 import qualified Language.Hawk.Syntax.Module as M
 import qualified Pipes.Prelude  as Pipes
 import qualified Pipes.Lift  as Pipes
@@ -51,7 +53,7 @@ parse typOps exprOps txt = do
   print toks
             
   let (parses, r@(Report _ needed found)) =
-          E.fullParses (E.parser $ G.grammar typOps exprOps) toks
+          E.fullParses (E.parser $ G.topLevel typOps exprOps) toks
   
   case parses of
       []       -> error $ "No parses found.\n" ++ show r

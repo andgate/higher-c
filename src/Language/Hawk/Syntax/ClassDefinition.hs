@@ -1,4 +1,4 @@
-module Language.Hawk.Syntax.Record where
+module Language.Hawk.Syntax.ClassDefinition where
 
 import qualified Language.Hawk.Syntax.Name as N
 import qualified Language.Hawk.Syntax.Type as T
@@ -6,13 +6,13 @@ import qualified Language.Hawk.Syntax.TypeDefinition as TD
 
 
 type Source = 
-  Record N.Source T.Source
+  ClassDef N.Source T.Source
   
 type Valid = 
-  Record N.Valid T.Valid
+  ClassDef N.Valid T.Valid
 
 type Typed = 
-  Record N.Typed T.Typed
+  ClassDef N.Typed T.Typed
 
-type Record n t =
+type ClassDef n t =
     TD.TypeDef n [(n, t)]

@@ -1,35 +1,26 @@
 {-# LANGUAGE RecursiveDo, RankNTypes #-}
-module Language.Hawk.Parse.Grammar where
+module Language.Hawk.Parse.Grammar.TopLevel where
 
 import Control.Applicative
 import Data.Monoid
 import Data.Tree
 import Language.Hawk.Parse.Helpers
 import Text.Earley
-import Text.Earley.Mixfix
 
 
-import qualified Language.Hawk.Parse.Lexer as L
-import qualified Language.Hawk.Syntax.Alias as A
-import qualified Language.Hawk.Syntax.Binding as B
-import qualified Language.Hawk.Syntax.Expression as E
-import qualified Language.Hawk.Syntax.Function as F
+import qualified Language.Hawk.Parse.Lexer as Lex
 import qualified Language.Hawk.Syntax.Item as I
 import qualified Language.Hawk.Syntax.Literal as Lit
 import qualified Language.Hawk.Syntax.Module as M
 import qualified Language.Hawk.Syntax.Name as N
 import qualified Language.Hawk.Syntax.Record as R
-import qualified Language.Hawk.Syntax.Statement as Stmt
 import qualified Language.Hawk.Syntax.Type as Ty
-import qualified Language.Hawk.Syntax.Variable as V
 
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-grammar :: TypeOpTable
-        -> ExprOpTable
-        -> Grammar r (Prod r L.Token L.Token M.Source)
-grammar typOps exprOps = mdo
+toplevel :: Grammar r (Prod r Lex.Token Lex.Token M.Source)
+toplevel = mdo
 
 -- -----------------------------------------------------------------------------
 -- Module Rules
@@ -83,44 +74,26 @@ grammar typOps exprOps = mdo
     expItem <- rule $
       I.Export <$> (op "<-" *> paths)
       
-    fnItem <- rule $
-      I.Function <$> function
+    exprDef <- rule $
+      I.ExprDef <$> exprDef
        
-    varItem <- rule $
-      I.Variable <$> var
+    typeDef <- rule $
+      I.TypeDef <$> typeDef
       
     recordItem <- rule $
       I.Record <$> record
       
-    aliasItem <- rule $
-      I.Alias <$> typAlias
-    
--- -----------------------------------------------------------------------------
--- Binding rules  
-    binding <- rule $
-        B.Binding <$> bindMode <*> varName
-    
-    bindMode <- rule $
-        byRef <|> byVal
+    taggedUnionItem <- rule $
+      I.TaggedUnion <$> taggedUnion
       
-    byVal <- rule $
-        B.ByVal <$> mutability
-    
-    byRef <- rule $
-        op "&" *>
-        (pure B.ByRef <*> mutability)
+    classDefItem <- rule $
+      I.ClassDef <$> classDef
       
-    mutability <- rule $
-        immutable <|> mutable
-      
-    immutable <- rule $
-        op "!" *>
-        pure B.Immutable
-    
-    mutable <- rule $
-        pure B.Mutable
-        
+    classInstItem <- rule $
+      I.ClassInst <$> classInst
 
+        
+{- Types are parsed using a different grammar
 -- -----------------------------------------------------------------------------
 -- Type expressions
     typesig0 <- rule $
@@ -142,11 +115,12 @@ grammar typOps exprOps = mdo
     typCon <- rule $ Ty.Con <$> conName
     
     typUnit <- rule $ rsvp "(" *> rsvp ")" *> pure Ty.unit
+-}
 
 -- -----------------------------------------------------------------------------
 -- Type Alias Rules
     typAlias <- rule $
-      A.Alias <$> (conName <* rsvp "=") <*> typ
+      A.Alias <$> (conName <* rsvp "=") <*> many skip
 
 -- -----------------------------------------------------------------------------
 -- Record Rules
@@ -171,7 +145,7 @@ grammar typOps exprOps = mdo
 -- -----------------------------------------------------------------------------
 -- Function Rules
     function <- rule $
-        F.Function <$> opInfo0 <*> (varName <|> parens opName) <*> many binding <*> typesig0 <*> functionBody
+        F.Function <$> opInfo0 <*> (varName <|> parens opName) <*> many binding <*> many skip <*> functionBody
     
     opInfo0 <- rule $
         opInfo <|> pure F.defOpInfo
@@ -187,7 +161,7 @@ grammar typOps exprOps = mdo
     var <- rule $
       V.Variable <$> binding <*> typesig0 <*> (rsvp "^=" *> expr)
 
-
+{- Expressions are another type of parser
 -- -----------------------------------------------------------------------------
 -- Statement Rules   
     stmtblock <- rule $ block statement
@@ -245,6 +219,8 @@ grammar typOps exprOps = mdo
     conExpr <- rule $ E.Con <$> conName
     litExpr <- rule $ E.Lit <$> lit
     nestedExpr <- rule $ parens expr
+    
+-}
     
     
     return modl

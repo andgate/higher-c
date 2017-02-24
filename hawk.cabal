@@ -73,11 +73,15 @@ library
                         Language.Hawk.Data.Emittable
                         
                         Language.Hawk.Metadata
+                        Language.Hawk.Metadata.Schema
+                        Language.Hawk.Metadata.DepFinder
                         
                         Language.Hawk.Parse
                         Language.Hawk.Parse.Layout
                         Language.Hawk.Parse.Lexer
-                        Language.Hawk.Parse.Grammar
+                        Language.Hawk.Parse.Grammar.ExprLevel
+                        Language.Hawk.Parse.Grammar.TopLevel
+                        Language.Hawk.Parse.Grammar.TypeLevel
                         Language.Hawk.Parse.Helpers
                       
                         Language.Hawk.Report.Error
@@ -89,20 +93,23 @@ library
                         Language.Hawk.Report.Report
                         Language.Hawk.Report.Result
                         
-                        Language.Hawk.Syntax.Alias
-                        Language.Hawk.Syntax.Class
-                        Language.Hawk.Syntax.Binding
+                        
+                        
+                        Language.Hawk.Syntax.ClassDefinition
+                        Language.Hawk.Syntax.ClassInstance
                         Language.Hawk.Syntax.Expression
-                        Language.Hawk.Syntax.Function
-                        Language.Hawk.Syntax.Instance
+                        Language.Hawk.Syntax.ExpressionDefinition
                         Language.Hawk.Syntax.Item
                         Language.Hawk.Syntax.Literal
                         Language.Hawk.Syntax.Module
                         Language.Hawk.Syntax.Name
-                        Language.Hawk.Syntax.Variable
+                        Language.Hawk.Syntax.OpInfo
+                        --Language.Hawk.Syntax.Pattern
+                        Language.Hawk.Syntax.QType
                         Language.Hawk.Syntax.Record
-                        Language.Hawk.Syntax.Statement
+                        Language.Hawk.Syntax.TaggedUnion
                         Language.Hawk.Syntax.Type
+                        Language.Hawk.Syntax.TypeDefinition
                         
                         --Language.Hawk.Target.LLVM.Codegen
                         --Language.Hawk.Target.LLVM.Emit
