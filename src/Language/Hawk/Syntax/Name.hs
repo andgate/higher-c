@@ -100,7 +100,7 @@ instance ToString Paths where
     drawTree . fmap toString
 
 instance ToString Name where
-  toString (Name n (Just (R.Position l c))) =
+  toString (Name n (Just (R.P l c))) =
     Text.unpack n ++ " @ " ++ show l ++ ":" ++ show c
   toString (Name n Nothing) =
     Text.unpack n
@@ -111,7 +111,7 @@ instance ToString Home where
         Nothing ->
           "Builtin"
           
-        Just (R.Position r c) ->
+        Just (R.P r c) ->
           show r ++ ":" ++ show c
 
 

@@ -4,17 +4,21 @@
 module Language.Hawk.Parse.Lexer where
 
 import Control.Monad.Trans.State.Strict (State)
+import Data.Binary hiding (encode)
 import Data.Bits (shiftR, (.&.))
 import Data.Char (digitToInt, ord)
 import Data.Text.Lazy (Text)
 import Data.Word (Word8)
 import Filesystem.Path.CurrentOS (FilePath)
+import Language.Hawk.Report.Region (Position (..))
 import Pipes (Producer, for, lift, yield)
 import Prelude hiding (FilePath)
+import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
 import qualified Control.Monad.Trans.State.Strict as State
 import qualified Data.Text.Lazy                   as Text
 import qualified Filesystem.Path.CurrentOS        as Filesystem
+import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 
 }
 
@@ -50,8 +54,9 @@ hawk :-
   \"                              { beginString }
   "/*"                            { beginComment }
   
+  
   ":="                            { rsvp }
-  "::"                            { rsvp }
+  "="                             { rsvp }
   ":"                             { rsvp }
   
   ","                             { rsvp }
@@ -180,16 +185,6 @@ encode c = (fromIntegral h, map fromIntegral t)
                 ]
             )
 
--- | The cursor's location while lexing the text
-data Position = P
-    { lineNo    :: {-# UNPACK #-} !Int
-    , columnNo  :: {-# UNPACK #-} !Int
-    } deriving (Show)
-    
-defPos :: Position
-defPos = P 1 0
-
-
 
 {- @alex@ does not provide a `Text` wrapper, so the following code just modifies
    the code from their @basic@ wrapper to work with `Text`
@@ -220,6 +215,20 @@ data Token = Token
     { token    ::                !TokenClass
     , position :: {-# UNPACK #-} !Position
     } deriving (Show)
+    
+
+instance PP.Pretty Token where 
+    pretty (Token t p) =
+      PP.pretty t <> PP.text "@" <> PP.pretty p 
+  
+
+instance Binary Token where
+  get =
+    Token <$> get <*> get
+      
+  put (Token t p) =
+    put t >> put p
+  
 
 -- The token type:
 data TokenClass
@@ -242,6 +251,93 @@ data TokenClass
   
   | TokenEof
   deriving ( Eq, Show )
+
+instance PP.Pretty TokenClass where
+  pretty (TokenRsvp t) =
+    PP.text "rsvp" <+> PP.text (Text.unpack t)
+    
+  pretty (TokenOpId t) =
+    PP.text "opId" <+> PP.pretty (Text.unpack t)
+    
+  pretty (TokenVarId t) =
+    PP.text "varId" <+> PP.pretty (Text.unpack t)
+    
+  pretty (TokenConId t) =
+    PP.text "conId" <+> PP.pretty (Text.unpack t)
+    
+  pretty (TokenInteger i) =
+    PP.text "int" <+> PP.pretty i
+    
+  pretty (TokenDouble d) =
+    PP.text "dub" <+> PP.pretty  d
+    
+  pretty (TokenChar c) =
+    PP.text "char" <+> PP.pretty c
+    
+  pretty (TokenString s) =
+    PP.text "str" <+> PP.text s
+    
+  pretty (TokenBool b) =
+    PP.text "bool" <+> PP.pretty b
+      
+  pretty TokenTop =
+    PP.text "top"
+    
+  pretty TokenBlk =
+    PP.text "blk"
+    
+  pretty TokenBlk' =
+    PP.text "blk'"
+    
+  pretty TokenLn =
+    PP.text "ln"
+    
+  pretty TokenLn' =
+    PP.text "ln'"
+    
+  pretty TokenEof =
+    PP.text "eof"
+
+instance Binary TokenClass where
+  get = do
+    n <- getWord8
+    case n of
+      1 -> TokenRsvp <$> get
+      2 -> TokenOpId <$> get
+      3 -> TokenVarId <$> get
+      4 -> TokenConId <$> get
+      5 -> TokenInteger <$> get
+      6 -> TokenDouble <$> get
+      7 -> TokenChar <$> get
+      8 -> TokenString <$> get
+      9 -> TokenBool <$> get
+      10 -> pure TokenTop
+      11 -> pure TokenBlk
+      12 -> pure TokenBlk'
+      13 -> pure TokenLn
+      14 -> pure TokenLn'
+      15 -> pure TokenEof
+      
+  put e =
+    case e of
+      TokenRsvp t     -> putWord8 1 >> put t
+      TokenOpId t     -> putWord8 2 >> put t
+      TokenVarId t    -> putWord8 3 >> put t
+      TokenConId t    -> putWord8 4 >> put t
+      TokenInteger i  -> putWord8 5 >> put i
+      TokenDouble d   -> putWord8 6 >> put d
+      TokenChar c     -> putWord8 7 >> put c
+      TokenString s   -> putWord8 8 >> put s
+      TokenBool b     -> putWord8 9 >> put b
+      TokenTop        -> putWord8 10
+      TokenBlk        -> putWord8 11
+      TokenBlk'       -> putWord8 12
+      TokenLn         -> putWord8 13
+      TokenLn'        -> putWord8 14 
+      TokenEof        -> putWord8 15
+              
+  
+          
   
 
 {-| Convert a text representation of a module into a stream of tokens

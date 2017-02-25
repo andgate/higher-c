@@ -5,11 +5,8 @@
 
 -> IO
 
-<- Car
-
 
 SizeT = I32
-
 
 <- Car(..) Color(..) Automobile(..) 
 

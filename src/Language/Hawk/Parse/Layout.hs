@@ -2,13 +2,15 @@ module Language.Hawk.Parse.Layout where
 
 import Control.Monad (forever, mapM, when, unless)
 import Control.Monad.Trans.State.Strict (State, evalStateT, get, put, modify)
+import Data.Text.Lazy (Text)
+import Language.Hawk.Report.Region (Region(..), Position(..))
 import Lens.Micro.Mtl ((.=), (+=))
-import Safe (headDef)
 import Pipes (Pipe, await, yield, lift)
+import Safe (headDef)
 
 import qualified Control.Monad.Trans.State.Strict as State
-import qualified Pipes.Prelude as Pipes
 import qualified Language.Hawk.Parse.Lexer        as L
+import qualified Pipes.Prelude                    as Pipes
 
 -- -----------------------------------------------------------------------------
 -- Layout Types
@@ -62,7 +64,7 @@ postUpdate (L.Token c _) =
     blkTrigs = map L.TokenRsvp blockTriggers
     
     emitBlk = do 
-      t@(L.Token _ p@(L.P _ i)) <- await
+      t@(L.Token _ p@(P _ i)) <- await
       l <- lift $ peekLay
       if isValid i l
           then do
@@ -75,19 +77,19 @@ postUpdate (L.Token c _) =
 -- -----------------------------------------------------------------------------
 -- Driver Helpers
   
-closeInvalid :: L.Position -> Pipe L.Token L.Token LayoutState ()
-closeInvalid p@(L.P _ i) = do
+closeInvalid :: Position -> Pipe L.Token L.Token LayoutState ()
+closeInvalid p@(P _ i) = do
   l <- lift $ peekLay
   unless (isValid i l)
          (close p >> closeInvalid p)
          
-closeAll :: L.Position -> Pipe L.Token L.Token LayoutState ()
+closeAll :: Position -> Pipe L.Token L.Token LayoutState ()
 closeAll p = do
   l <- lift $ peekLay
   unless (l == defLay)
          (close p >> closeAll p)
                     
-coverBlock :: L.Position -> Pipe L.Token L.Token LayoutState ()
+coverBlock :: Position -> Pipe L.Token L.Token LayoutState ()
 coverBlock p = do
   l <- lift $ peekLay
   case l of
@@ -95,23 +97,23 @@ coverBlock p = do
       _ -> return ()
       
       
-handleEof :: L.TokenClass -> L.Position -> Pipe L.Token L.Token LayoutState ()
+handleEof :: L.TokenClass -> Position -> Pipe L.Token L.Token LayoutState ()
 handleEof c p =
   when (c == L.TokenEof)
        (closeAll p)
   
       
-open :: Layout -> L.Position -> Pipe L.Token L.Token LayoutState ()
+open :: Layout -> Position -> Pipe L.Token L.Token LayoutState ()
 open l p = do
   lift $ pushLay l
   yield $ openTok l p
 
-close :: L.Position -> Pipe L.Token L.Token LayoutState ()
+close :: Position -> Pipe L.Token L.Token LayoutState ()
 close p = do
   close' p
   lift $ popLay >> return ()
   
-close' :: L.Position -> Pipe L.Token L.Token LayoutState ()
+close' :: Position -> Pipe L.Token L.Token LayoutState ()
 close' p = do
   l <- lift $ peekLay
   yield $ closeTok l p
@@ -163,13 +165,13 @@ peekLay = do
     l:_ -> return l
 
     
-openTok :: Layout -> L.Position -> L.Token
+openTok :: Layout -> Position -> L.Token
 openTok l p =
   case l of
       Block _ -> L.Token L.TokenBlk p
       LineFold _ -> L.Token L.TokenLn p    
     
-closeTok :: Layout -> L.Position -> L.Token
+closeTok :: Layout -> Position -> L.Token
 closeTok l p =
   case l of
       Block _ -> L.Token L.TokenBlk' p

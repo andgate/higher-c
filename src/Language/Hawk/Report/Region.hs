@@ -10,11 +10,10 @@ import Data.Binary
 import Data.Int
 import Text.PrettyPrint.ANSI.Leijen ((<>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
-import qualified Language.Hawk.Parse.Lexer as L
 
 
 data Region
-  = Region
+  = R
     { start :: Position
     , end   :: Position
     }
@@ -22,29 +21,29 @@ data Region
     
 
 data Position
-  = Position
-    { line    :: {-# UNPACK #-} !Int64
-    , column  :: {-# UNPACK #-} !Int64
+  = P
+    { line    :: {-# UNPACK #-} !Int
+    , column  :: {-# UNPACK #-} !Int
     }
     deriving (Eq, Ord, Show, Data, Typeable)
     
 mkRegion :: HasPosition a => a -> a -> Region
-mkRegion start end = Region (toPosition start) (toPosition end)
+mkRegion start end = R (toPosition start) (toPosition end)
 
-stretch :: HasPosition a => a -> Int64 -> Region
+stretch :: HasPosition a => a -> Int -> Region
 stretch a n = mkRegion p1 p2
   where
-    p1@(Position l c) = toPosition a
-    p2 = Position l (c + n)
+    p1@(P l c) = toPosition a
+    p2 = P l (c + n)
     
     
 merge :: Region -> Region -> Region
-merge (Region start _) (Region _ end) =
-  Region start end
+merge (R start _) (R _ end) =
+  R start end
   
   
 toString :: Region -> String
-toString (Region start end) =
+toString (R start end) =
   case line start == line end of
     False ->
       "between lines " ++ show (line start)
@@ -74,12 +73,9 @@ instance HasPosition a => HasRegion (a, a) where
       (uncurry mkRegion)
 
 
-instance HasPosition L.Position where
-    toPosition (L.P l c) =
-      Position (fromIntegral l) (fromIntegral c)   
       
 instance Json.ToJSON Region where
-  toJSON (Region start end) =
+  toJSON (R start end) =
     Json.object
       [ "start" .= start
       , "end"   .= end
@@ -87,7 +83,7 @@ instance Json.ToJSON Region where
       
       
 instance Json.ToJSON Position where
-  toJSON (Position line column) =
+  toJSON (P line column) =
     Json.object
       [ "line"    .= line
       , "column"  .= column
@@ -95,20 +91,20 @@ instance Json.ToJSON Position where
       
 
 instance PP.Pretty Region where
-  pretty (Region start end) =
+  pretty (R start end) =
     PP.pretty start
     <> PP.text "-"
     <> PP.pretty end
     
 instance PP.Pretty Position where
-  pretty (Position line column) =
+  pretty (P line column) =
     PP.text $ show line ++ ":" ++ show column
      
 instance Binary Region where
   put r =
     put (start r) >> put (end r)
     
-  get = Region <$> get <*> get
+  get = R <$> get <*> get
   
 
 instance Binary Position where
@@ -116,4 +112,4 @@ instance Binary Position where
     put (line p) >> put (column p)
     
   get =
-    Position <$> get <*> get
+    P <$> get <*> get
