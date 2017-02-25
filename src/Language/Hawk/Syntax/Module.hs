@@ -17,13 +17,13 @@ import qualified Text.PrettyPrint.ANSI.Leijen           as PP
 
 
 type Source =
-  Module N.Source E.Source (Maybe T.Source)
+  Module N.Source E.Source T.Source
   
 type Valid =
-  Module N.Valid E.Valid (Maybe T.Valid)
+  Module N.Valid E.Valid T.Valid
   
 type Typed =
-  Module N.Typed E.Typed (Maybe T.Typed)
+  Module N.Typed E.Typed T.Typed
    
 data Module n e t
   = Module Text [I.Item n e t] 

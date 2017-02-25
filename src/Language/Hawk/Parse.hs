@@ -53,7 +53,7 @@ parse typOps exprOps txt = do
   print toks
             
   let (parses, r@(Report _ needed found)) =
-          E.fullParses (E.parser $ G.topLevel typOps exprOps) toks
+          E.fullParses (E.parser $ G.toplevel) toks
   
   case parses of
       []       -> error $ "No parses found.\n" ++ show r

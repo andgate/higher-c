@@ -29,7 +29,7 @@ data ExprDef n e t
     , expr_name  :: n
     , expr_vars  :: [n]
     , expr_type  :: t
-    , expr_rhs   :: E.Expr n t
+    , expr_rhs   :: e
     }
   deriving (Eq, Show, Ord, Data, Typeable)
 

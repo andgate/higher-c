@@ -50,8 +50,6 @@ hawk :-
   \"                              { beginString }
   "/*"                            { beginComment }
   
-  ":-"                            { rsvp }
-  "^="                            { rsvp }
   ":="                            { rsvp }
   "::"                            { rsvp }
   ":"                             { rsvp }

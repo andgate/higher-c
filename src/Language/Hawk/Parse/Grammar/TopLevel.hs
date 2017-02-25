@@ -9,12 +9,18 @@ import Text.Earley
 
 
 import qualified Language.Hawk.Parse.Lexer as Lex
+
+import qualified Language.Hawk.Syntax.ClassDefinition as CD
+import qualified Language.Hawk.Syntax.ClassInstance as CI
+import qualified Language.Hawk.Syntax.ExpressionDefinition as ED
 import qualified Language.Hawk.Syntax.Item as I
 import qualified Language.Hawk.Syntax.Literal as Lit
 import qualified Language.Hawk.Syntax.Module as M
 import qualified Language.Hawk.Syntax.Name as N
+import qualified Language.Hawk.Syntax.OpInfo as OI
 import qualified Language.Hawk.Syntax.Record as R
-import qualified Language.Hawk.Syntax.Type as Ty
+import qualified Language.Hawk.Syntax.Type as T
+import qualified Language.Hawk.Syntax.TypeDefinition as TD
 
 
 -- -----------------------------------------------------------------------------
@@ -28,6 +34,16 @@ toplevel = mdo
 
 
 -- -----------------------------------------------------------------------------
+-- Literal Rules
+    lit <- rule $
+            ( Lit.IntNum <$> tInteger )
+        <|> ( Lit.FloatNum <$> tReal )
+        <|> ( Lit.Chr <$> tChar )
+        <|> ( Lit.Str <$> tString )
+        <|> ( Lit.Boolean <$> tBool )
+    
+
+-- -----------------------------------------------------------------------------
 -- Name rules
     varName <- rule $ varId
     
@@ -36,6 +52,7 @@ toplevel = mdo
     opName <- rule $ opId
     
     name <- rule $ varName <|> conName
+
 
 -- -----------------------------------------------------------------------------
 -- Module path rules
@@ -54,6 +71,7 @@ toplevel = mdo
       <|> (rsvp "(" *> paths_subs <* rsvp ")")
       <|> (pure [])
 
+
 -- -----------------------------------------------------------------------------
 -- Item Rules
     items <- rule $
@@ -62,10 +80,12 @@ toplevel = mdo
     item <- rule $
           impItem
       <|> expItem
-      <|> aliasItem
+      <|> exprDefItem
+      <|> typeDefItem
       <|> recordItem
-      <|> fnItem
-      <|> varItem
+      <|> taggedUnionItem
+      <|> classDefItem
+      <|> classInstItem
     
     
     impItem <- rule $
@@ -74,10 +94,10 @@ toplevel = mdo
     expItem <- rule $
       I.Export <$> (op "<-" *> paths)
       
-    exprDef <- rule $
+    exprDefItem <- rule $
       I.ExprDef <$> exprDef
        
-    typeDef <- rule $
+    typeDefItem <- rule $
       I.TypeDef <$> typeDef
       
     recordItem <- rule $
@@ -92,7 +112,81 @@ toplevel = mdo
     classInstItem <- rule $
       I.ClassInst <$> classInst
 
+-- -----------------------------------------------------------------------------
+-- Type Signature Rules
+    exprDefTypeSig <- rule $
+          rsvp ":" *> tillEquals
+          
+    rawTypeSig <- rule $
+          rsvp ":" *> raw
+  
+-- -----------------------------------------------------------------------------
+-- Expression Definition Rules
+    exprDef <- rule $
+        ED.ExprDef <$> opInfo0 <*> (varName <|> parens opName) <*> many varName <*> exprDefTypeSig <*> exprDefBody
+    
+      
+    exprDefBody <- rule $
+        rsvp "=" *> raw
+    
         
+    opInfo0 <- rule $
+        opInfo <|> pure OI.defOpInfo
+    
+    opInfo <- rule $
+        parens (OI.OpInfo <$> tInteger <*> (OI.assocFromName <$> varId))
+
+
+-- -----------------------------------------------------------------------------
+-- Type Definition Rules
+
+    typeDef <- rule $
+      TD.mkTypeDef <$> conName <*> many varName <*> (rsvp "=" *> raw)
+    
+    
+-- -----------------------------------------------------------------------------
+-- Record Rules
+
+    record <- rule $
+      R.mkRecord <$> (conName <* rsvp ",") <*> recordBody
+    
+    recordBody <- rule $
+      block varDecl
+    
+    varDecl <- rule $
+      (,) <$> varName <*> rawTypeSig
+      
+    conDecl <- rule $
+      (,) <$> conName <*> rawTypeSig
+    
+    
+-- -----------------------------------------------------------------------------
+-- TaggedUnion Rules
+
+    taggedUnion <- rule $
+      R.mkRecord <$> (conName <* rsvp ",") <*> recordBody
+    
+    
+-- -----------------------------------------------------------------------------
+-- Class Definition Rules
+
+    classDef <- rule $
+      CD.mkClassDef <$> conName  <*> many varName <*> (rsvp "," *> classDefBody)
+    
+    classDefBody <- rule $
+      block varDecl
+    
+    
+-- -----------------------------------------------------------------------------
+-- Class Instance Rules
+    
+    classInst <- rule $
+      CI.mkClassInst <$> conName  <*> many varName <*> (rsvp "," *> classInstBody)
+    
+    classInstBody <- rule $
+      block exprDef
+
+
 {- Types are parsed using a different grammar
 -- -----------------------------------------------------------------------------
 -- Type expressions
@@ -117,49 +211,6 @@ toplevel = mdo
     typUnit <- rule $ rsvp "(" *> rsvp ")" *> pure Ty.unit
 -}
 
--- -----------------------------------------------------------------------------
--- Type Alias Rules
-    typAlias <- rule $
-      A.Alias <$> (conName <* rsvp "=") <*> many skip
-
--- -----------------------------------------------------------------------------
--- Record Rules
-    record <- rule $
-      R.Record <$> (conName <* rsvp ":-") <*> record_fields
-    
-    record_fields <- rule $
-      block record_field
-    
-    record_field <- rule $
-      R.RecordField <$> varName <*> typesig
-
--- -----------------------------------------------------------------------------
--- Literal Rules
-    lit <- rule $
-            ( Lit.IntNum <$> tInteger )
-        <|> ( Lit.FloatNum <$> tReal )
-        <|> ( Lit.Chr <$> tChar )
-        <|> ( Lit.Str <$> tString )
-        <|> ( Lit.Boolean <$> tBool )
-    
--- -----------------------------------------------------------------------------
--- Function Rules
-    function <- rule $
-        F.Function <$> opInfo0 <*> (varName <|> parens opName) <*> many binding <*> many skip <*> functionBody
-    
-    opInfo0 <- rule $
-        opInfo <|> pure F.defOpInfo
-    
-    opInfo <- rule $
-        parens (F.OpInfo <$> tInteger <*> (F.assocFromName <$> varId))
-        
-    functionBody <- rule $
-        rsvp ":=" *> stmtblock
-   
--- -----------------------------------------------------------------------------
--- Variables Rules   
-    var <- rule $
-      V.Variable <$> binding <*> typesig0 <*> (rsvp "^=" *> expr)
 
 {- Expressions are another type of parser
 -- -----------------------------------------------------------------------------

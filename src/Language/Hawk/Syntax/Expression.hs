@@ -16,7 +16,7 @@ type Source
   = [Lex.Token]
 
 type Valid
-  = Expr Name.Valid (Maybe Type.Valid)
+  = Expr Name.Valid Type.Valid
 
 type Typed
   = Expr Name.Typed Type.Typed

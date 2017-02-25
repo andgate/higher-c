@@ -24,6 +24,9 @@ type LayoutState = State [Layout]
 defState :: [Layout]
 defState = []
 
+blockTriggers :: [Text]
+blockTriggers = [":=", "::", "do", "where", "of"]
+
 
 -- -----------------------------------------------------------------------------
 -- Pipe-based Layout Driver
@@ -56,7 +59,7 @@ postUpdate (L.Token c _) =
       
   where
     isBlkTrig = c `elem` blkTrigs
-    blkTrigs = map L.TokenRsvp [":-", ":=", ":"]
+    blkTrigs = map L.TokenRsvp blockTriggers
     
     emitBlk = do 
       t@(L.Token _ p@(L.P _ i)) <- await

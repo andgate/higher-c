@@ -70,6 +70,35 @@ match :: L.TokenClass -> Prod r e L.Token L.Token
 match c = satisfy p
   where p (L.Token c' _) = c == c'
   
+notToken :: L.TokenClass -> Prod r e L.Token L.Token
+notToken c = satisfy p
+  where p (L.Token c' _) = c /= c'
+  
+notTokens :: [L.TokenClass] -> Prod r e L.Token L.Token
+notTokens cs  = satisfy p
+  where p (L.Token c' _) = c' `notElem` cs
+
+
+notEquals :: Prod r e L.Token L.Token
+notEquals = notToken $ L.TokenRsvp "="
+
+tillEquals  :: Prod r e L.Token [L.Token]
+tillEquals = many notEquals
+
+notLayout :: Prod r e L.Token L.Token
+notLayout =
+  notTokens [ L.TokenTop
+            , L.TokenBlk
+            , L.TokenBlk'
+            , L.TokenLn
+            , L.TokenLn'
+            ]
+  
+  
+anyToken :: Prod r e L.Token L.Token
+anyToken = satisfy p
+  where p _ = True
+  
 rsvp :: Text -> Prod r e L.Token L.Token
 rsvp text =
   match $ L.TokenRsvp text
@@ -184,8 +213,30 @@ ln = match L.TokenLn
 ln' :: Prod r e L.Token L.Token
 ln' = match L.TokenLn'
 
-any :: Prod r e L.Token L.Token
-any = satisfy (const True)
+
+raw :: Prod r e L.Token [L.Token]
+raw =
+  many notLayout <|> rawBlk <|> rawLn
+  
+  
+
+rawBlk :: Prod r e L.Token [L.Token]
+rawBlk =
+  surroundList <$> blk <*> raw <*> blk
+
+rawLn :: Prod r e L.Token [L.Token]
+rawLn =
+  surroundList <$> ln <*> raw <*> ln'
+
+
+{-  
+tillLn' :: Prod r e L.Token [L.Token]
+tillLn' = (\xs z -> xs ++ [z]) <$> raw <*> ln'
+-}
+
+
+surroundList :: a -> [a] -> a -> [a]
+surroundList a xs z = (a:xs) ++ [z]
 
 
 -- -----------------------------------------------------------------------------

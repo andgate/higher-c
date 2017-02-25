@@ -1,6 +1,7 @@
 module Language.Hawk.Syntax.Record where
 
 import qualified Language.Hawk.Syntax.Name as N
+import qualified Language.Hawk.Syntax.QType as QT
 import qualified Language.Hawk.Syntax.Type as T
 import qualified Language.Hawk.Syntax.TypeDefinition as TD
 
@@ -16,3 +17,8 @@ type Typed =
 
 type Record n t =
     TD.TypeDef n [(n, t)]
+    
+    
+mkRecord :: n -> [(n,t)] -> Record n t
+mkRecord n fs =
+  TD.TypeDef QT.emptyCtx n [] fs

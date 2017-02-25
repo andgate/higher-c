@@ -30,6 +30,10 @@ data QType n t
 data Context n
   = Context [ClassAsst n]
   deriving (Eq, Show, Ord, Data, Typeable)
+  
+  
+emptyCtx :: Context n
+emptyCtx = Context []
 
 
 -- Currently class assertions may only be performed on a set of

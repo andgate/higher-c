@@ -31,6 +31,11 @@ data TypeDef n b
     }
   deriving (Eq, Show, Ord, Data, Typeable)
 
+
+mkTypeDef :: n -> [n] -> t -> TypeDef n t
+mkTypeDef n vs t =
+  TypeDef QT.emptyCtx n vs t
+  
   
 instance (PP.Pretty n, PP.Pretty b) => PP.Pretty (TypeDef n b) where
     pretty (TypeDef c n vs b) =
