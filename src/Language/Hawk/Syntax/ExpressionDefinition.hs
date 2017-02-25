@@ -7,6 +7,8 @@ import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
 import qualified Data.Text.Lazy                   as Text
 import qualified Text.PrettyPrint.ANSI.Leijen     as PP
+
+import qualified Language.Hawk.Parse.Lexer        as Lex
 import qualified Language.Hawk.Syntax.Expression  as E
 import qualified Language.Hawk.Syntax.Name        as N
 import qualified Language.Hawk.Syntax.OpInfo      as OI
@@ -27,14 +29,15 @@ data ExprDef n e t
   = ExprDef 
     { expr_op    :: OI.OpInfo
     , expr_name  :: n
-    , expr_vars  :: [n]
     , expr_type  :: t
     , expr_rhs   :: e
     }
   deriving (Eq, Show, Ord, Data, Typeable)
 
  
-
+mkExprDef :: OI.OpInfo -> N.Source -> [N.Source] -> T.Source -> E.Source -> Source
+mkExprDef oi n vs t e =
+  ExprDef oi n t (Lex.mkLam vs e)
 
       
       

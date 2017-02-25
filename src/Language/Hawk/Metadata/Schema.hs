@@ -11,64 +11,80 @@ import Database.Persist.TH
 import qualified Language.Hawk.Syntax.OpInfo as OI
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-MModule
+Module
     name Text
     source Text
     deps [Text]
-    depIds [MModuleId] -- Generated after all modules are loaded
+    depIds [ModuleId] -- Generated after all modules are loaded
     deriving Show
 
-MTypeOp
-    op  MOpId
-    rec MRecItemId
+TypeOp
+    op  OpId
+    td TypeDefId
 
-MVarOp
-    op  MOpId
-    fn  MFnItemId
+VarOp
+    op  OpId
+    fn  ExprDefId
     
-MOp
-    src MModuleId
+Op
+    src ModuleId
     name Text
     prec Int
     assoc OI.Assoc
     
-MBinding
-    name Text
-    isRef Bool
-    isMut Bool
-    deriving Show
-    
-MFnItem
-    modId MModuleId
+ExprDef
+    modId ModuleId
     name Text
     opInfo ByteString
-    params [MBindingId]
-    typesig ByteString Maybe -- This field may not get added until type-inference
-    body ByteString Maybe -- This field may not be set until the expressions are demangled
+    vars [Text]
+    typesig ByteString -- This field may not get added until type-inference
+    body ByteString -- This field may not be set until the expressions are demangled
     deriving Show
     
-MVarItem
-    modId MModuleId
-    bindingId MBindingId
-    typesig ByteString Maybe
-    body ByteString Maybe
-    deriving Show
-    
-MRecItem
-    modId MModuleId
+TypeDef
+    modId ModuleId
+    ctx ByteString
     name Text
-    fieldIds [MRecFieldId]
+    vars [Text]
+    body ByteString
+    deriving Show    
+    
+Record
+    modId ModuleId
+    name Text
+    body [RecordFieldId]
     deriving Show
     
-MRecField
-    recId MRecItemId
+RecordField
+    parentId RecordId
+    name Text
+    typesig ByteString
+    deriving Show
+    
+    
+ClassDef
+    modId ModuleId
+    name Text
+    vars [Text]
+    body [ClassDefFieldId]
+    deriving Show
+    
+ClassDefField
+    parentId ClassDefId
     name Text
     typesig ByteString
     deriving Show
     
-MAliasItem
-    modId MModuleId
+    
+ClassInst
+    modId ModuleId
     name Text
-    typesig ByteString
+    vars [ByteString]
+    body [ClassInstFieldId]
+    deriving Show
+    
+ClassInstField
+    parentId ClassInstId
+    def ExprDef
     deriving Show
 |]

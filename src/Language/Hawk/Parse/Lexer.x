@@ -18,6 +18,7 @@ import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 import qualified Control.Monad.Trans.State.Strict as State
 import qualified Data.Text.Lazy                   as Text
 import qualified Filesystem.Path.CurrentOS        as Filesystem
+import qualified Language.Hawk.Syntax.Name        as N
 import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 
 }
@@ -56,8 +57,9 @@ hawk :-
   
   
   ":="                            { rsvp }
-  "="                             { rsvp }
   ":"                             { rsvp }
+  "="                             { rsvp }
+  "?"                             { rsvp }
   
   ","                             { rsvp }
   "("                             { rsvp }
@@ -212,8 +214,8 @@ alexInputPrevChar = prevChar
 
 -- | A `Token` augmented with `Position` information
 data Token = Token
-    { token    ::                !TokenClass
-    , position :: {-# UNPACK #-} !Position
+    { token    :: TokenClass
+    , position :: Maybe Position
     } deriving (Show)
     
 
@@ -251,6 +253,22 @@ data TokenClass
   
   | TokenEof
   deriving ( Eq, Show )
+
+
+mkLam :: [N.Source] -> [Token] -> [Token]
+mkLam vs (t@(Token TokenBlk _):ts) = t:(mkLam vs ts)
+mkLam vs ts = lamOp ++ varIds ++ arrOp ++ ts
+  where
+    lamOp = [rsvpTok "\\"]
+    varIds = map (varIdTok . N.exLocal) vs
+    arrOp = [rsvpTok "->"]
+
+
+rsvpTok :: Text -> Token
+rsvpTok txt = Token (TokenRsvp txt) Nothing
+
+varIdTok :: Text -> Token
+varIdTok txt = Token (TokenVarId txt) Nothing
 
 instance PP.Pretty TokenClass where
   pretty (TokenRsvp t) =
@@ -350,7 +368,7 @@ lexModl text = for (go (AlexInput '\n' [] text)) tag
   where
     tag token = do
         s <- lift State.get
-        yield (Token token (curPos s))
+        yield (Token token (Just $ curPos s))
 
     go input = do
       s <- lift State.get

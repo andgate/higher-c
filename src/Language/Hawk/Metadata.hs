@@ -15,20 +15,26 @@ import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import Language.Hawk.Compile.Monad
-import Language.Hawk.Metadata.Schema
 
 
 import qualified Data.Text.Lazy.IO as Text
 import qualified Control.Monad.Trans.State.Strict as St
+
+import qualified Language.Hawk.Metadata.Schema as Db
 import qualified Language.Hawk.Parse as P
-import qualified Language.Hawk.Syntax.Alias as A
-import qualified Language.Hawk.Syntax.Binding as B
-import qualified Language.Hawk.Syntax.Function as F
+import qualified Language.Hawk.Syntax.ClassDefinition as CD
+import qualified Language.Hawk.Syntax.ClassInstance as CI
+import qualified Language.Hawk.Syntax.Expression as E
 import qualified Language.Hawk.Syntax.Item as I
+import qualified Language.Hawk.Syntax.Literal as L
 import qualified Language.Hawk.Syntax.Module as M
 import qualified Language.Hawk.Syntax.Name as N
+import qualified Language.Hawk.Syntax.OpInfo as OI
+import qualified Language.Hawk.Syntax.QType as QT
 import qualified Language.Hawk.Syntax.Record as R
-import qualified Language.Hawk.Syntax.Variable as V
+import qualified Language.Hawk.Syntax.TaggedUnion as TU
+import qualified Language.Hawk.Syntax.Type as T
+import qualified Language.Hawk.Syntax.TypeDefinition as TD
 
 
 {-
@@ -72,25 +78,21 @@ storeModule (M.Module n its) src = runSqlite "hk.db" $ do
       case i of
         I.Import n -> return () -- Handled later
         I.Export n -> return () -- Handled later
-        I.Function f -> storeFn modId f
-        I.Variable v -> storeVar modId v
-        I.Record r -> storeRec modId r
-        I.Alias a -> storeAlias modId a
+        I.ExprDef ed -> storeED modId ed
+        I.TypeDef td -> storeTD modId td
+        I.Record r -> storeR modId r
+        I.TaggedUnion tu -> storeTU modId tu
+        I.ClassDef cs -> storeCD modId cs
+        I.ClassInst ci -> storeCI modId ci
         
-      
-    mkBinding (B.Binding m (N.Name n p)) = 
-      MBinding n (B.isRef m) (B.isMut m)
-      
-    storeBinding = 
-      insert . mkBinding
         
-    storeFn modId (F.Function oi (N.Name n p) args t b) = do
+    storeED modId (ED.ExprDef oi (N.Name n p) vs t b) = do
       let oidat = toStrict $ encode oi
           tdat  = toStrict $ encode t
           bdat  = toStrict $ encode b
           
       argIds <- insertMany (map mkBinding args)
-      fnId <- insert $ MFnItem modId n oidat argIds (Just tdat) (Just bdat)
+      fnId <- insert $ Db.ExprDef modId n oidat argIds (Just tdat) (Just bdat)
       
       storeVarOp modId fnId n oi
       
@@ -99,12 +101,13 @@ storeModule (M.Module n its) src = runSqlite "hk.db" $ do
       opId <- insert $ MOp modId n (fromIntegral p) a
       insert_ $ MVarOp opId fnId
       
-      
-    storeVar modId (V.Variable n t b) = do
-      let tdat = toStrict $ encode t
-          bdat = toStrict $ encode b
-      bindingId <- storeBinding n
-      insert_ $ MVarItem modId bindingId (Just tdat) (Just bdat)
+    storeED modId (ED.ExprDef oi (N.Name n p) vs t b) = do
+      let oidat = toStrict $ encode oi
+          tdat  = toStrict $ encode t
+          bdat  = toStrict $ encode b
+          
+      argIds <- insertMany (map mkBinding args)
+      fnId <- insert $ MFnItem modId n oidat argIds (Just tdat) (Just bdat)
     
     storeRec modId (R.Record (N.Name n p) fs) = do
       recId <- insert $ MRecItem modId n []

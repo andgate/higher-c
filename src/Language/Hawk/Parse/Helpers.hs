@@ -85,6 +85,19 @@ notEquals = notToken $ L.TokenRsvp "="
 tillEquals  :: Prod r e L.Token [L.Token]
 tillEquals = many notEquals
 
+notTypeCtxArr :: Prod r e L.Token L.Token
+notTypeCtxArr = notToken $ L.TokenRsvp "=>"
+
+notColon :: Prod r e L.Token L.Token
+notColon = notToken $ L.TokenRsvp ":"
+
+notParens =
+  notTokens [ L.TokenRsvp "("
+            , L.TokenRsvp ")"
+            ]
+
+
+
 notLayout :: Prod r e L.Token L.Token
 notLayout =
   notTokens [ L.TokenTop
@@ -106,6 +119,9 @@ rsvp text =
 parens :: Prod r e L.Token a -> Prod r e L.Token a
 parens p =
   rsvp "(" *> p <* rsvp ")"
+  
+  
+parensRaw = parens notParens <|> notParen
 
 sep :: Prod r e L.Token b -> Prod r e L.Token a -> Prod r e L.Token [a]
 sep s p =
@@ -114,6 +130,8 @@ sep s p =
 sep' :: Prod r e L.Token b -> Prod r e L.Token a -> Prod r e L.Token [a]
 sep' s p =
   sep s p <|> pure []
+  
+sepByParens
 
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Name Tokens
@@ -217,7 +235,6 @@ ln' = match L.TokenLn'
 raw :: Prod r e L.Token [L.Token]
 raw =
   many notLayout <|> rawBlk <|> rawLn
-  
   
 
 rawBlk :: Prod r e L.Token [L.Token]

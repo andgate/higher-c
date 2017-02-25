@@ -27,7 +27,7 @@ defState :: [Layout]
 defState = []
 
 blockTriggers :: [Text]
-blockTriggers = [":=", "::", "do", "where", "of"]
+blockTriggers = [":", ":="]
 
 
 -- -----------------------------------------------------------------------------
@@ -37,11 +37,15 @@ layout = forever (await >>= update)
 
   
 update :: L.Token -> Pipe L.Token L.Token LayoutState ()
-update t = preUpdate t >> yield t >> postUpdate t
+update t@(L.Token c (Just p)) = do
+    preUpdate c p
+    yield t
+    postUpdate c
+
+update t = yield t
   
-  
-preUpdate :: L.Token -> Pipe L.Token L.Token LayoutState ()
-preUpdate (L.Token c p) = do
+preUpdate :: L.TokenClass -> Position -> Pipe L.Token L.Token LayoutState ()
+preUpdate c p = do
   -- Close invalid layouts on the stack
   -- until the top of the stack is a
   -- valid or negative layout.
@@ -54,23 +58,29 @@ preUpdate (L.Token c p) = do
   
   handleEof c p
   
-
-postUpdate :: L.Token -> Pipe L.Token L.Token LayoutState ()
-postUpdate (L.Token c _) =
+  
+postUpdate :: L.TokenClass -> Pipe L.Token L.Token LayoutState ()
+postUpdate c =
   when isBlkTrig emitBlk
       
   where
     isBlkTrig = c `elem` blkTrigs
     blkTrigs = map L.TokenRsvp blockTriggers
     
+    awaitDocTok = do
+      t@(L.Token c mp) <- await
+      case mp of
+        Just p -> return (c,p)
+        Nothing -> yield t >> awaitDocTok
+    
     emitBlk = do 
-      t@(L.Token _ p@(P _ i)) <- await
+      (c, p@(P _ i)) <- awaitDocTok
       l <- lift $ peekLay
       if isValid i l
           then do
             open (Block i) p
             open (LineFold i) p
-            yield t
+            yield $ L.Token c (Just p)
           else
             error $ "Expecting indent beyond " ++ show i
 
@@ -168,14 +178,14 @@ peekLay = do
 openTok :: Layout -> Position -> L.Token
 openTok l p =
   case l of
-      Block _ -> L.Token L.TokenBlk p
-      LineFold _ -> L.Token L.TokenLn p    
+      Block _ -> L.Token L.TokenBlk (Just p)
+      LineFold _ -> L.Token L.TokenLn (Just p)    
     
 closeTok :: Layout -> Position -> L.Token
 closeTok l p =
   case l of
-      Block _ -> L.Token L.TokenBlk' p
-      LineFold _ -> L.Token L.TokenLn' p
+      Block _ -> L.Token L.TokenBlk' (Just p)
+      LineFold _ -> L.Token L.TokenLn' (Just p)
   
   
 isValid :: Int -> Layout -> Bool

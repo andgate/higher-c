@@ -5,10 +5,13 @@
 
 -> IO
 
-
+<x SizeT
 SizeT = I32
 
 <- Car(..) Color(..) Automobile(..) 
+
+// Type operator's can only be constructed through a type def
+(_!->!_) f a = f -> IO a  
 
 // Record (aka struct)
 Car:
@@ -20,6 +23,7 @@ Color:
   | Red I32
   | Green I32
   | Blue I32
+
  
 // Algebraic syntax for sum type
 ColorAlt:
@@ -31,13 +35,6 @@ ColorAlt:
 Automobile a :
   drive ? a -> IO ()
   paint ? a -> Color -> IO ()
-
-// TODO: Efficient Pattern matching
-/*
-fst (a,_)
-  ? (a,b) -> a
-  = a
-*/
 
 // Instancing a typeclass
 Automobile Car:
@@ -54,6 +51,16 @@ Automobile Car:
           Blue x -> x + "% Blue"
 
 
+// TODO: Efficient Pattern matching
+/*
+fst (a,_)
+  ? (a,b) -> a
+  = a
+*/
+
+id
+ ? a -> a
+ = \ x -> x
 
 // Creating variables, which are all mutable by default.
 <- a b c

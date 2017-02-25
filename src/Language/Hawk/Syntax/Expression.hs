@@ -26,6 +26,8 @@ data Expr n t
   | Var n
   | Con n
   
+  | Lam [n] (Expr n t)
+  
   | App (Expr n t) [Expr n t]
   | Let n (Expr n t) (Expr n t)
   -- Probably need to add suport for operators later

@@ -19,6 +19,7 @@ import qualified Language.Hawk.Syntax.Module as M
 import qualified Language.Hawk.Syntax.Name as N
 import qualified Language.Hawk.Syntax.OpInfo as OI
 import qualified Language.Hawk.Syntax.Record as R
+import qualified Language.Hawk.Syntax.TaggedUnion as TU
 import qualified Language.Hawk.Syntax.Type as T
 import qualified Language.Hawk.Syntax.TypeDefinition as TD
 
@@ -115,19 +116,30 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Type Signature Rules
     exprDefTypeSig <- rule $
-          rsvp ":" *> tillEquals
+          rsvp "?" *> tillEquals
           
     rawTypeSig <- rule $
-          rsvp ":" *> raw
+          rsvp "?" *> raw
   
 -- -----------------------------------------------------------------------------
 -- Expression Definition Rules
     exprDef <- rule $
-        ED.ExprDef <$> opInfo0 <*> (varName <|> parens opName) <*> many varName <*> exprDefTypeSig <*> exprDefBody
+        exprDef0 <|> exprDef1
     
-      
+    exprDef0 <- rule $
+        ED.ExprDef <$> opInfo0 <*> exprDefName <*> exprDefTypeSig <*> exprDefBody
+       
+    exprDef1 <- rule $
+        ED.mkExprDef <$> opInfo0 <*> exprDefName <*> some varName <*> exprDefTypeSig <*> exprDefBody
+    
+    exprDefName <- rule $
+        varName <|> parens opName
+    
+    exprDefOp <- rule $
+        rsvp "=" <|> rsvp ":="
+     
     exprDefBody <- rule $
-        rsvp "=" *> raw
+        exprDefOp *> raw
     
         
     opInfo0 <- rule $
@@ -142,49 +154,67 @@ toplevel = mdo
 
     typeDef <- rule $
       TD.mkTypeDef <$> conName <*> many varName <*> (rsvp "=" *> raw)
-    
+
+
+-- -----------------------------------------------------------------------------
+-- Declaration Rules    
+    varDeclTyped <- rule $
+      (,) <$> varName <*> rawTypeSig
+
+    conDecl <- rule $
+      (,) <$> conName <*> raw 
+      
+    conDeclTyped <- rule $
+      (,) <$> conName <*> rawTypeSig  
     
 -- -----------------------------------------------------------------------------
 -- Record Rules
 
     record <- rule $
-      R.mkRecord <$> (conName <* rsvp ",") <*> recordBody
+      R.mkRecord <$> conName <*> recordBody
     
     recordBody <- rule $
-      block varDecl
-    
-    varDecl <- rule $
-      (,) <$> varName <*> rawTypeSig
-      
-    conDecl <- rule $
-      (,) <$> conName <*> rawTypeSig
+      rsvp ":" *> block varDeclTyped
     
     
 -- -----------------------------------------------------------------------------
 -- TaggedUnion Rules
 
     taggedUnion <- rule $
-      R.mkRecord <$> (conName <* rsvp ",") <*> recordBody
+      TU.mkTaggedUnion <$> conName <*> tuBody
+      
+    
+    tuBody <- rule $
+      rsvp ":" *> block tuArm
+      
+    tuArm <- rule $
+      rsvp "|" *> (conDecl <|> conDeclTyped)
     
     
 -- -----------------------------------------------------------------------------
 -- Class Definition Rules
 
     classDef <- rule $
-      CD.mkClassDef <$> conName  <*> many varName <*> (rsvp "," *> classDefBody)
+      CD.mkClassDef <$> conName <*> some varName <*> classDefBody
     
     classDefBody <- rule $
-      block varDecl
+      rsvp ":" *> block varDeclTyped
     
     
 -- -----------------------------------------------------------------------------
 -- Class Instance Rules
     
     classInst <- rule $
-      CI.mkClassInst <$> conName  <*> many varName <*> (rsvp "," *> classInstBody)
+      CI.mkClassInst <$> typeCtx <*> conName <*> some varName <*> classInstBody
+    
+    classInstVar <- rule $
+      raw
     
     classInstBody <- rule $
-      block exprDef
+      rsvp ":" *> block exprDef
+      
+    typeCtx <- rule $
+      many notTypeCtxArr *> rsvp "=>"
 
 
 {- Types are parsed using a different grammar
