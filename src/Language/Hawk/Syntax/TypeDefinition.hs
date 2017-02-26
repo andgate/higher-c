@@ -13,18 +13,18 @@ import qualified Language.Hawk.Syntax.Type as T
 
 
 type Source =
-  TypeDef N.Source T.Source
+  TypeDef N.Source T.Source T.Source
   
 type Valid =
-  TypeDef N.Valid T.Valid
+  TypeDef N.Valid T.Valid T.Valid
   
 type Typed =
-  TypeDef N.Typed T.Typed
+  TypeDef N.Typed T.Typed T.Typed
 
 
-data TypeDef n b
+data TypeDef n t b
   = TypeDef
-    { tydef_context :: QT.Context n
+    { tydef_context :: QT.Context t
     , tydef_name :: n
     , tydef_tyvars :: [n]
     , tydef_body :: b
@@ -32,12 +32,12 @@ data TypeDef n b
   deriving (Eq, Show, Ord, Data, Typeable)
 
 
-mkTypeDef :: n -> [n] -> t -> TypeDef n t
+mkTypeDef :: n -> [n] -> t -> TypeDef n t b
 mkTypeDef n vs t =
   TypeDef QT.emptyCtx n vs t
   
   
-instance (PP.Pretty n, PP.Pretty b) => PP.Pretty (TypeDef n b) where
+instance (PP.Pretty n, Binary t, PP.Pretty b) => PP.Pretty (TypeDef n t b) where
     pretty (TypeDef c n vs b) =
       PP.text "Type definition:"
       PP.<$>
@@ -52,7 +52,7 @@ instance (PP.Pretty n, PP.Pretty b) => PP.Pretty (TypeDef n b) where
         )
         
   
-instance (Binary n, Binary b) => Binary (TypeDef n b) where
+instance (Binary n, Binary t, Binary b) => Binary (TypeDef n t b) where
   get =
     TypeDef <$> get <*> get <*> get <*> get
 

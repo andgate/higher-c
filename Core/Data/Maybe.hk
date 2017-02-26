@@ -1,0 +1,56 @@
+// -----------------------------------------------------
+// Core.Data.Maybe
+
+<- Maybe(..)
+   maybe
+   isJust
+   isNothing
+   fromJust
+   fromMaybe
+   
+
+// -----------------------------------------------------
+// Maybe Data Type
+Maybe a:
+  Nothing
+  Just a
+  
+ 
+// -----------------------------------------------------
+// Maybe Typeclass Instances
+-> Core.Data.Functor
+Functor (Maybe a):
+  map
+    : _ Nothing = Nothing
+      f (Just x) = Just (f x)
+      
+
+// -----------------------------------------------------
+// Maybe combinators
+maybe
+  ? b -> (a -> b) -> Maybe a -> b
+  : n _ Nothing = n
+    _ f (Just x) = f x
+    
+   
+isJust ? Maybe a -> Bool
+  : Nothing = False
+    _       = True
+
+
+isNothing
+  ? Maybe a -> Bool
+  : Nothing = True
+    _       = False
+
+
+fromJust
+  ? Maybe a -> a
+  : Nothing  = error "Maybe.fromJust: Nothing"  // yuck
+    (Just x) = x
+
+
+fromMaybe d _
+  ? a -> Maybe a -> a
+  : _ Nothing = d
+    _ (Just v) = v

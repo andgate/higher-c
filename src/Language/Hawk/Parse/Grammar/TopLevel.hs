@@ -18,6 +18,7 @@ import qualified Language.Hawk.Syntax.Literal as Lit
 import qualified Language.Hawk.Syntax.Module as M
 import qualified Language.Hawk.Syntax.Name as N
 import qualified Language.Hawk.Syntax.OpInfo as OI
+import qualified Language.Hawk.Syntax.QType as QT
 import qualified Language.Hawk.Syntax.Record as R
 import qualified Language.Hawk.Syntax.TaggedUnion as TU
 import qualified Language.Hawk.Syntax.Type as T
@@ -205,16 +206,19 @@ toplevel = mdo
 -- Class Instance Rules
     
     classInst <- rule $
-      CI.mkClassInst <$> typeCtx <*> conName <*> some varName <*> classInstBody
-    
-    classInstVar <- rule $
-      raw
-    
-    classInstBody <- rule $
-      rsvp ":" *> block exprDef
+        CI.mkClassInst <$> typeCtx <*> conName <*> classInstVar <*> classInstBody
       
     typeCtx <- rule $
-      many notTypeCtxArr *> rsvp "=>"
+        (Context <$> typeCtxRaw) <* rsvp "=>"
+      
+    typeCtxRaw <- rule $
+        (:[]) <$> many notTypeCtxArr
+    
+    classInstVar <- rule $
+        some notColon
+    
+    classInstBody <- rule $
+        rsvp ":" *> block exprDef
 
 
 {- Types are parsed using a different grammar

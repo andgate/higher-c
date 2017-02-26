@@ -119,9 +119,7 @@ rsvp text =
 parens :: Prod r e L.Token a -> Prod r e L.Token a
 parens p =
   rsvp "(" *> p <* rsvp ")"
-  
-  
-parensRaw = parens notParens <|> notParen
+
 
 sep :: Prod r e L.Token b -> Prod r e L.Token a -> Prod r e L.Token [a]
 sep s p =
@@ -130,8 +128,6 @@ sep s p =
 sep' :: Prod r e L.Token b -> Prod r e L.Token a -> Prod r e L.Token [a]
 sep' s p =
   sep s p <|> pure []
-  
-sepByParens
 
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Name Tokens
@@ -141,14 +137,14 @@ varId = fmap unsafeExtract (satisfy p)
   where
     p (L.Token (L.TokenVarId _) _) = True
     p  _                             = False
-    unsafeExtract (L.Token (L.TokenVarId v) p) = N.Name v (Just $ R.toPosition p)
+    unsafeExtract (L.Token (L.TokenVarId v) p) = N.Name v p
 
 conId :: Prod r e L.Token N.Source
 conId = fmap unsafeExtract (satisfy p)
   where
     p (L.Token (L.TokenConId _) _) = True
     p  _                           = False
-    unsafeExtract (L.Token (L.TokenConId v) p) = N.Name v (Just $ R.toPosition p)
+    unsafeExtract (L.Token (L.TokenConId v) p) = N.Name v p
     
 
 opId :: Prod r e L.Token N.Source
@@ -156,7 +152,7 @@ opId = fmap unsafeExtract (satisfy p)
   where
     p (L.Token (L.TokenOpId _) _) = True
     p _                           = False
-    unsafeExtract (L.Token (L.TokenOpId v) p) = N.Name v (Just $ R.toPosition p)
+    unsafeExtract (L.Token (L.TokenOpId v) p) = N.Name v p
 
 
 op :: Text -> Prod r e L.Token L.Token

@@ -16,7 +16,7 @@ type Typed =
   ClassDef N.Typed T.Typed
 
 type ClassDef n t =
-    TD.TypeDef n [(n, t)]
+    TD.TypeDef n t [(n, t)]
     
     
 mkClassDef :: n -> [n] -> [(n,t)] -> ClassDef n t

@@ -86,13 +86,12 @@ storeModule (M.Module n its) src = runSqlite "hk.db" $ do
         I.ClassInst ci -> storeCI modId ci
         
         
-    storeED modId (ED.ExprDef oi (N.Name n p) vs t b) = do
+    storeED modId (ED.ExprDef oi (N.Name n p) t b) = do
       let oidat = toStrict $ encode oi
           tdat  = toStrict $ encode t
           bdat  = toStrict $ encode b
           
-      argIds <- insertMany (map mkBinding args)
-      fnId <- insert $ Db.ExprDef modId n oidat argIds (Just tdat) (Just bdat)
+      fnId <- insert $ Db.ExprDef modId n oidat (Just tdat) (Just bdat)
       
       storeVarOp modId fnId n oi
       

@@ -36,7 +36,6 @@ ExprDef
     modId ModuleId
     name Text
     opInfo ByteString
-    vars [Text]
     typesig ByteString -- This field may not get added until type-inference
     body ByteString -- This field may not be set until the expressions are demangled
     deriving Show

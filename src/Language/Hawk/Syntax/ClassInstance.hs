@@ -18,9 +18,9 @@ type Typed =
   ClassInst N.Typed E.Typed T.Typed
 
 type ClassInst n e t =
-    TD.TypeDef n [ED.ExprDef n e t]
+    TD.TypeDef n t [ED.ExprDef n e t]
     
     
-mkClassInst :: n -> [n] -> [ED.ExprDef n e t] -> ClassInst n e t
-mkClassInst n vs fs =
-  TD.TypeDef QT.emptyCtx n vs fs
+mkClassInst :: QT.Context n -> n -> [n] -> [ED.ExprDef n e t] -> ClassInst n e t
+mkClassInst ctx n vs fs =
+  TD.TypeDef ctx n vs fs

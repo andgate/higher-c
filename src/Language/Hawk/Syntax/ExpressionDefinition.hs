@@ -42,15 +42,13 @@ mkExprDef oi n vs t e =
       
       
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (ExprDef n e t) where
-  pretty (ExprDef opinf name vars tipe rhs) =
+  pretty (ExprDef opinf name tipe rhs) =
     PP.text "Expression Definition:"
     PP.<$>
     PP.indent 2
       ( PP.text "name:" <+> PP.pretty name
         PP.<$>
         PP.text "op info:" <+> PP.pretty opinf
-        PP.<$>
-        PP.text "vars:" <+> PP.pretty vars
         PP.<$>
         PP.text "type:" <+> PP.pretty tipe
         PP.<$>
@@ -60,7 +58,7 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (ExprDef n e t) wh
   
 instance (Binary n, Binary e, Binary t) => Binary (ExprDef n e t) where
   get =
-      ExprDef <$> get <*> get <*> get <*> get <*> get
+      ExprDef <$> get <*> get <*> get <*> get
       
-  put (ExprDef oi n vs t rhs) =
-      put oi >> put n >> put vs >> put t >> put rhs
+  put (ExprDef oi n t rhs) =
+      put oi >> put n >> put t >> put rhs
