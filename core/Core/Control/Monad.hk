@@ -1,0 +1,32 @@
+// -----------------------------------------------------
+// Core.Control.Monad
+
+-> Core.Control.Applicative
+   Core.Control.Functor
+   
+   
+Applicative m => Monad m :-
+  (_>>=_) 1L
+    x f
+    ? forall a b. m a -> (a -> m b) -> m b
+    = f =<< x
+        
+  (_>>_) 1L
+    m k
+    ? forall a b. m a -> m b -> m b
+    = m >>= \_ -> k
+    
+  return
+    ? a -> m a
+    = pure
+    
+  fail s
+    ? String -> m a
+    = error "String"
+  
+  
+  (_=<<_) 1R
+    f x
+    ? forall a b. (a -> m b) -> m a -> m b
+    = x >>= f
+  

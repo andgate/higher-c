@@ -1,0 +1,6 @@
+-> Core.Control.Semigroup
+
+Semigroup a =>
+  Monoid a :-
+  
+  empty ? a
