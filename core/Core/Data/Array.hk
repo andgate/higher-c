@@ -1,0 +1,3 @@
+Array a = _
+
+([_]) a = Array a

@@ -1,0 +1,7 @@
+(Num a) => Complex a:
+  (_+_j) a a
+  _j a
+  
+  
+Num (Complex a):
+  // need to meet num definitions

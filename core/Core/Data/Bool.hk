@@ -1,0 +1,9 @@
+Bool:
+  False
+  True
+  
+  
+bool
+  ? a -> a -> Bool -> a
+  : x _ False = x
+    _ y _    = y

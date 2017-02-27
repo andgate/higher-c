@@ -1,0 +1,15 @@
+
+<- Core.Data.Array
+   Core.Data.Bool
+   Core.Data.Char
+   Core.Data.Complex
+   Core.Data.Either
+   Core.Data.Function
+   Core.Data.Functor
+   Core.Data.Int
+   Core.Data.Maybe
+   Core.Data.Ptr
+   Core.Data.Ref
+   Core.Data.String
+   Core.Data.Var
+   Core.Data.Word

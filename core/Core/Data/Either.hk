@@ -1,0 +1,20 @@
+Either a b:
+  Left a
+  Right b
+  
+  
+either
+  ? (a -> c) -> (b -> c) Either a b -> c
+  : f _ (Left x) = f x
+    _ g (Right y) = g y
+    
+    
+isLeft
+  ? Either a b -> Bool
+  : (Left _) = True
+    _ = False
+
+isRight
+  ? Either a b -> Bool
+  : (Right _) = True
+    _ = False
