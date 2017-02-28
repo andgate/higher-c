@@ -5,7 +5,6 @@
 
 -> Core.IO
 
-<x SizeT
 SizeT = I32
 
 
@@ -121,10 +120,11 @@ main foo
 
 <- if_then_else_ while_:_
 
-(6r) if_then_else_ p a b
+if_then_else_ 6R
+  p a b
   ? Bool -> [Expr a] -> [Expr a] -> Q (Expr a)
   = undefined
       
-while_:_ 
+while_:_ 6R
   ? Bool -> [Expr a] -> Q (Expr a)
   = undefined

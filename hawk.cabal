@@ -94,11 +94,11 @@ library
                         Language.Hawk.Report.Result
                         
                         
-                        
-                        Language.Hawk.Syntax.ClassDefinition
-                        Language.Hawk.Syntax.ClassInstance
+                        Language.Hawk.Syntax.AliasDefinition
+                        Language.Hawk.Syntax.DataDefinition
                         Language.Hawk.Syntax.Expression
                         Language.Hawk.Syntax.ExpressionDefinition
+                        Language.Hawk.Syntax.ExpressionDeclaration
                         Language.Hawk.Syntax.Item
                         Language.Hawk.Syntax.Literal
                         Language.Hawk.Syntax.Module
@@ -106,10 +106,9 @@ library
                         Language.Hawk.Syntax.OpInfo
                         --Language.Hawk.Syntax.Pattern
                         Language.Hawk.Syntax.QType
-                        Language.Hawk.Syntax.Record
-                        Language.Hawk.Syntax.TaggedUnion
                         Language.Hawk.Syntax.Type
-                        Language.Hawk.Syntax.TypeDefinition
+                        Language.Hawk.Syntax.TypeClassDefinition
+                        Language.Hawk.Syntax.TypeDeclaration
                         
                         --Language.Hawk.Target.LLVM.Codegen
                         --Language.Hawk.Target.LLVM.Emit

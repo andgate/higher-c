@@ -62,7 +62,7 @@ typParens _ = Ty.typeCon "(_)"
 
 typDollar :: Holey L.Token  -> [Ty.Typed] -> Ty.Typed
 typDollar _ = Ty.typeCon "_$_"
-  
+
 
 -- -----------------------------------------------------------------------------
 -- Terminal Production Helpers
@@ -91,13 +91,6 @@ notTypeCtxArr = notToken $ L.TokenRsvp "=>"
 notColon :: Prod r e L.Token L.Token
 notColon = notToken $ L.TokenRsvp ":"
 
-notParens =
-  notTokens [ L.TokenRsvp "("
-            , L.TokenRsvp ")"
-            ]
-
-
-
 notLayout :: Prod r e L.Token L.Token
 notLayout =
   notTokens [ L.TokenTop
@@ -105,6 +98,8 @@ notLayout =
             , L.TokenBlk'
             , L.TokenLn
             , L.TokenLn'
+            , L.TokenRsvp "("
+            , L.TokenRsvp ")"
             ]
   
   
@@ -115,12 +110,8 @@ anyToken = satisfy p
 rsvp :: Text -> Prod r e L.Token L.Token
 rsvp text =
   match $ L.TokenRsvp text
-        
-parens :: Prod r e L.Token a -> Prod r e L.Token a
-parens p =
-  rsvp "(" *> p <* rsvp ")"
-
-
+           
+           
 sep :: Prod r e L.Token b -> Prod r e L.Token a -> Prod r e L.Token [a]
 sep s p =
   (:) <$> p <*> many (s *> p)
@@ -132,12 +123,24 @@ sep' s p =
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Name Tokens
 
+varTok :: Prod r e L.Token L.Token
+varTok = satisfy p
+  where
+    p (L.Token (L.TokenVarId _) _) = True
+    p  _                             = False
+
 varId :: Prod r e L.Token N.Source
 varId = fmap unsafeExtract (satisfy p)
   where
     p (L.Token (L.TokenVarId _) _) = True
     p  _                             = False
     unsafeExtract (L.Token (L.TokenVarId v) p) = N.Name v p
+
+conTok :: Prod r e L.Token L.Token
+conTok = satisfy p
+  where
+    p (L.Token (L.TokenConId _) _) = True
+    p  _                             = False
 
 conId :: Prod r e L.Token N.Source
 conId = fmap unsafeExtract (satisfy p)
@@ -153,6 +156,22 @@ opId = fmap unsafeExtract (satisfy p)
     p (L.Token (L.TokenOpId _) _) = True
     p _                           = False
     unsafeExtract (L.Token (L.TokenOpId v) p) = N.Name v p
+
+
+named :: Text -> Prod r e L.Token N.Source
+named txt = fmap unsafeExtract (satisfy p)
+  where
+    p (L.Token (L.TokenRsvp _) _)  = True
+    p (L.Token (L.TokenVarId _) _) = True
+    p (L.Token (L.TokenConId _) _) = True
+    p (L.Token (L.TokenOpId _) _)  = True
+    p  _                           = False
+    
+    unsafeExtract (L.Token (L.TokenRsvp v) p) = N.Name v p
+    unsafeExtract (L.Token (L.TokenVarId v) p) = N.Name v p
+    unsafeExtract (L.Token (L.TokenConId v) p) = N.Name v p
+    unsafeExtract (L.Token (L.TokenOpId v) p) = N.Name v p
+    unsafeExtract _ = undefined
 
 
 op :: Text -> Prod r e L.Token L.Token
@@ -228,9 +247,15 @@ ln' :: Prod r e L.Token L.Token
 ln' = match L.TokenLn'
 
 
+        
+parens :: Prod r e L.Token a -> Prod r e L.Token a
+parens p =
+  rsvp "(" *> p <* rsvp ")"
+
+
 raw :: Prod r e L.Token [L.Token]
 raw =
-  many notLayout <|> rawBlk <|> rawLn
+  many notLayout <|> rawBlk <|> rawLn <|> rawParens
   
 
 rawBlk :: Prod r e L.Token [L.Token]
@@ -240,12 +265,12 @@ rawBlk =
 rawLn :: Prod r e L.Token [L.Token]
 rawLn =
   surroundList <$> ln <*> raw <*> ln'
+  
+  
+rawParens :: Prod r e L.Token [L.Token]
+rawParens =
+  surroundList <$> rsvp "(" <*> raw <*> rsvp ")"
 
-
-{-  
-tillLn' :: Prod r e L.Token [L.Token]
-tillLn' = (\xs z -> xs ++ [z]) <$> raw <*> ln'
--}
 
 
 surroundList :: a -> [a] -> a -> [a]

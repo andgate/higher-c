@@ -10,6 +10,7 @@ import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 
 import qualified Language.Hawk.Parse.Lexer        as Lex
 import qualified Language.Hawk.Syntax.Expression  as E
+import qualified Language.Hawk.Syntax.ExpressionDeclaration  as ED
 import qualified Language.Hawk.Syntax.Name        as N
 import qualified Language.Hawk.Syntax.OpInfo      as OI
 import qualified Language.Hawk.Syntax.Type        as T
@@ -19,46 +20,40 @@ type Source
   = ExprDef N.Source E.Source T.Source
 
 type Valid
-  = ExprDef N.Valid E.Valid T.Valid
+  = ExprDef N.Valid E.Source T.Valid
 
 type Typed
-  = ExprDef N.Typed E.Typed T.Typed
+  = ExprDef N.Typed E.Source T.Typed
 
 
 data ExprDef n e t
   = ExprDef 
-    { expr_op    :: OI.OpInfo
-    , expr_name  :: n
-    , expr_type  :: t
-    , expr_rhs   :: e
+    { expr_decl  :: ED.ExprDecl n t
+    , expr_name  :: e
     }
   deriving (Eq, Show, Ord, Data, Typeable)
 
  
-mkExprDef :: OI.OpInfo -> N.Source -> [N.Source] -> T.Source -> E.Source -> Source
-mkExprDef oi n vs t e =
-  ExprDef oi n t (Lex.mkLam vs e)
+mkExprDef :: N.Source -> OI.OpInfo -> [N.Source] -> T.Source -> E.Source -> Source
+mkExprDef n oi vs t e =
+  ExprDef (ED.ExprDecl n oi t) (Lex.mkLam vs e)
 
       
       
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (ExprDef n e t) where
-  pretty (ExprDef opinf name tipe rhs) =
-    PP.text "Expression Definition:"
+  pretty (ExprDef ed e) =
+    PP.text "Expression Declaration:"
     PP.<$>
     PP.indent 2
-      ( PP.text "name:" <+> PP.pretty name
+      ( PP.text "decl:" <+> PP.pretty ed
         PP.<$>
-        PP.text "op info:" <+> PP.pretty opinf
-        PP.<$>
-        PP.text "type:" <+> PP.pretty tipe
-        PP.<$>
-        PP.text "rhs:" <+> PP.pretty rhs
+        PP.text "expression:" <+> PP.pretty e
       )
   
   
 instance (Binary n, Binary e, Binary t) => Binary (ExprDef n e t) where
   get =
-      ExprDef <$> get <*> get <*> get <*> get
+      ExprDef <$> get <*> get
       
-  put (ExprDef oi n t rhs) =
-      put oi >> put n >> put t >> put rhs
+  put (ExprDef ed e) =
+      put ed >> put e

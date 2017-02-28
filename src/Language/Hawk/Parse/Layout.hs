@@ -27,7 +27,7 @@ defState :: [Layout]
 defState = []
 
 blockTriggers :: [Text]
-blockTriggers = [":", ":="]
+blockTriggers = [":", ":=", ":-"]
 
 
 -- -----------------------------------------------------------------------------

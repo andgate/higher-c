@@ -6,17 +6,16 @@ import Data.Text.Lazy (Text)
 import Data.Typeable
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
-import qualified Data.Text.Lazy as Text
-import qualified Language.Hawk.Syntax.ClassDefinition as CD
-import qualified Language.Hawk.Syntax.ClassInstance as CI
-import qualified Language.Hawk.Syntax.Expression as E
-import qualified Language.Hawk.Syntax.ExpressionDefinition as ED
-import qualified Language.Hawk.Syntax.Name as N
-import qualified Language.Hawk.Syntax.Record as R
-import qualified Language.Hawk.Syntax.TaggedUnion as TU
-import qualified Language.Hawk.Syntax.Type as T
-import qualified Language.Hawk.Syntax.TypeDefinition as TD
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
+import qualified Data.Text.Lazy                             as Text
+import qualified Language.Hawk.Syntax.AliasDefinition       as AD
+import qualified Language.Hawk.Syntax.DataDefinition        as DD
+import qualified Language.Hawk.Syntax.Expression            as E
+import qualified Language.Hawk.Syntax.ExpressionDefinition  as ED
+import qualified Language.Hawk.Syntax.Name                  as N
+import qualified Language.Hawk.Syntax.Type                  as T
+import qualified Language.Hawk.Syntax.TypeClassDefinition   as TCD
+import qualified Language.Hawk.Syntax.TypeDeclaration       as TD
+import qualified Text.PrettyPrint.ANSI.Leijen               as PP
 
   
 -- Items Structure
@@ -34,11 +33,9 @@ data Item n e t
   = Import N.Paths
   | Export N.Paths
   | ExprDef (ED.ExprDef n e t)
-  | TypeDef (TD.TypeDef n t)
-  | Record (R.Record n t)
-  | TaggedUnion (TU.TaggedUnion n t)
-  | ClassDef (CD.ClassDef n t)
-  | ClassInst (CI.ClassInst n e t)
+  | AliasDef (AD.AliasDef n t)
+  | DataDef (DD.DataDef n t)
+  | TypeClassDef (TCD.TypeClassDef n e t)
   deriving (Eq, Show, Data, Typeable)
 
 
@@ -66,18 +63,12 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
         
     pretty (ExprDef ed) =
       PP.pretty ed
+      
+    pretty (AliasDef ta) =
+      PP.pretty ta
     
-    pretty (TypeDef td) =
-      PP.pretty td
-       
-    pretty (Record r) =
-      PP.pretty r
+    pretty (DataDef dd) =
+      PP.pretty dd
       
-    pretty (TaggedUnion tu) =
-      PP.pretty tu
-      
-    pretty (ClassDef cd) =
+    pretty (TypeClassDef cd) =
       PP.pretty cd
-      
-    pretty (ClassInst ci) =
-      PP.pretty ci

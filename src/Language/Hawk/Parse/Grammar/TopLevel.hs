@@ -10,19 +10,20 @@ import Text.Earley
 
 import qualified Language.Hawk.Parse.Lexer as Lex
 
-import qualified Language.Hawk.Syntax.ClassDefinition as CD
-import qualified Language.Hawk.Syntax.ClassInstance as CI
-import qualified Language.Hawk.Syntax.ExpressionDefinition as ED
+
+import qualified Language.Hawk.Syntax.AliasDefinition as AD
+import qualified Language.Hawk.Syntax.TypeClassDefinition as TCD
+import qualified Language.Hawk.Syntax.DataDefinition as DD
+import qualified Language.Hawk.Syntax.ExpressionDeclaration as EDec
+import qualified Language.Hawk.Syntax.ExpressionDefinition as EDef
 import qualified Language.Hawk.Syntax.Item as I
 import qualified Language.Hawk.Syntax.Literal as Lit
 import qualified Language.Hawk.Syntax.Module as M
 import qualified Language.Hawk.Syntax.Name as N
 import qualified Language.Hawk.Syntax.OpInfo as OI
 import qualified Language.Hawk.Syntax.QType as QT
-import qualified Language.Hawk.Syntax.Record as R
-import qualified Language.Hawk.Syntax.TaggedUnion as TU
 import qualified Language.Hawk.Syntax.Type as T
-import qualified Language.Hawk.Syntax.TypeDefinition as TD
+import qualified Language.Hawk.Syntax.TypeDeclaration as TD
 
 
 -- -----------------------------------------------------------------------------
@@ -83,11 +84,9 @@ toplevel = mdo
           impItem
       <|> expItem
       <|> exprDefItem
-      <|> typeDefItem
-      <|> recordItem
-      <|> taggedUnionItem
-      <|> classDefItem
-      <|> classInstItem
+      <|> aliasDefItem
+      <|> dataDefItem
+      <|> typeClassDefItem
     
     
     impItem <- rule $
@@ -98,21 +97,16 @@ toplevel = mdo
       
     exprDefItem <- rule $
       I.ExprDef <$> exprDef
-       
-    typeDefItem <- rule $
-      I.TypeDef <$> typeDef
       
-    recordItem <- rule $
-      I.Record <$> record
+    aliasDefItem <- rule $
+      I.AliasDef <$> aliasDef  
       
-    taggedUnionItem <- rule $
-      I.TaggedUnion <$> taggedUnion
+    dataDefItem <- rule $
+      I.DataDef <$> dataDef
       
-    classDefItem <- rule $
-      I.ClassDef <$> classDef
+    typeClassDefItem <- rule $
+      I.TypeClassDef <$> typeClassDef
       
-    classInstItem <- rule $
-      I.ClassInst <$> classInst
 
 -- -----------------------------------------------------------------------------
 -- Type Signature Rules
@@ -121,41 +115,17 @@ toplevel = mdo
           
     rawTypeSig <- rule $
           rsvp "?" *> raw
-  
--- -----------------------------------------------------------------------------
--- Expression Definition Rules
-    exprDef <- rule $
-        exprDef0 <|> exprDef1
+          
     
-    exprDef0 <- rule $
-        ED.ExprDef <$> opInfo0 <*> exprDefName <*> exprDefTypeSig <*> exprDefBody
+    typeCtx0 <- rule $
+        typeCtx <|> pure QT.emptyCtx
        
-    exprDef1 <- rule $
-        ED.mkExprDef <$> opInfo0 <*> exprDefName <*> some varName <*> exprDefTypeSig <*> exprDefBody
-    
-    exprDefName <- rule $
-        varName <|> parens opName
-    
-    exprDefOp <- rule $
-        rsvp "=" <|> rsvp ":="
-     
-    exprDefBody <- rule $
-        exprDefOp *> raw
-    
-        
-    opInfo0 <- rule $
-        opInfo <|> pure OI.defOpInfo
-    
-    opInfo <- rule $
-        parens (OI.OpInfo <$> tInteger <*> (OI.assocFromName <$> varId))
-
-
--- -----------------------------------------------------------------------------
--- Type Definition Rules
-
-    typeDef <- rule $
-      TD.mkTypeDef <$> conName <*> many varName <*> (rsvp "=" *> raw)
-
+    typeCtx <- rule $
+        (QT.Context <$> typeCtxRaw) <* rsvp "=>"
+      
+    typeCtxRaw <- rule $
+        (:[]) <$> many notTypeCtxArr
+          
 
 -- -----------------------------------------------------------------------------
 -- Declaration Rules    
@@ -167,58 +137,101 @@ toplevel = mdo
       
     conDeclTyped <- rule $
       (,) <$> conName <*> rawTypeSig  
-    
+      
+  
 -- -----------------------------------------------------------------------------
--- Record Rules
+-- Expression Definition Rules
+    exprDecl <- rule $
+        EDec.ExprDecl <$> exprDefName <*> opInfo0 <*> exprDefTypeSig
 
-    record <- rule $
-      R.mkRecord <$> conName <*> recordBody
+    exprDef <- rule $
+        exprDef0 <|> exprDef1
     
-    recordBody <- rule $
-      rsvp ":" *> block varDeclTyped
+    exprDef0 <- rule $
+        EDef.ExprDef <$> exprDecl <*> exprDefBody
+       
+    exprDef1 <- rule $
+        EDef.mkExprDef <$> exprDefName <*> opInfo0 <*> some exprVar <*> exprDefTypeSig <*> exprDefBody
     
+    exprDefName <- rule $
+        varName <|> parens opName
     
--- -----------------------------------------------------------------------------
--- TaggedUnion Rules
+    exprDefOp <- rule $
+        rsvp "=" <|> rsvp ":=" <|> rsvp ":"
+     
+    exprDefBody <- rule $
+        exprDefOp *> raw
+        
+    exprVar <- rule $
+        varName <|> named "_"
+    
+        
+    opInfo0 <- rule $
+        opInfo <|> pure OI.defOpInfo
+    
+    opInfo <- rule $
+        OI.OpInfo <$> tInteger <*> (OI.assocFromName <$> varId)
 
-    taggedUnion <- rule $
-      TU.mkTaggedUnion <$> conName <*> tuBody
-      
-    
-    tuBody <- rule $
-      rsvp ":" *> block tuArm
-      
-    tuArm <- rule $
-      rsvp "|" *> (conDecl <|> conDeclTyped)
-    
-    
--- -----------------------------------------------------------------------------
--- Class Definition Rules
 
-    classDef <- rule $
-      CD.mkClassDef <$> conName <*> some varName <*> classDefBody
+-- -----------------------------------------------------------------------------
+-- Type Declaration Rules
+
+    typeDecl <- rule $
+        TD.TypeDecl <$> typeCtx0 <*> conName <*> typeDeclArgs
+      
+    typeDeclArgs <- rule $
+        many typeDeclArg
+      
+    typeDeclArg <- rule $
+        rawParens <|> ((:[]) <$> (varTok <|> conTok))
     
-    classDefBody <- rule $
-      rsvp ":" *> block varDeclTyped
+-- -----------------------------------------------------------------------------
+-- Type Alias Rules
+
+    aliasDef <- rule $
+      AD.AliasDef <$> typeDecl <*> (rsvp "=" *> raw)
+      
+
+-- -----------------------------------------------------------------------------
+-- Data Definition Rules
+
+    dataDef <- rule $
+      dataDefA <|> dataDefB
+      
+    dataDefA <- rule $
+      DD.DataDef <$> typeDecl <*> dataDefBody
+      
+    dataDefB <- rule $
+      DD.mkRecDef <$> typeDecl <*> dataConsBody
+    
+    dataDefBody <- rule $
+      rsvp ":" *> block dataCons
+      
+    dataCons <- rule $
+      DD.DataCons <$> conName <*> dataConsBody
+
+    dataConsBody <- rule $
+      (rsvp ":" *> block dataMember)
+      <|> (DD.mkTagless <$> raw)
+    
+    dataMember <- rule $
+      dataMemberTagged <|> dataMemberTagless
+      
+    dataMemberTagged <- rule $
+      DD.Tagged <$> varName <*> raw
+      
+    dataMemberTagless <- rule $
+      DD.Tagless <$> raw
     
     
 -- -----------------------------------------------------------------------------
--- Class Instance Rules
+-- Type Class Definition Rules
+
+    typeClassDef <- rule $
+      TCD.TypeClassDef <$> typeDecl <*> typeClassDefBody
     
-    classInst <- rule $
-        CI.mkClassInst <$> typeCtx <*> conName <*> classInstVar <*> classInstBody
-      
-    typeCtx <- rule $
-        (Context <$> typeCtxRaw) <* rsvp "=>"
-      
-    typeCtxRaw <- rule $
-        (:[]) <$> many notTypeCtxArr
-    
-    classInstVar <- rule $
-        some notColon
-    
-    classInstBody <- rule $
-        rsvp ":" *> block exprDef
+    typeClassDefBody <- rule $
+      rsvp ":-" *> block exprDef
 
 
 {- Types are parsed using a different grammar
