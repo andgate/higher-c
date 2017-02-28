@@ -22,29 +22,30 @@ import qualified Control.Monad.Trans.State.Strict as St
 
 import qualified Language.Hawk.Metadata.Schema as Db
 import qualified Language.Hawk.Parse as P
-import qualified Language.Hawk.Syntax.ClassDefinition as CD
-import qualified Language.Hawk.Syntax.ClassInstance as CI
+import qualified Language.Hawk.Syntax.AliasDefinition as AD
+import qualified Language.Hawk.Syntax.DataDefinition as DD
 import qualified Language.Hawk.Syntax.Expression as E
+import qualified Language.Hawk.Syntax.ExpressionDeclaration as EDecl
+import qualified Language.Hawk.Syntax.ExpressionDefinition as EDef
 import qualified Language.Hawk.Syntax.Item as I
 import qualified Language.Hawk.Syntax.Literal as L
 import qualified Language.Hawk.Syntax.Module as M
 import qualified Language.Hawk.Syntax.Name as N
 import qualified Language.Hawk.Syntax.OpInfo as OI
 import qualified Language.Hawk.Syntax.QType as QT
-import qualified Language.Hawk.Syntax.Record as R
-import qualified Language.Hawk.Syntax.TaggedUnion as TU
 import qualified Language.Hawk.Syntax.Type as T
-import qualified Language.Hawk.Syntax.TypeDefinition as TD
+import qualified Language.Hawk.Syntax.TypeClassDefinition as TCD
+import qualified Language.Hawk.Syntax.TypeDeclaration as TD
 
 
 {-
-  This phase collects modules and stores them into a sqlite db on disk
+  This phase collects modules and inserts them into a sqlite db on disk
   for fast look-up and sharing with other projects.
 -}
 collect :: Compiler ()
 collect = do
-  storeTopLevel
-  storeExprs
+  insertTopLevel
+  insertExprs
 
 
 {-
@@ -53,13 +54,13 @@ collect = do
   This phase does not parse expressions, since it doesn't have access
   to enough information to make a symbol table.
 -}
-storeTopLevel :: Compiler ()
-storeTopLevel = do
+insertTopLevel :: Compiler ()
+insertTopLevel = do
   xs <- srcFiles <$> St.get
   forM_ xs $ \x -> liftIO $ do
       src <- Text.readFile x
       m <- P.mangledParse src
-      storeTopLevelFromModule m src
+      insertModule m src
 
 {-
   For each module
@@ -67,48 +68,107 @@ storeTopLevel = do
     
 -}
 
-storeModule :: M.Source -> Text -> IO ()
-storeModule (M.Module n its) src = runSqlite "hk.db" $ do
-  runMigration migrateAll
-  modId <- insert $ MModule n src (I.getDeps its) []
-  mapM_ (storeItem modId) its
+insertModule :: M.Source -> Text -> IO ()
+insertModule (M.Module n its) src = runSqlite "hk.db" $ do
+  runMigration Db.migrateAll
+  modId <- insert $ Db.Module n src [] []
+  mapM_ (insertItem modId) its
   
   where
-    storeItem modId i =
+    insertItem modId i =
       case i of
         I.Import n -> return () -- Handled later
         I.Export n -> return () -- Handled later
-        I.ExprDef ed -> storeED modId ed
-        I.TypeDef td -> storeTD modId td
-        I.Record r -> storeR modId r
-        I.TaggedUnion tu -> storeTU modId tu
-        I.ClassDef cs -> storeCD modId cs
-        I.ClassInst ci -> storeCI modId ci
-        
-        
-    storeED modId (ED.ExprDef oi (N.Name n p) t b) = do
-      let oidat = toStrict $ encode oi
-          tdat  = toStrict $ encode t
-          bdat  = toStrict $ encode b
-          
-      fnId <- insert $ Db.ExprDef modId n oidat (Just tdat) (Just bdat)
-      
-      storeVarOp modId fnId n oi
-      
-      
-    storeVarOp modId fnId n (F.OpInfo p a) = do
-      opId <- insert $ MOp modId n (fromIntegral p) a
-      insert_ $ MVarOp opId fnId
-      
-    storeED modId (ED.ExprDef oi (N.Name n p) vs t b) = do
-      let oidat = toStrict $ encode oi
-          tdat  = toStrict $ encode t
-          bdat  = toStrict $ encode b
-          
-      argIds <- insertMany (map mkBinding args)
-      fnId <- insert $ MFnItem modId n oidat argIds (Just tdat) (Just bdat)
+        I.ExprDef ed -> insertExprDef_ modId ed
+        I.AliasDef ad -> insertAliasDef_ modId ad
+        I.DataDef dd -> insertDataDef_ modId dd
+        I.TypeClassDef tcd -> insertTypeClassDef_ modId tcd
     
-    storeRec modId (R.Record (N.Name n p) fs) = do
+    
+    insertExprDef_ modId ed = do
+      insertExprDef modId ed
+      return ()
+    
+    insertExprDef modId (EDef.ExprDef d e) = do
+      let edat  = toStrict $ encode e
+      decId <- insertExprDecl modId d
+          
+      insert $ Db.ExprDef modId decId edat
+      
+      
+    insertExprDecl modId (EDecl.ExprDecl (N.Name n p) oi t) = do
+      let oidat = toStrict $ encode oi
+          tdat  = toStrict $ encode t
+          
+      insert $ Db.ExprDecl modId n oidat tdat
+      
+      
+    insertVarOp modId fnId n (OI.OpInfo p a) = do
+      opId <- insert $ Db.Op modId n (fromIntegral p) a
+      insert_ $ Db.VarOp opId fnId
+      
+    
+    insertTypeDecl modId (TD.TypeDecl ctx (N.Name n p) ts) = do
+      let ctxdat = toStrict $ encode ctx
+          tsdat  = map (toStrict . encode) ts
+          
+      insert $ Db.TypeDecl modId n ctxdat tsdat
+  
+    
+    insertAliasDef_ modId ad = do
+      insertAliasDef modId ad
+      return ()
+     
+    insertAliasDef modId (AD.AliasDef d t) = do
+      let tdat  = toStrict $ encode t
+      declId <- insertTypeDecl modId d 
+      insert $ Db.AliasDef modId declId tdat
+      
+    
+    insertDataDef_ modId dd = do
+      insertDataDef modId dd
+      return ()
+    
+    insertDataDef modId (DD.DataDef d b) = do
+      -- Create an entry for the data def
+      declId <- insertTypeDecl modId d
+      ddId <- insert $ Db.DataDef modId declId []
+      
+      -- insert the constructors and update the data def entry
+      conIds <- mapM (insertDataCon modId ddId) b
+      update ddId [Db.DataDefBody =. conIds]
+      return ddId
+      
+    insertDataCon modId ddId (DD.DataCons (N.Name n p) b) = do
+      conId <- insert $ Db.DataCon modId ddId n []
+      memIds <- insertMany (mkDataMem modId ddId conId <$> b)
+      update conId [Db.DataConMembers =. memIds]
+      return conId
+
+      
+    mkDataMem modId ddId conId (DD.Tagged (N.Name n p) t) =
+      let tdat = toStrict $ encode t
+      in Db.DataMember modId ddId conId (Just n) tdat
+      
+    mkDataMem modId ddId conId (DD.Tagless t) =
+      let tdat = toStrict $ encode t
+      in Db.DataMember modId ddId conId Nothing tdat
+      
+    
+    
+    insertTypeClassDef_ modId tcd = do
+      insertTypeClassDef modId tcd
+      return ()
+     
+    insertTypeClassDef modId (TCD.TypeClassDef d eds) = do
+      decId <- insertTypeDecl modId d
+      edIds <- mapM (insertExprDef modId) eds
+      insert $ Db.TypeClassDef modId decId edIds
+      
+    
+    
+{- from older syntax  
+    insertRec modId (R.Record (N.Name n p) fs) = do
       recId <- insert $ MRecItem modId n []
       fldIds <- insertMany $ map (mkRecField recId) fs
       update recId [MRecItemFieldIds =. fldIds]
@@ -122,8 +182,10 @@ storeModule (M.Module n its) src = runSqlite "hk.db" $ do
       in MAliasItem modId n tdat
       
     
-    storeAlias modId a =
+    insertAlias modId a =
       insert_ $ mkAlias modId a
+      
+-}
       
       
 {-
@@ -131,5 +193,5 @@ storeModule (M.Module n its) src = runSqlite "hk.db" $ do
   These symbol tables are used to parse expressions in the
   correct forms.  
 -}
-storeExprs :: Compiler ()
-storeExprs = error "Collect expressions not implemented"
+insertExprs :: Compiler ()
+insertExprs = error "Collect expressions not implemented"

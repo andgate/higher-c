@@ -7,4 +7,4 @@ import Language.Hawk.Metadata.Schema
 
 
 depFind :: Text -> Compiler [Text]
-depFind src = []
+depFind src = return []

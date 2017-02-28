@@ -18,10 +18,6 @@ Module
     depIds [ModuleId] -- Generated after all modules are loaded
     deriving Show
 
-TypeOp
-    op  OpId
-    td TypeDefId
-
 VarOp
     op  OpId
     fn  ExprDefId
@@ -31,59 +27,58 @@ Op
     name Text
     prec Int
     assoc OI.Assoc
-    
-ExprDef
+
+
+ExprDecl
     modId ModuleId
     name Text
     opInfo ByteString
-    typesig ByteString -- This field may not get added until type-inference
-    body ByteString -- This field may not be set until the expressions are demangled
+    typesig ByteString
     deriving Show
     
-TypeDef
+ExprDef
     modId ModuleId
-    ctx ByteString
-    name Text
-    vars [Text]
+    decId ExprDeclId
     body ByteString
+    deriving Show
+    
+    
+TypeDecl
+    modId ModuleId
+    name Text
+    ctx ByteString
+    vars [ByteString]
     deriving Show    
     
-Record
+AliasDef
     modId ModuleId
-    name Text
-    body [RecordFieldId]
+    decId TypeDeclId
+    tipe ByteString
     deriving Show
     
-RecordField
-    parentId RecordId
-    name Text
-    typesig ByteString
-    deriving Show
-    
-    
-ClassDef
+DataDef
     modId ModuleId
-    name Text
-    vars [Text]
-    body [ClassDefFieldId]
+    decId TypeDeclId
+    body [DataConId]
     deriving Show
     
-ClassDefField
-    parentId ClassDefId
-    name Text
-    typesig ByteString
-    deriving Show
-    
-    
-ClassInst
+DataCon
     modId ModuleId
+    dataId DataDefId
     name Text
-    vars [ByteString]
-    body [ClassInstFieldId]
-    deriving Show
+    members [DataMemberId]
     
-ClassInstField
-    parentId ClassInstId
-    def ExprDef
+DataMember
+    modId ModuleId
+    dataId DataDefId
+    conId DataConId
+    name Text Maybe
+    tipe ByteString
+    
+    
+TypeClassDef
+    modId ModuleId
+    decId TypeDeclId
+    body [ExprDefId]
     deriving Show
 |]

@@ -56,8 +56,9 @@ hawk :-
   "/*"                            { beginComment }
   
   
+  "_"                             { rsvp }
   ":="                            { rsvp }
-  ":-"                             { rsvp }
+  ":-"                            { rsvp }
   ":"                             { rsvp }
   "="                             { rsvp }
   "?"                             { rsvp }
