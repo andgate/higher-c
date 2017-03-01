@@ -34,9 +34,9 @@ data ExprDef n e t
   deriving (Eq, Show, Ord, Data, Typeable)
 
  
-mkExprDef :: N.Source -> OI.OpInfo -> [N.Source] -> T.Source -> E.Source -> Source
-mkExprDef n oi vs t e =
-  ExprDef (ED.ExprDecl n oi t) (Lex.mkLam vs e)
+mkExprDef ::ED.ExprDecl N.Source T.Source -> E.Source -> Source
+mkExprDef d@(ED.ExprDecl _ _ vs _) e =
+  ExprDef d (Lex.mkLam vs e)
 
       
       

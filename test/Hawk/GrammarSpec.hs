@@ -20,16 +20,7 @@ spec :: Spec
 spec = do
   describe "Parser" $ do
     context "Test Files" $ do
-      it "Can parse example/main.hk" $ do
-        str <- Text.readFile "example/main.hk"
-        parseTest str
-          
-      it "Can store in db" $ do 
-        src <- Text.readFile "example/main.hk" 
-        m <- mangledParse src
-        MD.insertModule m src
-        
-      it "Can compile with state" $ do
+      it "Can compile" $ do
         let s = C.CompilerState "def" ["example/main.hk"] C.InitialPhase
         C.compile s
         

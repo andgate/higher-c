@@ -2,6 +2,7 @@ module Language.Hawk.Parse.Layout where
 
 import Control.Monad (forever, mapM, when, unless)
 import Control.Monad.Trans.State.Strict (State, evalStateT, get, put, modify)
+import Data.Maybe (isJust)
 import Data.Text.Lazy (Text)
 import Language.Hawk.Report.Region (Region(..), Position(..))
 import Lens.Micro.Mtl ((.=), (+=))
@@ -9,6 +10,7 @@ import Pipes (Pipe, await, yield, lift)
 import Safe (headDef)
 
 import qualified Control.Monad.Trans.State.Strict as State
+import qualified Data.Text.Lazy                   as Text
 import qualified Language.Hawk.Parse.Lexer        as L
 import qualified Pipes.Prelude                    as Pipes
 
@@ -25,9 +27,6 @@ type LayoutState = State [Layout]
 
 defState :: [Layout]
 defState = []
-
-blockTriggers :: [Text]
-blockTriggers = [":", ":=", ":-"]
 
 
 -- -----------------------------------------------------------------------------
@@ -61,28 +60,34 @@ preUpdate c p = do
   
 postUpdate :: L.TokenClass -> Pipe L.Token L.Token LayoutState ()
 postUpdate c =
-  when isBlkTrig emitBlk
+  when (hasBlkTrig c && isNotMixFix c) emitBlk
       
   where
-    isBlkTrig = c `elem` blkTrigs
-    blkTrigs = map L.TokenRsvp blockTriggers
+    hasBlkTrig = isJust . Text.find (==':') . L.tokenClassToText
+    isNotMixFix (L.TokenMixfix _) = False
+    isNotMixFix _ = True
     
+    -- Wait til a document (non-builtin) token arrives
+    -- Passes builtin tokens along.
     awaitDocTok = do
       t@(L.Token c mp) <- await
       case mp of
-        Just p -> return (c,p)
+        Just p -> preUpdate c p >> return (c,p)
         Nothing -> yield t >> awaitDocTok
     
     emitBlk = do 
-      (c, p@(P _ i)) <- awaitDocTok
+      (c, p@(P ln i)) <- awaitDocTok
       l <- lift $ peekLay
       if isValid i l
           then do
-            open (Block i) p
-            open (LineFold i) p
+            open (Block i)
+            open (LineFold i)
             yield $ L.Token c (Just p)
           else
-            error $ "Expecting indent beyond " ++ show i
+            error $ "\nExpected Indentation: " ++ show l ++
+                    "\nActual Indentation: " ++ show i ++
+                    "\nwith \"" ++ Text.unpack (L.tokenClassToText c) ++
+                      "\" at " ++ show ln ++ ":" ++ show i
 
 -- -----------------------------------------------------------------------------
 -- Driver Helpers
@@ -91,19 +96,19 @@ closeInvalid :: Position -> Pipe L.Token L.Token LayoutState ()
 closeInvalid p@(P _ i) = do
   l <- lift $ peekLay
   unless (isValid i l)
-         (close p >> closeInvalid p)
+         (close >> closeInvalid p)
          
 closeAll :: Position -> Pipe L.Token L.Token LayoutState ()
 closeAll p = do
   l <- lift $ peekLay
   unless (l == defLay)
-         (close p >> closeAll p)
+         (close >> closeAll p)
                     
 coverBlock :: Position -> Pipe L.Token L.Token LayoutState ()
 coverBlock p = do
   l <- lift $ peekLay
   case l of
-      (Block i) -> open (LineFold i) p
+      (Block i) -> open (LineFold i)
       _ -> return ()
       
       
@@ -113,20 +118,18 @@ handleEof c p =
        (closeAll p)
   
       
-open :: Layout -> Position -> Pipe L.Token L.Token LayoutState ()
-open l p = do
+open :: Layout -> Pipe L.Token L.Token LayoutState ()
+open l = do
   lift $ pushLay l
-  yield $ openTok l p
+  yield $ openTok l
 
-close :: Position -> Pipe L.Token L.Token LayoutState ()
-close p = do
-  close' p
-  lift $ popLay >> return ()
-  
-close' :: Position -> Pipe L.Token L.Token LayoutState ()
-close' p = do
+close :: Pipe L.Token L.Token LayoutState ()
+close = do
   l <- lift $ peekLay
-  yield $ closeTok l p
+  yield $ closeTok l
+  lift $ popLay
+  return ()
+  
   
 pushLayout :: Layout -> Pipe L.Token L.Token LayoutState ()
 pushLayout = lift . pushLay
@@ -175,17 +178,17 @@ peekLay = do
     l:_ -> return l
 
     
-openTok :: Layout -> Position -> L.Token
-openTok l p =
+openTok :: Layout -> L.Token
+openTok l =
   case l of
-      Block _ -> L.Token L.TokenBlk (Just p)
-      LineFold _ -> L.Token L.TokenLn (Just p)    
+      Block _ -> L.Token L.TokenBlk Nothing
+      LineFold _ -> L.Token L.TokenLn Nothing   
     
-closeTok :: Layout -> Position -> L.Token
-closeTok l p =
+closeTok :: Layout -> L.Token
+closeTok l =
   case l of
-      Block _ -> L.Token L.TokenBlk' (Just p)
-      LineFold _ -> L.Token L.TokenLn' (Just p)
+      Block _ -> L.Token L.TokenBlk' Nothing
+      LineFold _ -> L.Token L.TokenLn' Nothing
   
   
 isValid :: Int -> Layout -> Bool

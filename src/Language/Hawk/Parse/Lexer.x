@@ -28,15 +28,42 @@ import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 
 $digit = 0-9
 
-$opchar = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~]
-$opBodychar = [$opchar\_]
+$blkchar = \:
 
-$fstLow       = [a-z]
-$fstCap       = [A-Z]
-$idchar = [A-Za-z0-9\_]
+$opchar = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~]
+$opblkchar = [$opchar $blkchar]
+
+
+$small       = [a-z]
+$large       = [A-Z]
+$idchar      = [A-Za-z0-9]
+
+$mixfixchar   = [A-Za-z $blkchar]
+$mixfixbodychar   = [A-Za-z0-9 $blkchar]
+
 
 $nonwhite       = ~$white
 $whiteNoNewline = $white # \n
+
+
+
+-- -----------------------------------------------------------------------------
+-- Alex "Regular expression macros"
+
+
+
+@varid = $small $idchar*
+@conid = $large $idchar*
+@opid  = $opchar+
+
+-- Blockable id's, these are used by the mifix macro
+@mfid    = $mixfixchar $mixfixbodychar* | $opblkchar+
+
+@mixfixa = @mfid \_+ (@mfid \_*)*
+@mixfixb = \_+ @mfid (\*_ @mfid)*
+
+@mixfix = @mixfixa | @mixfixb
+
 
 -- -----------------------------------------------------------------------------
 -- Alex "Identifier"
@@ -53,30 +80,33 @@ hawk :-
   "//".*                          ;
   
   \"                              { beginString }
+  \' .* \'                        { handleChar }
   "/*"                            { beginComment }
   
+  \_                              { rsvp }
+  \,                              { rsvp }
+  \(                              { rsvp }
+  \)                              { rsvp }
+  \[                              { rsvp }
+  \]                              { rsvp }
+  \:                              { rsvp }
   
-  "_"                             { rsvp }
-  ":="                            { rsvp }
-  ":-"                            { rsvp }
-  ":"                             { rsvp }
-  "="                             { rsvp }
-  "?"                             { rsvp }
+  "case"                          { rsvp }
+  "of"                            { rsvp }
   
-  ","                             { rsvp }
-  "("                             { rsvp }
-  ")"                             { rsvp }
-  
-  $fstLow $idchar*                { \text -> yield (TokenVarId text) }
-  $fstCap $idchar*                { \text -> yield (TokenConId text) }
-  $opchar $opBodychar*            { \text -> yield (TokenOpId text) }
+  @varid                          { \text -> yield (TokenVarId text) }
+  @conid                          { \text -> yield (TokenConId text) }
+  @opid                           { \text -> yield (TokenOpId text) }
+  @mixfix                         { \text -> yield (TokenMixfix text) }
   
   $digit+                         { \text -> yield (TokenInteger $ toInt text) }
 }
 
-<stringSC>  .                     { appendString }
-<stringSC>  \\[nt\"]              { escapeString }
-<stringSC>  \"                    { endString }
+<stringSC> {
+  \\[nt\"]                        { escapeString }
+  \"                              { endString }
+  .                               { appendString }
+}
 
 <commentSC> {
   "/*"                            { beginComment }
@@ -115,13 +145,20 @@ startNextLine = do
 
 
 rsvp :: LexAction
-rsvp text = yield (TokenRsvp text)
+rsvp text = yield $ TokenRsvp text
 
 
 beginString :: LexAction
 beginString _ = lift $ do
   s <- State.get
   State.put s{startcode = stringSC}
+  
+endString :: LexAction
+endString _ = do
+  s <- lift State.get
+  let buf = stringBuf s
+  lift $ State.put s{startcode = 0, stringBuf = ""}
+  yield (TokenString $ reverse buf)
   
 appendString :: LexAction
 appendString text = do
@@ -140,20 +177,26 @@ escapeString text = do
   lift $ do
     s <- State.get
     State.put s{stringBuf = unesc:(stringBuf s)}
-  
-endString :: LexAction
-endString _ = do
-  s <- lift State.get
-  let buf = stringBuf s
-  lift $ State.put s{startcode = 0, stringBuf = ""}
-  yield (TokenString $ reverse buf)
+    
+
+handleChar :: LexAction
+handleChar text = do
+  let trim = Text.unpack . Text.tail . Text.init
+      yeildChar = yield . TokenChar
+  case (trim text) of
+      ([])   -> yeildChar '\0'
+      (c:_)  -> yeildChar '\n'
+      "\t"   -> yeildChar '\t'
+      "\r"   -> yeildChar '\r'
+      "\'"   -> yeildChar '\''
+      _      -> return $ error $ "[Lexical Error] Invalid Character Literal: " ++ Text.unpack text
 
 
 beginComment :: LexAction
 beginComment _ = lift $ do
   s <- State.get
   State.put s {startcode = commentSC,
-         commentDepth = (commentDepth s)+1}
+               commentDepth = (commentDepth s)+1}
          
          
 endComment :: LexAction         
@@ -240,6 +283,7 @@ data TokenClass
   | TokenOpId Text
   | TokenVarId Text
   | TokenConId Text
+  | TokenMixfix Text
   
   | TokenInteger Integer
   | TokenDouble Double
@@ -272,6 +316,32 @@ rsvpTok txt = Token (TokenRsvp txt) Nothing
 varIdTok :: Text -> Token
 varIdTok txt = Token (TokenVarId txt) Nothing
 
+tokenToText :: Token -> Text
+tokenToText =
+  tokenClassToText . token
+
+tokenClassToText :: TokenClass -> Text
+tokenClassToText tc =
+  case tc of
+    TokenRsvp t     -> t
+    TokenOpId t     -> t
+    TokenVarId t    -> t
+    TokenConId t    -> t
+    TokenMixfix t   -> t
+    TokenInteger i  -> Text.pack $ show i
+    TokenDouble d   -> Text.pack $ show d
+    TokenChar c     -> Text.pack [c]
+    TokenString s   -> Text.pack s
+    TokenBool b     -> Text.pack $ show b
+    TokenTop        -> ""
+    TokenBlk        -> ""
+    TokenBlk'       -> ""
+    TokenLn         -> ""
+    TokenLn'        -> ""
+    TokenEof        -> ""
+  
+  
+
 instance PP.Pretty TokenClass where
   pretty (TokenRsvp t) =
     PP.text "rsvp" <+> PP.text (Text.unpack t)
@@ -284,6 +354,9 @@ instance PP.Pretty TokenClass where
     
   pretty (TokenConId t) =
     PP.text "conId" <+> PP.pretty (Text.unpack t)
+    
+  pretty (TokenMixfix t) =
+    PP.text "mixfixId" <+> PP.pretty (Text.unpack t)
     
   pretty (TokenInteger i) =
     PP.text "int" <+> PP.pretty i
@@ -326,17 +399,18 @@ instance Binary TokenClass where
       2 -> TokenOpId <$> get
       3 -> TokenVarId <$> get
       4 -> TokenConId <$> get
-      5 -> TokenInteger <$> get
-      6 -> TokenDouble <$> get
-      7 -> TokenChar <$> get
-      8 -> TokenString <$> get
-      9 -> TokenBool <$> get
-      10 -> pure TokenTop
-      11 -> pure TokenBlk
-      12 -> pure TokenBlk'
-      13 -> pure TokenLn
-      14 -> pure TokenLn'
-      15 -> pure TokenEof
+      5 -> TokenMixfix <$> get
+      6 -> TokenInteger <$> get
+      7 -> TokenDouble <$> get
+      8 -> TokenChar <$> get
+      9 -> TokenString <$> get
+      10 -> TokenBool <$> get
+      11 -> pure TokenTop
+      12 -> pure TokenBlk
+      13 -> pure TokenBlk'
+      14 -> pure TokenLn
+      15 -> pure TokenLn'
+      16 -> pure TokenEof
       
   put e =
     case e of
@@ -344,17 +418,18 @@ instance Binary TokenClass where
       TokenOpId t     -> putWord8 2 >> put t
       TokenVarId t    -> putWord8 3 >> put t
       TokenConId t    -> putWord8 4 >> put t
-      TokenInteger i  -> putWord8 5 >> put i
-      TokenDouble d   -> putWord8 6 >> put d
-      TokenChar c     -> putWord8 7 >> put c
-      TokenString s   -> putWord8 8 >> put s
-      TokenBool b     -> putWord8 9 >> put b
-      TokenTop        -> putWord8 10
-      TokenBlk        -> putWord8 11
-      TokenBlk'       -> putWord8 12
-      TokenLn         -> putWord8 13
-      TokenLn'        -> putWord8 14 
-      TokenEof        -> putWord8 15
+      TokenMixfix t   -> putWord8 5 >> put t
+      TokenInteger i  -> putWord8 6 >> put i
+      TokenDouble d   -> putWord8 7 >> put d
+      TokenChar c     -> putWord8 8 >> put c
+      TokenString s   -> putWord8 9 >> put s
+      TokenBool b     -> putWord8 10 >> put b
+      TokenTop        -> putWord8 11
+      TokenBlk        -> putWord8 12
+      TokenBlk'       -> putWord8 13
+      TokenLn         -> putWord8 14
+      TokenLn'        -> putWord8 15 
+      TokenEof        -> putWord8 16
               
   
           
@@ -377,8 +452,8 @@ lexModl text = for (go (AlexInput '\n' [] text)) tag
       case alexScan input (startcode s) of
         AlexEOF                        ->
             yield TokenEof
-        AlexError (AlexInput _ _ text) ->
-            error $ "Lexical Error: Cannot tokenize rest of file: \"" ++ Text.unpack text ++ "\""
+        AlexError (AlexInput p cs text) ->
+            error $ "Lexical Error: Cannot produce token.\n\tPrevious Char: \'" ++ [p] ++ "\'\n\tCurrent Chars: " ++ show cs ++ "\n\tRest of file: " ++ Text.unpack text
         AlexSkip  input' len           -> do
             lift $ growColumn len
             go input'

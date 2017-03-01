@@ -60,10 +60,11 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Module path rules
     paths <- rule $
-        Node N.empty <$> paths_subs
+          (Node <$> conName <*> paths_subs)
+      <|> (Node <$> varName <*> pure [])
         
     paths_subs <- rule $  
-        sep (rsvp ",") paths_base
+        some paths_base
         
     paths_base <- rule $
           (Node <$> conName <*> paths_sub)
@@ -72,7 +73,6 @@ toplevel = mdo
     paths_sub <- rule $  
           ((:[]) <$> (op "." *> paths_base))
       <|> (rsvp "(" *> paths_subs <* rsvp ")")
-      <|> (pure [])
 
 
 -- -----------------------------------------------------------------------------
@@ -83,17 +83,17 @@ toplevel = mdo
     item <- rule $
           impItem
       <|> expItem
-      <|> exprDefItem
-      <|> aliasDefItem
-      <|> dataDefItem
-      <|> typeClassDefItem
+      -- <|> exprDefItem
+      -- <|> aliasDefItem
+      -- <|> dataDefItem
+      -- <|> typeClassDefItem
     
     
     impItem <- rule $
-      I.Import <$> (op "->" *> paths)
+      I.Import <$> (op "->" *> many paths)
       
     expItem <- rule $
-      I.Export <$> (op "<-" *> paths)
+      I.Export <$> (op "<-" *> many paths)
       
     exprDefItem <- rule $
       I.ExprDef <$> exprDef
@@ -109,61 +109,41 @@ toplevel = mdo
       
 
 -- -----------------------------------------------------------------------------
--- Type Signature Rules
-    exprDefTypeSig <- rule $
-          rsvp "?" *> tillEquals
-          
-    rawTypeSig <- rule $
-          rsvp "?" *> raw
-          
-    
+-- Type Context Rules
+
     typeCtx0 <- rule $
         typeCtx <|> pure QT.emptyCtx
        
     typeCtx <- rule $
-        (QT.Context <$> typeCtxRaw) <* rsvp "=>"
+        (QT.Context <$> typeCtxRaw) <* op "=>"
       
     typeCtxRaw <- rule $
         (:[]) <$> many notTypeCtxArr
-          
 
--- -----------------------------------------------------------------------------
--- Declaration Rules    
-    varDeclTyped <- rule $
-      (,) <$> varName <*> rawTypeSig
 
-    conDecl <- rule $
-      (,) <$> conName <*> raw 
-      
-    conDeclTyped <- rule $
-      (,) <$> conName <*> rawTypeSig  
-      
-  
 -- -----------------------------------------------------------------------------
 -- Expression Definition Rules
     exprDecl <- rule $
-        EDec.ExprDecl <$> exprDefName <*> opInfo0 <*> exprDefTypeSig
-
+        EDec.ExprDecl <$> exprDefName <*> opInfo0 <*> many exprVar <*> exprType
+    
     exprDef <- rule $
-        exprDef0 <|> exprDef1
-    
-    exprDef0 <- rule $
-        EDef.ExprDef <$> exprDecl <*> exprDefBody
-       
-    exprDef1 <- rule $
-        EDef.mkExprDef <$> exprDefName <*> opInfo0 <*> some exprVar <*> exprDefTypeSig <*> exprDefBody
-    
+        EDef.mkExprDef <$> exprDecl <*> exprDefBody
+
     exprDefName <- rule $
         varName <|> parens opName
     
     exprDefOp <- rule $
-        rsvp "=" <|> rsvp ":=" <|> rsvp ":"
+        op "=" <|> op ":=" <|> rsvp ":"
      
+    
+    exprVar <- rule $
+        varName <|> opNamed "_"
+        
+    exprType <- rule $
+        op "?" *> tillEquals
+    
     exprDefBody <- rule $
         exprDefOp *> raw
-        
-    exprVar <- rule $
-        varName <|> named "_"
     
         
     opInfo0 <- rule $
@@ -189,7 +169,7 @@ toplevel = mdo
 -- Type Alias Rules
 
     aliasDef <- rule $
-      AD.AliasDef <$> typeDecl <*> (rsvp "=" *> raw)
+      AD.AliasDef <$> typeDecl <*> (op "-" *> raw)
       
 
 -- -----------------------------------------------------------------------------
@@ -205,7 +185,7 @@ toplevel = mdo
       DD.mkRecDef <$> typeDecl <*> dataConsBody
     
     dataDefBody <- rule $
-      rsvp ":" *> block dataCons
+      op ":-" *> block dataCons
       
     dataCons <- rule $
       DD.DataCons <$> conName <*> dataConsBody
@@ -231,7 +211,7 @@ toplevel = mdo
       TCD.TypeClassDef <$> typeDecl <*> typeClassDefBody
     
     typeClassDefBody <- rule $
-      rsvp ":-" *> block exprDef
+      rsvp ":~" *> block exprDef
 
 
 {- Types are parsed using a different grammar

@@ -158,6 +158,14 @@ opId = fmap unsafeExtract (satisfy p)
     unsafeExtract (L.Token (L.TokenOpId v) p) = N.Name v p
 
 
+opNamed :: Text -> Prod r e L.Token N.Source
+opNamed t = fmap unsafeExtract (satisfy p)
+  where
+    p (L.Token (L.TokenOpId t') _) = t == t'
+    p _                           = False
+    unsafeExtract (L.Token (L.TokenOpId v) p) = N.Name v p
+
+
 named :: Text -> Prod r e L.Token N.Source
 named txt = fmap unsafeExtract (satisfy p)
   where
@@ -255,7 +263,7 @@ parens p =
 
 raw :: Prod r e L.Token [L.Token]
 raw =
-  many notLayout <|> rawBlk <|> rawLn <|> rawParens
+  rawBlk <|> rawLn <|> rawParens <|> many notLayout
   
 
 rawBlk :: Prod r e L.Token [L.Token]

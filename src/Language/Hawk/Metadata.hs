@@ -95,8 +95,8 @@ insertModule (M.Module n its) src = runSqlite "hk.db" $ do
           
       insert $ Db.ExprDef modId decId edat
       
-      
-    insertExprDecl modId (EDecl.ExprDecl (N.Name n p) oi t) = do
+    
+    insertExprDecl modId (EDecl.ExprDecl (N.Name n p) oi vs t) = do
       let oidat = toStrict $ encode oi
           tdat  = toStrict $ encode t
           

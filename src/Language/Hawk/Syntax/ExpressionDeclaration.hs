@@ -28,6 +28,7 @@ data ExprDecl n t
   = ExprDecl 
     { expr_name  :: n
     , expr_op    :: OI.OpInfo
+    , expr_vars  :: [n]
     , expr_type  :: t
     }
   deriving (Eq, Show, Ord, Data, Typeable)
@@ -35,7 +36,7 @@ data ExprDecl n t
       
 
 instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (ExprDecl n t) where
-  pretty (ExprDecl name opinf tipe) =
+  pretty (ExprDecl name opinf vars tipe) =
     PP.text "Expression Declaration:"
     PP.<$>
     PP.indent 2
@@ -43,13 +44,15 @@ instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (ExprDecl n t) where
         PP.<$>
         PP.text "op info:" <+> PP.pretty opinf
         PP.<$>
+        PP.text "vars:" <+> PP.pretty vars
+        PP.<$>
         PP.text "type:" <+> PP.pretty tipe
       )
   
   
 instance (Binary n, Binary t) => Binary (ExprDecl n t) where
   get =
-      ExprDecl <$> get <*> get <*> get
+      ExprDecl <$> get <*> get <*> get <*> get
       
-  put (ExprDecl oi n t) =
-      put n >> put oi >> put t
+  put (ExprDecl oi n vs t) =
+      put n >> put oi >> put vs >> put t

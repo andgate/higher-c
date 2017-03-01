@@ -30,36 +30,27 @@ type Typed =
   Item N.Typed E.Typed T.Typed
    
 data Item n e t
-  = Import N.Paths
-  | Export N.Paths
+  = Import [N.Paths]
+  | Export [N.Paths]
   | ExprDef (ED.ExprDef n e t)
   | AliasDef (AD.AliasDef n t)
   | DataDef (DD.DataDef n t)
   | TypeClassDef (TCD.TypeClassDef n e t)
   deriving (Eq, Show, Data, Typeable)
 
-
-getDeps :: [Item n e t] -> [Text]   
-getDeps = mapMaybe getDep
-    
-getDep :: Item n e t -> Maybe Text
-getDep (Import ps) = q ps
-  where q = Just . Text.pack . N.toString
-getDep _ = Nothing
-
   
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
     pretty (Import ps) =
-      PP.text "Import:"
+      PP.text "Imports:"
       PP.<$>
       PP.indent 2
-        ( PP.pretty (N.toString ps) )
+        ( PP.pretty (map N.toString ps) )
         
     pretty (Export ps) =
-      PP.text "Export:"
+      PP.text "Exports:"
       PP.<$>
       PP.indent 2
-        ( PP.pretty (N.toString ps) )
+        ( PP.pretty (map N.toString ps) )
         
     pretty (ExprDef ed) =
       PP.pretty ed
