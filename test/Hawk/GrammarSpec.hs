@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Hawk.GrammarSpec where
 
-import Language.Hawk.Parse (parseTest, mangledParse)
 import SpecHelper
 
 import qualified Data.ByteString as BS

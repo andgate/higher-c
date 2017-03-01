@@ -41,6 +41,7 @@ $idchar      = [A-Za-z0-9]
 $mixfixchar   = [A-Za-z $blkchar]
 $mixfixbodychar   = [A-Za-z0-9 $blkchar]
 
+$modidchar      = [A-Za-z0-9\.]
 
 $nonwhite       = ~$white
 $whiteNoNewline = $white # \n
@@ -94,11 +95,12 @@ hawk :-
   "case"                          { rsvp }
   "of"                            { rsvp }
   
+  
   @varid                          { \text -> yield (TokenVarId text) }
   @conid                          { \text -> yield (TokenConId text) }
   @opid                           { \text -> yield (TokenOpId text) }
   @mixfix                         { \text -> yield (TokenMixfix text) }
-  
+
   $digit+                         { \text -> yield (TokenInteger $ toInt text) }
 }
 
@@ -280,9 +282,9 @@ instance Binary Token where
 -- The token type:
 data TokenClass
   = TokenRsvp Text
-  | TokenOpId Text
   | TokenVarId Text
   | TokenConId Text
+  | TokenOpId Text
   | TokenMixfix Text
   
   | TokenInteger Integer
@@ -324,9 +326,9 @@ tokenClassToText :: TokenClass -> Text
 tokenClassToText tc =
   case tc of
     TokenRsvp t     -> t
-    TokenOpId t     -> t
     TokenVarId t    -> t
     TokenConId t    -> t
+    TokenOpId t     -> t
     TokenMixfix t   -> t
     TokenInteger i  -> Text.pack $ show i
     TokenDouble d   -> Text.pack $ show d
@@ -346,14 +348,14 @@ instance PP.Pretty TokenClass where
   pretty (TokenRsvp t) =
     PP.text "rsvp" <+> PP.text (Text.unpack t)
     
-  pretty (TokenOpId t) =
-    PP.text "opId" <+> PP.pretty (Text.unpack t)
-    
   pretty (TokenVarId t) =
     PP.text "varId" <+> PP.pretty (Text.unpack t)
     
   pretty (TokenConId t) =
     PP.text "conId" <+> PP.pretty (Text.unpack t)
+
+  pretty (TokenOpId t) =
+    PP.text "opId" <+> PP.pretty (Text.unpack t)
     
   pretty (TokenMixfix t) =
     PP.text "mixfixId" <+> PP.pretty (Text.unpack t)
@@ -396,9 +398,9 @@ instance Binary TokenClass where
     n <- getWord8
     case n of
       1 -> TokenRsvp <$> get
-      2 -> TokenOpId <$> get
-      3 -> TokenVarId <$> get
-      4 -> TokenConId <$> get
+      2 -> TokenVarId <$> get
+      3 -> TokenConId <$> get
+      4 -> TokenOpId <$> get
       5 -> TokenMixfix <$> get
       6 -> TokenInteger <$> get
       7 -> TokenDouble <$> get
@@ -415,9 +417,9 @@ instance Binary TokenClass where
   put e =
     case e of
       TokenRsvp t     -> putWord8 1 >> put t
-      TokenOpId t     -> putWord8 2 >> put t
-      TokenVarId t    -> putWord8 3 >> put t
-      TokenConId t    -> putWord8 4 >> put t
+      TokenVarId t    -> putWord8 2 >> put t
+      TokenConId t    -> putWord8 3 >> put t
+      TokenOpId t     -> putWord8 4 >> put t
       TokenMixfix t   -> putWord8 5 >> put t
       TokenInteger i  -> putWord8 6 >> put i
       TokenDouble d   -> putWord8 7 >> put d

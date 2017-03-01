@@ -41,11 +41,8 @@ import qualified Text.Earley.Mixfix as E
 
 -- -----------------------------------------------------------------------------
 -- Parser
-parse :: TypeOpTable  -- type symbol table
-      -> ExprOpTable    -- var symbol table
-      -> Text -- Source input
-      -> IO M.Source
-parse typOps exprOps txt = do
+parseTopLevel :: Text -> IO M.Source
+parseTopLevel txt = do
   let lexModl' = Pipes.evalStateP L.defState (L.lexModl txt)
       layout' = Pipes.evalStateP LO.defState LO.layout
       (toks, ()) = runIdentity $ Pipes.toListM' $ lexModl' >-> layout'
@@ -61,12 +58,8 @@ parse typOps exprOps txt = do
       ps        -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)
 
 
-mangledParse :: Text -> IO M.Source
-mangledParse txt =
-  parse defTypeOps defExprOps txt
-
 -- -----------------------------------------------------------------------------
 -- Test Parser
 parseTest :: Text -> IO ()
 parseTest txt =
-  parse defTypeOps defExprOps txt >>= print . pretty
+  parseTopLevel txt >>= print . pretty

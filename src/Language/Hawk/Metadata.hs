@@ -59,8 +59,11 @@ insertTopLevel = do
   xs <- srcFiles <$> St.get
   forM_ xs $ \x -> liftIO $ do
       src <- Text.readFile x
-      m <- P.mangledParse src
+      m <- P.parseTopLevel src
       insertModule m src
+      
+      -- For testing only
+      P.parseTest src
 
 {-
   For each module
@@ -141,16 +144,20 @@ insertModule (M.Module n its) src = runSqlite "hk.db" $ do
       
     insertDataCon modId ddId (DD.DataCons (N.Name n p) b) = do
       conId <- insert $ Db.DataCon modId ddId n []
-      memIds <- insertMany (mkDataMem modId ddId conId <$> b)
+      memIds <- insertMany (mkDataConsBody modId ddId conId <$> b)
       update conId [Db.DataConMembers =. memIds]
       return conId
 
       
-    mkDataMem modId ddId conId (DD.Tagged (N.Name n p) t) =
+    mkDataConsBody modId ddId conId (DD.DataConsRec (N.Name n p) t) =
       let tdat = toStrict $ encode t
       in Db.DataMember modId ddId conId (Just n) tdat
       
-    mkDataMem modId ddId conId (DD.Tagless t) =
+    mkDataConsBody modId ddId conId (DD.DataConsList ts) =
+      let tdat = toStrict $ encode t
+      in Db.DataMember modId ddId conId Nothing tdat
+      
+    mkDataConsBody modId ddId conId (DD.DataConsTyped t) =
       let tdat = toStrict $ encode t
       in Db.DataMember modId ddId conId Nothing tdat
       

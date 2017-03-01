@@ -26,6 +26,10 @@ import qualified Language.Hawk.Syntax.Type as T
 import qualified Language.Hawk.Syntax.TypeDeclaration as TD
 
 
+
+surroundList :: a -> [a] -> a -> [a]
+surroundList a xs z = (a:xs) ++ [z]
+
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
 toplevel :: Grammar r (Prod r Lex.Token Lex.Token M.Source)
@@ -59,20 +63,21 @@ toplevel = mdo
 
 -- -----------------------------------------------------------------------------
 -- Module path rules
+    paths0 <- rule $
+      paths <|> pure []
+
     paths <- rule $
-          (Node <$> conName <*> paths_subs)
-      <|> (Node <$> varName <*> pure [])
-        
-    paths_subs <- rule $  
-        some paths_base
-        
+      ((:) <$> paths_base <*> paths0)
+    
     paths_base <- rule $
           (Node <$> conName <*> paths_sub)
-      <|> (Node <$> varName <*> pure [])
+      <|> (Node <$> (conName <|> varName <|> parens opName)
+                <*> pure []
+          )
     
     paths_sub <- rule $  
           ((:[]) <$> (op "." *> paths_base))
-      <|> (rsvp "(" *> paths_subs <* rsvp ")")
+      <|> (rsvp "(" *> many paths_base <* rsvp ")")
 
 
 -- -----------------------------------------------------------------------------
@@ -83,17 +88,17 @@ toplevel = mdo
     item <- rule $
           impItem
       <|> expItem
-      -- <|> exprDefItem
-      -- <|> aliasDefItem
-      -- <|> dataDefItem
-      -- <|> typeClassDefItem
+      <|> exprDefItem
+      <|> aliasDefItem
+      <|> dataDefItem
+      <|> typeClassDefItem
     
     
     impItem <- rule $
-      I.Import <$> (op "->" *> many paths)
+      I.Import <$> (op "->" *> paths)
       
     expItem <- rule $
-      I.Export <$> (op "<-" *> many paths)
+      I.Export <$> (op "<-" *> paths)
       
     exprDefItem <- rule $
       I.ExprDef <$> exprDef
@@ -124,7 +129,7 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Expression Definition Rules
     exprDecl <- rule $
-        EDec.ExprDecl <$> exprDefName <*> opInfo0 <*> many exprVar <*> exprType
+        EDec.ExprDecl <$> exprDefName <*> opInfo0 <*> many exprVar <*> exprType0
     
     exprDef <- rule $
         EDef.mkExprDef <$> exprDecl <*> exprDefBody
@@ -138,9 +143,17 @@ toplevel = mdo
     
     exprVar <- rule $
         varName <|> opNamed "_"
-        
+    
+    
+    exprType0 <- rule $
+      exprType <|> pure []
+      
     exprType <- rule $
-        op "?" *> tillEquals
+        op "?" *> many (notTokens [ Lex.TokenRsvp ":"
+                                  , Lex.TokenOpId "="
+                                  , Lex.TokenOpId ":="
+                                  ]
+                        )
     
     exprDefBody <- rule $
         exprDefOp *> raw
@@ -163,7 +176,7 @@ toplevel = mdo
         many typeDeclArg
       
     typeDeclArg <- rule $
-        rawParens <|> ((:[]) <$> (varTok <|> conTok))
+        rawParens <|> (some (varTok <|> conTok))
     
 -- -----------------------------------------------------------------------------
 -- Type Alias Rules
@@ -179,29 +192,47 @@ toplevel = mdo
       dataDefA <|> dataDefB
       
     dataDefA <- rule $
-      DD.DataDef <$> typeDecl <*> dataDefBody
+      DD.DataDef <$> typeDecl <*> dataDefABody
       
     dataDefB <- rule $
-      DD.mkRecDef <$> typeDecl <*> dataConsBody
+      DD.mkRecDef <$> typeDecl <*> dataDefBBody
     
-    dataDefBody <- rule $
+    dataDefABody <- rule $
       op ":-" *> block dataCons
       
-    dataCons <- rule $
-      DD.DataCons <$> conName <*> dataConsBody
-
-    dataConsBody <- rule $
-      (rsvp ":" *> block dataMember)
-      <|> (DD.mkTagless <$> raw)
+    dataDefBBody <- rule $
+      op ":-" *> block dataConsRowA
+      
     
-    dataMember <- rule $
-      dataMemberTagged <|> dataMemberTagless
+    dataCons <- rule $
+      dataConsA <|> dataConsB
+    
+    dataConsA <- rule $
+      DD.DataCons <$> conName <*> pure [] <*> dataConsBody
       
-    dataMemberTagged <- rule $
-      DD.Tagged <$> varName <*> raw
+    dataConsB <- rule $
+      DD.DataCons <$> conName <*> dataConsType <*> pure []
       
-    dataMemberTagless <- rule $
-      DD.Tagless <$> raw
+    dataConsType <- rule $
+      (op "?" *> raw)
+      
+      
+    dataConsBody <- rule $
+      dataConsBodyA <|> dataConsBodyB
+      
+    
+    dataConsBodyA <- rule $
+      rsvp ":" *> block dataConsRow
+    
+    dataConsRowA <- rule $
+      (,) <$> (Just <$> varName) <*> (op "?" *> raw)
+    
+    
+    dataConsBodyB <- rule $
+      some dataConsBodyB
+    
+    dataConsRowB <- rule $
+      (Nothing,) <$> typeDeclArg
     
     
 -- -----------------------------------------------------------------------------
@@ -212,6 +243,27 @@ toplevel = mdo
     
     typeClassDefBody <- rule $
       rsvp ":~" *> block exprDef
+      
+      
+    raw0 <- rule $
+      raw <|> pure []
+    
+    raw <- rule $
+      many notLayout <|> rawBlk <|> rawLn <|> rawParens
+      
+    rawBlk <- rule $
+      surroundList <$> blk <*> raw0 <*> blk'
+    
+    rawLn <- rule $
+      surroundList <$> ln <*> raw0 <*> ln'
+      
+    rawParens <- rule $
+      surroundList <$> rsvp "(" <*> raw0 <*> rsvp ")"
+
+      
+      
+-- -----------------------------------------------------------------------------
+-- Raw Token Rules
 
 
 {- Types are parsed using a different grammar

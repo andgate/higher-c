@@ -29,29 +29,26 @@ data DataDef n t
       }
     deriving (Eq, Show, Data, Typeable)
 
-mkRecDef :: TD.TypeDecl n t -> DataConsBody n t -> DataDef n t
-mkRecDef td@(TD.TypeDecl _ n _) b = 
-  DataDef td [DataCons n b]
-  
-
 type DataDefBody n t =
   [DataCons n t]
     
 data DataCons n t =
-  DataCons n (DataConsBody n t)
+  DataCons n t (DataConsBody n t)
   deriving (Eq, Show, Ord, Data, Typeable)
-  
-type DataConsBody n t =
-  [DataMember n t]
 
-data DataMember n t = 
-   Tagless t
-  |Tagged n t
-  deriving (Eq, Show, Ord, Data, Typeable)
+
+-- Maybe make these datatypes??  
+type DataConsBody n t
+  = [DataConsRow n t]
   
-mkTagless :: t -> DataConsBody n t
-mkTagless t = [Tagless t]
+type DataConsRow n t
+  = (Maybe n, t)
   
+  
+mkRecDef :: TD.TypeDecl n t -> DataConsBody n t -> DataDef n t
+mkRecDef td@(TD.TypeDecl _ n _) b = 
+  DataDef td [DataCons n [] b]
+
 
 instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (DataDef n t) where
     pretty (DataDef d b) =
@@ -65,31 +62,15 @@ instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (DataDef n t) where
 
 
 instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (DataCons n t) where
-    pretty (DataCons n b) =
+    pretty (DataCons n t b) =
       PP.text "Data Constructor:"
       PP.<$>
       PP.indent 2
         ( PP.text "Name:" <+> PP.pretty n
           PP.<$>
-          PP.text "Body:" <+> PP.pretty b
-        )
-          
-
-instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (DataMember n t) where
-    pretty (Tagless t) =
-      PP.text "Tagless Member:"
-      PP.<$>
-      PP.indent 2
-        ( PP.text "Type:" <+> PP.pretty t
-        )
-        
-    pretty (Tagged n t) =
-      PP.text "Tagged Member:"
-      PP.<$>
-      PP.indent 2
-        ( PP.text "Name:" <+> PP.pretty n
-          PP.<$>
           PP.text "Type:" <+> PP.pretty t
+          PP.<$>
+          PP.text "Body:" <+> PP.pretty b
         )
 
 
@@ -105,23 +86,8 @@ instance (Binary n, Binary t) => Binary (DataDef n t) where
   
 instance (Binary n, Binary t) => Binary (DataCons n t) where
   get =
-    DataCons <$> get <*> get
+    DataCons <$> get <*> get <*> get
 
-  put (DataCons n b) =
-    put n >> put b
-    
-    
-
-instance (Binary n, Binary t) => Binary (DataMember n t) where
-  get = do
-    n <- getWord8
-    case n of
-      1 -> Tagless <$> get
-      2 -> Tagged <$> get <*> get
-      _ -> error "Binary encounter unexpected input while serializing DataMember."
-      
-  put e =
-    case e of
-      Tagless t           -> putWord8 1 >> put t
-      Tagged n t           -> putWord8 2 >> put n >> put t
+  put (DataCons n t b) =
+    put n >> put t >> put b
               

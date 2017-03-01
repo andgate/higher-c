@@ -111,6 +111,11 @@ rsvp :: Text -> Prod r e L.Token L.Token
 rsvp text =
   match $ L.TokenRsvp text
            
+ 
+parens :: Prod r e L.Token a -> Prod r e L.Token a
+parens p =
+  rsvp "(" *> p <* rsvp ")"
+
            
 sep :: Prod r e L.Token b -> Prod r e L.Token a -> Prod r e L.Token [a]
 sep s p =
@@ -234,6 +239,9 @@ eof = match L.TokenEof
 block :: Prod r e L.Token a -> Prod r e L.Token [a]
 block p = blk *> linefolds p <* blk'
 
+linefolds0 :: Prod r e L.Token a -> Prod r e L.Token [a]
+linefolds0 p = many $ linefold p
+
 linefolds :: Prod r e L.Token a -> Prod r e L.Token [a]
 linefolds p = some $ linefold p
 
@@ -253,36 +261,6 @@ ln = match L.TokenLn
 
 ln' :: Prod r e L.Token L.Token
 ln' = match L.TokenLn'
-
-
-        
-parens :: Prod r e L.Token a -> Prod r e L.Token a
-parens p =
-  rsvp "(" *> p <* rsvp ")"
-
-
-raw :: Prod r e L.Token [L.Token]
-raw =
-  rawBlk <|> rawLn <|> rawParens <|> many notLayout
-  
-
-rawBlk :: Prod r e L.Token [L.Token]
-rawBlk =
-  surroundList <$> blk <*> raw <*> blk
-
-rawLn :: Prod r e L.Token [L.Token]
-rawLn =
-  surroundList <$> ln <*> raw <*> ln'
-  
-  
-rawParens :: Prod r e L.Token [L.Token]
-rawParens =
-  surroundList <$> rsvp "(" <*> raw <*> rsvp ")"
-
-
-
-surroundList :: a -> [a] -> a -> [a]
-surroundList a xs z = (a:xs) ++ [z]
 
 
 -- -----------------------------------------------------------------------------

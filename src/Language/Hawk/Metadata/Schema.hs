@@ -66,6 +66,7 @@ DataCon
     modId ModuleId
     dataId DataDefId
     name Text
+    tipe ByteString
     members [DataMemberId]
     
 DataMember
