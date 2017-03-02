@@ -89,13 +89,24 @@ hawk :-
   \' .* \'                        { handleChar }
   "/*"                            { beginComment }
   
+  
+
   \_                              { rsvp }
   \,                              { rsvp }
+  \.                              { rsvp }
   \(                              { rsvp }
   \)                              { rsvp }
   \[                              { rsvp }
   \]                              { rsvp }
-  \:                              { rsvp }
+  \-\>                            { rsvp }
+  \<\-                            { rsvp }
+  \:\=                            { rsvp }
+  \:\-                            { rsvp }
+  \:\~                            { rsvp }
+  \:                              { rsvp }      
+  \-                              { rsvp }
+  \=                              { rsvp }
+  \?                              { rsvp }
   
   "case"                          { rsvp }
   "of"                            { rsvp }
@@ -356,30 +367,52 @@ tokenToName (Token tc p) =
   N.Name (tokenClassToText tc) p
 
 
-isTok :: TokenClass -> Text -> Token -> Bool
-isTok tc1 txt (Token tc2 _) =
-  tokenClassToText tc1 == txt
-    && tc1 == tc2
+isTok :: TokenClass -> Token -> Bool
+isTok tc1 t@(Token tc2 _) =
+    tc1 == tc2
     
 isVar :: Text -> Token -> Bool
-isVar txt = isTok (TokenVarId txt) txt
+isVar txt = isTok $ TokenVarId txt
 
 isCon :: Text -> Token -> Bool
-isCon txt = isTok (TokenConId txt) txt
+isCon txt = isTok $ TokenConId txt
 
 isOp :: Text -> Token -> Bool
-isOp txt = isTok (TokenOpId txt) txt
+isOp txt = isTok $ TokenOpId txt
 
 isMixfix :: Text -> Token -> Bool
-isMixfix txt = isTok (TokenMixfixId txt) txt
+isMixfix txt = isTok $ TokenMixfixId txt
 
 isMixfixBlk :: Text -> Token -> Bool
-isMixfixBlk txt = isTok (TokenMixfixBlkId txt) txt
+isMixfixBlk txt = isTok $ TokenMixfixBlkId txt
 
     
 isTokClass :: TokenClass -> Token -> Bool
 isTokClass tc1 (Token tc2 _) =
-  tc1 == tc2
+  case (tc1, tc2) of
+  
+    (TokenRsvp _, TokenRsvp _)    -> True
+    (TokenVarId _, TokenVarId _)  -> True
+    (TokenConId _, TokenConId _)  -> True
+    (TokenOpId _, TokenOpId _)    -> True
+    
+    (TokenMixfixId _, TokenMixfixId _)        -> True
+    (TokenMixfixBlkId _, TokenMixfixBlkId _)  -> True
+    
+    (TokenInteger _, TokenInteger _)  -> True
+    (TokenDouble _, TokenDouble _)    -> True
+    (TokenChar _, TokenChar _)        -> True
+    (TokenString _, TokenString _)    -> True
+    (TokenBool _, TokenBool _)        -> True
+    
+    (TokenTop, TokenTop)    -> True
+    (TokenBlk, TokenBlk)    -> True
+    (TokenBlk', TokenBlk')  -> True
+    (TokenLn, TokenLn)      -> True
+    (TokenLn', TokenLn')    -> True
+    (TokenEof, TokenEof)    -> True
+    
+    _ -> False
 
 isVarId :: Token -> Bool
 isVarId = isTokClass $ TokenVarId ""

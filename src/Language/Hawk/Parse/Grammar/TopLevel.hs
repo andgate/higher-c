@@ -52,39 +52,36 @@ toplevel = mdo
 
 -- -----------------------------------------------------------------------------
 -- Name rules
-    varName <- rule $ name $
-        varId
-    
-    conName <- rule $ name $
-        conId
-    
-    opName <- rule $ name $
-        opId
-    
-    mixfixName <- rule $ name $
-        mixfixId
-    
-    mixfixBlkName <- rule $ name $
-        mixfixId <|> mixfixblkId
+    varName       <- rule $ name $ varId
+    conName       <- rule $ name $ conId
+    opName        <- rule $ name $ opId
+    mixfixName    <- rule $ name $ mixfixId
+    mixfixBlkName <- rule $ name $ mixfixId <|> mixfixblkId
         
     itemName <- rule $ 
-        conName <|> varName <|> parens opName <|> mixfixBlkName
+        varName <|> parens opName <|> mixfixBlkName
 
 -- -----------------------------------------------------------------------------
 -- Module path rules
-    paths0 <- rule $
-      paths <|> pure []
-
     paths <- rule $
-      ((:) <$> paths_base <*> paths0)
+        many path
     
-    paths_base <- rule $
-          (Node <$> conName <*> paths_sub)
-      <|> (Node <$> itemName <*> pure [])
+    path <- rule $
+            pathItem
+        <|> pathCon
     
-    paths_sub <- rule $  
-          ((:[]) <$> (op "." *> paths_base))
-      <|> (rsvp "(" *> many paths_base <* rsvp ")")
+    pathItem <- rule $
+        liftA2 Node itemName (pure [])
+      
+    pathCon <- rule $
+        liftA2 Node conName pathExt
+        
+    pathExt <- rule $ 
+            parens paths
+        <|> mono (rsvp "." *> path)
+        <|> pure []
+        
+
 
 
 -- -----------------------------------------------------------------------------
@@ -93,19 +90,19 @@ toplevel = mdo
       linefolds item
 
     item <- rule $
-          impItem
-      <|> expItem
+          importItem
+      <|> exportItem
       <|> exprDefItem
       <|> aliasDefItem
       <|> dataDefItem
-      <|> typeClassDefItem
+      -- <|> typeClassDefItem
     
     
-    impItem <- rule $
-      I.Import <$> (op "->" *> paths)
+    importItem <- rule $
+      I.Import <$> (rsvp "->" *> paths)
       
-    expItem <- rule $
-      I.Export <$> (op "<-" *> paths)
+    exportItem <- rule $
+      I.Export <$> (rsvp "<-" *> paths)
       
     exprDefItem <- rule $
       I.ExprDef <$> exprDef
@@ -123,7 +120,7 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Expression Definition Rules
     exprDecl <- rule $
-        EDec.ExprDecl <$> exprDefName <*> opInfo0 <*> many exprVar <*> exprType0
+        EDec.ExprDecl <$> exprDefName <*> opInfo0 <*> many exprVar <*> typesig0
     
     exprDef <- rule $
         EDef.mkExprDef <$> exprDecl <*> exprDefBody
@@ -132,22 +129,11 @@ toplevel = mdo
         varName <|> parens opName
     
     exprDefOp <- rule $
-        op "=" <|> op ":=" <|> rsvp ":"
+        rsvp "=" <|> rsvp ":=" <|> rsvp ":"
      
     
     exprVar <- rule $
-        varName <|> name (op "_")
-    
-    
-    exprType0 <- rule $
-      exprType <|> pure []
-      
-    exprType <- rule $
-        op "?" *> many (notTokens [ Lex.TokenRsvp ":"
-                                  , Lex.TokenOpId "="
-                                  , Lex.TokenOpId ":="
-                                  ]
-                        )
+        varName <|> name (rsvp "_")
     
     exprDefBody <- rule $
         exprDefOp *> raw
@@ -168,29 +154,59 @@ toplevel = mdo
         typeCtx <|> pure QT.emptyCtx
        
     typeCtx <- rule $
-        (QT.Context <$> typeCtx') <* op "=>"
+        (QT.Context <$> typeCtx') <* rsvp "=>"
     
     typeCtx' <- rule $
-        typeCtxConstraint <|> typeCtxConstraintList <|> parens typeCtxConstraintList
+        typeCtxConstraintList <|> parens typeCtxConstraintList
     
     typeCtxConstraintList <- rule $
-        concat <$> sep' (rsvp ",") typeCtxConstraint
+        sep' (rsvp ",") typeCtxConstraint
     
     typeCtxConstraint <- rule $
-        mono conId <|> some typeCtxArg
+        prepend conId typeCtxArgList
+
+        
+    typeCtxArgList <- rule $
+        concat <$> some typeCtxArg
     
     typeCtxArg <- rule $
-      mono typeCtxTVar <|> typeCtxTVarParens
-    
-    
+        mono typeCtxTVar <|> typeCtxArgParens
+        
+    typeCtxArgParens <- rule $
+        parens typeCtxArgList
+        
     typeCtxTVar <- rule $
         varId
+
+-- -----------------------------------------------------------------------------
+-- Type Context Rules
+    typesig0 <- rule $
+        typesig <|> pure []
         
-    typeCtxTVarList <- rule $
-        some typeCtxTVar
+    typesig <- rule $
+        rsvp "?" *> tipes
+   
+    tipes <- rule $
+        concat <$> some tipe
+   
+    tipe <- rule $
+        mono tipeId <|> tipeGroup
         
-    typeCtxTVarParens <- rule $
-        parens typeCtxTVarList
+    tipeGroup <- rule $
+        concat <$> parens (many tipe)
+    
+    tipeId <- rule $ 
+            varId
+        <|> conId
+        <|> opId
+        <|> mixfixId
+        <|> rsvp "->"
+        <|> rsvp "<-"
+        <|> rsvp "."
+        <|> rsvp ","
+        <|> rsvp "["
+        <|> rsvp "]"
+        <|> rsvp "_"
 
 -- -----------------------------------------------------------------------------
 -- Type Declaration Rules
@@ -202,19 +218,23 @@ toplevel = mdo
         conName <|> mixfixName
       
     typeDeclArgs0 <- rule $
-        many typeDeclArg
+         many typeDeclArg
         
     typeDeclArgs <- rule $
         some typeDeclArg
       
     typeDeclArg <- rule $
-        rawParens <|> (some (varId <|> conId))
+        mono typeDeclArgId <|> rawParens
+
+    typeDeclArgId <- rule $
+        varId <|> conId <|> mixfixId <|> parens opId
+        
     
 -- -----------------------------------------------------------------------------
 -- Type Alias Rules
 
     aliasDef <- rule $
-      AD.AliasDef <$> typeDecl <*> (op "-" *> raw)
+      AD.AliasDef <$> typeDecl <*> (rsvp "-" *> raw)
       
 
 -- -----------------------------------------------------------------------------
@@ -230,10 +250,10 @@ toplevel = mdo
       DD.mkRecDef <$> typeDecl <*> dataDefBBody
     
     dataDefABody <- rule $
-      op ":-" *> block dataCons
+      rsvp ":-" *> block dataCons
       
     dataDefBBody <- rule $
-      op ":-" *> block dataRow
+      rsvp ":-" *> block dataRow
       
     
     dataCons <- rule $
@@ -243,10 +263,10 @@ toplevel = mdo
       DD.DataCons <$> conName <*> pure [] <*> dataConsBody
       
     dataConsB <- rule $
-      DD.DataCons <$> conName <*> dataConsType <*> pure []
+      DD.DataCons <$> conName <*> typesig <*> pure []
       
     dataConsType <- rule $
-      op "?" *> raw
+      rsvp "?" *> raw
       
       
     dataConsBody <- rule $

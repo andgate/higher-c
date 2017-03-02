@@ -127,7 +127,11 @@ sep' s p =
   
 mono :: Prod r e L.Token a -> Prod r e L.Token [a]
 mono p =
-  (:[]) <$> p
+  liftA (:[]) p
+  
+prepend :: Prod r e L.Token a -> Prod r e L.Token [a] -> Prod r e L.Token [a]  
+prepend =
+  liftA2 (:)
 
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Name Tokens
