@@ -18,17 +18,22 @@ b = 2
 c = 1 ? I32
 
 
-<- SizeT, SizedArr
+<- SizeT SizedArr
 
 SizeT - I32
 
+Color :-
+  Red I32
+  Green I32
+  Blue I32
+
+/*
 // Also note that tagged unions and arrays
 // can be polymorphic with the use of type variables.
 SizedArr v :-
   arr ? [v]
   size ? Int
 
-/*
 // Type operator's can only be constructed through a type def
 (_!->!_) 4L a b
   - a -> IO b

@@ -52,14 +52,23 @@ toplevel = mdo
 
 -- -----------------------------------------------------------------------------
 -- Name rules
-    varName <- rule $ varId
+    varName <- rule $ name $
+        varId
     
-    conName <- rule $ conId
+    conName <- rule $ name $
+        conId
     
-    opName <- rule $ opId
+    opName <- rule $ name $
+        opId
     
-    name <- rule $ varName <|> conName
-
+    mixfixName <- rule $ name $
+        mixfixId
+    
+    mixfixBlkName <- rule $ name $
+        mixfixId <|> mixfixblkId
+        
+    itemName <- rule $ 
+        conName <|> varName <|> parens opName <|> mixfixBlkName
 
 -- -----------------------------------------------------------------------------
 -- Module path rules
@@ -71,9 +80,7 @@ toplevel = mdo
     
     paths_base <- rule $
           (Node <$> conName <*> paths_sub)
-      <|> (Node <$> (conName <|> varName <|> parens opName)
-                <*> pure []
-          )
+      <|> (Node <$> itemName <*> pure [])
     
     paths_sub <- rule $  
           ((:[]) <$> (op "." *> paths_base))
@@ -111,19 +118,6 @@ toplevel = mdo
       
     typeClassDefItem <- rule $
       I.TypeClassDef <$> typeClassDef
-      
-
--- -----------------------------------------------------------------------------
--- Type Context Rules
-
-    typeCtx0 <- rule $
-        typeCtx <|> pure QT.emptyCtx
-       
-    typeCtx <- rule $
-        (QT.Context <$> typeCtxRaw) <* op "=>"
-      
-    typeCtxRaw <- rule $
-        (:[]) <$> many notTypeCtxArr
 
 
 -- -----------------------------------------------------------------------------
@@ -142,7 +136,7 @@ toplevel = mdo
      
     
     exprVar <- rule $
-        varName <|> opNamed "_"
+        varName <|> name (op "_")
     
     
     exprType0 <- rule $
@@ -163,20 +157,58 @@ toplevel = mdo
         opInfo <|> pure OI.defOpInfo
     
     opInfo <- rule $
-        OI.OpInfo <$> tInteger <*> (OI.assocFromName <$> varId)
+        OI.OpInfo <$> tInteger <*> (OI.assocFromName <$> varName)
 
+
+
+-- -----------------------------------------------------------------------------
+-- Type Context Rules
+
+    typeCtx0 <- rule $
+        typeCtx <|> pure QT.emptyCtx
+       
+    typeCtx <- rule $
+        (QT.Context <$> typeCtx') <* op "=>"
+    
+    typeCtx' <- rule $
+        typeCtxConstraint <|> typeCtxConstraintList <|> parens typeCtxConstraintList
+    
+    typeCtxConstraintList <- rule $
+        concat <$> sep' (rsvp ",") typeCtxConstraint
+    
+    typeCtxConstraint <- rule $
+        mono conId <|> some typeCtxArg
+    
+    typeCtxArg <- rule $
+      mono typeCtxTVar <|> typeCtxTVarParens
+    
+    
+    typeCtxTVar <- rule $
+        varId
+        
+    typeCtxTVarList <- rule $
+        some typeCtxTVar
+        
+    typeCtxTVarParens <- rule $
+        parens typeCtxTVarList
 
 -- -----------------------------------------------------------------------------
 -- Type Declaration Rules
 
     typeDecl <- rule $
-        TD.TypeDecl <$> typeCtx0 <*> conName <*> typeDeclArgs
+        TD.TypeDecl <$> typeCtx0 <*> typeDeclCons <*> typeDeclArgs0
+        
+    typeDeclCons <- rule $
+        conName <|> mixfixName
       
-    typeDeclArgs <- rule $
+    typeDeclArgs0 <- rule $
         many typeDeclArg
+        
+    typeDeclArgs <- rule $
+        some typeDeclArg
       
     typeDeclArg <- rule $
-        rawParens <|> (some (varTok <|> conTok))
+        rawParens <|> (some (varId <|> conId))
     
 -- -----------------------------------------------------------------------------
 -- Type Alias Rules
@@ -201,7 +233,7 @@ toplevel = mdo
       op ":-" *> block dataCons
       
     dataDefBBody <- rule $
-      op ":-" *> block dataConsRowA
+      op ":-" *> block dataRow
       
     
     dataCons <- rule $
@@ -214,7 +246,7 @@ toplevel = mdo
       DD.DataCons <$> conName <*> dataConsType <*> pure []
       
     dataConsType <- rule $
-      (op "?" *> raw)
+      op "?" *> raw
       
       
     dataConsBody <- rule $
@@ -222,17 +254,17 @@ toplevel = mdo
       
     
     dataConsBodyA <- rule $
-      rsvp ":" *> block dataConsRow
+      rsvp ":" *> block dataRow
     
-    dataConsRowA <- rule $
-      (,) <$> (Just <$> varName) <*> (op "?" *> raw)
+    dataRow <- rule $
+      DD.DataRow <$> (Just <$> varName) <*> dataConsType
     
     
     dataConsBodyB <- rule $
-      some dataConsBodyB
+      some dataConsArg
     
-    dataConsRowB <- rule $
-      (Nothing,) <$> typeDeclArg
+    dataConsArg <- rule $
+       DD.DataRow Nothing <$> typeDeclArg
     
     
 -- -----------------------------------------------------------------------------
@@ -244,6 +276,9 @@ toplevel = mdo
     typeClassDefBody <- rule $
       rsvp ":~" *> block exprDef
       
+      
+-- -----------------------------------------------------------------------------
+-- Raw Token Rules
       
     raw0 <- rule $
       raw <|> pure []
@@ -259,11 +294,6 @@ toplevel = mdo
       
     rawParens <- rule $
       surroundList <$> rsvp "(" <*> raw0 <*> rsvp ")"
-
-      
-      
--- -----------------------------------------------------------------------------
--- Raw Token Rules
 
 
 {- Types are parsed using a different grammar

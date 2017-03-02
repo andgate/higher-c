@@ -138,28 +138,21 @@ insertModule (M.Module n its) src = runSqlite "hk.db" $ do
       ddId <- insert $ Db.DataDef modId declId []
       
       -- insert the constructors and update the data def entry
-      conIds <- mapM (insertDataCon modId ddId) b
-      update ddId [Db.DataDefBody =. conIds]
+      consIds <- mapM (insertDataCons modId ddId) b
+      update ddId [Db.DataDefBody =. consIds]
       return ddId
       
-    insertDataCon modId ddId (DD.DataCons (N.Name n p) b) = do
-      conId <- insert $ Db.DataCon modId ddId n []
-      memIds <- insertMany (mkDataConsBody modId ddId conId <$> b)
-      update conId [Db.DataConMembers =. memIds]
+    insertDataCons modId ddId (DD.DataCons (N.Name n p) t b) = do
+      let tdat = toStrict $ encode t 
+      conId <- insert $ Db.DataCon modId ddId n tdat []
+      rowIds <- insertMany (mkDataRow modId ddId conId <$> b)
+      update conId [Db.DataConRows =. rowIds]
       return conId
 
-      
-    mkDataConsBody modId ddId conId (DD.DataConsRec (N.Name n p) t) =
+    mkDataRow modId ddId conId (DD.DataRow mn t) =
       let tdat = toStrict $ encode t
-      in Db.DataMember modId ddId conId (Just n) tdat
-      
-    mkDataConsBody modId ddId conId (DD.DataConsList ts) =
-      let tdat = toStrict $ encode t
-      in Db.DataMember modId ddId conId Nothing tdat
-      
-    mkDataConsBody modId ddId conId (DD.DataConsTyped t) =
-      let tdat = toStrict $ encode t
-      in Db.DataMember modId ddId conId Nothing tdat
+          mtxt = N.exLocal <$> mn
+      in Db.DataRow modId ddId conId mtxt tdat
       
     
     

@@ -17,6 +17,7 @@ Module
     deps [Text]
     depIds [ModuleId] -- Generated after all modules are loaded
     deriving Show
+    
 
 VarOp
     op  OpId
@@ -50,11 +51,13 @@ TypeDecl
     vars [ByteString]
     deriving Show    
     
+    
 AliasDef
     modId ModuleId
     decId TypeDeclId
     tipe ByteString
     deriving Show
+    
     
 DataDef
     modId ModuleId
@@ -67,14 +70,16 @@ DataCon
     dataId DataDefId
     name Text
     tipe ByteString
-    members [DataMemberId]
+    rows [DataRowId]
+    deriving Show
     
-DataMember
+DataRow
     modId ModuleId
     dataId DataDefId
     conId DataConId
     name Text Maybe
     tipe ByteString
+    deriving Show
     
     
 TypeClassDef

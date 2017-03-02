@@ -124,73 +124,49 @@ sep s p =
 sep' :: Prod r e L.Token b -> Prod r e L.Token a -> Prod r e L.Token [a]
 sep' s p =
   sep s p <|> pure []
+  
+mono :: Prod r e L.Token a -> Prod r e L.Token [a]
+mono p =
+  (:[]) <$> p
 
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Name Tokens
 
-varTok :: Prod r e L.Token L.Token
-varTok = satisfy p
-  where
-    p (L.Token (L.TokenVarId _) _) = True
-    p  _                             = False
+varId :: Prod r e L.Token L.Token
+varId = satisfy L.isVarId
 
-varId :: Prod r e L.Token N.Source
-varId = fmap unsafeExtract (satisfy p)
-  where
-    p (L.Token (L.TokenVarId _) _) = True
-    p  _                             = False
-    unsafeExtract (L.Token (L.TokenVarId v) p) = N.Name v p
+conId :: Prod r e L.Token L.Token
+conId = satisfy L.isConId
 
-conTok :: Prod r e L.Token L.Token
-conTok = satisfy p
-  where
-    p (L.Token (L.TokenConId _) _) = True
-    p  _                             = False
+opId :: Prod r e L.Token L.Token
+opId = satisfy L.isOpId
 
-conId :: Prod r e L.Token N.Source
-conId = fmap unsafeExtract (satisfy p)
-  where
-    p (L.Token (L.TokenConId _) _) = True
-    p  _                           = False
-    unsafeExtract (L.Token (L.TokenConId v) p) = N.Name v p
-    
+mixfixId :: Prod r e L.Token L.Token
+mixfixId = satisfy L.isMixfixId
 
-opId :: Prod r e L.Token N.Source
-opId = fmap unsafeExtract (satisfy p)
-  where
-    p (L.Token (L.TokenOpId _) _) = True
-    p _                           = False
-    unsafeExtract (L.Token (L.TokenOpId v) p) = N.Name v p
+mixfixblkId :: Prod r e L.Token L.Token
+mixfixblkId = satisfy L.isMixfixBlkId
 
 
-opNamed :: Text -> Prod r e L.Token N.Source
-opNamed t = fmap unsafeExtract (satisfy p)
-  where
-    p (L.Token (L.TokenOpId t') _) = t == t'
-    p _                           = False
-    unsafeExtract (L.Token (L.TokenOpId v) p) = N.Name v p
+var :: Text -> Prod r e L.Token L.Token
+var txt = satisfy (L.isVar txt)
 
-
-named :: Text -> Prod r e L.Token N.Source
-named txt = fmap unsafeExtract (satisfy p)
-  where
-    p (L.Token (L.TokenRsvp _) _)  = True
-    p (L.Token (L.TokenVarId _) _) = True
-    p (L.Token (L.TokenConId _) _) = True
-    p (L.Token (L.TokenOpId _) _)  = True
-    p  _                           = False
-    
-    unsafeExtract (L.Token (L.TokenRsvp v) p) = N.Name v p
-    unsafeExtract (L.Token (L.TokenVarId v) p) = N.Name v p
-    unsafeExtract (L.Token (L.TokenConId v) p) = N.Name v p
-    unsafeExtract (L.Token (L.TokenOpId v) p) = N.Name v p
-    unsafeExtract _ = undefined
-
+con :: Text -> Prod r e L.Token L.Token
+con txt = satisfy (L.isCon txt)
 
 op :: Text -> Prod r e L.Token L.Token
-op str = satisfy p
-  where p (L.Token (L.TokenOpId str') _) = str == str' 
-        p _ = False
+op txt = satisfy (L.isOp txt)
+
+mixfix :: Text -> Prod r e L.Token L.Token
+mixfix txt = satisfy (L.isMixfix txt)
+
+mixfixblk :: Text -> Prod r e L.Token L.Token
+mixfixblk txt = satisfy (L.isMixfixBlk txt)
+
+
+name :: Prod r e L.Token L.Token -> Prod r e L.Token N.Source
+name p = L.tokenToName <$> p
+
 
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Literal Tokens

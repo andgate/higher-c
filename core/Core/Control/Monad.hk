@@ -5,7 +5,7 @@
    Core.Control.Functor
    
    
-Applicative m => Monad m :-
+(Applicative m, Functor m) => Monad m :-
   (_>>=_) 1L
     x f
     ? forall a b. m a -> (a -> m b) -> m b

@@ -34,14 +34,12 @@ $opchar = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~]
 $opblkchar = [$opchar $blkchar]
 
 
-$small       = [a-z]
-$large       = [A-Z]
-$idchar      = [A-Za-z0-9]
+$small        = [a-z]
+$large        = [A-Z]
+$idchar       = [A-Za-z0-9]
 
-$mixfixchar   = [A-Za-z $blkchar]
-$mixfixbodychar   = [A-Za-z0-9 $blkchar]
-
-$modidchar      = [A-Za-z0-9\.]
+$blkchar      = [A-Za-z $blkchar]
+$blkbodychar  = [A-Za-z0-9 $blkchar]
 
 $nonwhite       = ~$white
 $whiteNoNewline = $white # \n
@@ -57,13 +55,20 @@ $whiteNoNewline = $white # \n
 @conid = $large $idchar*
 @opid  = $opchar+
 
+
 -- Blockable id's, these are used by the mifix macro
-@mfid    = $mixfixchar $mixfixbodychar* | $opblkchar+
+@id    = @varid | @conid | @opid
 
-@mixfixa = @mfid \_+ (@mfid \_*)*
-@mixfixb = \_+ @mfid (\*_ @mfid)*
+@mixfixA = @@id \_+ (@@id \_*)*
+@mixfixB = \_+ @@id (\*_ @@id)*
+@mixfix = @mixfixA | @mixfixB
 
-@mixfix = @mixfixa | @mixfixb
+-- Blockable id's, these are used by the mifix macro
+@blkid    = $blkchar $blkbodychar* | $opblkchar+
+
+@mixfixblkA = @blkid \_+ (@blkid \_*)*
+@mixfixblkB = \_+ @blkid (\*_ @blkid)*
+@mixfixblk = @mixfixblkA | @mixfixblkB
 
 
 -- -----------------------------------------------------------------------------
@@ -99,7 +104,8 @@ hawk :-
   @varid                          { \text -> yield (TokenVarId text) }
   @conid                          { \text -> yield (TokenConId text) }
   @opid                           { \text -> yield (TokenOpId text) }
-  @mixfix                         { \text -> yield (TokenMixfix text) }
+  @mixfixblk                      { \text -> yield (TokenMixfixBlkId text) }
+  @mixfix                         { \text -> yield (TokenMixfixId text) }
 
   $digit+                         { \text -> yield (TokenInteger $ toInt text) }
 }
@@ -285,7 +291,8 @@ data TokenClass
   | TokenVarId Text
   | TokenConId Text
   | TokenOpId Text
-  | TokenMixfix Text
+  | TokenMixfixId Text
+  | TokenMixfixBlkId Text
   
   | TokenInteger Integer
   | TokenDouble Double
@@ -325,24 +332,76 @@ tokenToText =
 tokenClassToText :: TokenClass -> Text
 tokenClassToText tc =
   case tc of
-    TokenRsvp t     -> t
-    TokenVarId t    -> t
-    TokenConId t    -> t
-    TokenOpId t     -> t
-    TokenMixfix t   -> t
-    TokenInteger i  -> Text.pack $ show i
-    TokenDouble d   -> Text.pack $ show d
-    TokenChar c     -> Text.pack [c]
-    TokenString s   -> Text.pack s
-    TokenBool b     -> Text.pack $ show b
-    TokenTop        -> ""
-    TokenBlk        -> ""
-    TokenBlk'       -> ""
-    TokenLn         -> ""
-    TokenLn'        -> ""
-    TokenEof        -> ""
+    TokenRsvp t       -> t
+    TokenVarId t      -> t
+    TokenConId t      -> t
+    TokenOpId t       -> t
+    TokenMixfixId t     -> t
+    TokenMixfixBlkId t  -> t
+    TokenInteger i    -> Text.pack $ show i
+    TokenDouble d     -> Text.pack $ show d
+    TokenChar c       -> Text.pack [c]
+    TokenString s     -> Text.pack s
+    TokenBool b       -> Text.pack $ show b
+    TokenTop          -> ""
+    TokenBlk          -> ""
+    TokenBlk'         -> ""
+    TokenLn           -> ""
+    TokenLn'          -> ""
+    TokenEof          -> ""
+    
+    
+tokenToName :: Token -> N.Source
+tokenToName (Token tc p) =
+  N.Name (tokenClassToText tc) p
+
+
+isTok :: TokenClass -> Text -> Token -> Bool
+isTok tc1 txt (Token tc2 _) =
+  tokenClassToText tc1 == txt
+    && tc1 == tc2
+    
+isVar :: Text -> Token -> Bool
+isVar txt = isTok (TokenVarId txt) txt
+
+isCon :: Text -> Token -> Bool
+isCon txt = isTok (TokenConId txt) txt
+
+isOp :: Text -> Token -> Bool
+isOp txt = isTok (TokenOpId txt) txt
+
+isMixfix :: Text -> Token -> Bool
+isMixfix txt = isTok (TokenMixfixId txt) txt
+
+isMixfixBlk :: Text -> Token -> Bool
+isMixfixBlk txt = isTok (TokenMixfixBlkId txt) txt
+
+    
+isTokClass :: TokenClass -> Token -> Bool
+isTokClass tc1 (Token tc2 _) =
+  tc1 == tc2
+
+isVarId :: Token -> Bool
+isVarId = isTokClass $ TokenVarId ""
   
   
+isConId :: Token -> Bool
+isConId = isTokClass $ TokenConId ""
+
+
+isOpId :: Token -> Bool
+isOpId  = isTokClass $ TokenOpId ""
+
+
+isMixfixId :: Token -> Bool
+isMixfixId  = isTokClass $ TokenMixfixId ""
+
+
+isMixfixBlkId :: Token -> Bool
+isMixfixBlkId  = isTokClass $ TokenMixfixBlkId ""
+
+
+
 
 instance PP.Pretty TokenClass where
   pretty (TokenRsvp t) =
@@ -357,8 +416,11 @@ instance PP.Pretty TokenClass where
   pretty (TokenOpId t) =
     PP.text "opId" <+> PP.pretty (Text.unpack t)
     
-  pretty (TokenMixfix t) =
+  pretty (TokenMixfixId t) =
     PP.text "mixfixId" <+> PP.pretty (Text.unpack t)
+    
+  pretty (TokenMixfixBlkId t) =
+    PP.text "mixfixblkId" <+> PP.pretty (Text.unpack t)
     
   pretty (TokenInteger i) =
     PP.text "int" <+> PP.pretty i
@@ -401,37 +463,39 @@ instance Binary TokenClass where
       2 -> TokenVarId <$> get
       3 -> TokenConId <$> get
       4 -> TokenOpId <$> get
-      5 -> TokenMixfix <$> get
-      6 -> TokenInteger <$> get
-      7 -> TokenDouble <$> get
-      8 -> TokenChar <$> get
-      9 -> TokenString <$> get
-      10 -> TokenBool <$> get
-      11 -> pure TokenTop
-      12 -> pure TokenBlk
-      13 -> pure TokenBlk'
-      14 -> pure TokenLn
-      15 -> pure TokenLn'
-      16 -> pure TokenEof
+      5 -> TokenMixfixId <$> get
+      6 -> TokenMixfixBlkId <$> get
+      7 -> TokenInteger <$> get
+      8 -> TokenDouble <$> get
+      9 -> TokenChar <$> get
+      10 -> TokenString <$> get
+      11 -> TokenBool <$> get
+      12 -> pure TokenTop
+      13 -> pure TokenBlk
+      14 -> pure TokenBlk'
+      15 -> pure TokenLn
+      16 -> pure TokenLn'
+      17 -> pure TokenEof
       
   put e =
     case e of
-      TokenRsvp t     -> putWord8 1 >> put t
-      TokenVarId t    -> putWord8 2 >> put t
-      TokenConId t    -> putWord8 3 >> put t
-      TokenOpId t     -> putWord8 4 >> put t
-      TokenMixfix t   -> putWord8 5 >> put t
-      TokenInteger i  -> putWord8 6 >> put i
-      TokenDouble d   -> putWord8 7 >> put d
-      TokenChar c     -> putWord8 8 >> put c
-      TokenString s   -> putWord8 9 >> put s
-      TokenBool b     -> putWord8 10 >> put b
-      TokenTop        -> putWord8 11
-      TokenBlk        -> putWord8 12
-      TokenBlk'       -> putWord8 13
-      TokenLn         -> putWord8 14
-      TokenLn'        -> putWord8 15 
-      TokenEof        -> putWord8 16
+      TokenRsvp t       -> putWord8 1 >> put t
+      TokenVarId t      -> putWord8 2 >> put t
+      TokenConId t      -> putWord8 3 >> put t
+      TokenOpId t       -> putWord8 4 >> put t
+      TokenMixfixId t     -> putWord8 5 >> put t
+      TokenMixfixBlkId t  -> putWord8 6 >> put t
+      TokenInteger i    -> putWord8 7 >> put i
+      TokenDouble d     -> putWord8 8 >> put d
+      TokenChar c       -> putWord8 9 >> put c
+      TokenString s     -> putWord8 10 >> put s
+      TokenBool b       -> putWord8 11 >> put b
+      TokenTop          -> putWord8 12
+      TokenBlk          -> putWord8 13
+      TokenBlk'         -> putWord8 14
+      TokenLn           -> putWord8 15
+      TokenLn'          -> putWord8 16 
+      TokenEof          -> putWord8 17
               
   
           

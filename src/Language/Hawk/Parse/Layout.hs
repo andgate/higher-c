@@ -60,12 +60,12 @@ preUpdate c p = do
   
 postUpdate :: L.TokenClass -> Pipe L.Token L.Token LayoutState ()
 postUpdate c =
-  when (hasBlkTrig c && isNotMixFix c) emitBlk
+  when (hasBlkTrig c && isNotBlkClass c) emitBlk
       
   where
     hasBlkTrig = isJust . Text.find (==':') . L.tokenClassToText
-    isNotMixFix (L.TokenMixfix _) = False
-    isNotMixFix _ = True
+    isNotBlkClass (L.TokenMixfixBlkId _) = False
+    isNotBlkClass _ = True
     
     -- Wait til a document (non-builtin) token arrives
     -- Passes builtin tokens along.

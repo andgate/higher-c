@@ -25,7 +25,7 @@ type Typed =
 data DataDef n t
     = DataDef
       { data_decl :: TD.TypeDecl n t
-      , data_body :: DataDefBody n t
+      , data_cons :: [DataCons n t]
       }
     deriving (Eq, Show, Data, Typeable)
 
@@ -33,19 +33,14 @@ type DataDefBody n t =
   [DataCons n t]
     
 data DataCons n t =
-  DataCons n t (DataConsBody n t)
+  DataCons n t [DataRow n t]
+  deriving (Eq, Show, Ord, Data, Typeable)
+  
+data DataRow n t
+  = DataRow (Maybe n) t
   deriving (Eq, Show, Ord, Data, Typeable)
 
-
--- Maybe make these datatypes??  
-type DataConsBody n t
-  = [DataConsRow n t]
-  
-type DataConsRow n t
-  = (Maybe n, t)
-  
-  
-mkRecDef :: TD.TypeDecl n t -> DataConsBody n t -> DataDef n t
+mkRecDef :: TD.TypeDecl n [t] -> [DataRow n [t]] -> DataDef n [t] 
 mkRecDef td@(TD.TypeDecl _ n _) b = 
   DataDef td [DataCons n [] b]
 
@@ -72,6 +67,17 @@ instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (DataCons n t) where
           PP.<$>
           PP.text "Body:" <+> PP.pretty b
         )
+        
+        
+instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (DataRow n t) where
+    pretty (DataRow n t) =
+      PP.text "Data Row:"
+      PP.<$>
+      PP.indent 2
+        ( PP.text "Name:" <+> PP.pretty n
+          PP.<$>
+          PP.text "Type:" <+> PP.pretty t
+        )
 
 
 
@@ -90,4 +96,12 @@ instance (Binary n, Binary t) => Binary (DataCons n t) where
 
   put (DataCons n t b) =
     put n >> put t >> put b
+    
+    
+instance (Binary n, Binary t) => Binary (DataRow n t) where
+  get =
+    DataRow <$> get <*> get
+
+  put (DataRow n t) =
+    put n >> put t
               
