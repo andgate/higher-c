@@ -7,7 +7,9 @@ import Control.Monad.Trans.State.Strict (State)
 import Data.Binary hiding (encode)
 import Data.Bits (shiftR, (.&.))
 import Data.Char (digitToInt, ord)
+import Data.Data
 import Data.Text.Lazy (Text)
+import Data.Typeable
 import Data.Word (Word8)
 import Filesystem.Path.CurrentOS (FilePath)
 import Language.Hawk.Report.Region (Position (..))
@@ -59,16 +61,18 @@ $whiteNoNewline = $white # \n
 -- Blockable id's, these are used by the mifix macro
 @id    = @varid | @conid | @opid
 
-@mixfixA = @@id \_+ (@@id \_*)*
-@mixfixB = \_+ @@id (\*_ @@id)*
-@mixfix = @mixfixA | @mixfixB
+@mixfixA = \_+ @id
+@mixfixB = @id \_+
+@mixfixC = \_+ @id \_+
+@mixfix = (@mixfixA | @mixfixB | @mixfixC)+
 
 -- Blockable id's, these are used by the mifix macro
 @blkid    = $blkchar $blkbodychar* | $opblkchar+
 
-@mixfixblkA = @blkid \_+ (@blkid \_*)*
-@mixfixblkB = \_+ @blkid (\*_ @blkid)*
-@mixfixblk = @mixfixblkA | @mixfixblkB
+@mixfixblkA = \_+ @blkid
+@mixfixblkB = @blkid \_+
+@mixfixblkC = \_+ @blkid \_+
+@mixfixblk = (@mixfixblkA | @mixfixblkB | @mixfixblkC)+
 
 
 -- -----------------------------------------------------------------------------
@@ -98,8 +102,9 @@ hawk :-
   \)                              { rsvp }
   \[                              { rsvp }
   \]                              { rsvp }
-  \-\>                            { rsvp }
-  \<\-                            { rsvp }
+  \=\>                            { rsvp }
+  \>                              { rsvp }
+  \<                              { rsvp }
   \:\=                            { rsvp }
   \:\-                            { rsvp }
   \:\~                            { rsvp }
@@ -107,6 +112,8 @@ hawk :-
   \-                              { rsvp }
   \=                              { rsvp }
   \?                              { rsvp }
+  \\                              { rsvp }
+  \@                              { rsvp }
   
   "case"                          { rsvp }
   "of"                            { rsvp }
@@ -115,8 +122,8 @@ hawk :-
   @varid                          { \text -> yield (TokenVarId text) }
   @conid                          { \text -> yield (TokenConId text) }
   @opid                           { \text -> yield (TokenOpId text) }
-  @mixfixblk                      { \text -> yield (TokenMixfixBlkId text) }
   @mixfix                         { \text -> yield (TokenMixfixId text) }
+  @mixfixblk                      { \text -> yield (TokenMixfixBlkId text) }
 
   $digit+                         { \text -> yield (TokenInteger $ toInt text) }
 }
@@ -280,7 +287,7 @@ alexInputPrevChar = prevChar
 data Token = Token
     { token    :: TokenClass
     , position :: Maybe Position
-    } deriving (Show)
+    } deriving (Eq, Show, Ord, Data, Typeable)
     
 
 instance PP.Pretty Token where 
@@ -318,7 +325,7 @@ data TokenClass
   | TokenLn'
   
   | TokenEof
-  deriving ( Eq, Show )
+  deriving (Eq, Show, Ord, Data, Typeable)
 
 
 mkLam :: [N.Source] -> [Token] -> [Token]

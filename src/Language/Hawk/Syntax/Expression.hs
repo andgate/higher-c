@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 module Language.Hawk.Syntax.Expression where
 
 import Data.Binary
@@ -6,9 +7,9 @@ import Data.Typeable
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
 import qualified Language.Hawk.Parse.Lexer    as Lex
-import qualified Language.Hawk.Syntax.Literal as Literal
-import qualified Language.Hawk.Syntax.Type    as Type
-import qualified Language.Hawk.Syntax.Name    as Name
+import qualified Language.Hawk.Syntax.Literal as Lit
+import qualified Language.Hawk.Syntax.Type    as T
+import qualified Language.Hawk.Syntax.Name    as N
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 
@@ -16,13 +17,14 @@ type Source
   = [Lex.Token]
 
 type Valid
-  = Expr Name.Valid Type.Valid
+  = Expr N.Valid T.Valid
 
 type Typed
-  = Expr Name.Typed Type.Typed
+  = Expr N.Typed T.Typed
+
 
 data Expr n t
-  = Lit Literal.Literal
+  = Lit Lit.Literal
   | Var n
   | Con n
   
@@ -32,13 +34,17 @@ data Expr n t
   | Let n (Expr n t) (Expr n t)
   -- Probably need to add suport for operators later
   
-  | If [(Expr n t, Expr n t)] (Expr n t)
+  | If [Expr n t] (Expr n t)
   
   -- Specific stucture access
   | Access (Expr n t) (Expr n t)
   | RefAccess (Expr n t) (Expr n t)
   
-  | Cast (Expr n t) (Type.Type n)
+  | Cast (Expr n t) t
+  
+  | Bottom
+  
+  | Src Source
   
   -- disable case for now, patterns are too complicated
   -- | Case (Expr n t) [(Pattern.Pattern n, Expr n t)]
@@ -46,8 +52,7 @@ data Expr n t
   deriving (Eq, Show, Ord, Data, Typeable)
 
 
-
-instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (Expr n t) where
+instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (Expr n t ) where
   pretty (Lit lit) =
     PP.text "Literal Expression:"
     PP.<$>

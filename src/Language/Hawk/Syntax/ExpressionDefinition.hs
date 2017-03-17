@@ -33,11 +33,6 @@ data ExprDef n e t
     }
   deriving (Eq, Show, Ord, Data, Typeable)
 
- 
-mkExprDef ::ED.ExprDecl N.Source T.Source -> E.Source -> Source
-mkExprDef d@(ED.ExprDecl _ _ vs _) e =
-  ExprDef d (Lex.mkLam vs e)
-
       
       
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (ExprDef n e t) where

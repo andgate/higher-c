@@ -9,31 +9,69 @@ import Database.Persist.Sqlite
 import Database.Persist.TH
 
 import qualified Language.Hawk.Syntax.OpInfo as OI
+import qualified Language.Hawk.Compile.Monad as C
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
+CompilerLog
+    phase C.CompilerPhase
+    startTime Int
+    checkpoint Int
+    endTime Int Maybe
+
+Package
+    name Text
+
 Module
+    pkgId PackageId
     name Text
     source Text
-    deps [Text]
-    depIds [ModuleId] -- Generated after all modules are loaded
     deriving Show
     
+ModuleImport
+    modId   ModuleId
+    path    [Text]
+    target  Text
+    
+ModuleExport
+    modId   ModuleId
+    path    [Text]
+    target  Text
 
-VarOp
-    op  OpId
-    fn  ExprDefId
+Name
+    name Text
+    maybePos PositionId Maybe
+    deriving Show
+    
+Position
+    linenum Int
+    colnum Int
+    deriving Show
+    
+-- Namespace data
+TopLevelName
+    modId ModuleId
+    nameId NameId
+    deriving Show
+    
+-- Module subscriptions
+ModuleRelation
+    publisher ModuleId
+    subscriber  ModuleId
+    deriving Show
+
     
 Op
     src ModuleId
     name Text
     prec Int
     assoc OI.Assoc
+    deriving Show
 
 
 ExprDecl
     modId ModuleId
     name Text
-    opInfo ByteString
+    op OpId
     typesig ByteString
     deriving Show
     
@@ -47,6 +85,7 @@ ExprDef
 TypeDecl
     modId ModuleId
     name Text
+    op OpId
     ctx ByteString
     vars [ByteString]
     deriving Show    

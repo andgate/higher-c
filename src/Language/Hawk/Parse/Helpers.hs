@@ -116,6 +116,10 @@ parens :: Prod r e L.Token a -> Prod r e L.Token a
 parens p =
   rsvp "(" *> p <* rsvp ")"
 
+brackets :: Prod r e L.Token a -> Prod r e L.Token a
+brackets p =
+  rsvp "[" *> p <* rsvp "]"
+
            
 sep :: Prod r e L.Token b -> Prod r e L.Token a -> Prod r e L.Token [a]
 sep s p =

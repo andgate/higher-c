@@ -6,7 +6,7 @@
 
 // -----------------------------------------------------
 // Functor Typeclass
-Functor f :-
+Functor f :~
     map ? (a -> b) -> f a -> f b
     
     (<$) 4L

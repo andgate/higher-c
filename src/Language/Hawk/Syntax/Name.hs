@@ -4,6 +4,7 @@ module Language.Hawk.Syntax.Name where
 import Data.Aeson ((.=))
 import Data.Binary
 import Data.Data
+import Data.List (intersperse)
 import Data.Maybe (isJust)
 import Data.Text.Lazy (Text)
 import Data.Tree
@@ -29,7 +30,8 @@ type Typed
 
 type RName = Text
 
-type Paths = Tree Name
+type PathTree = Tree Name
+type Paths = [Path]
 type Path = [Name]
 
 type Home = Maybe R.Position
@@ -39,7 +41,7 @@ data Name
     deriving (Eq, Ord, Show, Data, Typeable)
 
 data QName
-  = QName RName Path Home
+  = QName RName RName Home
     deriving (Eq, Ord, Show, Data, Typeable)
     
 
@@ -83,21 +85,39 @@ builtin n =
   
 builtinQ :: Text -> QName
 builtinQ n =
-  QName n [] Nothing
+  QName n "" Nothing
 
 
 isLocalHome :: Home -> Bool
 isLocalHome = isJust
       
+
+expandPathTrees :: [PathTree] -> Paths
+expandPathTrees = concat . map expandPathTree
+     
+expandPathTree :: PathTree -> Paths
+expandPathTree (Node n []) = [[n]]
+expandPathTree (Node n ns) =
+    map (n:) ns'
+  where ns' = concat $ map expandPathTree ns
+  
       
 -- | Name toString
 class ToString a where
   toString :: a -> String
     
 
-instance ToString Paths where
+instance ToString PathTree where
   toString =
     drawTree . fmap toString
+
+instance ToString Paths where
+  toString ps =
+    show $ map toString ps
+    
+instance ToString Path where
+  toString =
+    concat . intersperse "." . map toString
 
 instance ToString Name where
   toString (Name n (Just (R.P l c))) =

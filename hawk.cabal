@@ -32,6 +32,7 @@ library
                         , Earley
                         , edit-distance
                         , either-unwrap
+                        , fgl
                         , filepath
                         , indents
                         , lens
@@ -73,8 +74,8 @@ library
                         Language.Hawk.Data.Emittable
                         
                         Language.Hawk.Metadata
+                        Language.Hawk.Metadata.Namespace
                         Language.Hawk.Metadata.Schema
-                        Language.Hawk.Metadata.DepFinder
                         
                         Language.Hawk.Parse
                         Language.Hawk.Parse.Layout

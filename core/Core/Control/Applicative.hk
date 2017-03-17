@@ -8,7 +8,7 @@
    liftA2
 
 
-Functor f => Applicative f :-
+Functor f => Applicative f :~
   pure ? a -> f a
   
   (_<*>_) 4L

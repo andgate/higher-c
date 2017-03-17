@@ -60,30 +60,47 @@ toplevel = mdo
         
     itemName <- rule $ 
         varName <|> parens opName <|> mixfixBlkName
+       
+    itemId <- rule $ 
+       varId <|> mixfixId <|> mixfixblkId 
+        
+    itemIdText <- rule $ 
+       Lex.tokenToText <$> itemId
+       
+    conIdText <- rule $
+        Lex.tokenToText <$> conId
 
 -- -----------------------------------------------------------------------------
--- Module path rules
-    paths <- rule $
-        many path
-    
-    path <- rule $
-            pathItem
-        <|> pathCon
-    
-    pathItem <- rule $
-        liftA2 Node itemName (pure [])
-      
-    pathCon <- rule $
-        liftA2 Node conName pathExt
+-- Item Path Rules
+
+    itemPath <- rule $
+        itemPathTerm
         
-    pathExt <- rule $ 
-            parens paths
-        <|> mono (rsvp "." *> path)
-        <|> pure []
+    itemPathTerm <- rule $
+        itemPathTarget <|> itemPathSuper
         
-
-
-
+    itemPathSuper <- rule $
+        I.Super <$> conIdText <*> itemPathSub
+        
+    itemPathSub <- rule $
+            itemPathTargetSub
+        <|> itemPathTargets
+    
+    itemPathTargetSub <- rule $
+        rsvp "." *> itemPathTarget
+    
+    itemPathTarget <- rule $
+        fmap I.Target itemIdText
+    
+    itemPathTargets <- rule $
+        parens (I.Targets <$> itemPathHidden0 <*> many itemPathTerm)
+    
+    itemPathHidden0 <- rule $ 
+      itemPathHidden <|> pure False
+        
+    itemPathHidden <- rule $
+        rsvp "\\" *> pure True
+        
 -- -----------------------------------------------------------------------------
 -- Item Rules
     items <- rule $
@@ -95,14 +112,23 @@ toplevel = mdo
       <|> exprDefItem
       <|> aliasDefItem
       <|> dataDefItem
-      -- <|> typeClassDefItem
+      <|> typeClassDefItem
     
     
+      
     importItem <- rule $
-      I.Import <$> (rsvp "->" *> paths)
+        I.Import <$> importQual <*> itemPath <*> importAs
+      
+    importQual <- rule $
+          (rsvp ">"  *> pure False)
+      <|> (rsvp "=>" *> pure True)
+      
+    importAs <- rule $
+          (rsvp "@" *> fmap Just conIdText)
+      <|> pure Nothing
       
     exportItem <- rule $
-      I.Export <$> (rsvp "<-" *> paths)
+      rsvp "<" *> fmap I.Export itemPath
       
     exprDefItem <- rule $
       I.ExprDef <$> exprDef
@@ -115,15 +141,32 @@ toplevel = mdo
       
     typeClassDefItem <- rule $
       I.TypeClassDef <$> typeClassDef
+      
+      
+    opInfo0 <- rule $
+        opInfo <|> pure OI.defOpInfo
 
+-- -----------------------------------------------------------------------------
+-- Operator Information Rules    
+    opInfo <- rule $
+        OI.OpInfo <$> tInteger <*> opAssoc
+    
+    opAssoc <- rule $
+          (con "L" *> opAssocL)
+      <|> (con "R" *> opAssocR)
+      <|> (con "N" *> opAssocN)
+      
+    opAssocL <- rule $ pure OI.AssocL
+    opAssocR <- rule $ pure OI.AssocR
+    opAssocN <- rule $ pure OI.AssocN
 
 -- -----------------------------------------------------------------------------
 -- Expression Definition Rules
     exprDecl <- rule $
-        EDec.ExprDecl <$> exprDefName <*> opInfo0 <*> many exprVar <*> typesig0
+        EDec.ExprDecl <$> exprDefName <*> opInfo0 <*> exprVars <*> typesig0
     
     exprDef <- rule $
-        EDef.mkExprDef <$> exprDecl <*> exprDefBody
+        EDef.ExprDef <$> exprDecl <*> exprDefBody
 
     exprDefName <- rule $
         varName <|> parens opName
@@ -131,19 +174,14 @@ toplevel = mdo
     exprDefOp <- rule $
         rsvp "=" <|> rsvp ":=" <|> rsvp ":"
      
+    exprVars <- rule $
+        many exprVar
     
     exprVar <- rule $
         varName <|> name (rsvp "_")
     
     exprDefBody <- rule $
         exprDefOp *> raw
-    
-        
-    opInfo0 <- rule $
-        opInfo <|> pure OI.defOpInfo
-    
-    opInfo <- rule $
-        OI.OpInfo <$> tInteger <*> (OI.assocFromName <$> varName)
 
 
 
@@ -195,24 +233,29 @@ toplevel = mdo
     tipeGroup <- rule $
         concat <$> parens (many tipe)
     
+    -- A cheap hack to get reserved operators that can exist in the type
+    -- namespace
     tipeId <- rule $ 
             varId
         <|> conId
         <|> opId
         <|> mixfixId
-        <|> rsvp "->"
-        <|> rsvp "<-"
+        <|> rsvp "=>"
+        <|> rsvp ">"
+        <|> rsvp "<"
         <|> rsvp "."
         <|> rsvp ","
         <|> rsvp "["
         <|> rsvp "]"
         <|> rsvp "_"
+        <|> rsvp "\\"
+        <|> rsvp "@"
 
 -- -----------------------------------------------------------------------------
 -- Type Declaration Rules
 
     typeDecl <- rule $
-        TD.TypeDecl <$> typeCtx0 <*> typeDeclCons <*> typeDeclArgs0
+        TD.TypeDecl <$> typeCtx0 <*> typeDeclCons <*> opInfo0 <*> typeDeclArgs0
         
     typeDeclCons <- rule $
         conName <|> mixfixName

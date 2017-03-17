@@ -53,9 +53,9 @@ parseTopLevel txt = do
           E.fullParses (E.parser $ G.toplevel) toks
   
   case parses of
-      []       -> error $ "No parses found.\n" ++ show r
-      p:[]      -> return p
-      ps        -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)
+      []      -> error $ "No parses found.\n" ++ show r
+      p:[]    -> return p
+      ps      -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)
 
 
 -- -----------------------------------------------------------------------------

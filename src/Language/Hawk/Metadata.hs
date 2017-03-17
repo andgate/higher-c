@@ -4,8 +4,9 @@ module Language.Hawk.Metadata where
 
 import Data.Binary (encode, decode)
 
-import Control.Monad (forM_)
-import Control.Monad.IO.Class  (liftIO)
+import Control.Monad
+import Control.Monad.Trans.State.Strict
+import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Control
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy (toStrict)
@@ -20,6 +21,7 @@ import Language.Hawk.Compile.Monad
 import qualified Data.Text.Lazy.IO as Text
 import qualified Control.Monad.Trans.State.Strict as St
 
+import qualified Language.Hawk.Metadata.Namespace as NS
 import qualified Language.Hawk.Metadata.Schema as Db
 import qualified Language.Hawk.Parse as P
 import qualified Language.Hawk.Syntax.AliasDefinition as AD
@@ -39,48 +41,46 @@ import qualified Language.Hawk.Syntax.TypeDeclaration as TD
 
 
 {-
-  This phase collects modules and inserts them into a sqlite db on disk
-  for fast look-up and sharing with other projects.
+  Builds a collection of Module.Source in a sqlite db from the compiler state.
 -}
+-- TODO: History-aware collection
 collect :: Compiler ()
 collect = do
-  insertTopLevel
-  insertExprs
+  s <- St.get
+  -- Insert all the given packages
+  mapM_ (liftIO . insertPackage) . packages
+  -- Build the module namespaces
+  NS.build
+  
 
-
-{-
-  Global collection consists of storing only the global information.
-  This phase will make symbol information available in the database.
-  This phase does not parse expressions, since it doesn't have access
-  to enough information to make a symbol table.
--}
-insertTopLevel :: Compiler ()
-insertTopLevel = do
-  xs <- srcFiles <$> St.get
-  forM_ xs $ \x -> liftIO $ do
+insertPackage :: Package -> IO ()
+insertPackage pkg@(Package n xs) = do
+  pkgId <- createPackage pkg
+  forM_ xs $ \x -> do
       src <- Text.readFile x
       m <- P.parseTopLevel src
-      insertModule m src
+      insertModule pkgId m src
       
       -- For testing only
       P.parseTest src
 
-{-
-  For each module
-    Get list of imports
-    
--}
 
-insertModule :: M.Source -> Text -> IO ()
-insertModule (M.Module n its) src = runSqlite "hk.db" $ do
+createPackage :: Package -> IO Db.PackageId
+createPackage (Package n _) = runSqlite "hk.db" $ do
   runMigration Db.migrateAll
-  modId <- insert $ Db.Module n src [] []
+  insert $ Db.Package n
+  
+
+insertModule :: Db.PackageId -> M.Source -> Text -> IO ()
+insertModule pkgId (M.Module n its) src = runSqlite "hk.db" $ do
+  runMigration Db.migrateAll
+  modId <- insert $ Db.Module pkgId n src
   mapM_ (insertItem modId) its
   
   where
     insertItem modId i =
       case i of
-        I.Import n -> return () -- Handled later
+        I.Import n _ -> return () -- Handled later
         I.Export n -> return () -- Handled later
         I.ExprDef ed -> insertExprDef_ modId ed
         I.AliasDef ad -> insertAliasDef_ modId ad
@@ -100,22 +100,20 @@ insertModule (M.Module n its) src = runSqlite "hk.db" $ do
       
     
     insertExprDecl modId (EDecl.ExprDecl (N.Name n p) oi vs t) = do
-      let oidat = toStrict $ encode oi
-          tdat  = toStrict $ encode t
-          
-      insert $ Db.ExprDecl modId n oidat tdat
-      
-      
-    insertVarOp modId fnId n (OI.OpInfo p a) = do
-      opId <- insert $ Db.Op modId n (fromIntegral p) a
-      insert_ $ Db.VarOp opId fnId
+      let tdat  = toStrict $ encode t
+      opId <- insertOperator modId n oi
+      insert $ Db.ExprDecl modId n opId tdat
       
     
-    insertTypeDecl modId (TD.TypeDecl ctx (N.Name n p) ts) = do
+    insertTypeDecl modId (TD.TypeDecl ctx (N.Name n p) oi ts) = do
       let ctxdat = toStrict $ encode ctx
           tsdat  = map (toStrict . encode) ts
-          
-      insert $ Db.TypeDecl modId n ctxdat tsdat
+      opId <- insertOperator modId n oi    
+      insert $ Db.TypeDecl modId n opId ctxdat tsdat
+      
+      
+    insertOperator modId n (OI.OpInfo p a) = do
+      insert $ Db.Op modId n (fromIntegral p) a
   
     
     insertAliasDef_ modId ad = do
@@ -164,34 +162,3 @@ insertModule (M.Module n its) src = runSqlite "hk.db" $ do
       decId <- insertTypeDecl modId d
       edIds <- mapM (insertExprDef modId) eds
       insert $ Db.TypeClassDef modId decId edIds
-      
-    
-    
-{- from older syntax  
-    insertRec modId (R.Record (N.Name n p) fs) = do
-      recId <- insert $ MRecItem modId n []
-      fldIds <- insertMany $ map (mkRecField recId) fs
-      update recId [MRecItemFieldIds =. fldIds]
-      
-    mkRecField recId (R.RecordField (N.Name n p) t) =
-      let tdat = toStrict $ encode t
-      in MRecField recId n tdat
-      
-    mkAlias modId (A.Alias (N.Name n p) t) =
-      let tdat = toStrict $ encode t
-      in MAliasItem modId n tdat
-      
-    
-    insertAlias modId a =
-      insert_ $ mkAlias modId a
-      
--}
-      
-      
-{-
-  Expression collection is run after symbol tables are generated.
-  These symbol tables are used to parse expressions in the
-  correct forms.  
--}
-insertExprs :: Compiler ()
-insertExprs = error "Collect expressions not implemented"

@@ -1,16 +1,18 @@
+< Main.(Automobile)
+
 /* Sample of a basic Hawk program.
    Hawk is similar in syntax to Haskell,
    but technically closer to C.
 */
 
--> Core.IO
+=> Core.IO.(printLn readLn Stdout Stdin) @ I
 
-<- Car Color Automobile 
-
+> Core.Math.(sin cos tan)
+< I.(\Stdout Stdin)
 
 id
- ? a -> a
- = \ x -> x
+  ? a -> a
+  = \ x -> x
 
 // Creating variables
 <- a b c
@@ -18,7 +20,7 @@ a ? I32 = 4
 b = 2
 c = 1 ? I32
 
-<- SizeT SizedArr
+< SizeT SizedArr
 
 SizeT - I32
 
@@ -34,11 +36,12 @@ SizedArr v :-
   arr ? [v]
   size ? Int
 
-/*
 // Type operator's can only be constructed through a type def
-_!->!_ 4L a b
+_!->!_ 4L 
+  a b
   - a -> IO b
 
+/*
 
 // Hawk has support for tagged unions
 // Tagged unions consist of a name and a block of constructor definitions
@@ -88,10 +91,10 @@ Automobile a :~
 Automobile Car :~
   drive car = do
     let out = toString max_speed
-    print out
+    Core.print out
 
   paint car color =
-    print
+    Core.print
       $ "Car painted " +
         $ case color of
             Red x -> x + "% Red"

@@ -1,12 +1,13 @@
 module Language.Hawk.Compile ( compile
                              , CompilerState (..)
                              , CompilerPhase (..)
+                             , Package (..)
                              )
                              where
 
 import Language.Hawk.Compile.Monad
 import Language.Hawk.Metadata (collect)
---import Language.Hawk.Validate (validate)
+import Language.Hawk.Validate (validate)
 --import Language.Hawk.TypeCheck (typecheck)
 
 import qualified Language.Hawk.Parse              as P
@@ -22,7 +23,7 @@ compile s =
   runCompiler s $
     do
       collect
-      --validate
+      validate
       --typecheck
       --runmeta
       --optimize

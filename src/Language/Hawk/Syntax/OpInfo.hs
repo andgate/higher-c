@@ -31,9 +31,9 @@ defOpInfo = OpInfo 5 AssocR
 assocToString :: Assoc -> String
 assocToString a =
   case a of
-      AssocL -> "l"
-      AssocR -> "r"
-      AssocN -> "n"
+      AssocL -> "L"
+      AssocR -> "R"
+      AssocN -> "N"
       
 
 assocFromName :: N.Name -> Assoc
@@ -43,9 +43,9 @@ assocFromName (N.Name t _) =
 assocFromString :: String -> Assoc
 assocFromString t =
   case t of
-      "l" -> AssocL
-      "r" -> AssocR
-      "n" -> AssocN
+      "L" -> AssocL
+      "R" -> AssocR
+      "N" -> AssocN
 
 
 instance PP.Pretty OpInfo where

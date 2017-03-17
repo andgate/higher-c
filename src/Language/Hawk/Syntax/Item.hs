@@ -28,29 +28,51 @@ type Valid =
   
 type Typed =
   Item N.Typed E.Typed T.Typed
-   
+  
 data Item n e t
-  = Import [N.Paths]
-  | Export [N.Paths]
+  = Import Bool ItemPath (Maybe Text)
+  | Export ItemPath
   | ExprDef (ED.ExprDef n e t)
   | AliasDef (AD.AliasDef n t)
   | DataDef (DD.DataDef n t)
   | TypeClassDef (TCD.TypeClassDef n e t)
   deriving (Eq, Show, Data, Typeable)
 
+
+data ItemPath = 
+    Super   Text ItemPath
+  | Target  Text
+  | Targets Bool    -- Is hidden? 
+            [ItemPath]
+  deriving (Eq, Show, Data, Typeable)
+
   
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
-    pretty (Import ps) =
-      PP.text "Imports:"
+    pretty (Import q p (Just a)) =
+      PP.text "Import:"
       PP.<$>
       PP.indent 2
-        ( PP.pretty (map N.toString ps) )
+        ( PP.text "Qualified:" PP.<+> PP.pretty q
+          PP.<$>
+          PP.text "Alias:" PP.<+> PP.text (Text.unpack a)
+          PP.<$>
+          PP.text "Item Path:" PP.<+> PP.pretty p
+        )
         
-    pretty (Export ps) =
-      PP.text "Exports:"
+    pretty (Import q p _) =
+      PP.text "Import:"
       PP.<$>
       PP.indent 2
-        ( PP.pretty (map N.toString ps) )
+        ( PP.text "Qualified:" PP.<+> PP.pretty q
+          PP.<$>
+          PP.text "Item Path:" PP.<+> PP.pretty p
+        )
+        
+    pretty (Export p) =
+      PP.text "Export:"
+      PP.<$>
+      PP.indent 2
+        ( PP.pretty p )
         
     pretty (ExprDef ed) =
       PP.pretty ed
@@ -63,3 +85,19 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
       
     pretty (TypeClassDef cd) =
       PP.pretty cd
+      
+      
+      
+instance PP.Pretty ItemPath where
+    pretty (Super n r) =
+      PP.text (Text.unpack n) PP.<> PP.pretty r
+        
+    pretty (Target n) =
+      PP.text (Text.unpack n)
+        
+        
+    pretty (Targets True rs) =
+      PP.text "(\\" PP.<> PP.pretty rs PP.<> PP.text ")"
+        
+    pretty (Targets False rs) =
+      PP.text "(" PP.<> PP.pretty rs PP.<> PP.text ")"

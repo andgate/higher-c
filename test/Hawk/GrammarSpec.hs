@@ -20,8 +20,10 @@ spec = do
   describe "Parser" $ do
     context "Test Files" $ do
       it "Can compile" $ do
-        let s = C.CompilerState "def" ["example/main.hk"] C.InitialPhase
-        C.compile s
+            
+        let pkg = C.Package "Test" ["example/main.hk"]
+            cSt = C.CompilerState [pkg] C.InitialPhase
+        C.compile cSt
         
 
 

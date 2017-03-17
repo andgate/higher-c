@@ -41,7 +41,7 @@ data DataRow n t
   deriving (Eq, Show, Ord, Data, Typeable)
 
 mkRecDef :: TD.TypeDecl n [t] -> [DataRow n [t]] -> DataDef n [t] 
-mkRecDef td@(TD.TypeDecl _ n _) b = 
+mkRecDef td@(TD.TypeDecl _ n _ _) b = 
   DataDef td [DataCons n [] b]
 
 
