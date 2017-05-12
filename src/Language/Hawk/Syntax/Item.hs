@@ -91,9 +91,9 @@ instance PP.Pretty DepPath where
         
     pretty (DepTarget n) =
       PP.text (Text.unpack n)
-
-    pretty (DepTargets True rs) =
-      PP.text "(\\" PP.<> PP.pretty rs PP.<> PP.text ")"
         
-    pretty (DepTargets False rs) =
+    pretty (DepTargets True rs) =
       PP.text "(" PP.<> PP.pretty rs PP.<> PP.text ")"
+
+    pretty (DepTargets False rs) =
+      PP.text "(\\" PP.<> PP.pretty rs PP.<> PP.text ")"

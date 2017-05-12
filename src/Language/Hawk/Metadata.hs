@@ -48,7 +48,7 @@ collect :: Compiler ()
 collect = do
   s <- St.get
   -- Insert all the given packages
-  mapM_ (liftIO . insertPackage) . packages
+  mapM_ (liftIO . insertPackage) $ packages s
   -- Build the module namespaces
   NS.build
   
@@ -80,8 +80,7 @@ insertModule pkgId (M.Module n its) src = runSqlite "hk.db" $ do
   where
     insertItem modId i =
       case i of
-        I.Import n _ -> return () -- Handled later
-        I.Export n -> return () -- Handled later
+        I.DepDecl d -> return () -- Handled later
         I.ExprDef ed -> insertExprDef_ modId ed
         I.AliasDef ad -> insertAliasDef_ modId ad
         I.DataDef dd -> insertDataDef_ modId dd

@@ -74,31 +74,32 @@ toplevel = mdo
 -- Item Path Rules
 
     depPath <- rule $
-        depPathTerm
-        
-    depPathTerm <- rule $
-        depPathTarget <|> depPathModule
-        
-    depPathModule <- rule $
-        I.DepModule <$> conIdText <*> depPathSub
-        
-    depPathSub <- rule $
-            depPathTargetSub
-        <|> depPathTargets
+        depMod
     
-    depPathTargetSub <- rule $
-        rsvp "." *> depPathTarget
+    depMod <- rule $
+        I.DepModule <$> conIdText <*> depNext
+
+    depNext <- rule $
+            depExt
+        <|> depTargets
+
+    depExt <- rule $
+        rsvp "." *> depTerm
     
-    depPathTarget <- rule $
-        I.DepTarget <$> itemIdText
+    depTerm <- rule $
+        depTarget <|> depMod
     
-    depPathTargets <- rule $
-        parens (I.DepTargets <$> depPathTargetsIncl0 <*> many depPathTerm)
     
-    depPathTargetsIncl0 <- rule $ 
-      depPathTargetsIncl <|> pure True
+    depTarget <- rule $
+        I.DepTarget <$> (itemIdText <|> conIdText)
+    
+    depTargets <- rule $
+        parens (I.DepTargets <$> depInclusive0 <*> some depTerm)
+    
+    depInclusive0 <- rule $ 
+      depInclusive <|> pure True
         
-    depPathTargetsIncl <- rule $
+    depInclusive <- rule $
         rsvp "\\" *> pure False
         
 -- -----------------------------------------------------------------------------
@@ -245,6 +246,7 @@ toplevel = mdo
         <|> conId
         <|> opId
         <|> mixfixId
+        <|> rsvp "->"
         <|> rsvp "=>"
         <|> rsvp ">"
         <|> rsvp "<"
