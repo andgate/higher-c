@@ -1,14 +1,14 @@
-< Main.(Automobile)
-
 /* Sample of a basic Hawk program.
    Hawk is similar in syntax to Haskell,
    but technically closer to C.
 */
 
-=> Core.IO.(printLn readLn Stdout Stdin) @ I
+Core.Math.Trig.sin
+Core.Math.Trig.(sin cos tan)
 
-> Core.Math.(sin cos tan)
-< I.(\Stdout Stdin)
+-> Core.( IO(printLn readLn Stdout Stdin)
+         Core.Math(sin cos tan)
+        ) @ C
 
 id
   ? a -> a

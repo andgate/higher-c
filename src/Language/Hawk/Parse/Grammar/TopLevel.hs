@@ -73,33 +73,33 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Item Path Rules
 
-    itemPath <- rule $
-        itemPathTerm
+    depPath <- rule $
+        depPathTerm
         
-    itemPathTerm <- rule $
-        itemPathTarget <|> itemPathSuper
+    depPathTerm <- rule $
+        depPathTarget <|> depPathModule
         
-    itemPathSuper <- rule $
-        I.Super <$> conIdText <*> itemPathSub
+    depPathModule <- rule $
+        I.DepModule <$> conIdText <*> depPathSub
         
-    itemPathSub <- rule $
-            itemPathTargetSub
-        <|> itemPathTargets
+    depPathSub <- rule $
+            depPathTargetSub
+        <|> depPathTargets
     
-    itemPathTargetSub <- rule $
-        rsvp "." *> itemPathTarget
+    depPathTargetSub <- rule $
+        rsvp "." *> depPathTarget
     
-    itemPathTarget <- rule $
-        fmap I.Target itemIdText
+    depPathTarget <- rule $
+        I.DepTarget <$> itemIdText
     
-    itemPathTargets <- rule $
-        parens (I.Targets <$> itemPathHidden0 <*> many itemPathTerm)
+    depPathTargets <- rule $
+        parens (I.DepTargets <$> depPathTargetsIncl0 <*> many depPathTerm)
     
-    itemPathHidden0 <- rule $ 
-      itemPathHidden <|> pure False
+    depPathTargetsIncl0 <- rule $ 
+      depPathTargetsIncl <|> pure True
         
-    itemPathHidden <- rule $
-        rsvp "\\" *> pure True
+    depPathTargetsIncl <- rule $
+        rsvp "\\" *> pure False
         
 -- -----------------------------------------------------------------------------
 -- Item Rules
@@ -107,8 +107,7 @@ toplevel = mdo
       linefolds item
 
     item <- rule $
-          importItem
-      <|> exportItem
+          depDeclItem
       <|> exprDefItem
       <|> aliasDefItem
       <|> dataDefItem
@@ -116,23 +115,12 @@ toplevel = mdo
     
     
       
-    importItem <- rule $
-        I.Import <$> importQual <*> itemPath <*> importAs
-      
-    importQual <- rule $
-          (rsvp ">"  *> pure False)
-      <|> (rsvp "=>" *> pure True)
-      
-    importAs <- rule $
-          (rsvp "@" *> fmap Just conIdText)
-      <|> pure Nothing
-      
-    exportItem <- rule $
-      rsvp "<" *> fmap I.Export itemPath
+    depDeclItem <- rule $
+      I.DepDecl <$> depDecl  
       
     exprDefItem <- rule $
-      I.ExprDef <$> exprDef
-      
+      I.ExprDef <$> exprDef  
+
     aliasDefItem <- rule $
       I.AliasDef <$> aliasDef  
       
@@ -145,6 +133,23 @@ toplevel = mdo
       
     opInfo0 <- rule $
         opInfo <|> pure OI.defOpInfo
+
+-- -----------------------------------------------------------------------------
+-- Dependency Declaration Rules   
+    depDecl <- rule $
+        I.Dep <$> depProp <*> depQual <*> depPath <*> depAlias
+      
+    depProp <- rule $
+          (rsvp "->"  *> pure False)
+      <|> (rsvp "=>" *> pure True)
+
+    depQual <- rule $
+          (rsvp "!"  *> pure True)
+      <|> (pure False)
+      
+    depAlias <- rule $
+          (rsvp "@" *> fmap Just conIdText)
+      <|> pure Nothing
 
 -- -----------------------------------------------------------------------------
 -- Operator Information Rules    

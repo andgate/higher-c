@@ -30,8 +30,7 @@ type Typed =
   Item N.Typed E.Typed T.Typed
   
 data Item n e t
-  = Import Bool ItemPath (Maybe Text)
-  | Export ItemPath
+  = DepDecl Dependency
   | ExprDef (ED.ExprDef n e t)
   | AliasDef (AD.AliasDef n t)
   | DataDef (DD.DataDef n t)
@@ -39,40 +38,24 @@ data Item n e t
   deriving (Eq, Show, Data, Typeable)
 
 
-data ItemPath = 
-    Super   Text ItemPath
-  | Target  Text
-  | Targets Bool    -- Is hidden? 
-            [ItemPath]
+data Dependency =
+  Dep
+    { isPropagated :: Bool
+    , isQualForced :: Bool
+    , depPath :: DepPath
+    , depAlias :: Maybe Text
+    } deriving (Eq, Show, Data, Typeable)
+
+data DepPath = 
+    DepModule  Text DepPath
+  | DepTarget  Text
+  | DepTargets Bool [DepPath]
   deriving (Eq, Show, Data, Typeable)
 
   
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
-    pretty (Import q p (Just a)) =
-      PP.text "Import:"
-      PP.<$>
-      PP.indent 2
-        ( PP.text "Qualified:" PP.<+> PP.pretty q
-          PP.<$>
-          PP.text "Alias:" PP.<+> PP.text (Text.unpack a)
-          PP.<$>
-          PP.text "Item Path:" PP.<+> PP.pretty p
-        )
-        
-    pretty (Import q p _) =
-      PP.text "Import:"
-      PP.<$>
-      PP.indent 2
-        ( PP.text "Qualified:" PP.<+> PP.pretty q
-          PP.<$>
-          PP.text "Item Path:" PP.<+> PP.pretty p
-        )
-        
-    pretty (Export p) =
-      PP.text "Export:"
-      PP.<$>
-      PP.indent 2
-        ( PP.pretty p )
+    pretty (DepDecl dd) =
+      PP.pretty dd
         
     pretty (ExprDef ed) =
       PP.pretty ed
@@ -86,18 +69,31 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
     pretty (TypeClassDef cd) =
       PP.pretty cd
       
+
+instance PP.Pretty Dependency where
+    pretty (Dep pr ql p a) =
+      PP.text "Import:"
+      PP.<$>
+      PP.indent 2
+        ( PP.text "Is Propagated:" PP.<+> PP.pretty pr
+          PP.<$>
+          PP.text "Is Qualified:" PP.<+> PP.pretty ql
+          PP.<$>
+          PP.text "Path:" PP.<+> PP.pretty p
+          PP.<$>
+          PP.text "Alias:" PP.<+> PP.text (show (Text.unpack <$> a))
+        )
+
       
-      
-instance PP.Pretty ItemPath where
-    pretty (Super n r) =
+instance PP.Pretty DepPath where
+    pretty (DepModule n r) =
       PP.text (Text.unpack n) PP.<> PP.pretty r
         
-    pretty (Target n) =
+    pretty (DepTarget n) =
       PP.text (Text.unpack n)
-        
-        
-    pretty (Targets True rs) =
+
+    pretty (DepTargets True rs) =
       PP.text "(\\" PP.<> PP.pretty rs PP.<> PP.text ")"
         
-    pretty (Targets False rs) =
+    pretty (DepTargets False rs) =
       PP.text "(" PP.<> PP.pretty rs PP.<> PP.text ")"
