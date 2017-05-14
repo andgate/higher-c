@@ -32,13 +32,41 @@ surroundList a xs z = (a:xs) ++ [z]
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-toplevel :: Grammar r (Prod r Lex.Token Lex.Token M.Source)
+toplevel :: Grammar r (Prod r Lex.Token Lex.Token [I.Source])
 toplevel = mdo
-
+        
 -- -----------------------------------------------------------------------------
--- Module Rules
-    modl <- rule $ M.Module "" <$> items <* eof
+-- Item Rules
+    items <- rule $
+      linefolds item <* eof
 
+    item <- rule $
+          depDeclItem
+      <|> exprDefItem
+      <|> aliasDefItem
+      <|> dataDefItem
+      <|> typeClassDefItem
+    
+    
+      
+    depDeclItem <- rule $
+      I.DepDecl <$> depDecl  
+      
+    exprDefItem <- rule $
+      I.ExprDef <$> exprDef  
+
+    aliasDefItem <- rule $
+      I.AliasDef <$> aliasDef  
+      
+    dataDefItem <- rule $
+      I.DataDef <$> dataDef
+      
+    typeClassDefItem <- rule $
+      I.TypeClassDef <$> typeClassDef
+      
+      
+    opInfo0 <- rule $
+        opInfo <|> pure OI.defOpInfo
 
 -- -----------------------------------------------------------------------------
 -- Literal Rules
@@ -74,79 +102,45 @@ toplevel = mdo
 -- Item Path Rules
 
     depPath <- rule $
-        depMod
-    
+        depMod <|> depTargetCon
+
     depMod <- rule $
-        I.DepModule <$> conIdText <*> depNext
+        I.DepModule <$> conIdText
+                    <*> depNext
 
     depNext <- rule $
-            depExt
-        <|> depTargets
-
-    depExt <- rule $
-        rsvp "." *> depTerm
+        rsvp "." *> (depTerm <|> depTargets)
     
     depTerm <- rule $
         depTarget <|> depMod
     
-    
     depTarget <- rule $
-        I.DepTarget <$> (itemIdText <|> conIdText)
+        depTargetItem <|> depTargetCon
+
+    depTargetItem <- rule $
+        I.DepTarget <$> itemIdText
+   
+    depTargetCon <- rule $
+        I.DepTarget <$> conIdText
     
     depTargets <- rule $
-        parens (I.DepTargets <$> depInclusive0 <*> some depTerm)
+        parens (I.DepTargets <$> depHide0 <*> some depTerm)
     
-    depInclusive0 <- rule $ 
-      depInclusive <|> pure True
+    depHide0 <- rule $ 
+        depHide <|> pure False
         
-    depInclusive <- rule $
-        rsvp "\\" *> pure False
-        
--- -----------------------------------------------------------------------------
--- Item Rules
-    items <- rule $
-      linefolds item
+    depHide <- rule $
+        rsvp "\\" *> pure True
 
-    item <- rule $
-          depDeclItem
-      <|> exprDefItem
-      <|> aliasDefItem
-      <|> dataDefItem
-      <|> typeClassDefItem
-    
-    
-      
-    depDeclItem <- rule $
-      I.DepDecl <$> depDecl  
-      
-    exprDefItem <- rule $
-      I.ExprDef <$> exprDef  
-
-    aliasDefItem <- rule $
-      I.AliasDef <$> aliasDef  
-      
-    dataDefItem <- rule $
-      I.DataDef <$> dataDef
-      
-    typeClassDefItem <- rule $
-      I.TypeClassDef <$> typeClassDef
-      
-      
-    opInfo0 <- rule $
-        opInfo <|> pure OI.defOpInfo
 
 -- -----------------------------------------------------------------------------
 -- Dependency Declaration Rules   
     depDecl <- rule $
-        I.Dep <$> depProp <*> depQual <*> depPath <*> depAlias
+        I.Dep <$> depQual <*> depPath <*> depAlias
       
-    depProp <- rule $
+    depQual <- rule $
           (rsvp "->"  *> pure False)
       <|> (rsvp "=>" *> pure True)
-
-    depQual <- rule $
-          (rsvp "!"  *> pure True)
-      <|> (pure False)
       
     depAlias <- rule $
           (rsvp "@" *> fmap Just conIdText)
@@ -248,8 +242,6 @@ toplevel = mdo
         <|> mixfixId
         <|> rsvp "->"
         <|> rsvp "=>"
-        <|> rsvp ">"
-        <|> rsvp "<"
         <|> rsvp "."
         <|> rsvp ","
         <|> rsvp "["
@@ -453,4 +445,4 @@ toplevel = mdo
 -}
     
     
-    return modl
+    return items

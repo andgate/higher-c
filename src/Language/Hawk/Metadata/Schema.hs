@@ -13,29 +13,21 @@ import qualified Language.Hawk.Compile.Monad as C
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 CompilerLog
-    phase C.CompilerPhase
     startTime Int
     checkpoint Int
     endTime Int Maybe
 
 Package
     name Text
+    srcDir Text
+    srcPaths [Text]
 
 Module
-    pkgId PackageId
+    pkgs [PackageId]
     name Text
+    path [ModuleId]
     source Text
     deriving Show
-    
-ModuleImport
-    modId   ModuleId
-    path    [Text]
-    target  Text
-    
-ModuleExport
-    modId   ModuleId
-    path    [Text]
-    target  Text
 
 Name
     name Text
@@ -46,20 +38,16 @@ Position
     linenum Int
     colnum Int
     deriving Show
-    
--- Namespace data
-TopLevelName
-    modId ModuleId
-    nameId NameId
-    deriving Show
-    
--- Module subscriptions
-ModuleRelation
-    publisher ModuleId
-    subscriber  ModuleId
+ 
+
+Dependency
+    modId   ModuleId
+    isQual  Bool
+    target  ByteString
+    alias   Text Maybe
     deriving Show
 
-    
+
 Op
     src ModuleId
     name Text

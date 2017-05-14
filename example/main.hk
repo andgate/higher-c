@@ -3,12 +3,13 @@
    but technically closer to C.
 */
 
--> Core( IO(printLn readLn Stdout Stdin)
-         Core.Math(sin cos tan)
+-> Core.( IO.(printLn readLn Stdout Stdin)
+          Math.Trig.(sin cos tan)
         ) @ C
 
-id
-  ? a -> a
+=> Core.(\ Control.Monad Data.Array )
+
+id ? a -> a
   = \ x -> x
 
 // Creating variables

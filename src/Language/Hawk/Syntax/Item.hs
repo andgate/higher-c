@@ -1,5 +1,6 @@
 module Language.Hawk.Syntax.Item where
 
+import Data.Binary
 import Data.Data
 import Data.Maybe
 import Data.Text.Lazy (Text)
@@ -40,9 +41,8 @@ data Item n e t
 
 data Dependency =
   Dep
-    { isPropagated :: Bool
-    , isQualForced :: Bool
-    , depPath :: DepPath
+    { isQual   :: Bool
+    , depPath  :: DepPath
     , depAlias :: Maybe Text
     } deriving (Eq, Show, Data, Typeable)
 
@@ -71,13 +71,11 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
       
 
 instance PP.Pretty Dependency where
-    pretty (Dep pr ql p a) =
+    pretty (Dep ql p a) =
       PP.text "Import:"
       PP.<$>
       PP.indent 2
-        ( PP.text "Is Propagated:" PP.<+> PP.pretty pr
-          PP.<$>
-          PP.text "Is Qualified:" PP.<+> PP.pretty ql
+        ( PP.text "Is Qualified:" PP.<+> PP.pretty ql
           PP.<$>
           PP.text "Path:" PP.<+> PP.pretty p
           PP.<$>
@@ -87,13 +85,28 @@ instance PP.Pretty Dependency where
       
 instance PP.Pretty DepPath where
     pretty (DepModule n r) =
-      PP.text (Text.unpack n) PP.<> PP.pretty r
+      PP.text (Text.unpack n) PP.<> PP.text "."  PP.<> PP.pretty r
         
     pretty (DepTarget n) =
       PP.text (Text.unpack n)
         
-    pretty (DepTargets True rs) =
-      PP.text "(" PP.<> PP.pretty rs PP.<> PP.text ")"
-
     pretty (DepTargets False rs) =
+      PP.text "(" PP.<> (PP.pretty rs) PP.<> PP.text ")"
+
+    pretty (DepTargets True rs) =
       PP.text "(\\" PP.<> PP.pretty rs PP.<> PP.text ")"
+
+
+instance Binary DepPath where
+  get = do
+    n <- getWord8
+    case n of
+      1 -> DepModule  <$> get <*> get
+      2 -> DepTarget  <$> get
+      3 -> DepTargets <$> get <*> get
+      
+  put d =
+    case d of
+      DepModule n p     -> putWord8 1 >> put n >> put p
+      DepTarget n       -> putWord8 2 >> put n
+      DepTargets hq ns  -> putWord8 3 >> put hq >> put ns

@@ -29,6 +29,7 @@ library
                         , bytestring
                         , containers
                         , convertible
+                        , directory
                         , Earley
                         , edit-distance
                         , either-unwrap
@@ -113,8 +114,6 @@ library
                         
                         --Language.Hawk.Target.LLVM.Codegen
                         --Language.Hawk.Target.LLVM.Emit
-                        
-                        Language.Hawk.Validate
                         
                         Paths_hawk
                         

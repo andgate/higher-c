@@ -31,10 +31,32 @@ data DataDef n t
 
 type DataDefBody n t =
   [DataCons n t]
-    
+
+
+-- | Data Constructor
+type DCSource = 
+  DataCons N.Source T.Source
+  
+type DCValid = 
+  DataCons N.Valid T.Valid
+
+type DCTyped = 
+  DataCons N.Typed T.Typed
+
 data DataCons n t =
   DataCons n t [DataRow n t]
   deriving (Eq, Show, Ord, Data, Typeable)
+
+
+-- | Data Row
+type DRSource = 
+  DataRow N.Source T.Source
+  
+type DRValid = 
+  DataRow N.Valid T.Valid
+
+type DRTyped = 
+  DataRow N.Typed T.Typed
   
 data DataRow n t
   = DataRow (Maybe n) t

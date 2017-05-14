@@ -21,8 +21,8 @@ spec = do
     context "Test Files" $ do
       it "Can compile" $ do
             
-        let pkg = C.Package "Test" ["example/main.hk"]
-            cSt = C.CompilerState [pkg] C.InitialPhase
+        let pkg = C.Package "Example" "example/" [] []
+            cSt = C.defState {C.cPkgs = [pkg]}
         C.compile cSt
         
 

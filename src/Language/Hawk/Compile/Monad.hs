@@ -35,31 +35,31 @@ runCompiler = flip evalStateT
 -------------------------------------------------------------------------------
 -- Package Information
 
-type Packages = [Package]
-
 data Package =
-  Package Text [FilePath]
-  deriving (Eq, Show, Read, Ord, Data, Typeable)
+  Package 
+    { pkgName     :: Text
+    , pkgSrcDir   :: Text
+    , pkgSrcPaths :: [Text]
+    , pkgModules  :: [Text]
+    } deriving (Eq, Show, Read, Ord, Data, Typeable)
 
 -------------------------------------------------------------------------------
 -- Compiler State
 
 data CompilerState = 
   CompilerState
-  { packages :: Packages
-  , currentStage :: CompilerPhase
-  } deriving (Eq, Show, Read, Ord, Data, Typeable)
-  
-data CompilerPhase =
-    InitialPhase
-  | MetadataCollectionPhase
-  | TableGenerationPhase
-  | ExpressionCollectionPhase
-  | NameCheckingPhase
-  | TypeInferencePhase
-  | TypeCheckingPhase
-  | CodeGenerationPhase
-  | BinaryGenerationPhase
-  deriving (Eq, Show, Read, Ord, Data, Typeable)
-  
-derivePersistField "CompilerPhase"
+    { cArch     :: Text
+    , cOS       :: Text
+    , cRoot     :: Text
+    , cPkgs     :: [Package]
+    } deriving (Eq, Show, Read, Ord, Data, Typeable)
+
+
+defState :: CompilerState
+defState = 
+  CompilerState
+    { cArch = "x86_64"
+    , cOS   = "Win10"
+    , cRoot = ""
+    , cPkgs = []
+    }

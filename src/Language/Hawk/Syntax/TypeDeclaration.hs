@@ -12,6 +12,14 @@ import qualified Language.Hawk.Syntax.OpInfo as OI
 import qualified Language.Hawk.Syntax.QType as QT
 import qualified Language.Hawk.Syntax.Type as T
 
+type Source = 
+  TypeDecl N.Source T.Source
+  
+type Valid = 
+  TypeDecl N.Valid T.Valid
+
+type Typed = 
+  TypeDecl N.Typed T.Typed
 
 data TypeDecl n t
   = TypeDecl

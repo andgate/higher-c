@@ -32,6 +32,7 @@ import qualified Language.Hawk.Parse.Lexer as L
 import qualified Language.Hawk.Parse.Grammar.TopLevel as G
 import qualified Language.Hawk.Parse.Grammar.ExprLevel as G
 import qualified Language.Hawk.Parse.Grammar.TypeLevel as G
+import qualified Language.Hawk.Syntax.Item as I
 import qualified Language.Hawk.Syntax.Module as M
 import qualified Pipes.Prelude  as Pipes
 import qualified Pipes.Lift  as Pipes
@@ -41,7 +42,7 @@ import qualified Text.Earley.Mixfix as E
 
 -- -----------------------------------------------------------------------------
 -- Parser
-parseTopLevel :: Text -> IO M.Source
+parseTopLevel :: Text -> IO [I.Source]
 parseTopLevel txt = do
   let lexModl' = Pipes.evalStateP L.defState (L.lexModl txt)
       layout' = Pipes.evalStateP LO.defState LO.layout

@@ -26,16 +26,21 @@ type Typed =
   Module N.Typed E.Typed T.Typed
    
 data Module n e t
-  = Module Text [I.Item n e t] 
-    deriving(Eq, Show, Data, Typeable)
+  = Module 
+    { modName   :: Text
+    , modPath   :: [Text]
+    , modItems  :: [I.Item n e t]
+    } deriving(Eq, Show, Data, Typeable)
 
     
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Module n e t) where
-  pretty (Module n its) =
+  pretty (Module n p its) =
     PP.text "Module:"
     PP.<$>
     PP.indent 2
       ( PP.text "name:" <+> PP.pretty (Text.unpack n)
+        PP.<$>
+        PP.text "path:" <+> PP.pretty (Text.unpack <$> p)
         PP.<$>
         PP.text "items:" <+> PP.pretty its
       )
