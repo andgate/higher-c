@@ -1,9 +1,9 @@
 {
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, RankNTypes #-}
 -- Much of this source code was lifted from the Morte library.
 module Language.Hawk.Parse.Lexer where
 
-import Control.Monad.Trans.State.Strict (State)
+import Control.Monad.Trans.State.Lazy (State)
 import Data.Binary hiding (encode)
 import Data.Bits (shiftR, (.&.))
 import Data.Char (digitToInt, ord)
@@ -13,11 +13,11 @@ import Data.Typeable
 import Data.Word (Word8)
 import Filesystem.Path.CurrentOS (FilePath)
 import Language.Hawk.Report.Region (Position (..))
-import Pipes (Producer, for, lift, yield)
+import Conduit
 import Prelude hiding (FilePath)
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
-import qualified Control.Monad.Trans.State.Strict as State
+import qualified Control.Monad.Trans.State.Lazy as State
 import qualified Data.Text.Lazy                   as Text
 import qualified Filesystem.Path.CurrentOS        as Filesystem
 import qualified Language.Hawk.Syntax.Name        as N
@@ -154,7 +154,7 @@ defState = LexState (P 0 0) 0 0 ""
             
 type Lex = State LexState
   
-type LexAction = Text -> Producer TokenClass Lex ()
+type LexAction = Text -> Source Lex TokenClass
 
 growColumn :: Int -> Lex ()
 growColumn len = do
@@ -545,12 +545,13 @@ instance Binary TokenClass where
     `lexModl` keeps track of position and returns the remainder of the input if
     lexing fails.
 -}
-lexModl :: Text -> Producer Token Lex ()
-lexModl text = for (go (AlexInput '\n' [] text)) tag
+lexModl :: Text -> Source Lex Token
+lexModl text = (go (AlexInput '\n' [] text)) .| mapMC tag
   where
-    tag token = do
-        s <- lift State.get
-        yield (Token token (Just $ curPos s))
+    tag :: TokenClass -> Lex Token
+    tag tokClass = do
+      s <- State.get
+      return $ Token tokClass (Just $ curPos s)
 
     go input = do
       s <- lift State.get
@@ -563,7 +564,7 @@ lexModl text = for (go (AlexInput '\n' [] text)) tag
             lift $ growColumn len
             go input'
         AlexToken input' len act       -> do
-            act (Text.take (fromIntegral len) (currInput input))
             lift $ growColumn len
+            act (Text.take (fromIntegral len) (currInput input))
             go input'
 }

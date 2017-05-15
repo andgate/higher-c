@@ -27,6 +27,7 @@ library
                         , binary
                        -- , bound
                         , bytestring
+                        , conduit-combinators
                         , containers
                         , convertible
                         , directory
@@ -45,7 +46,6 @@ library
                         , persistent 
                         , persistent-sqlite
                         , persistent-template
-                        , pipes
                         , safe
                         , syb
                         , system-filepath       >= 0.3.1    && < 0.5

@@ -5,15 +5,14 @@ module Language.Hawk.Compile ( compile
                              )
                              where
 
-import Pipes
-import qualified Pipes.Prelude as P
+import Conduit
 import Control.Monad ( forM_ )
 import Control.Monad.IO.Class (liftIO)
 import Language.Hawk.Compile.Monad
 import Language.Hawk.Metadata
 --import Language.Hawk.TypeCheck (typecheck)
 import System.Directory (doesDirectoryExist, listDirectory)
-import System.FilePath ( (</>) )
+import System.FilePath ( (</>), takeExtension )
 
 import qualified Control.Monad.Trans.State.Strict as St
 import qualified Language.Hawk.Parse              as P
@@ -43,7 +42,11 @@ loadPackages = do
 loadPackage :: Package -> IO ()
 loadPackage (Package n d) = undefined
   -- Pipes
-  -- dirCrawl n d >-> parser >-> moduleCache
+  runConduitRes $
+    sourceDirectoryDeep d
+      .| filterC (\fp -> takeExtension fp == ".hk")
+      .| parse
+      .| insertmodule pkg
 
   {-
     liftIO $ runSqlite "hk.db" $ do
@@ -58,16 +61,3 @@ loadPackage (Package n d) = undefined
         -- For testing only
         P.parseTest src
     -}
-
-
-
-getRecursiveContents :: FilePath -> Producer FilePath IO ()
-getRecursiveContents topPath = do
-  names <- lift $ getDirectoryContents topPath
-  let properNames = filter (`notElem` [".", ".."]) names
-  forM_ properNames $ \name -> do
-    let path = topPath </> name
-    isDirectory <- lift $ doesDirectoryExist path
-    if isDirectory
-      then getRecursiveContents path
-      else yield path

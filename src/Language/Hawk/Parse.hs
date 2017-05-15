@@ -16,12 +16,11 @@ module Language.Hawk.Parse where
 
 import Control.Monad.Trans.Class  (lift)
 import Control.Monad.Trans.Except (Except, throwE, runExceptT)
-import Control.Monad.Trans.State.Strict (evalState, get)
 import Data.Either.Unwrap (fromLeft, fromRight)
 import Data.Functor.Identity (runIdentity)
 import Data.Text.Lazy (Text)
 import Language.Hawk.Parse.Helpers (defTypeOps, defExprOps, ExprOpTable, TypeOpTable)
-import Pipes
+import Conduit
 import Text.Earley (Report (..), Prod)
 import Text.Earley.Mixfix (Holey, Associativity)
 import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
@@ -34,8 +33,6 @@ import qualified Language.Hawk.Parse.Grammar.ExprLevel as G
 import qualified Language.Hawk.Parse.Grammar.TypeLevel as G
 import qualified Language.Hawk.Syntax.Item as I
 import qualified Language.Hawk.Syntax.Module as M
-import qualified Pipes.Prelude  as Pipes
-import qualified Pipes.Lift  as Pipes
 import qualified Text.Earley as E
 import qualified Text.Earley.Mixfix as E
 
@@ -44,15 +41,16 @@ import qualified Text.Earley.Mixfix as E
 -- Parser
 parseTopLevel :: Text -> IO [I.Source]
 parseTopLevel txt = do
-  let lexModl' = Pipes.evalStateP L.defState (L.lexModl txt)
-      layout' = Pipes.evalStateP LO.defState LO.layout
-      (toks, ()) = runIdentity $ Pipes.toListM' $ lexModl' >-> layout'
-      
-  print toks
-            
-  let (parses, r@(Report _ needed found)) =
-          E.fullParses (E.parser $ G.toplevel) toks
+  let lexModl' = evalStateLC L.defState (L.lexModl txt)
+      layout' = evalStateLC LO.defState LO.layout
+      parser' = E.fullParses (E.parser $ G.toplevel)
+      toks = runConduitPure $ lexModl' .| layout' .| sinkList
+      (parses, r@(Report _ needed found)) = parser' toks
+      -- Note: Not sure if it's possible to feed the parser one token at a time
+      --       But this will do for now.
   
+  print toks
+
   case parses of
       []      -> error $ "No parses found.\n" ++ show r
       p:[]    -> return p

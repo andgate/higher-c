@@ -1,18 +1,17 @@
 module Language.Hawk.Parse.Layout where
 
 import Control.Monad (forever, mapM, when, unless)
-import Control.Monad.Trans.State.Strict (State, evalStateT, get, put, modify)
+import Control.Monad.Trans.State.Lazy (State, evalStateT, get, put, modify)
 import Data.Maybe (isJust)
 import Data.Text.Lazy (Text)
 import Language.Hawk.Report.Region (Region(..), Position(..))
 import Lens.Micro.Mtl ((.=), (+=))
-import Pipes (Pipe, await, yield, lift)
+import Conduit
 import Safe (headDef)
 
-import qualified Control.Monad.Trans.State.Strict as State
+import qualified Control.Monad.Trans.State.Lazy as State
 import qualified Data.Text.Lazy                   as Text
 import qualified Language.Hawk.Parse.Lexer        as L
-import qualified Pipes.Prelude                    as Pipes
 
 -- -----------------------------------------------------------------------------
 -- Layout Types
@@ -30,20 +29,24 @@ defState = []
 
 
 -- -----------------------------------------------------------------------------
--- Pipe-based Layout Driver
-layout :: Pipe L.Token L.Token LayoutState ()
-layout = forever (await >>= update)
-
+-- Conduit-based Layout Driver  
+layout :: Conduit L.Token LayoutState L.Token
+layout = do
+    mayT <- await
+    case mayT of
+      (Just t@(L.Token c (Just p))) ->
+        do
+          preUpdate c p
+          yield t
+          postUpdate c
+      
+      Just t ->
+        yield t
+      
+      Nothing ->
+        return ()
   
-update :: L.Token -> Pipe L.Token L.Token LayoutState ()
-update t@(L.Token c (Just p)) = do
-    preUpdate c p
-    yield t
-    postUpdate c
-
-update t = yield t
-  
-preUpdate :: L.TokenClass -> Position -> Pipe L.Token L.Token LayoutState ()
+preUpdate :: L.TokenClass -> Position -> Conduit L.Token LayoutState L.Token
 preUpdate c p = do
   -- Close invalid layouts on the stack
   -- until the top of the stack is a
@@ -58,7 +61,7 @@ preUpdate c p = do
   handleEof c p
   
   
-postUpdate :: L.TokenClass -> Pipe L.Token L.Token LayoutState ()
+postUpdate :: L.TokenClass -> Conduit L.Token LayoutState L.Token
 postUpdate c =
   when (hasBlkTrig c && isNotBlkClass c) emitBlk
       
@@ -69,14 +72,25 @@ postUpdate c =
     
     -- Wait til a document (non-builtin) token arrives
     -- Passes builtin tokens along.
+    -- Document tokens have position, so they represent a change in layout.
     awaitDocTok = do
-      t@(L.Token c mp) <- await
+      mt <- await
+      case mt of
+          Just t -> recieveTok t
+          Nothing -> return Nothing
+
+    recieveTok t@(L.Token c mp) =
       case mp of
-        Just p -> preUpdate c p >> return (c,p)
-        Nothing -> yield t >> awaitDocTok
+          Just p -> preUpdate c p >> return (Just (c,p))
+          Nothing -> yield t >> awaitDocTok
     
-    emitBlk = do 
-      (c, p@(P ln i)) <- awaitDocTok
+    emitBlk = do
+      mayDocTok <- awaitDocTok
+      case mayDocTok of 
+          Just docTok -> handleDocTok docTok
+          Nothing -> return ()
+
+    handleDocTok (c, p@(P ln i)) = do
       l <- lift $ peekLay
       if isValid i l
           then do
@@ -92,19 +106,19 @@ postUpdate c =
 -- -----------------------------------------------------------------------------
 -- Driver Helpers
   
-closeInvalid :: Position -> Pipe L.Token L.Token LayoutState ()
+closeInvalid :: Position -> Conduit L.Token LayoutState L.Token
 closeInvalid p@(P _ i) = do
   l <- lift $ peekLay
   unless (isValid i l)
          (close >> closeInvalid p)
          
-closeAll :: Position -> Pipe L.Token L.Token LayoutState ()
+closeAll :: Position -> Conduit L.Token LayoutState L.Token
 closeAll p = do
   l <- lift $ peekLay
   unless (l == defLay)
          (close >> closeAll p)
                     
-coverBlock :: Position -> Pipe L.Token L.Token LayoutState ()
+coverBlock :: Position -> Conduit L.Token LayoutState L.Token
 coverBlock p = do
   l <- lift $ peekLay
   case l of
@@ -112,18 +126,18 @@ coverBlock p = do
       _ -> return ()
       
       
-handleEof :: L.TokenClass -> Position -> Pipe L.Token L.Token LayoutState ()
+handleEof :: L.TokenClass -> Position -> Conduit L.Token LayoutState L.Token
 handleEof c p =
   when (c == L.TokenEof)
        (closeAll p)
   
       
-open :: Layout -> Pipe L.Token L.Token LayoutState ()
+open :: Layout -> Conduit L.Token LayoutState L.Token
 open l = do
   lift $ pushLay l
   yield $ openTok l
 
-close :: Pipe L.Token L.Token LayoutState ()
+close :: Conduit L.Token LayoutState L.Token
 close = do
   l <- lift $ peekLay
   yield $ closeTok l
@@ -131,14 +145,16 @@ close = do
   return ()
   
   
-pushLayout :: Layout -> Pipe L.Token L.Token LayoutState ()
+pushLayout :: Layout -> Conduit L.Token LayoutState L.Token
 pushLayout = lift . pushLay
 
+{-
 popLayout :: Pipe L.Token L.Token LayoutState Layout
 popLayout = lift $ popLay
 
 peekLayout :: Pipe L.Token L.Token LayoutState Layout
 peekLayout = lift $ peekLay
+-}
 
 -- -----------------------------------------------------------------------------
 -- LayoutState Helpers

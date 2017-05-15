@@ -23,7 +23,6 @@ import qualified Language.Hawk.Syntax.Expression  as E
 import qualified Language.Hawk.Syntax.Module      as M
 import qualified Language.Hawk.Syntax.Name        as N
 import qualified Language.Hawk.Syntax.Type        as Ty
-import qualified Pipes.Prelude                    as Pipes
 
 -- -----------------------------------------------------------------------------
 -- Parser type
