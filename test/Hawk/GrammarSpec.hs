@@ -21,7 +21,7 @@ spec = do
     context "Test Files" $ do
       it "Can compile" $ do
             
-        let pkg = C.Package "Example" "example/" [] []
+        let pkg = C.Package "Example" "core"
             cSt = C.defState {C.cPkgs = [pkg]}
         C.compile cSt
         

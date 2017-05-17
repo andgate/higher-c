@@ -39,8 +39,6 @@ data Package =
   Package 
     { pkgName     :: Text
     , pkgSrcDir   :: Text
-    , pkgSrcPaths :: [Text]
-    , pkgModules  :: [Text]
     } deriving (Eq, Show, Read, Ord, Data, Typeable)
 
 -------------------------------------------------------------------------------

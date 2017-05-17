@@ -31,9 +31,8 @@ import Database.Persist.TH
 import Language.Hawk.Compile.Monad
 
 
-import qualified Data.Text.Lazy.IO as Text
 import qualified Control.Monad.Trans.State.Strict as St
-
+import qualified Data.Text.Lazy.IO as Text
 import qualified Language.Hawk.Metadata.Namespace as NS
 import qualified Language.Hawk.Metadata.Schema as Db
 import qualified Language.Hawk.Parse as P
@@ -57,14 +56,32 @@ type BackendT m a = ReaderT SqlBackend m a
 
 
 insertPackage :: MonadIO m => Package -> BackendT m Db.PackageId
-insertPackage (Package n srcDir srcPaths _) =
-  insert $ Db.Package n srcDir srcPaths
-  
+insertPackage (Package n srcDir) = do
+  mayPkg <- getBy $ Db.UniquePackage n srcDir
+  case mayPkg of
+    Nothing -> insert $ Db.Package n srcDir
+    Just (Entity pid _) -> return pid
 
-insertModule :: MonadIO m => Db.PackageId -> [Db.ModuleId] -> M.Source -> Text -> BackendT m Db.ModuleId
-insertModule pkgId p (M.Module n _ _) src =
-  insert $ Db.Module [pkgId] n p src
-  
+
+{-
+insertModule :: MonadIO m => Db.PackageId -> [Text] -> BackendT m Db.ModuleId
+insertModule pkgId mp = insertModule' [] mp
+  where 
+    insertModule' :: MonadIO m => [Db.ModuleId] -> [Text] -> BackendT m Db.ModuleId
+    insertModule' [] [] = error "Cannot insert a module without a path."
+    insertModule' (p:[]) [] = return p
+    insertModule' (p:ps) [] = insertModule' ps []
+    insertModule' parents (curr:rest) = do
+      mayModl <- getBy $ Db.UniqueModule pkgId parents curr
+      mid <- case mayModl of
+                  Nothing -> insert $ Db.Module pkgId parents curr
+                  Just (Entity mid _) -> return mid
+      insertModule' (parents ++ [mid]) rest
+-}
+
+        
+
+
 insertItem :: MonadIO m => Db.ModuleId -> I.Source -> BackendT m ()
 insertItem modId i =
   case i of

@@ -39,6 +39,8 @@ import qualified Text.Earley.Mixfix as E
 
 -- -----------------------------------------------------------------------------
 -- Parser
+
+-- Todo: make this a conduit that takes a lazy text stream and produces an item
 parseTopLevel :: Text -> IO [I.Source]
 parseTopLevel txt = do
   let lexModl' = evalStateLC L.defState (L.lexModl txt)
@@ -46,8 +48,6 @@ parseTopLevel txt = do
       parser' = E.fullParses (E.parser $ G.toplevel)
       toks = runConduitPure $ lexModl' .| layout' .| sinkList
       (parses, r@(Report _ needed found)) = parser' toks
-      -- Note: Not sure if it's possible to feed the parser one token at a time
-      --       But this will do for now.
   
   print toks
 

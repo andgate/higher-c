@@ -20,13 +20,17 @@ CompilerLog
 Package
     name Text
     srcDir Text
-    srcPaths [Text]
+    UniquePackage name srcDir
 
 Module
-    pkgs [PackageId]
+    pkg PackageId
     name Text
-    path [ModuleId]
     source Text
+    deriving Show
+
+ModulePath
+    ancestor ModuleId
+    descendent ModuleId
     deriving Show
 
 Name
