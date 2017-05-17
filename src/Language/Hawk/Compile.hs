@@ -11,17 +11,14 @@ import Control.Monad ( forM_ )
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Resource (MonadResource)
 import Data.Char (isUpper)
-import Data.Map (Map)
 import Data.Text.Lazy (Text)
-import Data.Tree
 import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import Language.Hawk.Compile.Monad
-import System.FilePath ( takeExtension, takeBaseName, splitDirectories )
+import System.FilePath ( (</>), (<.>), takeExtension, takeBaseName, splitDirectories )
 
 import qualified Control.Monad.Trans.State.Strict as St
-import qualified Data.Map                         as Map
 import qualified Data.Streaming.Filesystem        as F
 import qualified Data.Text.Lazy                   as T
 import qualified Language.Hawk.Metadata           as Db
@@ -52,22 +49,27 @@ loadPackages = do
 
 loadPackage :: Package -> IO ()
 loadPackage pkg@(Package n d) = do
-  pkgId <- runSqlite "hk.db" $ do
+  pid <- runSqlite "hk.db" $ do
     runMigration Db.migrateAll
     Db.insertPackage pkg
 
   -- Pipes
   runConduitRes
     $ sourceDirectoryDeep True (T.unpack d)
-    .| filterC isValidModule
-    .| mapC fpToMp
-    .| buffer 5
-    .| mapC toForest
-    -- .| handleModule pkgId
+    .| filterC isValidModule   -- Discards files that aren't module files
+    .| buffer 100           -- Accumulates some module filepaths
+    .| mapMC (\i -> liftIO $ cacheMods pid i)    -- Cache the modules on disk
+    .| unbuffer           -- unbuffer modules, for handling files one at a time
     .| iterMC (\o -> lift $ print o)
     .| sinkNull
 
+cacheMods :: Db.PackageId -> [FilePath] -> IO [(FilePath, Db.ModuleId)]
+cacheMods pid fps =
+  runSqlite "hk.db" $ do
+    runMigration Db.migrateAll
+    Db.insertModules pid fps
 
+-- | Captures n values from the stream and places into a list
 buffer :: Monad m => Int -> Conduit a m [a]
 buffer nlimit = go [] 0
     where
@@ -79,50 +81,21 @@ buffer nlimit = go [] 0
             mayx <- await 
             case mayx of
                 Just x -> go (x:xs) (n+1)
-                Nothing -> return () 
+                Nothing -> yield $ reverse xs
 
 
+-- | Releases values one at a time from a list
+unbuffer :: Monad m => Conduit [a] m a
+unbuffer = go
+    where
+      go = do
+        mayxs <- await
+        case mayxs of
+            Just xs -> release xs
+            Nothing -> return ()
 
-toForest :: (Ord a) => [[a]] -> Forest a
-toForest r = unfoldForest (\(a, rs) -> (a, levelEntries rs))
-                          (levelEntries r)
-  where
-    levelMap :: (Ord a) => [[a]] -> Map a [[a]]
-    levelMap aa = Map.fromListWith (++) [ (a, [as]) | (a:as) <- aa ]
-
-    levelEntries :: (Ord a) => [[a]] -> [(a, [[a]])]
-    levelEntries = Map.toList . levelMap
-
-
-fromForest :: Forest a -> [[a]]
-fromForest [] = [[]]
-fromForest f  = concat [ map (a:) (fromForest subf) | Node a subf <- f ]
-
-{-
-handleModule :: MonadIO m => Db.PackageId -> Conduit (FilePath, F.FileType) m (FilePath, Db.ModuleId)
-handleModule pkgId = awaitForever go
-  where
-    go :: MonadIO m => (FilePath, F.FileType) -> Conduit (FilePath, F.FileType) m (FilePath, Db.ModuleId)
-    go (fp, ft) = do
-      let mp = fpToMp fp
-      mid <- liftIO $ cacheModule mp
-      case ft of
-          F.FTFile -> yield (fp, mid)
-          F.FTFileSym -> yield (fp, mid)
-          F.FTDirectory -> handleModule pkgId
-          F.FTDirectorySym -> handleModule pkgId
-          F.FTOther -> return ()
-
-    cacheModule :: [T.Text] -> IO Db.ModuleId
-    cacheModule mp =
-      runSqlite "hk.db" $ do
-        runMigration Db.migrateAll
-        Db.insertModule pkgId mp
--}
-
-fpToMp :: FilePath -> [T.Text]
-fpToMp fp = mp
-  where (_:mp) = map (T.pack . takeBaseName) (splitDirectories fp)
+      release [] = unbuffer
+      release (x:xs) = yield x >> release xs
 
 
 ---handleItems :: Package -> Conduit FilePath m FilePath

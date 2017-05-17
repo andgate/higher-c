@@ -23,16 +23,22 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy (toStrict)
+import Data.List (intercalate)
+import Data.Map (Map)
 import Data.Maybe
 import Data.Text.Lazy (Text)
+import Data.Traversable
+import Data.Tree
 import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import Language.Hawk.Compile.Monad
+import System.FilePath ( (</>), (<.>), takeExtension, takeBaseName, splitDirectories )
 
 
 import qualified Control.Monad.Trans.State.Strict as St
-import qualified Data.Text.Lazy.IO as Text
+import qualified Data.Map                         as Map
+import qualified Data.Text.Lazy                   as Text
 import qualified Language.Hawk.Metadata.Namespace as NS
 import qualified Language.Hawk.Metadata.Schema as Db
 import qualified Language.Hawk.Parse as P
@@ -63,9 +69,101 @@ insertPackage (Package n srcDir) = do
     Just (Entity pid _) -> return pid
 
 
+
+insertModules :: MonadIO m => Db.PackageId -> [FilePath] -> BackendT m [(FilePath, Db.ModuleId)]
+insertModules pid fps = do
+  -- Build a name forest from the module file paths
+  let modlForest = toForest . map (qualifyModulePathParts . tail . splitBases) $ fps
+  modlIdForest <- forestMapM insertModule modlForest
+
+  -- Build module edge list paths from the previous id forest
+  let modlIdPaths = fromForest modlIdForest
+      modlEdges = moduleEdges modlIdPaths
+      modlIds = map last modlIdPaths
+      modlFpIds = zip fps modlIds 
+  mapM_ insertModulePath modlEdges
+  mapM_ insertModuleFilepath modlFpIds
+  mapM_ (insertPackageModule pid) modlIds
+  return modlFpIds
+
+insertModule :: MonadIO m => (String, String) -> BackendT m Db.ModuleId
+insertModule (n, qn) = do
+  mayModl <- getBy $ Db.UniqueModule n' qn'
+  case mayModl of
+    Nothing -> insert $ Db.Module n' qn'
+    Just (Entity mid _) -> return mid
+  where
+    n' = Text.pack n
+    qn' = Text.pack qn
+
+
+insertModulePath :: MonadIO m => (Db.ModuleId, Db.ModuleId) -> BackendT m Db.ModulePathId
+insertModulePath (a, b) = do
+  mayModlPath <- getBy $ Db.UniqueModulePath a b
+  case mayModlPath of
+    Nothing -> insert $ Db.ModulePath a b
+    Just (Entity mpid _) -> return mpid
+
+insertModuleFilepath :: MonadIO m => (FilePath, Db.ModuleId) -> BackendT m Db.ModuleFilepathId
+insertModuleFilepath (path, modl) = do
+  let path' = Text.pack path
+  mayModlFile <- getBy $ Db.UniqueModuleFilepath modl path'
+  case mayModlFile of
+    Nothing -> insert $ Db.ModuleFilepath modl path'
+    Just (Entity mfid _) -> return mfid
+
+
+insertPackageModule :: MonadIO m => Db.PackageId -> Db.ModuleId -> BackendT m Db.PackageModuleId
+insertPackageModule pid mid = do
+  mayPkgMdl <- getBy $ Db.UniquePackageModule pid mid
+  case mayPkgMdl of
+    Nothing -> insert $ Db.PackageModule pid mid
+    Just (Entity pmid _) -> return pmid
+
+qualifyModulePathParts :: [String] -> [(String, String)]
+qualifyModulePathParts ns = r
+  where
+    (_, r) = mapAccumL f [] ns
+    f a b =
+      let a' = a ++ [b]
+      in (a', (b, intercalate "." a'))
+
+
+moduleEdges :: [[Db.ModuleId]] -> [(Db.ModuleId, Db.ModuleId)]
+moduleEdges = concatMap zipAdj
+  where
+    zipAdj = zip <*> tail
+    
+
+treeMapM :: Monad m => (a -> m b) -> Tree a -> m (Tree b)
+treeMapM f (Node a ts) = do
+  b <- f a
+  ts' <- forestMapM f ts
+  return $ Node b ts'
+
+forestMapM :: Monad m => (a -> m b) -> Forest a -> m (Forest b)
+forestMapM f ts = mapM (treeMapM f) ts
+
+
+toForest :: (Ord a) => [[a]] -> Forest a
+toForest r = unfoldForest (\(a, rs) -> (a, levelEntries rs))
+                          (levelEntries r)
+  where
+    levelMap :: (Ord a) => [[a]] -> Map a [[a]]
+    levelMap aa = Map.fromListWith (++) [ (a, [as]) | (a:as) <- aa ]
+
+    levelEntries :: (Ord a) => [[a]] -> [(a, [[a]])]
+    levelEntries = Map.toList . levelMap
+
+fromForest :: Forest a -> [[a]]
+fromForest [] = [[]]
+fromForest f  = concat [ map (a:) (fromForest subf) | Node a subf <- f ]
+
+
+splitBases :: FilePath -> [String]
+splitBases = map takeBaseName . splitDirectories
+
 {-
-insertModule :: MonadIO m => Db.PackageId -> [Text] -> BackendT m Db.ModuleId
-insertModule pkgId mp = insertModule' [] mp
   where 
     insertModule' :: MonadIO m => [Db.ModuleId] -> [Text] -> BackendT m Db.ModuleId
     insertModule' [] [] = error "Cannot insert a module without a path."
@@ -77,6 +175,9 @@ insertModule pkgId mp = insertModule' [] mp
                   Nothing -> insert $ Db.Module pkgId parents curr
                   Just (Entity mid _) -> return mid
       insertModule' (parents ++ [mid]) rest
+
+insertModule :: MonadIO m => [FilePath] -> BackendT m [Db.ModuleId]
+insertModule 
 -}
 
         

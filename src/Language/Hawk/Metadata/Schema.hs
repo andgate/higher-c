@@ -16,21 +16,36 @@ CompilerLog
     startTime Int
     checkpoint Int
     endTime Int Maybe
+    deriving Show
 
 Package
     name Text
     srcDir Text
     UniquePackage name srcDir
+    deriving Show
 
 Module
-    pkg PackageId
     name Text
-    source Text
+    qualName Text
+    UniqueModule name qualName
+    deriving Show
+
+PackageModule
+    pkg PackageId
+    modl ModuleId
+    UniquePackageModule pkg modl
+    deriving Show
+
+ModuleFilepath
+    modl ModuleId
+    path Text
+    UniqueModuleFilepath modl path 
     deriving Show
 
 ModulePath
     ancestor ModuleId
     descendent ModuleId
+    UniqueModulePath ancestor descendent
     deriving Show
 
 Name
