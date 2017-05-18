@@ -4,22 +4,22 @@ import Control.Arrow (second)
 import Data.Aeson ((.=))
 import Data.Binary
 import Data.Data
-import Data.Text.Lazy (Text)
+import Data.Text (Text)
 import Data.Typeable
+import Language.Hawk.Parse.Lexer.Token (Token)
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
 import qualified Data.Aeson                   as Json
 import qualified Data.Map                     as Map
-import qualified Language.Hawk.Parse.Lexer    as Lex
 import qualified Language.Hawk.Syntax.Name    as N
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 
 type Source
-  = [Lex.Token]
+  = [Token]
 
 type Valid
-  = [Lex.Token]
+  = [Token]
 
 type Typed
   = Type N.Typed

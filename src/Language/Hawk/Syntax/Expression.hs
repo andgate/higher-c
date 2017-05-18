@@ -4,9 +4,9 @@ module Language.Hawk.Syntax.Expression where
 import Data.Binary
 import Data.Data
 import Data.Typeable
+import Language.Hawk.Parse.Lexer.Token (Token)
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
-import qualified Language.Hawk.Parse.Lexer    as Lex
 import qualified Language.Hawk.Syntax.Literal as Lit
 import qualified Language.Hawk.Syntax.Type    as T
 import qualified Language.Hawk.Syntax.Name    as N
@@ -14,7 +14,7 @@ import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 
 type Source
-  = [Lex.Token]
+  = [Token]
 
 type Valid
   = Expr N.Valid T.Valid

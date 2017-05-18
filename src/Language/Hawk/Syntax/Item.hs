@@ -3,11 +3,11 @@ module Language.Hawk.Syntax.Item where
 import Data.Binary
 import Data.Data
 import Data.Maybe
-import Data.Text.Lazy (Text)
+import Data.Text (Text)
 import Data.Typeable
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
-import qualified Data.Text.Lazy                             as Text
+import qualified Data.Text                                  as Text
 import qualified Language.Hawk.Syntax.AliasDefinition       as AD
 import qualified Language.Hawk.Syntax.DataDefinition        as DD
 import qualified Language.Hawk.Syntax.Expression            as E

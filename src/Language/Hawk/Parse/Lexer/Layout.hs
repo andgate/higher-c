@@ -1,17 +1,16 @@
-module Language.Hawk.Parse.Layout where
+module Language.Hawk.Parse.Lexer.Layout where
 
+import Conduit
 import Control.Monad (forever, mapM, when, unless)
 import Control.Monad.Trans.State.Lazy (State, evalStateT, get, put, modify)
 import Data.Maybe (isJust)
-import Data.Text.Lazy (Text)
+import Data.Text (Text)
+import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Report.Region (Region(..), Position(..))
-import Lens.Micro.Mtl ((.=), (+=))
-import Conduit
 import Safe (headDef)
 
 import qualified Control.Monad.Trans.State.Lazy as State
-import qualified Data.Text.Lazy                   as Text
-import qualified Language.Hawk.Parse.Lexer        as L
+import qualified Data.Text                      as Text
 
 -- -----------------------------------------------------------------------------
 -- Layout Types
@@ -30,11 +29,11 @@ defState = []
 
 -- -----------------------------------------------------------------------------
 -- Conduit-based Layout Driver  
-layout :: Conduit L.Token LayoutState L.Token
+layout :: Conduit Token LayoutState Token
 layout = do
     mayT <- await
     case mayT of
-      (Just t@(L.Token c (Just p))) ->
+      (Just t@(Token c (Just p))) ->
         do
           preUpdate c p
           yield t
@@ -46,7 +45,7 @@ layout = do
       Nothing ->
         return ()
   
-preUpdate :: L.TokenClass -> Position -> Conduit L.Token LayoutState L.Token
+preUpdate :: TokenClass -> Position -> Conduit Token LayoutState Token
 preUpdate c p = do
   -- Close invalid layouts on the stack
   -- until the top of the stack is a
@@ -61,13 +60,13 @@ preUpdate c p = do
   handleEof c p
   
   
-postUpdate :: L.TokenClass -> Conduit L.Token LayoutState L.Token
+postUpdate :: TokenClass -> Conduit Token LayoutState Token
 postUpdate c =
   when (hasBlkTrig c && isNotBlkClass c) emitBlk
       
   where
-    hasBlkTrig = isJust . Text.find (==':') . L.tokenClassToText
-    isNotBlkClass (L.TokenMixfixBlkId _) = False
+    hasBlkTrig = isJust . Text.find (==':') . tokenClassToText
+    isNotBlkClass (TokenMixfixBlkId _) = False
     isNotBlkClass _ = True
     
     -- Wait til a document (non-builtin) token arrives
@@ -79,7 +78,7 @@ postUpdate c =
           Just t -> recieveTok t
           Nothing -> return Nothing
 
-    recieveTok t@(L.Token c mp) =
+    recieveTok t@(Token c mp) =
       case mp of
           Just p -> preUpdate c p >> return (Just (c,p))
           Nothing -> yield t >> awaitDocTok
@@ -96,29 +95,29 @@ postUpdate c =
           then do
             open (Block i)
             open (LineFold i)
-            yield $ L.Token c (Just p)
+            yield $ Token c (Just p)
           else
             error $ "\nExpected Indentation: " ++ show l ++
                     "\nActual Indentation: " ++ show i ++
-                    "\nwith \"" ++ Text.unpack (L.tokenClassToText c) ++
+                    "\nwith \"" ++ Text.unpack (tokenClassToText c) ++
                       "\" at " ++ show ln ++ ":" ++ show i
 
 -- -----------------------------------------------------------------------------
 -- Driver Helpers
   
-closeInvalid :: Position -> Conduit L.Token LayoutState L.Token
+closeInvalid :: Position -> Conduit Token LayoutState Token
 closeInvalid p@(P _ i) = do
   l <- lift $ peekLay
   unless (isValid i l)
          (close >> closeInvalid p)
          
-closeAll :: Position -> Conduit L.Token LayoutState L.Token
+closeAll :: Position -> Conduit Token LayoutState Token
 closeAll p = do
   l <- lift $ peekLay
   unless (l == defLay)
          (close >> closeAll p)
                     
-coverBlock :: Position -> Conduit L.Token LayoutState L.Token
+coverBlock :: Position -> Conduit Token LayoutState Token
 coverBlock p = do
   l <- lift $ peekLay
   case l of
@@ -126,18 +125,18 @@ coverBlock p = do
       _ -> return ()
       
       
-handleEof :: L.TokenClass -> Position -> Conduit L.Token LayoutState L.Token
+handleEof :: TokenClass -> Position -> Conduit Token LayoutState Token
 handleEof c p =
-  when (c == L.TokenEof)
+  when (c == TokenEof)
        (closeAll p)
   
       
-open :: Layout -> Conduit L.Token LayoutState L.Token
+open :: Layout -> Conduit Token LayoutState Token
 open l = do
   lift $ pushLay l
   yield $ openTok l
 
-close :: Conduit L.Token LayoutState L.Token
+close :: Conduit Token LayoutState Token
 close = do
   l <- lift $ peekLay
   yield $ closeTok l
@@ -145,14 +144,14 @@ close = do
   return ()
   
   
-pushLayout :: Layout -> Conduit L.Token LayoutState L.Token
+pushLayout :: Layout -> Conduit Token LayoutState Token
 pushLayout = lift . pushLay
 
 {-
-popLayout :: Pipe L.Token L.Token LayoutState Layout
+popLayout :: Pipe Token Token LayoutState Layout
 popLayout = lift $ popLay
 
-peekLayout :: Pipe L.Token L.Token LayoutState Layout
+peekLayout :: Pipe Token Token LayoutState Layout
 peekLayout = lift $ peekLay
 -}
 
@@ -194,17 +193,17 @@ peekLay = do
     l:_ -> return l
 
     
-openTok :: Layout -> L.Token
+openTok :: Layout -> Token
 openTok l =
   case l of
-      Block _ -> L.Token L.TokenBlk Nothing
-      LineFold _ -> L.Token L.TokenLn Nothing   
+      Block _ -> Token TokenBlk Nothing
+      LineFold _ -> Token TokenLn Nothing   
     
-closeTok :: Layout -> L.Token
+closeTok :: Layout -> Token
 closeTok l =
   case l of
-      Block _ -> L.Token L.TokenBlk' Nothing
-      LineFold _ -> L.Token L.TokenLn' Nothing
+      Block _ -> Token TokenBlk' Nothing
+      LineFold _ -> Token TokenLn' Nothing
   
   
 isValid :: Int -> Layout -> Bool

@@ -2,7 +2,7 @@
 module Language.Hawk.Metadata.Schema where
 
 import Data.ByteString (ByteString)
-import Data.Text.Lazy (Text)
+import Data.Text (Text)
 
 import Database.Persist
 import Database.Persist.Sqlite

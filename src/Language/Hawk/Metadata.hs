@@ -26,7 +26,7 @@ import Data.ByteString.Lazy (toStrict)
 import Data.List (intercalate)
 import Data.Map (Map)
 import Data.Maybe
-import Data.Text.Lazy (Text)
+import Data.Text (Text)
 import Data.Traversable
 import Data.Tree
 import Database.Persist
@@ -38,7 +38,7 @@ import System.FilePath ( (</>), (<.>), takeExtension, takeBaseName, splitDirecto
 
 import qualified Control.Monad.Trans.State.Strict as St
 import qualified Data.Map                         as Map
-import qualified Data.Text.Lazy                   as Text
+import qualified Data.Text                        as Text
 import qualified Language.Hawk.Metadata.Namespace as NS
 import qualified Language.Hawk.Metadata.Schema as Db
 import qualified Language.Hawk.Parse as P

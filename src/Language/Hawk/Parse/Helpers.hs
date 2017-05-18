@@ -8,16 +8,15 @@ import Control.Monad.Trans.Class  (lift)
 import Control.Monad.Trans.Except (Except, throwE, runExceptT)
 import Control.Monad.Trans.State.Strict (evalState)
 import Data.Text.Buildable (Buildable(..))
-import Data.Text.Lazy (Text)
-import Data.Text.Lazy.Builder (toLazyText)
+import Data.Text (Text)
 import Data.Word (Word8)
+import Language.Hawk.Parse.Lexer.Token
 import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
 import Text.Earley
 import Text.Earley.Mixfix
 
 import qualified Data.ByteString.UTF8             as UTF8
-import qualified Data.Text.Lazy                   as Text
-import qualified Language.Hawk.Parse.Lexer        as L
+import qualified Data.Text                        as Text
 import qualified Language.Hawk.Report.Region      as R
 import qualified Language.Hawk.Syntax.Expression  as E
 import qualified Language.Hawk.Syntax.Module      as M
@@ -26,17 +25,17 @@ import qualified Language.Hawk.Syntax.Type        as Ty
 
 -- -----------------------------------------------------------------------------
 -- Parser type
---type HkProd a = forall r. Prod r L.Token L.Token a
---type HkGrammar a = forall r. Grammar r (Prod r L.Token L.Token a)
+--type HkProd a = forall r. Prod r Token Token a
+--type HkGrammar a = forall r. Grammar r (Prod r Token Token a)
         
-type OpTable a = forall r. [[(Holey (Prod r L.Token L.Token L.Token), Associativity, Holey L.Token -> [a] -> a)]]
+type OpTable a = forall r. [[(Holey (Prod r Token Token Token), Associativity, Holey Token -> [a] -> a)]]
 type TypeOpTable = OpTable Ty.Typed
 type ExprOpTable = OpTable E.Source
 
 -- -----------------------------------------------------------------------------
 -- Helpers for parsing expressions
 
-holey :: String -> Holey (Prod r L.Token L.Token L.Token)
+holey :: String -> Holey (Prod r Token Token Token)
 holey ""       = []
 holey ('_':xs) = Nothing : holey xs
 holey xs       = Just (op $ Text.pack i) : holey rest
@@ -53,197 +52,197 @@ defTypeOps =
   ]
 
   
-typArrow :: Holey L.Token -> [Ty.Typed] -> Ty.Typed
+typArrow :: Holey Token -> [Ty.Typed] -> Ty.Typed
 typArrow _ = Ty.typeCon "_->_"
 
-typParens :: Holey L.Token -> [Ty.Typed] -> Ty.Typed
+typParens :: Holey Token -> [Ty.Typed] -> Ty.Typed
 typParens _ = Ty.typeCon "(_)"
 
-typDollar :: Holey L.Token  -> [Ty.Typed] -> Ty.Typed
+typDollar :: Holey Token  -> [Ty.Typed] -> Ty.Typed
 typDollar _ = Ty.typeCon "_$_"
 
 
 -- -----------------------------------------------------------------------------
 -- Terminal Production Helpers
-match :: L.TokenClass -> Prod r e L.Token L.Token
+match :: TokenClass -> Prod r e Token Token
 match c = satisfy p
-  where p (L.Token c' _) = c == c'
+  where p (Token c' _) = c == c'
   
-notToken :: L.TokenClass -> Prod r e L.Token L.Token
+notToken :: TokenClass -> Prod r e Token Token
 notToken c = satisfy p
-  where p (L.Token c' _) = c /= c'
+  where p (Token c' _) = c /= c'
   
-notTokens :: [L.TokenClass] -> Prod r e L.Token L.Token
+notTokens :: [TokenClass] -> Prod r e Token Token
 notTokens cs  = satisfy p
-  where p (L.Token c' _) = c' `notElem` cs
+  where p (Token c' _) = c' `notElem` cs
 
 
-notEquals :: Prod r e L.Token L.Token
-notEquals = notToken $ L.TokenRsvp "="
+notEquals :: Prod r e Token Token
+notEquals = notToken $ TokenRsvp "="
 
-tillEquals  :: Prod r e L.Token [L.Token]
+tillEquals  :: Prod r e Token [Token]
 tillEquals = many notEquals
 
-notTypeCtxArr :: Prod r e L.Token L.Token
-notTypeCtxArr = notToken $ L.TokenRsvp "=>"
+notTypeCtxArr :: Prod r e Token Token
+notTypeCtxArr = notToken $ TokenRsvp "=>"
 
-notColon :: Prod r e L.Token L.Token
-notColon = notToken $ L.TokenRsvp ":"
+notColon :: Prod r e Token Token
+notColon = notToken $ TokenRsvp ":"
 
-notLayout :: Prod r e L.Token L.Token
+notLayout :: Prod r e Token Token
 notLayout =
-  notTokens [ L.TokenTop
-            , L.TokenBlk
-            , L.TokenBlk'
-            , L.TokenLn
-            , L.TokenLn'
-            , L.TokenRsvp "("
-            , L.TokenRsvp ")"
+  notTokens [ TokenTop
+            , TokenBlk
+            , TokenBlk'
+            , TokenLn
+            , TokenLn'
+            , TokenRsvp "("
+            , TokenRsvp ")"
             ]
   
   
-anyToken :: Prod r e L.Token L.Token
+anyToken :: Prod r e Token Token
 anyToken = satisfy p
   where p _ = True
   
-rsvp :: Text -> Prod r e L.Token L.Token
+rsvp :: Text -> Prod r e Token Token
 rsvp text =
-  match $ L.TokenRsvp text
+  match $ TokenRsvp text
            
  
-parens :: Prod r e L.Token a -> Prod r e L.Token a
+parens :: Prod r e Token a -> Prod r e Token a
 parens p =
   rsvp "(" *> p <* rsvp ")"
 
-brackets :: Prod r e L.Token a -> Prod r e L.Token a
+brackets :: Prod r e Token a -> Prod r e Token a
 brackets p =
   rsvp "[" *> p <* rsvp "]"
 
            
-sep :: Prod r e L.Token b -> Prod r e L.Token a -> Prod r e L.Token [a]
+sep :: Prod r e Token b -> Prod r e Token a -> Prod r e Token [a]
 sep s p =
   (:) <$> p <*> many (s *> p)
   
-sep' :: Prod r e L.Token b -> Prod r e L.Token a -> Prod r e L.Token [a]
+sep' :: Prod r e Token b -> Prod r e Token a -> Prod r e Token [a]
 sep' s p =
   sep s p <|> pure []
   
-mono :: Prod r e L.Token a -> Prod r e L.Token [a]
+mono :: Prod r e Token a -> Prod r e Token [a]
 mono p =
   liftA (:[]) p
   
-prepend :: Prod r e L.Token a -> Prod r e L.Token [a] -> Prod r e L.Token [a]  
+prepend :: Prod r e Token a -> Prod r e Token [a] -> Prod r e Token [a]  
 prepend =
   liftA2 (:)
 
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Name Tokens
 
-varId :: Prod r e L.Token L.Token
-varId = satisfy L.isVarId
+varId :: Prod r e Token Token
+varId = satisfy isVarId
 
-conId :: Prod r e L.Token L.Token
-conId = satisfy L.isConId
+conId :: Prod r e Token Token
+conId = satisfy isConId
 
-opId :: Prod r e L.Token L.Token
-opId = satisfy L.isOpId
+opId :: Prod r e Token Token
+opId = satisfy isOpId
 
-mixfixId :: Prod r e L.Token L.Token
-mixfixId = satisfy L.isMixfixId
+mixfixId :: Prod r e Token Token
+mixfixId = satisfy isMixfixId
 
-mixfixblkId :: Prod r e L.Token L.Token
-mixfixblkId = satisfy L.isMixfixBlkId
-
-
-var :: Text -> Prod r e L.Token L.Token
-var txt = satisfy (L.isVar txt)
-
-con :: Text -> Prod r e L.Token L.Token
-con txt = satisfy (L.isCon txt)
-
-op :: Text -> Prod r e L.Token L.Token
-op txt = satisfy (L.isOp txt)
-
-mixfix :: Text -> Prod r e L.Token L.Token
-mixfix txt = satisfy (L.isMixfix txt)
-
-mixfixblk :: Text -> Prod r e L.Token L.Token
-mixfixblk txt = satisfy (L.isMixfixBlk txt)
+mixfixblkId :: Prod r e Token Token
+mixfixblkId = satisfy isMixfixBlkId
 
 
-name :: Prod r e L.Token L.Token -> Prod r e L.Token N.Source
-name p = L.tokenToName <$> p
+var :: Text -> Prod r e Token Token
+var txt = satisfy (isVar txt)
+
+con :: Text -> Prod r e Token Token
+con txt = satisfy (isCon txt)
+
+op :: Text -> Prod r e Token Token
+op txt = satisfy (isOp txt)
+
+mixfix :: Text -> Prod r e Token Token
+mixfix txt = satisfy (isMixfix txt)
+
+mixfixblk :: Text -> Prod r e Token Token
+mixfixblk txt = satisfy (isMixfixBlk txt)
+
+
+name :: Prod r e Token Token -> Prod r e Token N.Source
+name p = tokenToName <$> p
 
 
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Literal Tokens
-tInteger :: Prod r e L.Token Integer
+tInteger :: Prod r e Token Integer
 tInteger = fmap unsafeExtract (satisfy p)
   where
-    p (L.Token (L.TokenInteger _) _) = True
+    p (Token (TokenInteger _) _) = True
     p  _                             = False
-    unsafeExtract (L.Token (L.TokenInteger v) _) = v
+    unsafeExtract (Token (TokenInteger v) _) = v
 
-tReal :: Prod r e L.Token Double
+tReal :: Prod r e Token Double
 tReal = fmap unsafeExtract (satisfy p)
   where
-    p (L.Token (L.TokenDouble _) _) = True
+    p (Token (TokenDouble _) _) = True
     p  _                             = False
-    unsafeExtract (L.Token (L.TokenDouble v) _) = v
+    unsafeExtract (Token (TokenDouble v) _) = v
 
-tChar :: Prod r e L.Token Char
+tChar :: Prod r e Token Char
 tChar = fmap unsafeExtract (satisfy p)
   where
-    p (L.Token (L.TokenChar _) _) = True
+    p (Token (TokenChar _) _) = True
     p  _                             = False
-    unsafeExtract (L.Token (L.TokenChar v) _) = v
+    unsafeExtract (Token (TokenChar v) _) = v
 
-tString :: Prod r e L.Token String
+tString :: Prod r e Token String
 tString = fmap unsafeExtract (satisfy p)
   where
-    p (L.Token (L.TokenString _) _) = True
+    p (Token (TokenString _) _) = True
     p  _                             = False
-    unsafeExtract (L.Token (L.TokenString v) _) = v
+    unsafeExtract (Token (TokenString v) _) = v
 
-tBool :: Prod r e L.Token Bool
+tBool :: Prod r e Token Bool
 tBool = fmap unsafeExtract (satisfy p)
   where
-    p (L.Token (L.TokenBool _) _) = True
+    p (Token (TokenBool _) _) = True
     p  _                             = False
-    unsafeExtract (L.Token (L.TokenBool v) _) = v
+    unsafeExtract (Token (TokenBool v) _) = v
 
 
 -- -----------------------------------------------------------------------------
 -- Layout Helpers
 
-eof :: Prod r e L.Token L.Token
-eof = match L.TokenEof
+eof :: Prod r e Token Token
+eof = match TokenEof
 
-block :: Prod r e L.Token a -> Prod r e L.Token [a]
+block :: Prod r e Token a -> Prod r e Token [a]
 block p = blk *> linefolds p <* blk'
 
-linefolds0 :: Prod r e L.Token a -> Prod r e L.Token [a]
+linefolds0 :: Prod r e Token a -> Prod r e Token [a]
 linefolds0 p = many $ linefold p
 
-linefolds :: Prod r e L.Token a -> Prod r e L.Token [a]
+linefolds :: Prod r e Token a -> Prod r e Token [a]
 linefolds p = some $ linefold p
 
-linefold :: Prod r e L.Token a -> Prod r e L.Token a
+linefold :: Prod r e Token a -> Prod r e Token a
 linefold p = ln *> p <* ln'
 
 
-blk :: Prod r e L.Token L.Token
-blk = match L.TokenBlk
+blk :: Prod r e Token Token
+blk = match TokenBlk
 
-blk' :: Prod r e L.Token L.Token
-blk' = match L.TokenBlk'
+blk' :: Prod r e Token Token
+blk' = match TokenBlk'
 
 
-ln :: Prod r e L.Token L.Token
-ln = match L.TokenLn
+ln :: Prod r e Token Token
+ln = match TokenLn
 
-ln' :: Prod r e L.Token L.Token
-ln' = match L.TokenLn'
+ln' :: Prod r e Token Token
+ln' = match TokenLn'
 
 
 -- -----------------------------------------------------------------------------

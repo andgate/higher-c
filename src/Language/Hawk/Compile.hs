@@ -11,16 +11,17 @@ import Control.Monad ( forM_ )
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Resource (MonadResource)
 import Data.Char (isUpper)
-import Data.Text.Lazy (Text)
+import Data.Text (Text)
 import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import Language.Hawk.Compile.Monad
+import Language.Hawk.Parse.Lexer (lexer)
 import System.FilePath ( (</>), (<.>), takeExtension, takeBaseName, splitDirectories )
 
 import qualified Control.Monad.Trans.State.Strict as St
 import qualified Data.Streaming.Filesystem        as F
-import qualified Data.Text.Lazy                   as T
+import qualified Data.Text                        as T
 import qualified Language.Hawk.Metadata           as Db
 import qualified Language.Hawk.Metadata.Schema    as Db
 import qualified Language.Hawk.Parse              as P
@@ -56,12 +57,27 @@ loadPackage pkg@(Package n d) = do
   -- Pipes
   runConduitRes
     $ sourceDirectoryDeep True (T.unpack d)
-    .| filterC isValidModule   -- Discards files that aren't module files
-    .| buffer 100           -- Accumulates some module filepaths
-    .| mapMC (\i -> liftIO $ cacheMods pid i)    -- Cache the modules on disk
-    .| unbuffer           -- unbuffer modules, for handling files one at a time
+    .| moduleLoader pid
+    .| fileFetcher
     .| iterMC (\o -> lift $ print o)
     .| sinkNull
+
+  where
+    moduleLoader pid =
+      filterC isValidModule   -- Discards files that aren't module files
+      .| buffer 100           -- Accumulates some module filepaths
+      .| mapMC (\i -> liftIO $ cacheMods pid i)    -- Cache the modules on disk
+      .| unbuffer           -- unbuffer modules, for handling files one at a time
+
+
+
+fileFetcher :: MonadResource m => Conduit (FilePath, Db.ModuleId) m (T.Text, Db.ModuleId)
+fileFetcher = awaitForever go
+  where
+    go (fp, mid) =
+      sourceFile fp .| decodeUtf8C .| mapC (\t -> (t, mid))
+    
+
 
 cacheMods :: Db.PackageId -> [FilePath] -> IO [(FilePath, Db.ModuleId)]
 cacheMods pid fps =

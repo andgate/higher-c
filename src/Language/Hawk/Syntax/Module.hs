@@ -2,13 +2,13 @@ module Language.Hawk.Syntax.Module where
 
 import Data.Data
 import Data.Maybe
-import Data.Text.Lazy (Text)
+import Data.Text (Text)
 import Data.Typeable
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
 
 import qualified Data.Map                               as Map
-import qualified Data.Text.Lazy                         as Text
+import qualified Data.Text                              as Text
 import qualified Language.Hawk.Syntax.Item              as I
 import qualified Language.Hawk.Syntax.Expression        as E
 import qualified Language.Hawk.Syntax.Type              as T

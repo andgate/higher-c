@@ -1,7 +1,7 @@
 module Language.Hawk.Metadata.Namespace where
 
 import Data.Graph.Inductive (Gr)
-import Data.Text.Lazy (Text)
+import Data.Text (Text)
 import Language.Hawk.Compile.Monad
 
 import qualified Data.Graph.Inductive.Graph         as Graph

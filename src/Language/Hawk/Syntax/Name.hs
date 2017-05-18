@@ -6,13 +6,13 @@ import Data.Binary
 import Data.Data
 import Data.List (intersperse)
 import Data.Maybe (isJust)
-import Data.Text.Lazy (Text)
+import Data.Text (Text)
 import Data.Tree
 import Data.Typeable
 
 import qualified Data.Aeson                       as Json
 import qualified Data.Maybe                       as Maybe
-import qualified Data.Text.Lazy                   as Text
+import qualified Data.Text                        as Text
 import qualified Language.Hawk.Report.Region      as R
 import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 

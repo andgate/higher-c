@@ -5,7 +5,7 @@ import Data.Data
 import Data.Typeable
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
-import qualified Data.Text.Lazy                   as Text
+import qualified Data.Text                        as Text
 import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 
 import qualified Language.Hawk.Parse.Lexer        as Lex

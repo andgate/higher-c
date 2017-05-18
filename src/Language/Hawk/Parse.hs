@@ -14,20 +14,20 @@
 {-# LANGUAGE RankNTypes #-}
 module Language.Hawk.Parse where
 
+import Conduit
 import Control.Monad.Trans.Class  (lift)
 import Control.Monad.Trans.Except (Except, throwE, runExceptT)
 import Data.Either.Unwrap (fromLeft, fromRight)
 import Data.Functor.Identity (runIdentity)
-import Data.Text.Lazy (Text)
+import Data.Text (Text)
 import Language.Hawk.Parse.Helpers (defTypeOps, defExprOps, ExprOpTable, TypeOpTable)
-import Conduit
+import Language.Hawk.Parse.Lexer.Token (Token)
 import Text.Earley (Report (..), Prod)
 import Text.Earley.Mixfix (Holey, Associativity)
 import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
 
-import qualified Data.Text.Lazy as Text
-import qualified Language.Hawk.Parse.Layout as LO
-import qualified Language.Hawk.Parse.Lexer as L
+import qualified Data.Text as Text
+import qualified Language.Hawk.Parse.Lexer.Layout as LO
 import qualified Language.Hawk.Parse.Grammar.TopLevel as G
 import qualified Language.Hawk.Parse.Grammar.ExprLevel as G
 import qualified Language.Hawk.Parse.Grammar.TypeLevel as G
@@ -40,6 +40,20 @@ import qualified Text.Earley.Mixfix as E
 -- -----------------------------------------------------------------------------
 -- Parser
 
+itemParser :: MonadIO m => Conduit [Token] m I.Source
+itemParser = awaitForever go
+  where
+    go  :: MonadIO m => [Token] -> Conduit [Token] m I.Source
+    go toks = do 
+      let (parses, r@(Report _ needed found)) =
+              E.fullParses (E.parser $ G.toplevel) toks
+
+      case parses of
+          []      -> error $ "No parses found.\n" ++ show r
+          p:[]    -> yield p
+          ps      -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)
+      
+{-
 -- Todo: make this a conduit that takes a lazy text stream and produces an item
 parseTopLevel :: Text -> IO [I.Source]
 parseTopLevel txt = do
@@ -55,10 +69,4 @@ parseTopLevel txt = do
       []      -> error $ "No parses found.\n" ++ show r
       p:[]    -> return p
       ps      -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)
-
-
--- -----------------------------------------------------------------------------
--- Test Parser
-parseTest :: Text -> IO ()
-parseTest txt =
-  parseTopLevel txt >>= print . pretty
+ -}

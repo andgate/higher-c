@@ -6,7 +6,6 @@ import SpecHelper
 
 import qualified Data.ByteString as BS
 import qualified Data.Map as Map
-import qualified Data.Text.Lazy.IO as Text
 import qualified Data.Yaml as YAML
 import qualified Data.Yaml.Pretty as YAML
 import qualified Language.Hawk.Compile as C

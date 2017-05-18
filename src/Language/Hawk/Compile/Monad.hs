@@ -8,12 +8,11 @@ import Control.Monad.Except
 import Data.Binary
 import Data.Data
 import Data.Monoid
-import Data.Text.Lazy (Text)
+import Data.Text (Text)
 import Data.Typeable
 import Database.Persist.TH
 
-import qualified Data.Text.Lazy as L
-import qualified Language.Hawk.Syntax.Module as M
+import qualified Data.Text as Text
 
 
 
