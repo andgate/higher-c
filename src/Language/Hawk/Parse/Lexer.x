@@ -15,6 +15,7 @@ import Data.Char (digitToInt, ord)
 import Data.Text (Text)
 import Data.Word (Word8)
 import Language.Hawk.Metadata.Schema (ModuleId)
+import Language.Hawk.Parse.Lexer.Layout (layout)
 import Language.Hawk.Parse.Lexer.Catalog
 import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Report.Region (Position (..))

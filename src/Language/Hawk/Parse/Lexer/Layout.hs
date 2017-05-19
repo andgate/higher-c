@@ -1,12 +1,12 @@
 module Language.Hawk.Parse.Lexer.Layout where
 
 import Conduit
-import Control.Monad (forever, mapM, when, unless)
-import Control.Monad.Trans.State.Lazy (State, evalStateT, get, put, modify)
+import Control.Monad (Monad, when, unless)
+import Control.Monad.Trans.State.Strict (StateT, get, put, modify)
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import Language.Hawk.Parse.Lexer.Token
-import Language.Hawk.Report.Region (Region(..), Position(..))
+import Language.Hawk.Report.Region (Position(..))
 import Safe (headDef)
 
 import qualified Control.Monad.Trans.State.Lazy as State
@@ -21,7 +21,7 @@ data Container =
 defLay :: Container
 defLay = Block 1
 
-type Layout = State [Container]
+type Layout = StateT [Container]
 
 defContainer :: [Container]
 defContainer = []
