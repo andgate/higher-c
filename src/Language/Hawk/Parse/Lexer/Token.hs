@@ -4,7 +4,7 @@ import Data.Binary hiding (encode)
 import Data.Text (Text)
 import Data.Data
 import Data.Typeable
-import Language.Hawk.Report.Region (Position (..))
+import Language.Hawk.Report.Region (Region(..), Position (..))
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
 
@@ -12,10 +12,10 @@ import qualified Data.Text                        as Text
 import qualified Language.Hawk.Syntax.Name        as N
 import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 
--- | A `Token` augmented with `Position` information
+-- | A `Token` augmented with `Region` information
 data Token = Token
     { token    :: TokenClass
-    , position :: Maybe Position
+    , region :: Maybe Region
     } deriving (Eq, Show, Ord, Data, Typeable)
     
 
@@ -99,8 +99,8 @@ tokenClassToText tc =
     
     
 tokenToName :: Token -> N.Source
-tokenToName (Token tc p) =
-  N.Name (tokenClassToText tc) p
+tokenToName (Token tc r) =
+  N.Name (tokenClassToText tc) r
 
 
 isTok :: TokenClass -> Token -> Bool

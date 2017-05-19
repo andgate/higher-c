@@ -34,7 +34,7 @@ type PathTree = Tree Name
 type Paths = [Path]
 type Path = [Name]
 
-type Home = Maybe R.Position
+type Home = Maybe R.Region
 
 data Name
   = Name RName Home
@@ -74,9 +74,9 @@ exLocal :: Name -> Text
 exLocal (Name t _) = t
 
 
-local :: R.Position -> Text -> Name
-local p n =
-  Name n (Just p)
+local :: R.Region -> Text -> Name
+local r n =
+  Name n (Just r)
   
   
 builtin :: Text -> Name
@@ -120,8 +120,8 @@ instance ToString Path where
     concat . intersperse "." . map toString
 
 instance ToString Name where
-  toString (Name n (Just (R.P l c))) =
-    Text.unpack n ++ " @ " ++ show l ++ ":" ++ show c
+  toString (Name n h) =
+    Text.unpack n ++ " @ " ++ toString h
   toString (Name n Nothing) =
     Text.unpack n
     
@@ -131,8 +131,8 @@ instance ToString Home where
         Nothing ->
           "Builtin"
           
-        Just (R.P r c) ->
-          show r ++ ":" ++ show c
+        Just (R.R (R.P r1 c1) (R.P r2 c2)) ->
+          show r1 ++ ":" ++ show c1 ++ "-" ++ show r2 ++ ":" ++ show c2
 
 
 instance PP.Pretty Name where

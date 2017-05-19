@@ -7,11 +7,12 @@ import Control.Monad.State.Strict (StateT, get, put, modify)
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import Language.Hawk.Parse.Lexer.Token
-import Language.Hawk.Report.Region (Position(..))
+import Language.Hawk.Report.Region (Region, Position)
 import Safe (headDef)
 
-import qualified Control.Monad.State.Strict as State
-import qualified Data.Text                      as Text
+import qualified Control.Monad.State.Strict   as State
+import qualified Language.Hawk.Report.Region  as R
+import qualified Data.Text                    as Text
 
 -- -----------------------------------------------------------------------------
 -- Layout Types
@@ -20,7 +21,7 @@ data Container =
   deriving (Eq, Ord, Show)
 
 defLay :: Container
-defLay = Block 1
+defLay = Block 0
 
 type Layout a = forall m. Monad m => StateT [Container] m a
 
@@ -34,15 +35,15 @@ defLayout = []
 -- Layout Driver  
 layout :: Monad m => Conduit Token m Token
 layout = evalStateC defLayout (awaitForever go)
-  where go t@(Token c (Just p)) = do
-            preUpdate c p
+  where go t@(Token c (Just r)) = do
+            preUpdate c r
             yield t
             postUpdate c
 
         go t = yield t
   
-preUpdate :: TokenClass -> Position -> LayoutConduit
-preUpdate c p = do
+preUpdate :: TokenClass -> Region -> LayoutConduit
+preUpdate c (R.R p _) = do
   -- Close invalid layouts on the stack
   -- until the top of the stack is a
   -- valid or negative layout.
@@ -74,10 +75,11 @@ postUpdate c =
           Just t -> recieveTok t
           Nothing -> return Nothing
 
-    recieveTok t@(Token c mp) =
-      case mp of
-          Just p -> preUpdate c p >> return (Just (c,p))
-          Nothing -> yield t >> awaitDocTok
+    recieveTok t@(Token c (Just p)) =
+        preUpdate c p >> return (Just (c,p))
+    
+    recieveTok t@(Token c Nothing) =
+        yield t >> awaitDocTok
     
     emitBlk = do
       mayDocTok <- awaitDocTok
@@ -85,13 +87,13 @@ postUpdate c =
           Just docTok -> handleDocTok docTok
           Nothing -> return ()
 
-    handleDocTok (c, p@(P ln i)) = do
+    handleDocTok (c, r@(R.R (R.P ln i) _)) = do
       l <- lift $ peekLay
       if isValid i l
           then do
             open (Block i)
             open (LineFold i)
-            yield $ Token c (Just p)
+            yield $ Token c (Just r)
           else
             error $ "\nExpected Indentation: " ++ show l ++
                     "\nActual Indentation: " ++ show i ++
@@ -102,7 +104,7 @@ postUpdate c =
 -- Driver Helpers
   
 closeInvalid :: Position -> LayoutConduit
-closeInvalid p@(P _ i) = do
+closeInvalid p@(R.P _ i) = do
   l <- lift $ peekLay
   unless (isValid i l)
          (close >> closeInvalid p)

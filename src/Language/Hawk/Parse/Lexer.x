@@ -18,7 +18,7 @@ import Language.Hawk.Metadata.Schema (ModuleId)
 import Language.Hawk.Parse.Lexer.Layout (layout)
 import Language.Hawk.Parse.Lexer.Catalog
 import Language.Hawk.Parse.Lexer.Token
-import Language.Hawk.Report.Region (Position (..))
+import Language.Hawk.Report.Region (Region(..), Position (..))
 import System.FilePath (FilePath)
 
 import qualified Control.Monad.Trans.State.Strict as State
@@ -146,14 +146,14 @@ hawk :-
 
 
 data LexState =
-  LexState  { curPos :: Position
+  LexState  { curReg :: Region
             , startcode :: Int
             , commentDepth :: Int
             , stringBuf :: String
             } deriving Show
             
 defState :: LexState
-defState = LexState (P 1 1) 0 0 ""
+defState = LexState (R (P 0 0) (P 0 0)) 0 0 ""
 
 type Lex a = forall m. Monad m => StateT LexState m a
 
@@ -164,18 +164,18 @@ resetLex :: Lex ()
 resetLex =
   State.put defState
 
-
-growColumn :: Int -> Lex ()
-growColumn len = do
+moveRegion :: Int -> Lex ()
+moveRegion len = do
   s <- State.get
-  let (P l c) = curPos s
-  State.put s{curPos = (P l (c+len))}
+  let (R _ p1@(P l c)) = curReg s
+      p2 = P l (c+len)
+  State.put s{curReg = (R p1 p2)}
   
 startNextLine :: Lex ()
 startNextLine = do
   s <- State.get
-  let (P l _) = curPos s
-  State.put s{curPos = (P (l+1) 1)}
+  let (R _ (P l _)) = curReg s
+  State.put s{curReg = (R (P (l+1) 0) (P (l+1) 0))}
 
 
 rsvp :: LexAction
@@ -306,7 +306,7 @@ tokenize =
     tag :: TokenClass -> Lex Token
     tag tokClass = do
       s <- State.get
-      return $ Token tokClass (Just $ curPos s)
+      return $ Token tokClass (Just $ curReg s)
 
     go input = do
       s <- lift State.get
@@ -317,10 +317,10 @@ tokenize =
         AlexError (AlexInput p cs text) ->
             error $ "Lexical Error: Cannot produce token.\n\tPrevious Char: \'" ++ [p] ++ "\'\n\tCurrent Chars: " ++ show cs ++ "\n\tRest of file: " ++ Text.unpack text
         AlexSkip  input' len           -> do
-            lift $ growColumn len
+            lift $ moveRegion len
             go input'
         AlexToken input' len act       -> do
-            lift $ growColumn len
+            lift $ moveRegion len
             act (Text.take (fromIntegral len) (currInput input))
             go input'
 
