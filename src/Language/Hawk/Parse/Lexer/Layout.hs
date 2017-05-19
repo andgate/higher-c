@@ -206,6 +206,6 @@ closeTok l =
   
 isValid :: Int -> Container -> Bool
 isValid i' (Block i) = i <= i'
--- Line fold should be layCol < curCol || (curLine == layLine && layCol <= curCol)
--- but this will do
+-- LineFold should be layCol < curCol || (curLine == layLine && layCol <= curCol)
+-- but this seems to work
 isValid i' (LineFold i) = i < i'
