@@ -43,7 +43,7 @@ import qualified Text.Earley.Mixfix as E
 itemParser :: MonadIO m => Conduit [Token] m I.Source
 itemParser = awaitForever go
   where
-    go  :: MonadIO m => [Token] -> Conduit [Token] m I.Source
+    go :: MonadIO m => [Token] -> Conduit [Token] m I.Source
     go toks = do 
       let (parses, r@(Report _ needed found)) =
               E.fullParses (E.parser $ G.toplevel) toks

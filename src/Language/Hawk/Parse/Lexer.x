@@ -1,23 +1,28 @@
 {
-{-# LANGUAGE OverloadedStrings, RankNTypes #-}
--- Much of this source code was lifted from the Morte library.
+{-# LANGUAGE   OverloadedStrings
+             , RankNTypes
+             , NoMonomorphismRestriction  -- everyday we stray further from god's light
+  #-}
+
 module Language.Hawk.Parse.Lexer where
 
 import Conduit
-import Control.Monad.Trans.State.Lazy (State)
+import Control.Monad
+import Control.Monad.State.Class
+import Control.Monad.Trans.State.Strict (StateT)
 import Data.Bits (shiftR, (.&.))
 import Data.Char (digitToInt, ord)
 import Data.Text (Text)
 import Data.Word (Word8)
 import Language.Hawk.Metadata.Schema (ModuleId)
 import Language.Hawk.Parse.Lexer.Catalog
-import Language.Hawk.Parse.Lexer.Layout
 import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Report.Region (Position (..))
 import System.FilePath (FilePath)
 
-import qualified Control.Monad.Trans.State.Lazy   as State
+import qualified Control.Monad.Trans.State.Strict as State
 import qualified Data.Text                        as Text
+import qualified Language.Hawk.Parse.Lexer.Layout as LO
 import qualified System.FilePath                  as Filesystem
 
 }
@@ -148,10 +153,16 @@ data LexState =
             
 defState :: LexState
 defState = LexState (P 0 0) 0 0 ""
-            
-type Lex = State LexState
-  
-type LexAction = Text -> Source Lex TokenClass
+
+type Lex a = forall m. Monad m => StateT LexState m a
+
+type LexAction = forall m. Monad m => Text -> Producer (StateT LexState m) TokenClass
+
+
+resetLex :: Lex ()
+resetLex =
+  State.put defState
+
 
 growColumn :: Int -> Lex ()
 growColumn len = do
@@ -221,7 +232,7 @@ beginComment _ = lift $ do
                commentDepth = (commentDepth s)+1}
          
          
-endComment :: LexAction         
+endComment :: LexAction      
 endComment _ = lift $ do
   s <- State.get
   let cd = commentDepth s
@@ -284,9 +295,13 @@ alexInputPrevChar = prevChar
     `lexModl` keeps track of position and returns the remainder of the input if
     lexing fails.
 -}
-tokenize :: Text -> Source Lex Token
-tokenize text = (go (AlexInput '\n' [] text)) .| mapMC tag
+tokenize :: Monad m => Conduit Text m Token
+tokenize =
+  evalStateC defState $
+    awaitForever start .| mapMC tag
   where
+    start text = go (AlexInput '\n' [] text)
+
     tag :: TokenClass -> Lex Token
     tag tokClass = do
       s <- State.get
@@ -295,8 +310,9 @@ tokenize text = (go (AlexInput '\n' [] text)) .| mapMC tag
     go input = do
       s <- lift State.get
       case alexScan input (startcode s) of
-        AlexEOF                        ->
+        AlexEOF                        -> do
             yield TokenEof
+            lift $ resetLex
         AlexError (AlexInput p cs text) ->
             error $ "Lexical Error: Cannot produce token.\n\tPrevious Char: \'" ++ [p] ++ "\'\n\tCurrent Chars: " ++ show cs ++ "\n\tRest of file: " ++ Text.unpack text
         AlexSkip  input' len           -> do
@@ -307,7 +323,12 @@ tokenize text = (go (AlexInput '\n' [] text)) .| mapMC tag
             act (Text.take (fromIntegral len) (currInput input))
             go input'
 
-lexer :: MonadIO m => Conduit (Text, ModuleId) m (Token, ModuleId)
-lexer = undefined
+lexer :: Monad m => Conduit (Text, ModuleId) m (Token, ModuleId)
+lexer = awaitForever go
+  where
+    go (txt, mid) =
+      yield txt .| tokenize .| (mapC (\tok -> (tok, mid)))
+
+
 
 }

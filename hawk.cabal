@@ -37,6 +37,7 @@ library
                         , fgl
                         , filepath
                         , lens
+                        , mmorph
                         , monad-control
                         , monad-logger
                         , mtl

@@ -16,7 +16,7 @@ import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import Language.Hawk.Compile.Monad
-import Language.Hawk.Parse.Lexer (lexer)
+import Language.Hawk.Parse.Lexer (lexer, tokenize)
 import System.FilePath ( (</>), (<.>), takeExtension, takeBaseName, splitDirectories )
 
 import qualified Control.Monad.Trans.State.Strict as St
@@ -59,6 +59,7 @@ loadPackage pkg@(Package n d) = do
     $ sourceDirectoryDeep True (T.unpack d)
     .| moduleLoader pid
     .| fileFetcher
+    .| lexer
     .| iterMC (\o -> lift $ print o)
     .| sinkNull
 

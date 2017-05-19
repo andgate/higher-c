@@ -14,22 +14,22 @@ import qualified Data.Text                      as Text
 
 -- -----------------------------------------------------------------------------
 -- Layout Types
-data Layout = 
+data Container = 
   Block Int | LineFold Int
   deriving (Eq, Ord, Show)
 
-defLay :: Layout
+defLay :: Container
 defLay = Block 1
 
-type LayoutState = State [Layout]
+type Layout = State [Container]
 
-defState :: [Layout]
-defState = []
+defContainer :: [Container]
+defContainer = []
 
 
 -- -----------------------------------------------------------------------------
 -- Conduit-based Layout Driver  
-layout :: Conduit Token LayoutState Token
+layout :: Conduit Token Layout Token
 layout = do
     mayT <- await
     case mayT of
@@ -45,7 +45,7 @@ layout = do
       Nothing ->
         return ()
   
-preUpdate :: TokenClass -> Position -> Conduit Token LayoutState Token
+preUpdate :: TokenClass -> Position -> Conduit Token Layout Token
 preUpdate c p = do
   -- Close invalid layouts on the stack
   -- until the top of the stack is a
@@ -60,7 +60,7 @@ preUpdate c p = do
   handleEof c p
   
   
-postUpdate :: TokenClass -> Conduit Token LayoutState Token
+postUpdate :: TokenClass -> Conduit Token Layout Token
 postUpdate c =
   when (hasBlkTrig c && isNotBlkClass c) emitBlk
       
@@ -105,19 +105,19 @@ postUpdate c =
 -- -----------------------------------------------------------------------------
 -- Driver Helpers
   
-closeInvalid :: Position -> Conduit Token LayoutState Token
+closeInvalid :: Position -> Conduit Token Layout Token
 closeInvalid p@(P _ i) = do
   l <- lift $ peekLay
   unless (isValid i l)
          (close >> closeInvalid p)
          
-closeAll :: Position -> Conduit Token LayoutState Token
+closeAll :: Position -> Conduit Token Layout Token
 closeAll p = do
   l <- lift $ peekLay
   unless (l == defLay)
          (close >> closeAll p)
                     
-coverBlock :: Position -> Conduit Token LayoutState Token
+coverBlock :: Position -> Conduit Token Layout Token
 coverBlock p = do
   l <- lift $ peekLay
   case l of
@@ -125,18 +125,18 @@ coverBlock p = do
       _ -> return ()
       
       
-handleEof :: TokenClass -> Position -> Conduit Token LayoutState Token
+handleEof :: TokenClass -> Position -> Conduit Token Layout Token
 handleEof c p =
   when (c == TokenEof)
        (closeAll p)
   
       
-open :: Layout -> Conduit Token LayoutState Token
+open :: Container -> Conduit Token Layout Token
 open l = do
   lift $ pushLay l
   yield $ openTok l
 
-close :: Conduit Token LayoutState Token
+close :: Conduit Token Layout Token
 close = do
   l <- lift $ peekLay
   yield $ closeTok l
@@ -144,28 +144,28 @@ close = do
   return ()
   
   
-pushLayout :: Layout -> Conduit Token LayoutState Token
+pushLayout :: Container -> Conduit Token Layout Token
 pushLayout = lift . pushLay
 
 {-
-popLayout :: Pipe Token Token LayoutState Layout
+popLayout :: Pipe Token Token Layout Container
 popLayout = lift $ popLay
 
-peekLayout :: Pipe Token Token LayoutState Layout
+peekLayout :: Pipe Token Token Layout Container
 peekLayout = lift $ peekLay
 -}
 
 -- -----------------------------------------------------------------------------
--- LayoutState Helpers
+-- Layout Helpers
 
-getIndent :: LayoutState Int
+getIndent :: Layout Int
 getIndent = do
   lo <- headDef defLay <$> State.get
   case lo of
     Block i -> return i
     LineFold i -> return i
     
-setIndent :: Int -> LayoutState ()
+setIndent :: Int -> Layout ()
 setIndent i = do
   l <- popLay
   let l' = case l of
@@ -174,18 +174,18 @@ setIndent i = do
   pushLay l'
 
 
-pushLay :: Layout -> LayoutState ()
+pushLay :: Container -> Layout ()
 pushLay l =
   modify (l:)
 
-popLay :: LayoutState Layout
+popLay :: Layout Container
 popLay = do
   ls <- get
   case ls of
     [] -> return defLay
     l:ls' -> put ls' >> return l
 
-peekLay :: LayoutState Layout
+peekLay :: Layout Container
 peekLay = do
   ls <- get
   case ls of
@@ -193,20 +193,20 @@ peekLay = do
     l:_ -> return l
 
     
-openTok :: Layout -> Token
+openTok :: Container -> Token
 openTok l =
   case l of
       Block _ -> Token TokenBlk Nothing
       LineFold _ -> Token TokenLn Nothing   
     
-closeTok :: Layout -> Token
+closeTok :: Container -> Token
 closeTok l =
   case l of
       Block _ -> Token TokenBlk' Nothing
       LineFold _ -> Token TokenLn' Nothing
   
   
-isValid :: Int -> Layout -> Bool
+isValid :: Int -> Container -> Bool
 isValid i' (Block i) = i <= i'
 -- Line fold should be layCol < curCol || (curLine == layLine && layCol <= curCol)
 -- but this will do
