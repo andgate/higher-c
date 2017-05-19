@@ -59,8 +59,10 @@ loadPackage pkg@(Package n d) = do
     $ sourceDirectoryDeep True (T.unpack d)
     .| moduleLoader pid
     .| fileFetcher
+    .| iterMC (\o -> lift $ print o)
     .| lexer
     .| iterMC (\o -> lift $ print o)
+    .| takeC 200
     .| sinkNull
 
   where

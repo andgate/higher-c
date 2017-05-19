@@ -153,7 +153,7 @@ data LexState =
             } deriving Show
             
 defState :: LexState
-defState = LexState (P 0 0) 0 0 ""
+defState = LexState (P 1 1) 0 0 ""
 
 type Lex a = forall m. Monad m => StateT LexState m a
 
@@ -175,7 +175,7 @@ startNextLine :: Lex ()
 startNextLine = do
   s <- State.get
   let (P l _) = curPos s
-  State.put s{curPos = (P (l+1) 0)}
+  State.put s{curPos = (P (l+1) 1)}
 
 
 rsvp :: LexAction
@@ -313,7 +313,7 @@ tokenize =
       case alexScan input (startcode s) of
         AlexEOF                        -> do
             yield TokenEof
-            lift $ resetLex
+            return ()
         AlexError (AlexInput p cs text) ->
             error $ "Lexical Error: Cannot produce token.\n\tPrevious Char: \'" ++ [p] ++ "\'\n\tCurrent Chars: " ++ show cs ++ "\n\tRest of file: " ++ Text.unpack text
         AlexSkip  input' len           -> do
@@ -328,7 +328,7 @@ lexer :: Monad m => Conduit (Text, ModuleId) m (Token, ModuleId)
 lexer = awaitForever go
   where
     go (txt, mid) =
-      yield txt .| tokenize .| (mapC (\tok -> (tok, mid)))
+      yield txt .| tokenize .| layout .| (mapC (\tok -> (tok, mid)))
 
 
 

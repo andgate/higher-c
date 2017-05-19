@@ -1,15 +1,16 @@
+{-# LANGUAGE RankNTypes, FlexibleContexts #-}
 module Language.Hawk.Parse.Lexer.Layout where
 
 import Conduit
 import Control.Monad (Monad, when, unless)
-import Control.Monad.Trans.State.Strict (StateT, get, put, modify)
+import Control.Monad.State.Strict (StateT, get, put, modify)
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Report.Region (Position(..))
 import Safe (headDef)
 
-import qualified Control.Monad.Trans.State.Lazy as State
+import qualified Control.Monad.State.Strict as State
 import qualified Data.Text                      as Text
 
 -- -----------------------------------------------------------------------------
@@ -21,31 +22,26 @@ data Container =
 defLay :: Container
 defLay = Block 1
 
-type Layout = StateT [Container]
+type Layout a = forall m. Monad m => StateT [Container] m a
 
-defContainer :: [Container]
-defContainer = []
+type LayoutConduit = forall m. Monad m => Conduit Token (StateT [Container] m) Token
+
+defLayout :: [Container]
+defLayout = []
 
 
 -- -----------------------------------------------------------------------------
--- Conduit-based Layout Driver  
-layout :: Conduit Token Layout Token
-layout = do
-    mayT <- await
-    case mayT of
-      (Just t@(Token c (Just p))) ->
-        do
-          preUpdate c p
-          yield t
-          postUpdate c
-      
-      Just t ->
-        yield t
-      
-      Nothing ->
-        return ()
+-- Layout Driver  
+layout :: Monad m => Conduit Token m Token
+layout = evalStateC defLayout (awaitForever go)
+  where go t@(Token c (Just p)) = do
+            preUpdate c p
+            yield t
+            postUpdate c
+
+        go t = yield t
   
-preUpdate :: TokenClass -> Position -> Conduit Token Layout Token
+preUpdate :: TokenClass -> Position -> LayoutConduit
 preUpdate c p = do
   -- Close invalid layouts on the stack
   -- until the top of the stack is a
@@ -56,11 +52,11 @@ preUpdate c p = do
   -- we may be left with a block layout.
   -- Block layouts must sit under a linefold.
   coverBlock p
-  
+
   handleEof c p
   
   
-postUpdate :: TokenClass -> Conduit Token Layout Token
+postUpdate :: TokenClass -> LayoutConduit
 postUpdate c =
   when (hasBlkTrig c && isNotBlkClass c) emitBlk
       
@@ -105,19 +101,19 @@ postUpdate c =
 -- -----------------------------------------------------------------------------
 -- Driver Helpers
   
-closeInvalid :: Position -> Conduit Token Layout Token
+closeInvalid :: Position -> LayoutConduit
 closeInvalid p@(P _ i) = do
   l <- lift $ peekLay
   unless (isValid i l)
          (close >> closeInvalid p)
          
-closeAll :: Position -> Conduit Token Layout Token
+closeAll :: Position -> LayoutConduit
 closeAll p = do
   l <- lift $ peekLay
   unless (l == defLay)
          (close >> closeAll p)
                     
-coverBlock :: Position -> Conduit Token Layout Token
+coverBlock :: Position -> LayoutConduit
 coverBlock p = do
   l <- lift $ peekLay
   case l of
@@ -125,18 +121,18 @@ coverBlock p = do
       _ -> return ()
       
       
-handleEof :: TokenClass -> Position -> Conduit Token Layout Token
+handleEof :: TokenClass -> Position -> LayoutConduit
 handleEof c p =
   when (c == TokenEof)
        (closeAll p)
   
       
-open :: Container -> Conduit Token Layout Token
+open :: Container -> LayoutConduit
 open l = do
   lift $ pushLay l
   yield $ openTok l
 
-close :: Conduit Token Layout Token
+close :: LayoutConduit
 close = do
   l <- lift $ peekLay
   yield $ closeTok l
@@ -144,7 +140,7 @@ close = do
   return ()
   
   
-pushLayout :: Container -> Conduit Token Layout Token
+pushLayout :: Container -> LayoutConduit
 pushLayout = lift . pushLay
 
 {-

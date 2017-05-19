@@ -1,11 +1,7 @@
 // -----------------------------------------------------
 // Core.Control.Applicative
 
--> Core.Control.Functor
-
-<- Applicative(..)
-   liftA
-   liftA2
+> Core.Control.Functor
 
 
 Functor f => Applicative f :~
@@ -33,4 +29,3 @@ liftA2
   f a b
   ? Applicative f => (a -> b -> c) -> f a -> f b -> f c
   = map f a <*> b
-
