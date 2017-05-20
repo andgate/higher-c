@@ -88,9 +88,9 @@ hawk :-
 
 <0> {
   -- Skip whitespace everywhere
-  $whiteNoNewline                 ;
-  \n                              { \ _ -> lift startNextLine}
-  "//".*                          ;
+  $whiteNoNewline                 { skipBreak }
+  \n                              { \ _ _ -> lift nextLineBreak}
+  "//".*                          { skipBreak }
   
   \"                              { beginString }
   \' .* \'                        { handleChar }
@@ -121,25 +121,26 @@ hawk :-
   "of"                            { rsvp }
   
   
-  @varid                          { \text -> yield (TokenVarId text) }
-  @conid                          { \text -> yield (TokenConId text) }
-  @opid                           { \text -> yield (TokenOpId text) }
-  @mixfix                         { \text -> yield (TokenMixfixId text) }
-  @mixfixblk                      { \text -> yield (TokenMixfixBlkId text) }
+  @varid                          { \text -> yieldTokAt (TokenVarId text) }
+  @conid                          { \text -> yieldTokAt (TokenConId text) }
+  @opid                           { \text -> yieldTokAt (TokenOpId text) }
+  @mixfix                         { \text -> yieldTokAt (TokenMixfixId text) }
+  @mixfixblk                      { \text -> yieldTokAt (TokenMixfixBlkId text) }
 
-  $digit+                         { \text -> yield (TokenInteger $ toInt text) }
+  $digit+                         { \text -> yieldTokAt (TokenInteger $ toInt text) }
 }
 
 <stringSC> {
   \\[nt\"]                        { escapeString }
   \"                              { endString }
-  .                               { appendString }
+  [.]                             { appendString }
 }
 
 <commentSC> {
   "/*"                            { beginComment }
   "*/"                            { endComment }
-  [.\n]                           ;
+  \n                              { \ _ _ -> lift nextLineContinue}
+  [.]                             { skipContinue }
 }
 
 {
@@ -156,9 +157,12 @@ defState :: LexState
 defState = LexState (R (P 0 0) (P 0 0)) 0 0 ""
 
 type Lex a = forall m. Monad m => StateT LexState m a
+type LexAction = forall m. Monad m => Text -> Int -> Producer (StateT LexState m) Token
 
-type LexAction = forall m. Monad m => Text -> Producer (StateT LexState m) TokenClass
-
+tag :: TokenClass -> Lex Token
+tag tokClass = do
+  s <- State.get
+  return $ Token tokClass (Just $ curReg s)
 
 resetLex :: Lex ()
 resetLex =
@@ -170,71 +174,112 @@ moveRegion len = do
   let (R _ p1@(P l c)) = curReg s
       p2 = P l (c+len)
   State.put s{curReg = (R p1 p2)}
+
+growRegion :: Int -> Lex ()
+growRegion len = do
+  s <- State.get
+  let (R p1 (P l c)) = curReg s
+      p2 = P l (c+len)
+  State.put s{curReg = (R p1 p2)}
   
-startNextLine :: Lex ()
-startNextLine = do
+nextLineBreak :: Lex ()
+nextLineBreak = do
   s <- State.get
   let (R _ (P l _)) = curReg s
   State.put s{curReg = (R (P (l+1) 0) (P (l+1) 0))}
 
+nextLineContinue :: Lex ()
+nextLineContinue = do
+  s <- State.get
+  let (R p1 (P l _)) = curReg s
+  State.put s{curReg = (R p1 (P (l+1) 0))}
+
+yieldTokAt :: forall m. Monad m => TokenClass -> Int -> Producer (StateT LexState m) Token
+yieldTokAt c len = do
+  lift $ moveRegion len
+  yieldTok c
+
+yieldTok :: forall m. Monad m => TokenClass -> Producer (StateT LexState m) Token
+yieldTok c = do
+  t <- lift $ tag c
+  yield t
 
 rsvp :: LexAction
-rsvp text = yield $ TokenRsvp text
+rsvp text =
+  yieldTokAt (TokenRsvp text)
 
+
+skipBreak :: LexAction
+skipBreak text len = do
+  lift $ moveRegion len
+
+skipContinue :: LexAction
+skipContinue text len = do
+  lift $ growRegion len
 
 beginString :: LexAction
-beginString _ = lift $ do
+beginString text len = lift $ do
+  moveRegion len
   s <- State.get
   State.put s{startcode = stringSC}
   
 endString :: LexAction
-endString _ = do
-  s <- lift State.get
-  let buf = stringBuf s
-  lift $ State.put s{startcode = 0, stringBuf = ""}
-  yield (TokenString $ reverse buf)
+endString text len = do
+  buf <- lift $ do
+    growRegion len
+    s <- State.get
+    let buf = stringBuf s
+    State.put s{ startcode = 0
+              , stringBuf = ""
+              }
+    return buf
+  yieldTok (TokenString $ reverse buf)
   
 appendString :: LexAction
-appendString text = do
-  s <- lift State.get
+appendString text len = lift $ do
+  growRegion len
+  s <- State.get
   let c = Text.head text
-  lift $ State.put s{stringBuf = c:(stringBuf s)}
+      buf = stringBuf s
+  State.put s{stringBuf = c:(stringBuf s)}
 
 escapeString :: LexAction
-escapeString text = do
+escapeString text len = lift $ do
   let c = Text.head $ Text.tail text
       unesc =
         case c of
           'n' -> '\n'
           't' -> '\t'
           '"' -> '"'
-  lift $ do
-    s <- State.get
-    State.put s{stringBuf = unesc:(stringBuf s)}
+  growRegion len
+  s <- State.get
+  State.put s{stringBuf = unesc:(stringBuf s)}
     
 
 handleChar :: LexAction
-handleChar text = do
+handleChar text len = do
   let trim = Text.unpack . Text.tail . Text.init
-      yeildChar = yield . TokenChar
+      yieldCharAt ch = yieldTokAt (TokenChar ch) len
   case (trim text) of
-      ([])   -> yeildChar '\0'
-      (c:_)  -> yeildChar '\n'
-      "\t"   -> yeildChar '\t'
-      "\r"   -> yeildChar '\r'
-      "\'"   -> yeildChar '\''
+      ([])   -> yieldCharAt '\0'
+      (c:_)  -> yieldCharAt '\n'
+      "\t"   -> yieldCharAt '\t'
+      "\r"   -> yieldCharAt '\r'
+      "\'"   -> yieldCharAt '\''
       _      -> return $ error $ "[Lexical Error] Invalid Character Literal: " ++ Text.unpack text
 
 
 beginComment :: LexAction
-beginComment _ = lift $ do
+beginComment text len = lift $ do
+  moveRegion len
   s <- State.get
   State.put s {startcode = commentSC,
                commentDepth = (commentDepth s)+1}
          
          
 endComment :: LexAction      
-endComment _ = lift $ do
+endComment _ len = lift $ do
+  growRegion len
   s <- State.get
   let cd = commentDepth s
   let sc' = if cd == 1 then 0 else commentSC
@@ -299,29 +344,22 @@ alexInputPrevChar = prevChar
 tokenize :: Monad m => Conduit Text m Token
 tokenize =
   evalStateC defState $
-    awaitForever start .| mapMC tag
+    awaitForever start
   where
     start text = go (AlexInput '\n' [] text)
-
-    tag :: TokenClass -> Lex Token
-    tag tokClass = do
-      s <- State.get
-      return $ Token tokClass (Just $ curReg s)
 
     go input = do
       s <- lift State.get
       case alexScan input (startcode s) of
         AlexEOF                        -> do
-            yield TokenEof
+            yieldTok TokenEof
             return ()
         AlexError (AlexInput p cs text) ->
             error $ "Lexical Error: Cannot produce token.\n\tPrevious Char: \'" ++ [p] ++ "\'\n\tCurrent Chars: " ++ show cs ++ "\n\tRest of file: " ++ Text.unpack text
         AlexSkip  input' len           -> do
-            lift $ moveRegion len
-            go input'
+            error $ "Lexical Error: default Alex skip should never be invoked."
         AlexToken input' len act       -> do
-            lift $ moveRegion len
-            act (Text.take (fromIntegral len) (currInput input))
+            act (Text.take (fromIntegral len) (currInput input)) (fromIntegral len)
             go input'
 
 lexer :: Monad m => Conduit (Text, ModuleId) m (Token, ModuleId)

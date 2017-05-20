@@ -64,6 +64,8 @@ postUpdate c =
   where
     hasBlkTrig = isJust . Text.find (==':') . tokenClassToText
     isNotBlkClass (TokenMixfixBlkId _) = False
+    isNotBlkClass (TokenString _) = False
+    isNotBlkClass (TokenChar _) = False
     isNotBlkClass _ = True
     
     -- Wait til a document (non-builtin) token arrives

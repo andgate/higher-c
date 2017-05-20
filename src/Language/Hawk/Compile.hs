@@ -58,11 +58,11 @@ loadPackage pkg@(Package n d) = do
   runConduitRes
     $ sourceDirectoryDeep True (T.unpack d)
     .| moduleLoader pid
+    .| iterMC (\o -> lift $ print o)
     .| fileFetcher
     .| iterMC (\o -> lift $ print o)
     .| lexer
     .| iterMC (\o -> lift $ print o)
-    .| takeC 200
     .| sinkNull
 
   where
