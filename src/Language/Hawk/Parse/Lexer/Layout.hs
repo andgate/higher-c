@@ -5,7 +5,6 @@ import Conduit
 import Control.Monad (Monad, when, unless)
 import Control.Monad.State.Strict (StateT, get, put, modify)
 import Data.Maybe (isJust)
-import Data.Text (Text)
 import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Report.Region (Region, Position)
 import Safe (headDef)

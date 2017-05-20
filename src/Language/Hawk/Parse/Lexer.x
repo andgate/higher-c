@@ -1,5 +1,6 @@
 {
 {-# LANGUAGE   OverloadedStrings
+             , TupleSections
              , RankNTypes
              , NoMonomorphismRestriction  -- everyday we stray further from god's light
   #-}
@@ -16,7 +17,7 @@ import Data.Text (Text)
 import Data.Word (Word8)
 import Language.Hawk.Metadata.Schema (ModuleId)
 import Language.Hawk.Parse.Lexer.Layout (layout)
-import Language.Hawk.Parse.Lexer.Catalog
+import Language.Hawk.Parse.Lexer.Catalog (catalog)
 import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Report.Region (Region(..), Position (..))
 import System.FilePath (FilePath)
@@ -362,11 +363,11 @@ tokenize =
             act (Text.take (fromIntegral len) (currInput input)) (fromIntegral len)
             go input'
 
-lexer :: Monad m => Conduit (Text, ModuleId) m (Token, ModuleId)
+lexer :: Monad m => Conduit (Text, ModuleId) m ([Token], ModuleId)
 lexer = awaitForever go
   where
     go (txt, mid) =
-      yield txt .| tokenize .| layout .| (mapC (\tok -> (tok, mid)))
+      yield txt .| tokenize .| layout .| catalog .| mapC (, mid)
 
 
 
