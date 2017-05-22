@@ -40,10 +40,12 @@ library
                         , mmorph
                         , monad-control
                         , monad-logger
+                        , mono-traversable
                         , mtl
                         , persistent 
                         , persistent-sqlite
                         , persistent-template
+                        , primitive
                         , resourcet
                         , safe
                         , streaming-commons
@@ -53,6 +55,7 @@ library
                         , transformers
                         , uniplate
                         , utf8-string           >= 0.5
+                        , vector
                         , yaml
 
   ghc-options:          -Wall
@@ -77,6 +80,7 @@ library
                         Language.Hawk.Metadata.Schema
                         
                         Language.Hawk.Parse
+                        Language.Hawk.Parse.Document
                         Language.Hawk.Parse.Grammar.ExprLevel
                         Language.Hawk.Parse.Grammar.TopLevel
                         Language.Hawk.Parse.Grammar.TypeLevel

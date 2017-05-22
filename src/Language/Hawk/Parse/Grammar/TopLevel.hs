@@ -34,9 +34,6 @@ toplevel = mdo
         
 -- -----------------------------------------------------------------------------
 -- Item Rules
-    items <- rule $
-      linefolds item <* eof
-
     item <- rule $
           depDeclItem
       <|> exprDefItem

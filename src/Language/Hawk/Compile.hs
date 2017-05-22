@@ -8,20 +8,26 @@ module Language.Hawk.Compile ( compile
 
 import Conduit
 import Control.Monad ( forM_ )
+import Control.Monad.Primitive (PrimMonad)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Resource (MonadResource)
 import Data.Char (isUpper)
+import Data.MonoTraversable (MonoFoldable, Element)
 import Data.Text (Text)
+import Data.Vector (Vector)
 import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import Language.Hawk.Compile.Monad
+import Language.Hawk.Parse.Document
 import Language.Hawk.Parse.Lexer (lexer, tokenize)
+import Language.Hawk.Parse.Lexer.Token (Token)
 import System.FilePath ( (</>), (<.>), takeExtension, takeBaseName, splitDirectories )
 
 import qualified Control.Monad.Trans.State.Strict as St
 import qualified Data.Streaming.Filesystem        as F
 import qualified Data.Text                        as T
+import qualified Data.Vector                      as V
 import qualified Language.Hawk.Metadata           as Db
 import qualified Language.Hawk.Metadata.Schema    as Db
 import qualified Language.Hawk.Parse              as P
@@ -59,62 +65,53 @@ loadPackage pkg@(Package n d) = do
     $ sourceDirectoryDeep True (T.unpack d)
     .| moduleLoader pid
     .| iterMC (\o -> lift $ print o)
-    .| fileFetcher
+    .| fetchDoc
     .| iterMC (\o -> lift $ print o)
     .| lexer
     .| iterMC (\o -> lift $ print o)
+    -- .| parseItem
+   -- .| iterMC (\o -> lift $ print o)
     .| sinkNull
 
   where
     moduleLoader pid =
-      filterC isValidModule   -- Discards files that aren't module files
-      .| buffer 100           -- Accumulates some module filepaths
+      filterC isValidModule        -- Discards files that aren't module files
+      .| conduitVector 1000        -- Accumulates filepaths from disk to ram
       .| mapMC (\i -> liftIO $ cacheMods pid i)    -- Cache the modules on disk
-      .| unbuffer           -- unbuffer modules, for handling files one at a time
+      .| yieldManyForever   -- unbuffer modules, for handling files one at a time
 
 
+parseItem :: MonadIO m => Conduit ([Token], Db.ModuleId) m I.Source
+parseItem = awaitForever go
+  where go (toks, _) = yield toks .| P.itemParser
 
-fileFetcher :: MonadResource m => Conduit (FilePath, Db.ModuleId) m (T.Text, Db.ModuleId)
-fileFetcher = awaitForever go
+
+fetchDoc :: MonadResource m => Conduit InfoDoc m TextDoc
+fetchDoc = awaitForever go
   where
-    go (fp, mid) =
-      sourceFile fp .| decodeUtf8C .| mapC (\t -> (t, mid))
-    
+    go (Doc mid fp _) =
+      sourceFile fp .| decodeUtf8C .| mapC (Doc mid fp)
 
 
-cacheMods :: Db.PackageId -> [FilePath] -> IO [(FilePath, Db.ModuleId)]
+
+cacheMods :: Db.PackageId -> Vector FilePath -> IO [InfoDoc]
 cacheMods pid fps =
   runSqlite "hk.db" $ do
     runMigration Db.migrateAll
-    Db.insertModules pid fps
+    Db.insertModules pid (V.toList fps)
 
--- | Captures n values from the stream and places into a list
-buffer :: Monad m => Int -> Conduit a m [a]
-buffer nlimit = go [] 0
-    where
-      go xs n
-        | n == nlimit = do
-            yield $ reverse xs
-            buffer nlimit
-        | otherwise = do
-            mayx <- await 
-            case mayx of
-                Just x -> go (x:xs) (n+1)
-                Nothing -> yield $ reverse xs
+
+-- | Loads values n from the stream into memory.
+--   Useful for forcing disk reads.
+loadC :: (MonadBase base m, PrimMonad base) => Int -> Conduit a m a
+loadC n =
+  conduitVector n .| (yieldManyForever :: Monad m => Conduit (Vector a) m a)
 
 
 -- | Releases values one at a time from a list
-unbuffer :: Monad m => Conduit [a] m a
-unbuffer = go
-    where
-      go = do
-        mayxs <- await
-        case mayxs of
-            Just xs -> release xs
-            Nothing -> return ()
+yieldManyForever :: (Monad m, MonoFoldable mono) => Conduit mono m (Element mono)
+yieldManyForever = awaitForever yieldMany
 
-      release [] = unbuffer
-      release (x:xs) = yield x >> release xs
 
 
 ---handleItems :: Package -> Conduit FilePath m FilePath

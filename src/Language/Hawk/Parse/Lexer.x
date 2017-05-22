@@ -16,6 +16,7 @@ import Data.Char (digitToInt, ord)
 import Data.Text (Text)
 import Data.Word (Word8)
 import Language.Hawk.Metadata.Schema (ModuleId)
+import Language.Hawk.Parse.Document
 import Language.Hawk.Parse.Lexer.Layout (layout)
 import Language.Hawk.Parse.Lexer.Catalog (catalog)
 import Language.Hawk.Parse.Lexer.Token
@@ -363,11 +364,11 @@ tokenize =
             act (Text.take (fromIntegral len) (currInput input)) (fromIntegral len)
             go input'
 
-lexer :: Monad m => Conduit (Text, ModuleId) m ([Token], ModuleId)
+lexer :: Monad m => Conduit TextDoc m TokenDoc
 lexer = awaitForever go
   where
-    go (txt, mid) =
-      yield txt .| tokenize .| layout .| catalog .| mapC (, mid)
+    go (Doc mid fp txt) =
+      yield txt .| tokenize .| layout .| catalog .| mapC (Doc mid fp)
 
 
 

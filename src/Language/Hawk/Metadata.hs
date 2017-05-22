@@ -29,16 +29,19 @@ import Data.Maybe
 import Data.Text (Text)
 import Data.Traversable
 import Data.Tree
+import Data.Vector (Vector)
 import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import Language.Hawk.Compile.Monad
+import Language.Hawk.Parse.Document (Document(..), InfoDoc)
 import System.FilePath ( (</>), (<.>), takeExtension, takeBaseName, splitDirectories )
 
 
 import qualified Control.Monad.Trans.State.Strict as St
 import qualified Data.Map                         as Map
 import qualified Data.Text                        as Text
+import qualified Data.Vector                      as V
 import qualified Language.Hawk.Metadata.Namespace as NS
 import qualified Language.Hawk.Metadata.Schema as Db
 import qualified Language.Hawk.Parse as P
@@ -70,7 +73,7 @@ insertPackage (Package n srcDir) = do
 
 
 
-insertModules :: MonadIO m => Db.PackageId -> [FilePath] -> BackendT m [(FilePath, Db.ModuleId)]
+insertModules :: MonadIO m => Db.PackageId -> [FilePath] -> BackendT m [InfoDoc]
 insertModules pid fps = do
   -- Build a name forest from the module file paths
   let modlForest = toForest . map (qualifyModulePathParts . tail . splitBases) $ fps
@@ -79,12 +82,12 @@ insertModules pid fps = do
   -- Build module edge list paths from the previous id forest
   let modlIdPaths = fromForest modlIdForest
       modlEdges = moduleEdges modlIdPaths
-      modlIds = map last modlIdPaths
-      modlFpIds = zip fps modlIds 
+      mids = map last modlIdPaths
+      minfos = zipWith3 Doc mids fps (repeat ())
   mapM_ insertModulePath modlEdges
-  mapM_ insertModuleFilepath modlFpIds
-  mapM_ (insertPackageModule pid) modlIds
-  return modlFpIds
+  mapM_ insertModuleFilepath minfos
+  mapM_ (insertPackageModule pid) mids
+  return minfos
 
 insertModule :: MonadIO m => (String, String) -> BackendT m Db.ModuleId
 insertModule (n, qn) = do
@@ -104,12 +107,12 @@ insertModulePath (a, b) = do
     Nothing -> insert $ Db.ModulePath a b
     Just (Entity mpid _) -> return mpid
 
-insertModuleFilepath :: MonadIO m => (FilePath, Db.ModuleId) -> BackendT m Db.ModuleFilepathId
-insertModuleFilepath (path, modl) = do
-  let path' = Text.pack path
-  mayModlFile <- getBy $ Db.UniqueModuleFilepath modl path'
-  case mayModlFile of
-    Nothing -> insert $ Db.ModuleFilepath modl path'
+insertModuleFilepath :: MonadIO m => InfoDoc -> BackendT m Db.ModuleFilepathId
+insertModuleFilepath (Doc mid fp ()) = do
+  let fp' = Text.pack fp
+  mayMdFp <- getBy $ Db.UniqueModuleFilepath mid fp'
+  case mayMdFp of
+    Nothing -> insert $ Db.ModuleFilepath mid fp'
     Just (Entity mfid _) -> return mfid
 
 
