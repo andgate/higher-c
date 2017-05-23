@@ -20,6 +20,7 @@ import Control.Monad.Trans.Except (Except, throwE, runExceptT)
 import Data.Either.Unwrap (fromLeft, fromRight)
 import Data.Functor.Identity (runIdentity)
 import Data.Text (Text)
+import Language.Hawk.Parse.Document
 import Language.Hawk.Parse.Helpers (defTypeOps, defExprOps, ExprOpTable, TypeOpTable)
 import Language.Hawk.Parse.Lexer.Token (Token)
 import Text.Earley (Report (..), Prod)
@@ -40,33 +41,15 @@ import qualified Text.Earley.Mixfix as E
 -- -----------------------------------------------------------------------------
 -- Parser
 
-itemParser :: MonadIO m => Conduit [Token] m I.Source
+itemParser :: MonadIO m => Conduit TokenDoc m DocItem
 itemParser = awaitForever go
   where
-    go :: MonadIO m => [Token] -> Conduit [Token] m I.Source
-    go toks = do 
+    go :: MonadIO m => TokenDoc -> Conduit TokenDoc m DocItem
+    go (Doc mid fp toks) = do 
       let (parses, r@(Report _ needed found)) =
               E.fullParses (E.parser $ G.toplevel) toks
 
       case parses of
           []      -> error $ "No parses found.\n" ++ show r
-          p:[]    -> yield p
+          p:[]    -> yield (Doc mid fp p)
           ps      -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)
-      
-{-
--- Todo: make this a conduit that takes a lazy text stream and produces an item
-parseTopLevel :: Text -> IO [I.Source]
-parseTopLevel txt = do
-  let lexModl' = evalStateLC L.defState (L.lexModl txt)
-      layout' = evalStateLC LO.defState LO.layout
-      parser' = E.fullParses (E.parser $ G.toplevel)
-      toks = runConduitPure $ lexModl' .| layout' .| sinkList
-      (parses, r@(Report _ needed found)) = parser' toks
-  
-  print toks
-
-  case parses of
-      []      -> error $ "No parses found.\n" ++ show r
-      p:[]    -> return p
-      ps      -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)
- -}

@@ -1,4 +1,4 @@
-module Language.Hawk.Report.Error.Helpers
+module Language.Hawk.Report.Helpers
     ( functionName, stack, reflowParagraph
     , commaSep, capitalize, ordinalize, drawCycle
     , findPotentialTypos, vetTypos

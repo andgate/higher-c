@@ -22,6 +22,8 @@ import Language.Hawk.Compile.Monad
 import Language.Hawk.Parse.Document
 import Language.Hawk.Parse.Lexer (lexer, tokenize)
 import Language.Hawk.Parse.Lexer.Token (Token)
+
+import System.Directory (getModificationTime)
 import System.FilePath ( (</>), (<.>), takeExtension, takeBaseName, splitDirectories )
 
 import qualified Control.Monad.Trans.State.Strict as St
@@ -69,8 +71,9 @@ loadPackage pkg@(Package n d) = do
     .| iterMC (\o -> lift $ print o)
     .| lexer
     .| iterMC (\o -> lift $ print o)
-    -- .| parseItem
-   -- .| iterMC (\o -> lift $ print o)
+    .| P.itemParser
+    .| iterMC (\o -> lift $ print o)
+    .| takeC 7
     .| sinkNull
 
   where
@@ -80,10 +83,7 @@ loadPackage pkg@(Package n d) = do
       .| mapMC (\i -> liftIO $ cacheMods pid i)    -- Cache the modules on disk
       .| yieldManyForever   -- unbuffer modules, for handling files one at a time
 
-
-parseItem :: MonadIO m => Conduit ([Token], Db.ModuleId) m I.Source
-parseItem = awaitForever go
-  where go (toks, _) = yield toks .| P.itemParser
+type ScanResult = Result FilePath
 
 
 fetchDoc :: MonadResource m => Conduit InfoDoc m TextDoc
@@ -129,7 +129,22 @@ isValidModule fp = isHkSrc && isCap
     isCap = isUpper x
 
 
-{-
+data HawkSource =
+    HkSrc
+    { srcPath :: FilePath
+    , 
+    } 
+
+hawkSource :: Text -> MonadResource m => Source m (Result FilePath)
+hawkSource d =  sourceDirectoryDeep True (T.unpack d) .| awaitForever go
+    where
+      go fp =
+
+        where
+          ext = takeExtension fp
+          isHkSrc = ext == ".hk"
+          isValidModulePath = all (isUpper . head) . tail . splitDirectories $ fp
+
 recurseDirectory  :: MonadResource m
                   => FilePath -- ^ Root directory
                   -> Producer m (FilePath, F.FileType)
@@ -141,11 +156,10 @@ recurseDirectory = start
     go :: MonadResource m => FilePath -> Producer m (FilePath, F.FileType)
     go fp = do
         ft <- liftIO $ F.getFileType fp
+        ts <- liftIO $ getModificationTime fp
         case ft of
             F.FTFile -> yield fp
             F.FTFileSym -> yield fp
             F.FTDirectory -> yield fp >> start fp
             F.FTDirectorySym -> yield fp >> start fp
             F.FTOther -> return ()
-
--}

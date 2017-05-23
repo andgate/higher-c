@@ -15,7 +15,7 @@ Bug-Reports:         https://github.com/andgate/hawk/issues
 
 source-repository head
   type:     git
-  location: https://github.com/andgate/hawk`0
+  location: https://github.com/andgate/hawk
 
 library
   default-language:     Haskell2010
@@ -52,6 +52,7 @@ library
                         , syb
                         , text
                         , text-format
+                        , time
                         , transformers
                         , uniplate
                         , utf8-string           >= 0.5
@@ -89,17 +90,15 @@ library
                         Language.Hawk.Parse.Lexer.Catalog
                         Language.Hawk.Parse.Lexer.Layout
                         Language.Hawk.Parse.Lexer.Token
-                      
+
                         Language.Hawk.Report.Error
-                        Language.Hawk.Report.Error.Helpers
-                        Language.Hawk.Report.Error.Syntax
+                        Language.Hawk.Report.Helpers
+                        Language.Hawk.Report.Info
                         Language.Hawk.Report.Region
-                        --Language.Hawk.Report.Render.Code
-                        --Language.Hawk.Report.Render.Type
                         Language.Hawk.Report.Report
                         Language.Hawk.Report.Result
-                        
-                        
+                        Language.Hawk.Report.Warning
+
                         Language.Hawk.Syntax.AliasDefinition
                         Language.Hawk.Syntax.DataDefinition
                         Language.Hawk.Syntax.Expression
@@ -115,10 +114,10 @@ library
                         Language.Hawk.Syntax.Type
                         Language.Hawk.Syntax.TypeClassDefinition
                         Language.Hawk.Syntax.TypeDeclaration
-                        
+
                         --Language.Hawk.Target.LLVM.Codegen
                         --Language.Hawk.Target.LLVM.Emit
-                        
+
                         Paths_hawk
                         
 

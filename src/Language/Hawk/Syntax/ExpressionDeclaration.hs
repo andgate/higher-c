@@ -8,7 +8,6 @@ import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 import qualified Data.Text                        as Text
 import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 
-import qualified Language.Hawk.Parse.Lexer        as Lex
 import qualified Language.Hawk.Syntax.Name        as N
 import qualified Language.Hawk.Syntax.OpInfo      as OI
 import qualified Language.Hawk.Syntax.Type        as T

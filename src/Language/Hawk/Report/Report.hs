@@ -22,21 +22,13 @@ data Report
     }
 
 
+class Reportable a where
+    toReport :: a -> Report
+
+
 report :: String -> Maybe R.Region -> String -> Doc -> Report
 report title highlight pre post =
   Report title highlight (fillSep (text <$> words pre)) post
-  
-  
-toJson :: [Json.Pair] -> Report -> (Maybe R.Region, [Json.Pair])
-toJson extraFields (Report title subregion pre post) =
-  let 
-    fields =
-      [ "tag"       .= title
-      , "overview"  .= nonAnsiRender pre
-      , "details"   .= nonAnsiRender post
-      ]
-  in
-    (subregion, fields ++ extraFields)
 
 
 

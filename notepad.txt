@@ -1,0 +1,20 @@
+looks like the pipeline needs some modifications to the inital phase.
+The initial phase is responsible for pulling in the current directory tree,
+marking what's new or changed (fresh), marking unchanged modules (preserved)
+and throwing out whatever is missing (stale).
+The rest of the phases (parsing, validation, and typechecking) will then be
+applied to the fresh modules. This will allow for incremental compilation.
+
+
+
+The entire db needs to be set to stale before this begins.
+Pull in a bunch of filepaths and their modification times.
+This phase needs to add new modules as fresh, mark modules with new timestamps as fresh,
+and modules with the same timestamp as preserved.
+
+The next part is a lot of db work. Fresh modules need to have their items removed, as they
+are no longer considered valid.
+This might be tricky because preserved dependents on these items are also going to need to
+be set to fresh as well. 
+Stale modules, and their children (modules and items)
+need to be purged from the database.

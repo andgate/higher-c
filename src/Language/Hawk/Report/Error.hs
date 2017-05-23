@@ -1,12 +1,37 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Hawk.Report.Error where
 
-import Data.Aeson ((.=))
-import qualified Data.Aeson as Json
+import Language.Hawk.Report.Helpers (reflowParagraph)
+import Language.Hawk.Report.Region (Region, Position)
+import Language.Hawk.Report.Report (Report(..), Reportable(..))
+import System.FilePath (FilePath)
 
-
-import qualified Language.Hawk.Report.Error.Syntax as Syntax
+import qualified Language.Hawk.Report.Region as R
 import qualified Language.Hawk.Report.Report as Report
 
 data Error
-  = Syntax Syntax.Error
+  = Parse R.Region
+  | BadModuleName FilePath
+
+
+
+instance Reportable Error where
+    toReport err =
+      case err of
+        Parse r ->
+            Report.report
+              "UNABLE TO PARSE"
+              Nothing
+              "There was an error parsing."
+              ( reflowParagraph $
+                  "This should be an example of where the problem was."
+              )
+        BadModuleName fp ->
+            Report.report
+              "BAD MODULE NAME"
+              Nothing
+              "Module naming follows a strict set of rules."
+              ( reflowParagraph $
+                  "Module names must begin with a capital letter and cannot contain\
+                  \ any symbols."
+              )
