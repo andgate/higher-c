@@ -1,18 +1,125 @@
 module Language.Hawk.Report.Result where
 
+import Control.Applicative
 import Control.Monad.Except (Except, runExcept)
+import Data.Monoid
+import Language.Hawk.Data.Bag
 import Language.Hawk.Report.Error
 import Language.Hawk.Report.Info
+import Language.Hawk.Report.Priority
+import Language.Hawk.Report.Report
 import Language.Hawk.Report.Warning
-
-import qualified Language.Hawk.Report.Region as R
 
 
 -- | Result types
 
 data Result r
   = Result 
-   { _warnings :: [Warning]
-   , _info :: [Info] 
-   , _answer :: Either [Error] r
-   }
+   { _info :: Bag Info
+   , _warnings :: Bag Warning
+   , _answer :: Either (Bag Error) r
+   } deriving (Show)
+
+
+resultReports :: Priority -> Result a -> [Report]
+resultReports pr (Result i w a) = 
+  let
+    filteredReport :: (HasPriority r, Reportable r) => Bag r -> [Report]
+    filteredReport = fmap toReport . filterPriority pr .  toList
+  in
+    filteredReport i 
+      ++ filteredReport w
+      ++ case a of
+           Left errs -> toReport <$> (toList errs)
+           Right _ -> []
+
+
+getAnswer :: Result a -> Maybe a
+getAnswer (Result _ _ a) =
+  case a of
+    Left _ -> Nothing
+    Right v -> Just v 
+
+throw :: Error -> Result a
+throw err =
+  Result mempty mempty (Left $ singleton err)
+
+
+throwMany :: [Error] -> Result a
+throwMany errors =
+  Result mempty mempty (Left $ fromList errors)
+
+
+info :: Info -> Result ()
+info i =
+  Result (singleton i) mempty (Right ())
+
+
+warn :: Warning -> Result ()
+warn w =
+  Result mempty (singleton w) (Right ())
+
+
+    
+  
+
+
+instance Functor Result where
+  fmap f (Result i w a) =
+      Result i w (f <$> a)
+
+
+instance Applicative Result where
+  pure r =
+      Result mempty mempty (Right r)
+
+  (Result i w a) *> (Result i' w' a') =
+      Result
+        (i <> i')
+        (w <> w')
+        $ case (a, a') of
+            (Right _, Right r') ->
+                Right r'
+            
+            (Left errs, Left errs') -> 
+                Left (errs <> errs')
+          
+            (Left errs, _) ->
+                Left errs
+            
+            (_, Left errs') ->
+                Left errs'
+
+  (<*>) (Result i w af) (Result i' w' av) =
+      Result
+        (i <> i')
+        (w <> w')
+        $ case (af, av) of
+            (Right f, Right r) ->
+                Right $ f r
+
+            (Left errs, Left errs') ->
+                Left (errs <> errs')
+
+            (Left errs, _) ->
+                Left errs
+
+            (_, Left errs) ->
+                Left errs
+
+instance Monad Result where
+  return r =
+      Result mempty mempty (Right r)
+
+  (>>) = (*>)
+
+  (>>=) (Result i w a) k =
+      case a of
+          Left errs ->
+              Result i w (Left errs)
+
+          Right r ->
+              let
+                (Result i' w' a') = k r
+              in
+                Result (i <> i') (w <> w') a'

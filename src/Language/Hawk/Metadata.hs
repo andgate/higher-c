@@ -14,11 +14,11 @@
 module Language.Hawk.Metadata where
 
 
-import Data.Binary (encode, decode)
+import Data.Binary (encode)
 
-import Control.Monad
+import Conduit
+import Control.Monad (sequence)
 import Control.Monad.Trans.Reader
-import Control.Monad.Trans.State.Strict
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control
 import Data.ByteString (ByteString)
@@ -26,7 +26,8 @@ import Data.ByteString.Lazy (toStrict)
 import Data.List (intercalate)
 import Data.Map (Map)
 import Data.Maybe
-import Data.Text (Text)
+import Data.Text (Text, pack)
+import Data.Time.Clock (UTCTime)
 import Data.Traversable
 import Data.Tree
 import Data.Vector (Vector)
@@ -34,17 +35,23 @@ import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import Language.Hawk.Compile.Monad
+import Language.Hawk.Compile.Source (HawkSource)
+import Language.Hawk.Metadata.CacheStatus
 import Language.Hawk.Parse.Document (Document(..), InfoDoc)
-import System.FilePath ( (</>), (<.>), takeExtension, takeBaseName, splitDirectories )
+import Language.Hawk.Report.Result
 
 
 import qualified Control.Monad.Trans.State.Strict as St
 import qualified Data.Map                         as Map
 import qualified Data.Text                        as Text
 import qualified Data.Vector                      as V
+import qualified Language.Hawk.Compile.Source as Src
 import qualified Language.Hawk.Metadata.Namespace as NS
 import qualified Language.Hawk.Metadata.Schema as Db
 import qualified Language.Hawk.Parse as P
+import qualified Language.Hawk.Report.Error       as Err
+import qualified Language.Hawk.Report.Info        as Info
+import qualified Language.Hawk.Report.Warning     as Warn
 import qualified Language.Hawk.Syntax.AliasDefinition as AD
 import qualified Language.Hawk.Syntax.DataDefinition as DD
 import qualified Language.Hawk.Syntax.Expression as E
@@ -64,6 +71,15 @@ import qualified Language.Hawk.Syntax.TypeDeclaration as TD
 type BackendT m a = ReaderT SqlBackend m a
 
 
+staleAll :: MonadIO m => BackendT m ()
+staleAll = do
+  updateWhere [] [Db.ModuleCacheStatus =. Stale]
+  updateWhere [] [Db.ModuleFileCacheStatus =. Stale]
+  updateWhere [] [Db.ModulePathCacheStatus =. Stale]
+
+
+
+
 insertPackage :: MonadIO m => Package -> BackendT m Db.PackageId
 insertPackage (Package n srcDir) = do
   mayPkg <- getBy $ Db.UniquePackage n srcDir
@@ -72,116 +88,78 @@ insertPackage (Package n srcDir) = do
     Just (Entity pid _) -> return pid
 
 
-
-insertModules :: MonadIO m => Db.PackageId -> [FilePath] -> BackendT m [InfoDoc]
-insertModules pid fps = do
+-- Insert a hawk source by recusively inserting the module
+-- and then inserting the module file.
+insertSource :: MonadIO m => Db.PackageId -> HawkSource -> BackendT m (Result ())
+insertSource pid src = do
   -- Build a name forest from the module file paths
-  let modlForest = toForest . map (qualifyModulePathParts . tail . splitBases) $ fps
-  modlIdForest <- forestMapM insertModule modlForest
+  let mp   = Src.splitModulePath src
+      fp = Src.srcPath src
+      clk = Src.srcTimestamp src
+  mid <- insertModuleRecursively mp
+  mfid <- insertModuleFile pid mid (Src.srcPath src) (Src.srcTimestamp src)
+  return $ pure ()
 
-  -- Build module edge list paths from the previous id forest
-  let modlIdPaths = fromForest modlIdForest
-      modlEdges = moduleEdges modlIdPaths
-      mids = map last modlIdPaths
-      minfos = zipWith3 Doc mids fps (repeat ())
-  mapM_ insertModulePath modlEdges
-  mapM_ insertModuleFilepath minfos
-  mapM_ (insertPackageModule pid) mids
-  return minfos
+
+-- | Insert a module, ensuring it's ancestors exist and module path is established
+insertModuleRecursively :: MonadIO m => [String] -> BackendT m  Db.ModuleId
+insertModuleRecursively mp = do
+  -- Insert modules
+  let qmps = Src.qualifyModulePath mp
+  mpids <- mapM insertModule qmps
+
+  -- Connect module paths
+  let zipAdj = (zip <*> tail)
+      mEdges = zipAdj mpids
+  mapM_ insertModulePath mEdges
+
+  -- Return the target module's ID
+  return (last mpids)
+
 
 insertModule :: MonadIO m => (String, String) -> BackendT m Db.ModuleId
 insertModule (n, qn) = do
-  mayModl <- getBy $ Db.UniqueModule n' qn'
-  case mayModl of
-    Nothing -> insert $ Db.Module n' qn'
-    Just (Entity mid _) -> return mid
-  where
-    n' = Text.pack n
-    qn' = Text.pack qn
+  let (n', qn') = (pack n, pack qn)
+  may_m <- getBy $ Db.UniqueModule qn'
+  case may_m of
+    Nothing -> do
+        mid <- insert $ Db.Module n' qn' Fresh
+        return mid
 
+    Just (Entity mid _) -> do
+        update mid [Db.ModuleCacheStatus =. Preserved]
+        return mid
+
+        
 
 insertModulePath :: MonadIO m => (Db.ModuleId, Db.ModuleId) -> BackendT m Db.ModulePathId
 insertModulePath (a, b) = do
-  mayModlPath <- getBy $ Db.UniqueModulePath a b
-  case mayModlPath of
-    Nothing -> insert $ Db.ModulePath a b
-    Just (Entity mpid _) -> return mpid
+  may_mp <- getBy $ Db.UniqueModulePath a b
+  case may_mp of
+    Nothing ->
+        insert $ Db.ModulePath a b Fresh
 
-insertModuleFilepath :: MonadIO m => InfoDoc -> BackendT m Db.ModuleFilepathId
-insertModuleFilepath (Doc mid fp ()) = do
-  let fp' = Text.pack fp
-  mayMdFp <- getBy $ Db.UniqueModuleFilepath mid fp'
-  case mayMdFp of
-    Nothing -> insert $ Db.ModuleFilepath mid fp'
-    Just (Entity mfid _) -> return mfid
+    Just (Entity mpid _) -> do
+        update mpid [Db.ModulePathCacheStatus =. Preserved]
+        return mpid
 
 
-insertPackageModule :: MonadIO m => Db.PackageId -> Db.ModuleId -> BackendT m Db.PackageModuleId
-insertPackageModule pid mid = do
-  mayPkgMdl <- getBy $ Db.UniquePackageModule pid mid
-  case mayPkgMdl of
-    Nothing -> insert $ Db.PackageModule pid mid
-    Just (Entity pmid _) -> return pmid
+insertModuleFile :: MonadIO m => Db.PackageId -> Db.ModuleId -> FilePath -> UTCTime -> BackendT m Db.ModuleFileId
+insertModuleFile pid mid fp clk = do
+  let fp' = pack fp
+  may_mf <- getBy $ Db.UniqueModuleFile fp'
+  case may_mf of
+    Nothing -> 
+        insert $ Db.ModuleFile pid mid fp' clk Fresh
 
-qualifyModulePathParts :: [String] -> [(String, String)]
-qualifyModulePathParts ns = r
-  where
-    (_, r) = mapAccumL f [] ns
-    f a b =
-      let a' = a ++ [b]
-      in (a', (b, intercalate "." a'))
-
-
-moduleEdges :: [[Db.ModuleId]] -> [(Db.ModuleId, Db.ModuleId)]
-moduleEdges = concatMap zipAdj
-  where
-    zipAdj = zip <*> tail
-    
-
-treeMapM :: Monad m => (a -> m b) -> Tree a -> m (Tree b)
-treeMapM f (Node a ts) = do
-  b <- f a
-  ts' <- forestMapM f ts
-  return $ Node b ts'
-
-forestMapM :: Monad m => (a -> m b) -> Forest a -> m (Forest b)
-forestMapM f ts = mapM (treeMapM f) ts
-
-
-toForest :: (Ord a) => [[a]] -> Forest a
-toForest r = unfoldForest (\(a, rs) -> (a, levelEntries rs))
-                          (levelEntries r)
-  where
-    levelMap :: (Ord a) => [[a]] -> Map a [[a]]
-    levelMap aa = Map.fromListWith (++) [ (a, [as]) | (a:as) <- aa ]
-
-    levelEntries :: (Ord a) => [[a]] -> [(a, [[a]])]
-    levelEntries = Map.toList . levelMap
-
-fromForest :: Forest a -> [[a]]
-fromForest [] = [[]]
-fromForest f  = concat [ map (a:) (fromForest subf) | Node a subf <- f ]
-
-
-splitBases :: FilePath -> [String]
-splitBases = map takeBaseName . splitDirectories
-
-{-
-  where 
-    insertModule' :: MonadIO m => [Db.ModuleId] -> [Text] -> BackendT m Db.ModuleId
-    insertModule' [] [] = error "Cannot insert a module without a path."
-    insertModule' (p:[]) [] = return p
-    insertModule' (p:ps) [] = insertModule' ps []
-    insertModule' parents (curr:rest) = do
-      mayModl <- getBy $ Db.UniqueModule pkgId parents curr
-      mid <- case mayModl of
-                  Nothing -> insert $ Db.Module pkgId parents curr
-                  Just (Entity mid _) -> return mid
-      insertModule' (parents ++ [mid]) rest
-
-insertModule :: MonadIO m => [FilePath] -> BackendT m [Db.ModuleId]
-insertModule 
--}
+    Just (Entity mfid _) -> do
+        -- Needs to check the file's timestamp
+        update mfid [ Db.ModuleFilePkg =. pid
+                    , Db.ModuleFileAssoc =. mid
+                    , Db.ModuleFilePath =. (pack fp)
+                    , Db.ModuleFileCacheStatus =. Preserved
+                    ]
+        return mfid
 
         
 

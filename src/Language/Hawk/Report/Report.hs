@@ -1,20 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Hawk.Report.Report where
 
-import Data.Aeson ((.=))
-import qualified Data.Aeson.Types as Json
 import System.IO (Handle)
 import Text.PrettyPrint.ANSI.Leijen
     ( Doc, SimpleDoc(..), (<>), displayS, displayIO, dullcyan, fillSep
-    , hardline, renderPretty, text
+    , hardline, renderPretty, text, putDoc, vcat
     )
-    
-
 import qualified Language.Hawk.Report.Region as R
 
 
 data Report
-  = Report
+  = SimpleReport Doc
+  | Report
     { _title      :: String
     , _highlight  :: Maybe R.Region
     , _preHint    :: Doc
@@ -25,16 +22,31 @@ data Report
 class Reportable a where
     toReport :: a -> Report
 
-
 report :: String -> Maybe R.Region -> String -> Doc -> Report
 report title highlight pre post =
   Report title highlight (fillSep (text <$> words pre)) post
 
+simple :: String -> Report
+simple = SimpleReport . text
 
+putReport :: Report -> IO ()
+putReport =
+  putDoc . toDoc
 
-toDoc :: String -> R.Region -> Report -> String -> Doc
-toDoc location region (Report title highlight preHint postHint) source =
-  messageBar title location
+putReports :: [Report] -> IO ()
+putReports =
+  putDoc . wrapHardLine . vcat . map toDoc
+
+wrapHardLine :: Doc -> Doc
+wrapHardLine d =
+  hardline <> d <> hardline
+
+toDoc :: Report -> Doc
+toDoc (SimpleReport doc) =
+  doc
+
+toDoc (Report title highlight preHint postHint) =
+  messageBar title ""
   <> hardline <> hardline <>
   preHint
   -- <> hardline <> hardline <>
@@ -52,18 +64,6 @@ messageBar tag location =
   in 
     dullcyan $ text $
       "-- " ++ tag ++ " " ++ replicate (max 1 $ 80 - usedSpace) '-' ++ " " ++ location
-      
-      
-toHandle :: Handle -> String -> R.Region -> Report -> String -> IO ()
-toHandle handle location region rprt source =
-  displayIO
-    handle
-    (renderPretty 1 80 $ toDoc location region rprt source)
-   
-   
-toString :: String -> R.Region -> Report -> String -> String
-toString location region rprt source =
-  nonAnsiRender (toDoc location region rprt source)
   
 
 nonAnsiRender :: Doc -> String

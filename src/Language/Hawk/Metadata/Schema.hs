@@ -3,13 +3,14 @@ module Language.Hawk.Metadata.Schema where
 
 import Data.ByteString (ByteString)
 import Data.Text (Text)
+import Data.Time.Clock (UTCTime)
 
-import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
+import Language.Hawk.Metadata.CacheStatus
 
 import qualified Language.Hawk.Syntax.OpInfo as OI
-import qualified Language.Hawk.Compile.Monad as C
+
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 CompilerLog
@@ -27,26 +28,26 @@ Package
 Module
     name Text
     qualName Text
-    UniqueModule name qualName
-    deriving Show
-
-PackageModule
-    pkg PackageId
-    modl ModuleId
-    UniquePackageModule pkg modl
-    deriving Show
-
-ModuleFilepath
-    modl ModuleId
-    path Text
-    UniqueModuleFilepath modl path 
+    cacheStatus CacheStatus
+    UniqueModule qualName
     deriving Show
 
 ModulePath
     ancestor ModuleId
     descendent ModuleId
+    cacheStatus CacheStatus
     UniqueModulePath ancestor descendent
     deriving Show
+
+ModuleFile
+    pkg PackageId
+    assoc ModuleId
+    path Text
+    timestamp UTCTime
+    cacheStatus CacheStatus
+    UniqueModuleFile path
+    deriving Show
+
 
 Name
     name Text

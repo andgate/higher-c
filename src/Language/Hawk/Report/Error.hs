@@ -12,8 +12,7 @@ import qualified Language.Hawk.Report.Report as Report
 data Error
   = Parse R.Region
   | BadModuleName FilePath
-
-
+  deriving Show
 
 instance Reportable Error where
     toReport err =
@@ -30,7 +29,7 @@ instance Reportable Error where
             Report.report
               "BAD MODULE NAME"
               Nothing
-              "Module naming follows a strict set of rules."
+              ("The path \"" ++ fp ++ "\" does not follow the proper naming convention.")
               ( reflowParagraph $
                   "Module names must begin with a capital letter and cannot contain\
                   \ any symbols."

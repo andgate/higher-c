@@ -71,12 +71,14 @@ library
 
   exposed-modules:      Language.Hawk.Compile
                         Language.Hawk.Compile.Monad
+                        Language.Hawk.Compile.Source
                         
                         -- Results depend on bag, but maybe that will change soon
                         Language.Hawk.Data.Bag
                         Language.Hawk.Data.Emittable
                         
                         Language.Hawk.Metadata
+                        Language.Hawk.Metadata.CacheStatus
                         Language.Hawk.Metadata.Namespace
                         Language.Hawk.Metadata.Schema
                         
@@ -94,6 +96,7 @@ library
                         Language.Hawk.Report.Error
                         Language.Hawk.Report.Helpers
                         Language.Hawk.Report.Info
+                        Language.Hawk.Report.Priority
                         Language.Hawk.Report.Region
                         Language.Hawk.Report.Report
                         Language.Hawk.Report.Result

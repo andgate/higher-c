@@ -7,48 +7,36 @@ data Bag a
   | One a
   | Two (Bag a) (Bag a)
   | Many [a]
-  
-empty :: Bag a
-empty = Empty
+  deriving (Show)
+
+instance Monoid (Bag a) where
+    mempty = Empty
+    
+    mappend l r = 
+      case (l, r) of
+        (other, Empty) -> other
+        
+        (_, _) -> Two l r
+
+instance Functor Bag where
+    fmap f b =
+      case b of
+        Empty ->
+          Empty
+          
+        One x ->
+          One $ f x
+          
+        Two l r ->
+          Two (fmap f l) (fmap f r)
+          
+        Many xs ->
+          Many $ fmap f xs
 
 singleton :: a -> Bag a
-singleton = One
+singleton =
+  One
 
-cons :: a -> Bag a -> Bag a
-cons x bag =
-  case bag of
-    Empty ->
-      One x
-    
-    _ ->
-      Two (One x) bag
-
-
-append :: Bag a -> Bag a -> Bag a
-append left right =
-  case (left, right) of
-    (other, Empty) ->
-      other
-      
-    (_, _) ->
-      Two left right
-      
-
-map :: (a -> b) -> Bag a -> Bag b
-map f bag =
-  case bag of
-    Empty ->
-      Empty
-      
-    One x ->
-      One $ f x
-      
-    Two left right ->
-      Two (map f left) (map f right)
-      
-    Many xs ->
-      Many $ fmap f xs
-      
       
 fromList :: [a] -> Bag a
 fromList =
