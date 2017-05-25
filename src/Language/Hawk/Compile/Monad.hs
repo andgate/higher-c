@@ -11,6 +11,7 @@ import Data.Monoid
 import Data.Text (Text)
 import Data.Typeable
 import Database.Persist.TH
+import Language.Hawk.Compile.Options
 
 import qualified Data.Text as Text
 
@@ -38,7 +39,7 @@ data Package =
   Package 
     { pkgName     :: Text
     , pkgSrcDir   :: Text
-    } deriving (Eq, Show, Read, Ord, Data, Typeable)
+    }
 
 -------------------------------------------------------------------------------
 -- Compiler State
@@ -49,7 +50,8 @@ data CompilerState =
     , cOS       :: Text
     , cRoot     :: Text
     , cPkgs     :: [Package]
-    } deriving (Eq, Show, Read, Ord, Data, Typeable)
+    , cOpts     :: Opts
+    }
 
 
 defState :: CompilerState
@@ -59,4 +61,5 @@ defState =
     , cOS   = "Win10"
     , cRoot = ""
     , cPkgs = []
+    , cOpts = defOpts
     }

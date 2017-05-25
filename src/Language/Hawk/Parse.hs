@@ -1,8 +1,8 @@
--- This parser is based on the haskell Earley package. 
+-- This parser is based on the haskell Earley package.
 -- While it sacrifices speed for power, the earley algorithm
 -- is one of the best modern parsing algorithims out there.
 -- While an unpopular choice for compilers, it is thanks
--- to the Earley algorithm that Hawk can have a more 
+-- to the Earley algorithm that Hawk can have a more
 -- expressive grammar than other languages.
 --
 -- The parser takes input in the form of a token stream.
@@ -45,7 +45,7 @@ itemParser :: MonadIO m => Conduit TokenDoc m DocItem
 itemParser = awaitForever go
   where
     go :: MonadIO m => TokenDoc -> Conduit TokenDoc m DocItem
-    go (Doc mid fp toks) = do 
+    go (Doc mid fp toks) = do
       let (parses, r@(Report _ needed found)) =
               E.fullParses (E.parser $ G.toplevel) toks
 

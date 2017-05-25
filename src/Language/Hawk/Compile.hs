@@ -20,6 +20,7 @@ import Database.Persist.Sqlite
 import Database.Persist.TH
 import Language.Hawk.Compile.Monad
 import Language.Hawk.Compile.Source
+import Language.Hawk.Compile.Options
 import Language.Hawk.Parse.Document
 import Language.Hawk.Parse.Lexer (lexer, tokenize)
 import Language.Hawk.Parse.Lexer.Token (Token)
@@ -34,7 +35,6 @@ import qualified Language.Hawk.Metadata.Schema    as Db
 import qualified Language.Hawk.Parse              as P
 import qualified Language.Hawk.Report.Error       as Err
 import qualified Language.Hawk.Report.Info        as Info
-import qualified Language.Hawk.Report.Priority    as Pr
 import qualified Language.Hawk.Report.Warning     as Warn
 import qualified Language.Hawk.Syntax.Item        as I
 import qualified Language.Hawk.Syntax.Expression  as E
@@ -57,11 +57,13 @@ compile s =
 loadPackages :: Compiler ()
 loadPackages = do
     s <- St.get
+    let o = cOpts s
+        pkgs = cPkgs s
     -- Insert all the given packages
-    mapM_ (liftIO . loadPackage) $ cPkgs s
+    liftIO $ mapM_ (loadPackage o) pkgs
 
-loadPackage :: Package -> IO ()
-loadPackage pkg@(Package n d) = do
+loadPackage :: Opts -> Package -> IO ()
+loadPackage o pkg@(Package n d) = do
   pid <- runSqlite "hk.db" $ do
     runMigration Db.migrateAll
     Db.staleAll
@@ -72,7 +74,7 @@ loadPackage pkg@(Package n d) = do
     $ scanHawkSource (T.unpack d)
       .| conduitVector 1000
       .| mapC (\rs -> V.sequence rs)
-      .| reportResultC
+      .| reportResultC o 
       .| sinkNull
 
 {-    .| fetchDoc
@@ -92,11 +94,11 @@ fetchDoc = awaitForever go
       sourceFile fp .| decodeUtf8C .| mapC (Doc mid fp)
 
 
-reportResultC :: MonadIO m => Conduit (Result a) m a
-reportResultC = awaitForever go
+reportResultC :: MonadIO m => Opts -> Conduit (Result a) m a
+reportResultC o = awaitForever go
   where
     go r = do
-      liftIO $ putReports (resultReports Pr.None r)
+      liftIO $ putReports (resultReports o r)
       case getAnswer r of
         Nothing -> return ()
         Just v -> yield v

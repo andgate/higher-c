@@ -3,10 +3,10 @@ module Language.Hawk.Report.Result where
 import Control.Applicative
 import Control.Monad.Except (Except, runExcept)
 import Data.Monoid
+import Language.Hawk.Compile.Options
 import Language.Hawk.Data.Bag
 import Language.Hawk.Report.Error
 import Language.Hawk.Report.Info
-import Language.Hawk.Report.Priority
 import Language.Hawk.Report.Report
 import Language.Hawk.Report.Warning
 
@@ -21,18 +21,17 @@ data Result r
    } deriving (Show)
 
 
-resultReports :: Priority -> Result a -> [Report]
-resultReports pr (Result i w a) = 
-  let
-    filteredReport :: (HasPriority r, Reportable r) => Bag r -> [Report]
-    filteredReport = fmap toReport . filterPriority pr .  toList
-  in
-    filteredReport i 
-      ++ filteredReport w
-      ++ case a of
-           Left errs -> toReport <$> (toList errs)
-           Right _ -> []
+resultReports :: Opts -> Result a -> [Report]
+resultReports o (Result i w a) = 
+     reportFilter o i 
+  ++ reportFilter o w
+  ++ case a of
+        Left errs -> toReport <$> (toList errs)
+        Right _ -> []
 
+
+reportFilter :: (HasVerbosity r, HasFlags r, Reportable r) => Opts -> Bag r -> [Report]
+reportFilter o = fmap toReport . messageFilter o .  toList
 
 getAnswer :: Result a -> Maybe a
 getAnswer (Result _ _ a) =

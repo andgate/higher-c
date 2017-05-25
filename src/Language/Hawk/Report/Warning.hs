@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Hawk.Report.Warning where
 
+import Language.Hawk.Compile.Options
 import Language.Hawk.Report.Helpers (reflowParagraph)
-import Language.Hawk.Report.Priority
 import Language.Hawk.Report.Region (Region, Position)
-import Language.Hawk.Report.Report (Report(..), Reportable(..))
+import Language.Hawk.Report.Report (Reportable(..))
 import System.FilePath (FilePath)
 
 import qualified Language.Hawk.Report.Region as R
@@ -47,9 +47,17 @@ instance Reportable Warning where
               )
 
 
-instance HasPriority Warning where
-    priority warn =
-      case warn of
-          FileIgnored _ -> None
-          DirectoryIgnored _ -> Standard
-          SymLinkIgnored _ -> Standard
+instance HasFlags Warning where
+    flagged o w =
+      case w of
+          FileIgnored _ -> optWarnFileIgnoredFlag o
+          DirectoryIgnored _ -> optWarnDirectoryIgnoredFlag o
+          SymLinkIgnored _ -> optWarnSymLinkIgnored o
+
+
+instance HasVerbosity Warning where
+    verbosity w =
+      case w of
+          FileIgnored _ -> 1
+          DirectoryIgnored _ -> 1
+          SymLinkIgnored _ -> 1

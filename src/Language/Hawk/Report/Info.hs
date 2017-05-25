@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Hawk.Report.Info where
 
+import Language.Hawk.Compile.Options
 import Language.Hawk.Report.Helpers (reflowParagraph)
-import Language.Hawk.Report.Priority
 import Language.Hawk.Report.Region (Region, Position)
 import Language.Hawk.Report.Report (Report(..), Reportable(..))
 import System.FilePath (FilePath)
@@ -28,9 +28,28 @@ instance Reportable Info where
             Report.simple $
               "Directory found: " ++ fp
 
+        FreshModuleFound mp ->
+            Report.simple $
+              "Module cached:  " ++ mp
+        
+        ModulePreserved mp ->
+            Report.simple $
+              "Module kept: " ++ mp
 
-instance HasPriority Info where
-    priority i =
+
+instance HasFlags Info where
+    flagged o i =
       case i of
-          FileFound _       -> None
-          DirectoryFound _  -> None
+          FileFound _               -> optFlagInfoFileFound o
+          DirectoryFound _          -> optFlagInfoDirectoryFound o
+          FreshModuleFound _        -> optFlagInfoFreshModuleFound o
+          ModulePreserved _         -> optFlagInfoModulePreserved o
+
+
+instance HasVerbosity Info where
+    verbosity i =
+      case i of
+          FileFound _               -> 2
+          DirectoryFound _          -> 2
+          FreshModuleFound _        -> 1
+          ModulePreserved _         -> 2
