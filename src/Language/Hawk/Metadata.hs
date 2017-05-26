@@ -97,7 +97,7 @@ insertSource pid src = do
       fp = Src.srcPath src
       clk = Src.srcTimestamp src
   mid <- insertModuleRecursively mp
-  mfid <- insertModuleFile pid mid (Src.srcPath src) (Src.srcTimestamp src)
+  mfid <- insertModuleFile pid mid fp clk
   return $ pure ()
 
 

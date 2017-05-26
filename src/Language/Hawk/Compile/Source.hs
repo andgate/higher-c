@@ -29,8 +29,10 @@ modulePath =
   intercalate "." . splitModulePath
 
 splitModulePath :: HawkSource -> [String]
-splitModulePath src =
-  splitDirectories . makeRelative (srcRoot src) . srcPath $ src
+splitModulePath src = map takeBaseName . splitDirectories $ makeRelative root path
+  where
+    root = srcRoot src
+    path = srcPath src
 
 
 qualifyModulePath :: [String] -> [(String, String)]

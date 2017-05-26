@@ -80,6 +80,7 @@ loadPackage o pkg@(Package n d) = do
       .| mapC V.toList
       .| mapC catMaybes
       .| mapC V.fromList
+
       .| mapM_C (\o -> liftIO $ cacheMods pid o)
       .| sinkNull
 
