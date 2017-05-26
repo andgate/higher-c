@@ -73,19 +73,21 @@ loadPackage o pkg@(Package n d) = do
   runConduitRes
     $ scanHawkSource (T.unpack d)
       .| conduitVector 1000
-      .| mapC (\rs -> V.sequence rs)
-      .| reportResultC o 
+      .| mapC V.sequence
+      .| reportResultC o
+      
+      -- Get rid of maybes
+      .| mapC V.toList
+      .| mapC catMaybes
+      .| mapC V.fromList
+      .| mapM_C (\o -> liftIO $ cacheMods pid o)
       .| sinkNull
 
-{-    .| fetchDoc
-    .| iterMC (\o -> lift $ print o)
-    .| lexer
-    .| iterMC (\o -> lift $ print o)
-    .| P.itemParser
-    .| iterMC (\o -> lift $ print o)
-    .| takeC 7
-    .| sinkNull
-  -}
+cacheMods :: Db.PackageId -> Vector HawkSource -> IO ()
+cacheMods pid fps =
+  runSqlite "hk.db" $ do
+    runMigration Db.migrateAll
+    mapM_ (Db.insertSource pid) (V.toList fps)
 
 fetchDoc :: MonadResource m => Conduit InfoDoc m TextDoc
 fetchDoc = awaitForever go
@@ -102,15 +104,6 @@ reportResultC o = awaitForever go
       case getAnswer r of
         Nothing -> return ()
         Just v -> yield v
-
-
-{-
-cacheMods :: Db.PackageId -> Vector FilePath -> IO [InfoDoc]
-cacheMods pid fps =
-  runSqlite "hk.db" $ do
-    runMigration Db.migrateAll
-    Db.insertModules pid (V.toList fps)
--}
 
 
 -- | Loads values n from the stream into memory.
