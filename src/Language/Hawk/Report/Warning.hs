@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Hawk.Report.Warning where
 
+import Language.Hawk.Compile.Flags
 import Language.Hawk.Compile.Options
 import Language.Hawk.Report.Helpers (reflowParagraph)
 import Language.Hawk.Report.Region (Region, Position)
@@ -20,42 +21,32 @@ instance Reportable Warning where
     toReport warn =
       case warn of
           FileIgnored fp ->
-            Report.report
-              "Ignored file"
-              Nothing
-              "The file didn't have a valid module name"
-              ( reflowParagraph $
-                  "This should be more detailed"
-              )
+            Report.simple $
+              "Ignored directory: " ++ fp
 
           DirectoryIgnored fp ->
-            Report.report
-              "Ignored directory"
-              Nothing
-              "The given file was found to be empty."
-              ( reflowParagraph $
-                  "This should be more detailed"
-              )
+            Report.simple $
+              "Ignored directory: " ++ fp
 
           SymLinkIgnored fp ->
-            Report.report
-              "Ignored file"
-              Nothing
-              "The file didn't have a valid module name"
-              ( reflowParagraph $
-                  "This should be more detailed"
-              )
+            Report.simple $
+              "Ignored Symbolic Link: " ++ fp
+
+
+
 
 
 instance HasFlags Warning where
-    flagged o w =
+    flag w = 
       case w of
-          FileIgnored _ -> optWarnFileIgnoredFlag o
-          DirectoryIgnored _ -> optWarnDirectoryIgnoredFlag o
-          SymLinkIgnored _ -> optWarnSymLinkIgnored o
+          FileIgnored _       -> warnFileIgnoredFlag
+          DirectoryIgnored _  -> warnDirIgnoredFlag
+          SymLinkIgnored _    -> warnSymLinkIgnoredFlag
 
 
 instance HasVerbosity Warning where
+    verbosityThreshold _ = optWarnVerbosity
+
     verbosity w =
       case w of
           FileIgnored _ -> 1

@@ -25,7 +25,7 @@ import Language.Hawk.Parse.Document
 import Language.Hawk.Parse.Lexer (lexer, tokenize)
 import Language.Hawk.Parse.Lexer.Token (Token)
 import Language.Hawk.Report.Result
-import Language.Hawk.Report.Report (putReports)
+import Language.Hawk.Report.Report (putReports, toReports)
 
 import qualified Control.Monad.Trans.State.Strict as St
 import qualified Data.Text                        as T
@@ -98,7 +98,7 @@ reportResultC :: MonadIO m => Opts -> Conduit (Result a) m a
 reportResultC o = awaitForever go
   where
     go r = do
-      liftIO $ putReports (resultReports o r)
+      liftIO $ putReports (toReports (o, r))
       case getAnswer r of
         Nothing -> return ()
         Just v -> yield v

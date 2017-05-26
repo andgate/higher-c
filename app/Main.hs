@@ -2,8 +2,9 @@ module Main where
 
 import Control.Applicative
 import Data.Monoid
-import Options.Applicative
+import Language.Hawk.Compile.Flags
 import Language.Hawk.Compile.Options
+import Options.Applicative
 
 
 main :: IO ()
@@ -23,16 +24,25 @@ main = do
         Opts  <$> hsubparser (buildCommand <> cleanCommand)
 
               <*> option auto (long "verbosity" <> short 'v' <> value 1 <> metavar "LEVEL" <> help "Compiler message verbosity")
-              <*> switch (long "f-info-filefound" <> help "Enable file found messages")
-              <*> switch (long "f-info-dirfound" <> help "Enable directory found messages")
-              <*> switch (long "f-info-freshmodules" <> help "Enable fresh module found messages")
-              <*> switch (long "f-info-filefound" <> help "Enable file found messages")
-
               <*> option auto (long "warnings" <> short 'w' <> value 1 <> metavar "LEVEL" <> help "Compiler warning verbosity")
-              <*> switch (long "f-warn-ignorefile" <> help "Enable file ignored warnings")
-              <*> switch (long "f-warn-ignoredirectroy" <> help "Enable directory ignored warnings")
-              <*> switch (long "f-warn-ignoresymlink" <> help "Enable symlink ignored warnings")
-        
+              <*> msgFlags [ (infoFileFoundFlag, "file found messages")
+                           , (infoDirFoundFlag, "directory found messages")
+                           , (infoFreshModuleFoundFlag, "fresh module found messages")
+                           , (infoModulePreservedFlag, "preserved module messages")
+                           , (warnFileIgnoredFlag, "file ignored warnings")
+                           , (warnDirIgnoredFlag, "directory ignored warnings")
+                           , (warnSymLinkIgnoredFlag, "symlink ignored warnings")
+                           ]
+
+    msgFlags fls = 
+        many (foldr1 (<|>) . map msgFlag $ fls)
+    
+    msgFlag (flagStr, desc) =
+        let on = mkFlagOff flagStr
+            off = mkFlagOff flagStr
+        in    flag' on (long on <> help ("Enable " ++ desc))
+          <|> flag' off (long off <> help ("Disable " ++ desc))
+
     buildCommand =
         command
             "build"

@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Hawk.Report.Info where
 
+import Language.Hawk.Compile.Flags
 import Language.Hawk.Compile.Options
 import Language.Hawk.Report.Helpers (reflowParagraph)
 import Language.Hawk.Report.Region (Region, Position)
@@ -22,31 +23,34 @@ instance Reportable Info where
       case info of
         FileFound fp ->
             Report.simple $
-              "File Found: " ++ fp
+              "Found file: " ++ fp
         
         DirectoryFound fp ->
             Report.simple $
-              "Directory found: " ++ fp
+              "Found Directory: " ++ fp
 
         FreshModuleFound mp ->
             Report.simple $
-              "Module cached:  " ++ mp
+              "Cached Module: " ++ mp
         
         ModulePreserved mp ->
             Report.simple $
-              "Module kept: " ++ mp
+              "PreservedModule: " ++ mp
+
 
 
 instance HasFlags Info where
-    flagged o i =
+    flag i = 
       case i of
-          FileFound _               -> optFlagInfoFileFound o
-          DirectoryFound _          -> optFlagInfoDirectoryFound o
-          FreshModuleFound _        -> optFlagInfoFreshModuleFound o
-          ModulePreserved _         -> optFlagInfoModulePreserved o
+          FileFound _          -> infoFileFoundFlag
+          DirectoryFound _     -> infoDirFoundFlag
+          FreshModuleFound _   -> infoFreshModuleFoundFlag
+          ModulePreserved _    -> infoFreshModuleFoundFlag
 
 
 instance HasVerbosity Info where
+    verbosityThreshold _ = optInfoVerbosity
+
     verbosity i =
       case i of
           FileFound _               -> 2

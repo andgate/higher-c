@@ -1,5 +1,6 @@
 module Language.Hawk.Compile.Options where
 
+import Language.Hawk.Compile.Flags
 
 data Command
     = Build String
@@ -10,16 +11,8 @@ data Opts = Opts
 
     -- Warning Flags
     , optInfoVerbosity :: !Int
-    , optFlagInfoFileFound :: !Bool
-    , optFlagInfoDirectoryFound :: !Bool
-    , optFlagInfoFreshModuleFound :: !Bool
-    , optFlagInfoModulePreserved :: !Bool
-
-    -- Warning Flags
     , optWarnVerbosity :: !Int
-    , optWarnFileIgnoredFlag :: !Bool
-    , optWarnDirectoryIgnoredFlag :: !Bool
-    , optWarnSymLinkIgnored :: !Bool
+    , optFlags :: [String]
     }
 
 
@@ -29,30 +22,25 @@ defOpts =
   { optCommand = Build ""
 
   -- Warning Flags
-  , optInfoVerbosity = 1
-  , optFlagInfoFileFound = False
-  , optFlagInfoDirectoryFound = False
-  , optFlagInfoFreshModuleFound = True
-  , optFlagInfoModulePreserved = False
-
-  -- Warning Flags
+  , optInfoVerbosity = 2
   , optWarnVerbosity = 1
-  , optWarnFileIgnoredFlag = True
-  , optWarnDirectoryIgnoredFlag  = True
-  , optWarnSymLinkIgnored  = True
+  , optFlags = []
   }
 
 
 class HasVerbosity a where
+    verbosityThreshold :: a -> Opts -> Int
     verbosity :: a -> Int
-
-class HasFlags a where
-    flagged :: Opts -> a -> Bool
-    flagged o a = not $ notFlagged o a
-
-    notFlagged :: Opts -> a -> Bool
-    notFlagged o a = not $ flagged o a
 
 
 messageFilter :: (HasVerbosity a, HasFlags a) => Opts -> [a] -> [a]
-messageFilter = undefined
+messageFilter o msgs = 
+  let
+    p msg | (flagOn msg) `elem` (optFlags o)  -- Flagged messages take priority
+              = True -- Is there a better way to do this?
+          | (flagOff msg) `elem` (optFlags o)
+              = False
+          | otherwise -- Otherwise, default to verbosity
+              = verbosity msg <= verbosityThreshold msg o
+  in 
+    filter p msgs

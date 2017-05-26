@@ -1,8 +1,13 @@
+{-# LANGUAGE  RankNTypes
+            , FlexibleInstances
+            , InstanceSigs
+  #-}
 module Language.Hawk.Report.Result where
 
 import Control.Applicative
 import Control.Monad.Except (Except, runExcept)
 import Data.Monoid
+import Language.Hawk.Compile.Flags
 import Language.Hawk.Compile.Options
 import Language.Hawk.Data.Bag
 import Language.Hawk.Report.Error
@@ -21,17 +26,20 @@ data Result r
    } deriving (Show)
 
 
-resultReports :: Opts -> Result a -> [Report]
-resultReports o (Result i w a) = 
-     reportFilter o i 
-  ++ reportFilter o w
-  ++ case a of
-        Left errs -> toReport <$> (toList errs)
-        Right _ -> []
+instance MultiReportable (Opts, Result a) where
+    toReports :: (Opts, Result a) -> [Report]
+    toReports (o, (Result i w a)) = 
+        toReports (o, i) 
+      ++ toReports (o, w)
+      ++ case a of
+            Left errs -> toReport <$> (toList errs)
+            Right _ -> []
 
-
-reportFilter :: (HasVerbosity r, HasFlags r, Reportable r) => Opts -> Bag r -> [Report]
-reportFilter o = fmap toReport . messageFilter o .  toList
+instance forall r . ( HasVerbosity r 
+                    , HasFlags r
+                    , Reportable r) => MultiReportable (Opts, Bag r) where
+    toReports (o, bag) =
+        fmap toReport . messageFilter o .  toList $ bag
 
 getAnswer :: Result a -> Maybe a
 getAnswer (Result _ _ a) =

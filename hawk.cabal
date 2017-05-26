@@ -70,6 +70,7 @@ library
   hs-source-dirs:       src
 
   exposed-modules:      Language.Hawk.Compile
+                        Language.Hawk.Compile.Flags
                         Language.Hawk.Compile.Monad
                         Language.Hawk.Compile.Options
                         Language.Hawk.Compile.Source
