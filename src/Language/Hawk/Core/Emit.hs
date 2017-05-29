@@ -1,8 +1,9 @@
 -- Core.Emit is where desugaring Syntax AST into Core AST occurs.
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
-module Language.Hawk.Core.Emit where
 
+module Language.Hawk.Core.Emit where
+{-
 import Data.List
 import Safe as S
 
@@ -306,3 +307,5 @@ mkParams qty = zipWith Core.Param tys' xs
     tys = Syn.qtypeArgs qty
     tys' = map emit tys
     xs = ["x" ++ show i | i <- [1..] ]
+
+    -}

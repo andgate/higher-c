@@ -9,10 +9,20 @@ $ stack setup
 $ stack build
 ```
 
-Once you have a successful build, you can test changes with
+Once you have a successful build, you can run the following commands.
 
-```bash
-$ stack test
+``` sh
+# Build the project.
+stack build
+
+# Run the test suite.
+stack test
+
+# Run the benchmarks.
+stack bench
+
+# Generate documentation.
+stack haddock
 ```
 
 ## Learn

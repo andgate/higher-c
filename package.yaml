@@ -1,0 +1,170 @@
+# This YAML file describes your package. Stack will automatically generate a
+# Cabal file when you run `stack build`. See the hpack website for help with
+# this file: <https://github.com/sol/hpack>.
+
+
+name: hawk
+maintainer: Gabriel Anderson
+synopsis: Hawk programming language
+description: Close to the metal, modern language
+github: andgate/hawk
+category: Compilers
+version: '0.0.0'
+license: MIT
+
+build-tools:
+  - alex
+
+extra-source-files:
+  - CHANGELOG.md
+  - LICENSE.md
+  - package.yaml
+  - README.md
+  - stack.yaml
+  - src/Language/Hawk/Parse/Lexer.x
+
+ghc-options: 
+  - -Wall
+  - -fno-warn-name-shadowing
+  - -fno-warn-unused-binds
+  - -fno-warn-unused-matches
+  - -fno-warn-unused-do-bind
+  - -fno-warn-orphans
+
+default-extensions:
+  - DeriveDataTypeable
+  - OverloadedStrings
+
+executables:
+  hkc:
+    dependencies:
+    - base
+    - hawk
+    - optparse-applicative
+    ghc-options:
+    - -rtsopts
+    - -threaded
+    - -with-rtsopts=-N
+    main: Main.hs
+    source-dirs: executable
+
+library:
+  dependencies:
+    - aeson
+    - ansi-wl-pprint
+    - array
+    - base
+    - binary
+    # - bound
+    - bytestring
+    - conduit-combinators
+    - containers
+    - convertible
+    - directory
+    - Earley
+    - edit-distance
+    - either-unwrap
+    - fgl
+    - filepath
+    - lens
+    - mmorph
+    - monad-control
+    - monad-logger
+    - mono-traversable
+    - mtl
+    - persistent
+    - persistent-sqlite
+    - persistent-template
+    - primitive
+    - resourcet
+    - safe
+    - streaming-commons
+    - syb
+    - text
+    - text-format
+    - time
+    - transformers
+    - uniplate
+    - utf8-string
+    - vector
+    - yaml
+  source-dirs: src
+  exposed-modules:      
+    - Language.Hawk.Compile
+    - Language.Hawk.Compile.Flags
+    - Language.Hawk.Compile.Monad
+    - Language.Hawk.Compile.Options
+    - Language.Hawk.Compile.Source
+
+    - Language.Hawk.Data.Bag
+    - Language.Hawk.Data.Emittable
+
+    - Language.Hawk.Metadata
+    - Language.Hawk.Metadata.CacheStatus
+    - Language.Hawk.Metadata.Namespace
+    - Language.Hawk.Metadata.Schema
+
+    - Language.Hawk.Parse
+    - Language.Hawk.Parse.Document
+    - Language.Hawk.Parse.Grammar.ExprLevel
+    - Language.Hawk.Parse.Grammar.TopLevel
+    - Language.Hawk.Parse.Grammar.TypeLevel
+    - Language.Hawk.Parse.Helpers
+    - Language.Hawk.Parse.Lexer
+    - Language.Hawk.Parse.Lexer.Catalog
+    - Language.Hawk.Parse.Lexer.Layout
+    - Language.Hawk.Parse.Lexer.Token
+
+    - Language.Hawk.Report.Error
+    - Language.Hawk.Report.Helpers
+    - Language.Hawk.Report.Info
+    - Language.Hawk.Report.Region
+    - Language.Hawk.Report.Report
+    - Language.Hawk.Report.Result
+    - Language.Hawk.Report.Warning
+
+    - Language.Hawk.Syntax.AliasDefinition
+    - Language.Hawk.Syntax.DataDefinition
+    - Language.Hawk.Syntax.Expression
+    - Language.Hawk.Syntax.ExpressionDefinition
+    - Language.Hawk.Syntax.ExpressionDeclaration
+    - Language.Hawk.Syntax.Item
+    - Language.Hawk.Syntax.Literal
+    - Language.Hawk.Syntax.Module
+    - Language.Hawk.Syntax.Name
+    - Language.Hawk.Syntax.OpInfo
+    # - Language.Hawk.Syntax.Pattern
+    - Language.Hawk.Syntax.QType
+    - Language.Hawk.Syntax.Type
+    - Language.Hawk.Syntax.TypeClassDefinition
+    - Language.Hawk.Syntax.TypeDeclaration
+
+    - Paths_hawk
+
+
+tests:
+  hawk-test-suite:
+    dependencies:
+    - base
+    - hawk
+    - tasty
+    - tasty-hspec
+    ghc-options:
+    - -rtsopts
+    - -threaded
+    - -with-rtsopts=-N
+    main: Main.hs
+    source-dirs: test-suite
+
+benchmarks:
+  hawk-benchmarks:
+    dependencies:
+    - base
+    - hawk
+    - criterion
+    ghc-options:
+    - -rtsopts
+    - -threaded
+    - -with-rtsopts=-N
+    main: Main.hs
+    source-dirs: benchmark

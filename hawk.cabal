@@ -1,189 +1,168 @@
-name:                hawk
-version:             0.1.0.0
-synopsis:            Hawk programming language
-description:         Close to the metal, modern langauage
-license:             BSD3
-license-file:        LICENSE
-author:              Gabriel Anderson
-maintainer:          gabe4k@gmail.com
-copyright:           Copyight (C) 2017 Gabriel Anderson
-category:            Compilers
-build-type:          Simple
--- extra-source-files:
-cabal-version:       >=1.10
-Bug-Reports:         https://github.com/andgate/hawk/issues
+-- This file has been generated from package.yaml by hpack version 0.15.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           hawk
+version:        0.0.0
+synopsis:       Hawk programming language
+description:    Close to the metal, modern language
+category:       Compilers
+homepage:       https://github.com/andgate/hawk#readme
+bug-reports:    https://github.com/andgate/hawk/issues
+maintainer:     Gabriel Anderson
+license:        MIT
+build-type:     Simple
+cabal-version:  >= 1.10
+
+extra-source-files:
+    CHANGELOG.md
+    LICENSE.md
+    package.yaml
+    README.md
+    src/Language/Hawk/Parse/Lexer.x
+    stack.yaml
 
 source-repository head
-  type:     git
+  type: git
   location: https://github.com/andgate/hawk
 
 library
-  default-language:     Haskell2010
+  hs-source-dirs:
+      src
+  default-extensions: DeriveDataTypeable OverloadedStrings
+  ghc-options: -Wall -fno-warn-name-shadowing -fno-warn-unused-binds -fno-warn-unused-matches -fno-warn-unused-do-bind -fno-warn-orphans
+  build-depends:
+      aeson
+    , ansi-wl-pprint
+    , array
+    , base
+    , binary
+    , bytestring
+    , conduit-combinators
+    , containers
+    , convertible
+    , directory
+    , Earley
+    , edit-distance
+    , either-unwrap
+    , fgl
+    , filepath
+    , lens
+    , mmorph
+    , monad-control
+    , monad-logger
+    , mono-traversable
+    , mtl
+    , persistent
+    , persistent-sqlite
+    , persistent-template
+    , primitive
+    , resourcet
+    , safe
+    , streaming-commons
+    , syb
+    , text
+    , text-format
+    , time
+    , transformers
+    , uniplate
+    , utf8-string
+    , vector
+    , yaml
+  build-tools:
+      alex
+  exposed-modules:
+      Language.Hawk.Compile
+      Language.Hawk.Compile.Flags
+      Language.Hawk.Compile.Monad
+      Language.Hawk.Compile.Options
+      Language.Hawk.Compile.Source
+      Language.Hawk.Data.Bag
+      Language.Hawk.Data.Emittable
+      Language.Hawk.Metadata
+      Language.Hawk.Metadata.CacheStatus
+      Language.Hawk.Metadata.Namespace
+      Language.Hawk.Metadata.Schema
+      Language.Hawk.Parse
+      Language.Hawk.Parse.Document
+      Language.Hawk.Parse.Grammar.ExprLevel
+      Language.Hawk.Parse.Grammar.TopLevel
+      Language.Hawk.Parse.Grammar.TypeLevel
+      Language.Hawk.Parse.Helpers
+      Language.Hawk.Parse.Lexer
+      Language.Hawk.Parse.Lexer.Catalog
+      Language.Hawk.Parse.Lexer.Layout
+      Language.Hawk.Parse.Lexer.Token
+      Language.Hawk.Report.Error
+      Language.Hawk.Report.Helpers
+      Language.Hawk.Report.Info
+      Language.Hawk.Report.Region
+      Language.Hawk.Report.Report
+      Language.Hawk.Report.Result
+      Language.Hawk.Report.Warning
+      Language.Hawk.Syntax.AliasDefinition
+      Language.Hawk.Syntax.DataDefinition
+      Language.Hawk.Syntax.Expression
+      Language.Hawk.Syntax.ExpressionDefinition
+      Language.Hawk.Syntax.ExpressionDeclaration
+      Language.Hawk.Syntax.Item
+      Language.Hawk.Syntax.Literal
+      Language.Hawk.Syntax.Module
+      Language.Hawk.Syntax.Name
+      Language.Hawk.Syntax.OpInfo
+      Language.Hawk.Syntax.QType
+      Language.Hawk.Syntax.Type
+      Language.Hawk.Syntax.TypeClassDefinition
+      Language.Hawk.Syntax.TypeDeclaration
+      Paths_hawk
+  other-modules:
+      Language.Hawk.Core.Emit
+      Language.Hawk.Syntax.Pattern
+      Language.Hawk.TypeCheck
+      Language.Hawk.TypeCheck.Monad
+  default-language: Haskell2010
 
-  build-depends:          aeson
-                        , ansi-wl-pprint
-                        , array
-                        , base
-                        , binary
-                       -- , bound
-                        , bytestring
-                        , conduit-combinators
-                        , containers
-                        , convertible
-                        , directory
-                        , Earley
-                        , edit-distance
-                        , either-unwrap
-                        , fgl
-                        , filepath
-                        , lens
-                        , mmorph
-                        , monad-control
-                        , monad-logger
-                        , mono-traversable
-                        , mtl
-                        , persistent
-                        , persistent-sqlite
-                        , persistent-template
-                        , primitive
-                        , resourcet
-                        , safe
-                        , streaming-commons
-                        , syb
-                        , text
-                        , text-format
-                        , time
-                        , transformers
-                        , uniplate
-                        , utf8-string           >= 0.5
-                        , vector
-                        , yaml
+executable hkc
+  main-is: Main.hs
+  hs-source-dirs:
+      executable
+  default-extensions: DeriveDataTypeable OverloadedStrings
+  ghc-options: -Wall -fno-warn-name-shadowing -fno-warn-unused-binds -fno-warn-unused-matches -fno-warn-unused-do-bind -fno-warn-orphans -rtsopts -threaded -with-rtsopts=-N
+  build-depends:
+      base
+    , hawk
+    , optparse-applicative
+  build-tools:
+      alex
+  default-language: Haskell2010
 
-  ghc-options:          -Wall
-                        -fno-warn-unused-binds
-                        -fno-warn-unused-do-bind
-                        -fno-warn-unused-imports
-                        -fno-warn-type-defaults
-                        -fno-warn-orphans
-                        -ddump-splices
+test-suite hawk-test-suite
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  hs-source-dirs:
+      test-suite
+  default-extensions: DeriveDataTypeable OverloadedStrings
+  ghc-options: -Wall -fno-warn-name-shadowing -fno-warn-unused-binds -fno-warn-unused-matches -fno-warn-unused-do-bind -fno-warn-orphans -rtsopts -threaded -with-rtsopts=-N
+  build-depends:
+      base
+    , hawk
+    , tasty
+    , tasty-hspec
+  build-tools:
+      alex
+  default-language: Haskell2010
 
-  hs-source-dirs:       src
-
-  exposed-modules:      Language.Hawk.Compile
-                        Language.Hawk.Compile.Flags
-                        Language.Hawk.Compile.Monad
-                        Language.Hawk.Compile.Options
-                        Language.Hawk.Compile.Source
-
-                        -- Results depend on bag, but maybe that will change soon
-                        Language.Hawk.Data.Bag
-                        Language.Hawk.Data.Emittable
-
-                        Language.Hawk.Metadata
-                        Language.Hawk.Metadata.CacheStatus
-                        Language.Hawk.Metadata.Namespace
-                        Language.Hawk.Metadata.Schema
-
-                        Language.Hawk.Parse
-                        Language.Hawk.Parse.Document
-                        Language.Hawk.Parse.Grammar.ExprLevel
-                        Language.Hawk.Parse.Grammar.TopLevel
-                        Language.Hawk.Parse.Grammar.TypeLevel
-                        Language.Hawk.Parse.Helpers
-                        Language.Hawk.Parse.Lexer
-                        Language.Hawk.Parse.Lexer.Catalog
-                        Language.Hawk.Parse.Lexer.Layout
-                        Language.Hawk.Parse.Lexer.Token
-
-                        Language.Hawk.Report.Error
-                        Language.Hawk.Report.Helpers
-                        Language.Hawk.Report.Info
-                        Language.Hawk.Report.Region
-                        Language.Hawk.Report.Report
-                        Language.Hawk.Report.Result
-                        Language.Hawk.Report.Warning
-
-                        Language.Hawk.Syntax.AliasDefinition
-                        Language.Hawk.Syntax.DataDefinition
-                        Language.Hawk.Syntax.Expression
-                        Language.Hawk.Syntax.ExpressionDefinition
-                        Language.Hawk.Syntax.ExpressionDeclaration
-                        Language.Hawk.Syntax.Item
-                        Language.Hawk.Syntax.Literal
-                        Language.Hawk.Syntax.Module
-                        Language.Hawk.Syntax.Name
-                        Language.Hawk.Syntax.OpInfo
-                        --Language.Hawk.Syntax.Pattern
-                        Language.Hawk.Syntax.QType
-                        Language.Hawk.Syntax.Type
-                        Language.Hawk.Syntax.TypeClassDefinition
-                        Language.Hawk.Syntax.TypeDeclaration
-
-                        --Language.Hawk.Target.LLVM.Codegen
-                        --Language.Hawk.Target.LLVM.Emit
-
-                        Paths_hawk
-
-
-  build-tools:          alex
-  --other-modules:        Language.Hawk.Parse.Lexer
-
-  default-extensions:           DeriveDataTypeable
-                                OverloadedStrings
-
-
-executable              hkc
-  main-is:              Main.hs
-  hs-source-dirs:       app
-  default-language:     Haskell2010
-  build-depends:          base
-                        , hawk
-                        , optparse-applicative
-
---  other-modules:
-
-  ghc-options:          -Wall
-                        -fwarn-tabs
-                        -fno-warn-unused-binds
-                        -fno-warn-unused-do-bind
-                        -fno-warn-unused-imports
-                        -fno-warn-type-defaults
-                        -fno-warn-orphans
-
-test-suite spec
-  default-language:     Haskell2010
-  type:                 exitcode-stdio-1.0
-  hs-source-dirs:       test
-  main-is:              Spec.hs
-
-  build-depends:        base
-                        , bytestring
-                        , ansi-wl-pprint
-                        , containers
-                        , Earley
-                        , hspec
-                        , hawk
-                        , text
-                        , yaml
-
-  ghc-options:          -threaded
-                        -rtsopts
-                        -with-rtsopts=-N
-
-  default-language:     Haskell2010
-
-  other-modules:        Hawk.GrammarSpec
-                        SpecHelper
-
-benchmark crit
-  default-language:     Haskell2010
-  type:                 exitcode-stdio-1.0
-  hs-source-dirs:       bench
-  main-is:              MainBenchmarkSuite.hs
-
-  build-depends:        base,
-                        criterion,
-                        random
-
-  ghc-options:          -Wall
-                        -O2
+benchmark hawk-benchmarks
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  hs-source-dirs:
+      benchmark
+  default-extensions: DeriveDataTypeable OverloadedStrings
+  ghc-options: -Wall -fno-warn-name-shadowing -fno-warn-unused-binds -fno-warn-unused-matches -fno-warn-unused-do-bind -fno-warn-orphans -rtsopts -threaded -with-rtsopts=-N
+  build-depends:
+      base
+    , hawk
+    , criterion
+  build-tools:
+      alex
+  default-language: Haskell2010

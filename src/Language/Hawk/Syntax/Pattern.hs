@@ -1,5 +1,6 @@
 module Language.Hawk.Syntax.Pattern where
 
+{-
 import qualified Data.Set as Set
 
 import qualified Language.Hawk.Syntax.Literal as L
@@ -89,3 +90,5 @@ boundVarSet =
 boundVarList :: Pattern ann var -> [String]
 boundVarList =
   Set.toList . boundVarSet
+
+  -}
