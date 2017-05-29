@@ -23,6 +23,9 @@ stack bench
 
 # Generate documentation.
 stack haddock
+
+# All three at once, rebuilding when changes are saved
+stack build --test --bench --haddock --file-watch
 ```
 
 ## Learn

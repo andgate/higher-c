@@ -37,18 +37,19 @@ default-extensions:
 
 executables:
   hkc:
-    dependencies:
-    - base
-    - hawk
-    - optparse-applicative
-    ghc-options:
-    - -rtsopts
-    - -threaded
-    - -with-rtsopts=-N
-    main: Main.hs
     source-dirs: executable
+    main: Main.hs
+    dependencies:
+      - base
+      - hawk
+      - optparse-applicative
+    ghc-options:
+      - -rtsopts
+      - -threaded
+      - -with-rtsopts=-N
 
 library:
+  source-dirs: src
   dependencies:
     - aeson
     - ansi-wl-pprint
@@ -88,7 +89,6 @@ library:
     - utf8-string
     - vector
     - yaml
-  source-dirs: src
   exposed-modules:      
     - Language.Hawk.Compile
     - Language.Hawk.Compile.Flags
@@ -144,27 +144,28 @@ library:
 
 tests:
   hawk-test-suite:
-    dependencies:
-    - base
-    - hawk
-    - tasty
-    - tasty-hspec
-    ghc-options:
-    - -rtsopts
-    - -threaded
-    - -with-rtsopts=-N
-    main: Main.hs
     source-dirs: test-suite
+    main: Main.hs
+    dependencies:
+      - base
+      - hawk
+      - tasty
+      - tasty-hspec
+    ghc-options:
+      - -rtsopts
+      - -threaded
+      - -with-rtsopts=-N
+    
 
 benchmarks:
   hawk-benchmarks:
-    dependencies:
-    - base
-    - hawk
-    - criterion
-    ghc-options:
-    - -rtsopts
-    - -threaded
-    - -with-rtsopts=-N
-    main: Main.hs
     source-dirs: benchmark
+    main: Main.hs
+    dependencies:
+      - base
+      - hawk
+      - criterion
+    ghc-options:
+      - -rtsopts
+      - -threaded
+      - -with-rtsopts=-N
