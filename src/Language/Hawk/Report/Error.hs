@@ -10,21 +10,16 @@ import qualified Language.Hawk.Report.Region as R
 import qualified Language.Hawk.Report.Report as Report
 
 data Error
-  = Parse R.Region
+  = Parse FilePath R.Region
   | BadModuleName FilePath
   deriving Show
 
 instance Reportable Error where
     toReport err =
       case err of
-        Parse r ->
-            Report.report
-              "UNABLE TO PARSE"
-              Nothing
-              "There was an error parsing."
-              ( reflowParagraph
-                  "This should be an example of where the problem was."
-              )
+        Parse fp (R.R (R.P l c) _) ->
+            Report.simple $
+              "Parse error " ++ fp ++ ":" ++ show l ++ ":" ++ show c
         BadModuleName fp ->
             Report.report
               "BAD MODULE NAME"

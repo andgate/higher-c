@@ -62,6 +62,7 @@ type BackendT m a = ReaderT SqlBackend m a
 
 staleAll :: MonadIO m => BackendT m ()
 staleAll = do
+  -- Everything with a cacheStatus needs to go here
   updateWhere [] [Db.ModuleCacheStatus =. Stale]
   updateWhere [] [Db.ModuleFileCacheStatus =. Stale]
   updateWhere [] [Db.ModulePathCacheStatus =. Stale]
@@ -134,19 +135,21 @@ insertModulePath (a, b) = do
 insertModuleFile :: MonadIO m => Db.PackageId -> Db.ModuleId -> FilePath -> UTCTime -> BackendT m Db.ModuleFileId
 insertModuleFile pid mid fp clk = do
   let fp' = pack fp
-  may_mf <- getBy $ Db.UniqueModuleFile fp'
+  may_mf <- getBy $ Db.UniqueModuleFile pid mid fp'
   case may_mf of
     Nothing -> 
         insert $ Db.ModuleFile pid mid fp' clk Fresh
 
-    Just (Entity mfid _) -> do
-        -- Needs to check the file's timestamp
-        update mfid [ Db.ModuleFilePkg =. pid
-                    , Db.ModuleFileAssoc =. mid
-                    , Db.ModuleFilePath =. pack fp
-                    , Db.ModuleFileCacheStatus =. Preserved
-                    ]
-        return mfid
+    Just (Entity mfid mf)
+      | clk > Db.moduleFileTimestamp mf -> do
+          update mfid [ Db.ModuleFileTimestamp =. clk
+                      , Db.ModuleFileCacheStatus =. Fresh
+                      ]
+          return mfid
+
+      | otherwise -> do
+          update mfid [ Db.ModuleFileCacheStatus =. Preserved ]
+          return mfid
 
         
 

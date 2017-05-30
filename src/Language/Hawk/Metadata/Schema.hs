@@ -45,7 +45,7 @@ ModuleFile
     path Text
     timestamp UTCTime
     cacheStatus CacheStatus
-    UniqueModuleFile path
+    UniqueModuleFile pkg assoc path
     deriving Show
 
 
