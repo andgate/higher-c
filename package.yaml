@@ -139,8 +139,6 @@ library:
     - Language.Hawk.Syntax.TypeClassDefinition
     - Language.Hawk.Syntax.TypeDeclaration
 
-    - Paths_hawk
-
 
 tests:
   hawk-test-suite:

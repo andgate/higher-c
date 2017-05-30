@@ -46,9 +46,6 @@ data Expr n t
   
   | Src Source
   
-  -- disable case for now, patterns are too complicated
-  -- | Case (Expr n t) [(Pattern.Pattern n, Expr n t)]
-  
   deriving (Eq, Show, Ord, Data, Typeable)
 
 

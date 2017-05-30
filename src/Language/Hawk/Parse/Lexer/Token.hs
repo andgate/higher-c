@@ -3,8 +3,7 @@ module Language.Hawk.Parse.Lexer.Token where
 import Data.Binary hiding (encode)
 import Data.Text (Text)
 import Data.Data
-import Data.Typeable
-import Language.Hawk.Report.Region (Region(..), Position (..))
+import Language.Hawk.Report.Region (Region(..))
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
 
@@ -104,7 +103,7 @@ tokenToName (Token tc r) =
 
 
 isTok :: TokenClass -> Token -> Bool
-isTok tc1 t@(Token tc2 _) =
+isTok tc1 (Token tc2 _) =
     tc1 == tc2
     
 isVar :: Text -> Token -> Bool
@@ -245,6 +244,7 @@ instance Binary TokenClass where
       15 -> pure TokenLn
       16 -> pure TokenLn'
       17 -> pure TokenEof
+      _  -> error "data corrupted"
       
   put e =
     case e of

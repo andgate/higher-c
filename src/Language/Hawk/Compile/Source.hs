@@ -9,7 +9,7 @@ import Data.Time.Clock (UTCTime)
 import Data.Streaming.Filesystem (getFileType, FileType(..))
 import Language.Hawk.Report.Result
 import System.Directory (getModificationTime)
-import System.FilePath ( (</>), (<.>), takeExtension, takeBaseName, splitDirectories, makeRelative )
+import System.FilePath ( takeExtension, takeBaseName, splitDirectories, makeRelative )
 
 import qualified Language.Hawk.Report.Error       as Err
 import qualified Language.Hawk.Report.Info        as Info
@@ -23,7 +23,12 @@ data HawkSource =
     , srcTimestamp :: UTCTime
     } deriving Show
 
+{- |
+      Turns a filepath into a module path.
 
+      >>> modulePath "src/Foo/Bar/Baz.hk"
+      "Foo.Bar.Baz"
+-}
 modulePath :: HawkSource -> String
 modulePath =
   intercalate "." . splitModulePath

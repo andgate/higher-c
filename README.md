@@ -21,7 +21,7 @@ stack test
 # Run the benchmarks.
 stack bench
 
-# Generate documentation.
+# Generate documentation. (windows may require -j1 for a successful build)
 stack haddock
 
 # All three at once, rebuilding when changes are saved

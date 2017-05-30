@@ -7,7 +7,6 @@ module Language.Hawk.Compile ( compile
                              where
 
 import Conduit
-import Control.Monad ( forM_ )
 import Control.Monad.Primitive (PrimMonad)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Resource (MonadResource)
