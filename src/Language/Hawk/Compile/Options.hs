@@ -36,9 +36,9 @@ class HasVerbosity a where
 messageFilter :: (HasVerbosity a, HasFlags a) => Opts -> [a] -> [a]
 messageFilter o msgs = 
   let
-    p msg | (flagOn msg) `elem` (optFlags o)  -- Flagged messages take priority
+    p msg | flagOn msg `elem` optFlags o  -- Flagged messages take priority
               = True -- Is there a better way to do this?
-          | (flagOff msg) `elem` (optFlags o)
+          | flagOff msg `elem` optFlags o
               = False
           | otherwise -- Otherwise, default to verbosity
               = verbosity msg <= verbosityThreshold msg o

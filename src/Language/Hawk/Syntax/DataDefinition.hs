@@ -25,8 +25,8 @@ type Typed =
  
 data DataDef n t
     = DataDef
-      { data_decl :: TD.TypeDecl n t
-      , data_cons :: [DataCons n t]
+      { dataDecl :: TD.TypeDecl n t
+      , dataCons :: [DataCons n t]
       }
     deriving (Eq, Show, Data, Typeable)
 

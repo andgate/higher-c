@@ -76,11 +76,11 @@ toplevel = mdo
 
 -- -----------------------------------------------------------------------------
 -- Name rules
-    varName       <- rule $ name $ varId
-    conName       <- rule $ name $ conId
-    opName        <- rule $ name $ opId
-    mixfixName    <- rule $ name $ mixfixId
-    mixfixBlkName <- rule $ name $ mixfixId <|> mixfixblkId
+    varName       <- rule $ name varId
+    conName       <- rule $ name conId
+    opName        <- rule $ name opId
+    mixfixName    <- rule $ name mixfixId
+    mixfixBlkName <- rule $ name (mixfixId <|> mixfixblkId)
         
     itemName <- rule $ 
         varName <|> parens opName <|> mixfixBlkName
@@ -209,8 +209,7 @@ toplevel = mdo
     typeCtxArgParens <- rule $
         parens typeCtxArgList
         
-    typeCtxTVar <- rule $
-        varId
+    typeCtxTVar <- rule varId
 
 -- -----------------------------------------------------------------------------
 -- Type Context Rules

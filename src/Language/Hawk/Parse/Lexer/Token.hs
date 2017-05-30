@@ -60,7 +60,7 @@ data TokenClass
 
 
 mkLam :: [N.Source] -> [Token] -> [Token]
-mkLam vs (t@(Token TokenBlk _):ts) = t:(mkLam vs ts)
+mkLam vs (t@(Token TokenBlk _):ts) = t : mkLam vs ts
 mkLam vs ts = lamOp ++ varIds ++ arrOp ++ ts
   where
     lamOp = [rsvpTok "\\"]

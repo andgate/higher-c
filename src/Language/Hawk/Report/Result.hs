@@ -28,11 +28,11 @@ data Result r
 
 instance MultiReportable (Opts, Result a) where
     toReports :: (Opts, Result a) -> [Report]
-    toReports (o, (Result i w a)) = 
+    toReports (o, Result i w a) = 
         toReports (o, i) 
       ++ toReports (o, w)
       ++ case a of
-            Left errs -> toReport <$> (toList errs)
+            Left errs -> toReport <$> toList errs
             Right _ -> []
 
 instance forall r . ( HasVerbosity r 

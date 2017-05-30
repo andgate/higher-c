@@ -44,15 +44,13 @@ merge (R start _) (R _ end) =
   
 toString :: Region -> String
 toString (R start end) =
-  case line start == line end of
-    False ->
-      "between lines " ++ show (line start)
-      ++ " and " ++ show (line end)
-      
-    True ->
+  if line start == line end
+    then
       "on line " ++ show (line end) ++ ", column "
       ++ show (column start) ++ " to " ++ show (column end)
-
+    else
+      "between lines " ++ show (line start)
+      ++ " and " ++ show (line end)
 
 class HasPosition a where
     toPosition :: a -> Position     
@@ -70,7 +68,7 @@ instance HasRegion Region where
   
 instance HasPosition a => HasRegion (a, a) where
     toRegion =
-      (uncurry mkRegion)
+      uncurry mkRegion
 
 
       

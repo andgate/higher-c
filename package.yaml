@@ -146,6 +146,7 @@ tests:
       - tasty
       - tasty-hspec
     ghc-options:
+      - -fhpc
       - -rtsopts
       - -threaded
       - -with-rtsopts=-N
@@ -158,7 +159,17 @@ tests:
       - doctest
       - Glob
     ghc-options:
+      - -rtsopts
       - -threaded
+      - -with-rtsopts=-N
+
+  hlint:
+    source-dirs: test-suite
+    main: HLint.hs
+    dependencies:
+      - base
+      - hlint
+    ghc-options:
       - -rtsopts
       - -threaded
       - -with-rtsopts=-N

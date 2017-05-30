@@ -1,23 +1,13 @@
-{-# LANGUAGE  ScopedTypeVariables,
-              TypeSynonymInstances,
-              EmptyDataDecls, 
-              FlexibleContexts, 
-              GADTs, 
-              GeneralizedNewtypeDeriving, 
-              MultiParamTypeClasses, 
-              OverloadedStrings, 
-              QuasiQuotes, 
-              TemplateHaskell,
-              TypeFamilies,
-              RankNTypes
-#-}
+{-# LANGUAGE ScopedTypeVariables, TypeSynonymInstances,
+    FlexibleContexts, GADTs, MultiParamTypeClasses, OverloadedStrings,
+    TypeFamilies, RankNTypes #-}
 module Language.Hawk.Metadata where
 
 
 import Data.Binary (encode)
 
 import Conduit
-import Control.Monad (sequence)
+import Control.Monad (sequence, void)
 import Control.Monad.Trans.Reader
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control
@@ -108,7 +98,7 @@ insertModuleRecursively mp = do
   mpids <- mapM insertModule qmps
 
   -- Connect module paths
-  let zipAdj = (zip <*> tail)
+  let zipAdj = zip <*> tail
       mEdges = zipAdj mpids
   mapM_ insertModulePath mEdges
 
@@ -121,9 +111,7 @@ insertModule (n, qn) = do
   let (n', qn') = (pack n, pack qn)
   may_m <- getBy $ Db.UniqueModule qn'
   case may_m of
-    Nothing -> do
-        mid <- insert $ Db.Module n' qn' Fresh
-        return mid
+    Nothing -> insert $ Db.Module n' qn' Fresh
 
     Just (Entity mid _) -> do
         update mid [Db.ModuleCacheStatus =. Preserved]
@@ -155,7 +143,7 @@ insertModuleFile pid mid fp clk = do
         -- Needs to check the file's timestamp
         update mfid [ Db.ModuleFilePkg =. pid
                     , Db.ModuleFileAssoc =. mid
-                    , Db.ModuleFilePath =. (pack fp)
+                    , Db.ModuleFilePath =. pack fp
                     , Db.ModuleFileCacheStatus =. Preserved
                     ]
         return mfid
@@ -166,11 +154,11 @@ insertModuleFile pid mid fp clk = do
 insertItem :: MonadIO m => Db.ModuleId -> I.Source -> BackendT m ()
 insertItem modId i =
   case i of
-    I.DepDecl d -> insertDepDecl modId d >> return ()
-    I.ExprDef ed -> insertExprDef modId ed >> return ()
-    I.AliasDef ad -> insertAliasDef modId ad >> return ()
-    I.DataDef dd -> insertDataDef modId dd >> return ()
-    I.TypeClassDef tcd -> insertTypeClassDef modId tcd >> return ()
+    I.DepDecl d -> void $ insertDepDecl modId d
+    I.ExprDef ed -> void $ insertExprDef modId ed
+    I.AliasDef ad -> void $ insertAliasDef modId ad
+    I.DataDef dd -> void $ insertDataDef modId dd
+    I.TypeClassDef tcd -> void $ insertTypeClassDef modId tcd
 
 
 insertDepDecl :: MonadIO m => Db.ModuleId -> I.Dependency -> BackendT m Db.DependencyId

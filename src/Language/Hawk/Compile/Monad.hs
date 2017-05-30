@@ -1,5 +1,4 @@
-{-# LANGUAGE  TemplateHaskell
-            , OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Language.Hawk.Compile.Monad where
 
 

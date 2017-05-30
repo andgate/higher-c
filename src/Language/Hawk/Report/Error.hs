@@ -22,7 +22,7 @@ instance Reportable Error where
               "UNABLE TO PARSE"
               Nothing
               "There was an error parsing."
-              ( reflowParagraph $
+              ( reflowParagraph
                   "This should be an example of where the problem was."
               )
         BadModuleName fp ->
@@ -30,7 +30,7 @@ instance Reportable Error where
               "BAD MODULE NAME"
               Nothing
               ("The path \"" ++ fp ++ "\" does not follow the proper naming convention.")
-              ( reflowParagraph $
+              ( reflowParagraph
                   "Module names must begin with a capital letter and cannot contain\
                   \ any symbols."
               )

@@ -15,7 +15,7 @@ main = do
     Test.Tasty.defaultMain test
 
 spec :: Spec
-spec = parallel $ do
+spec = parallel $
     it "Can compile" $ do
         let pkg = C.Package "Example" "core"
             cSt = C.defState {C.cPkgs = [pkg]}

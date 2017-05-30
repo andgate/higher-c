@@ -12,6 +12,7 @@ import Conduit
 import Control.Monad.Primitive (PrimMonad)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Resource (MonadResource)
+import Data.Foldable (forM_)
 import Data.Maybe (catMaybes)
 import Data.MonoTraversable (MonoFoldable, Element)
 import Data.Text (Text)
@@ -52,6 +53,7 @@ compile s =
       --typecheck
       --optimize
       --codegen
+      return ()
 
 -- | Parse the modules in the given packages and store them accordingly
 loadPackages :: Compiler ()
@@ -81,7 +83,7 @@ loadPackage o pkg@(Package n d) = do
       .| mapC catMaybes
       .| mapC V.fromList
 
-      .| mapM_C (\o -> liftIO $ cacheMods pid o)
+      .| mapM_C (liftIO . cacheMods pid)
       .| sinkNull
 
 cacheMods :: Db.PackageId -> Vector HawkSource -> IO ()
@@ -102,9 +104,7 @@ reportResultC o = awaitForever go
   where
     go r = do
       liftIO $ putReports (toReports (o, r))
-      case getAnswer r of
-        Nothing -> return ()
-        Just v -> yield v
+      forM_ (getAnswer r) yield
 
 
 -- | Loads values n from the stream into memory.

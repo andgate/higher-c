@@ -29,7 +29,7 @@ data QType t
 -- Types in context are validated when parsed
 -- Comma seperated list of TypeClass instances,
 -- which define constraints for type variables
-data Context t
+newtype Context t
   = Context [t]
   deriving (Eq, Show, Ord, Data, Typeable)
   

@@ -27,8 +27,8 @@ class MultiReportable a where
 
 
 report :: String -> Maybe R.Region -> String -> Doc -> Report
-report title highlight pre post =
-  Report title highlight (fillSep (text <$> words pre)) post
+report title highlight pre =
+  Report title highlight (fillSep (text <$> words pre))
 
 simple :: String -> Report
 simple = SimpleReport . text

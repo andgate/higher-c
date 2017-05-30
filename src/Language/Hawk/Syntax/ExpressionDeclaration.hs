@@ -26,10 +26,10 @@ type Typed
 
 data ExprDecl n t
   = ExprDecl 
-    { expr_name  :: n
-    , expr_op    :: OI.OpInfo
-    , expr_vars  :: [n]
-    , expr_type  :: t
+    { exprName  :: n
+    , exprOp    :: OI.OpInfo
+    , exprVars  :: [n]
+    , exprType  :: t
     }
   deriving (Eq, Show, Ord, Data, Typeable)
 

@@ -154,8 +154,8 @@ nearbyNames format name names =
 
 
 distance :: String -> String -> Int
-distance x y =
-  Dist.restrictedDamerauLevenshteinDistance  Dist.defaultEditCosts x y
+distance =
+  Dist.restrictedDamerauLevenshteinDistance  Dist.defaultEditCosts
   
 
 maybeYouWant :: [String] -> String

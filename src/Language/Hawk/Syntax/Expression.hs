@@ -1,6 +1,4 @@
-{-# LANGUAGE DeriveFunctor
-           , DeriveDataTypeable
-  #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module Language.Hawk.Syntax.Expression where
 
 import Data.Binary

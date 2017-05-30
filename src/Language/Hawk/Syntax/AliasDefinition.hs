@@ -24,8 +24,8 @@ type Typed =
 
 data AliasDef n t
     = AliasDef
-      { alias_decl :: TD.TypeDecl n t
-      , alias_body :: t
+      { aliasDecl :: TD.TypeDecl n t
+      , aliasBody :: t
       }
     deriving (Eq, Show, Data, Typeable)
     

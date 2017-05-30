@@ -46,9 +46,9 @@ itemParser = awaitForever go
     go :: MonadIO m => TokenDoc -> Conduit TokenDoc m DocItem
     go (Doc mid fp toks) = do
       let (parses, r@(Report _ needed found)) =
-              E.fullParses (E.parser $ G.toplevel) toks
+              E.fullParses (E.parser G.toplevel) toks
 
       case parses of
           []      -> error $ "No parses found.\n" ++ show r
-          p:[]    -> yield (Doc mid fp p)
+          [p]     -> yield (Doc mid fp p)
           ps      -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)

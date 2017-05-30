@@ -24,10 +24,10 @@ type Typed =
 
 data TypeDecl n t
   = TypeDecl
-    { tydef_context :: QT.Context t
-    , tydef_name :: n
-    , tydef_opinfo :: OI.OpInfo
-    , tydef_tyvars :: [t]
+    { tydefContext :: QT.Context t
+    , tydefName :: n
+    , tydefOpinfo :: OI.OpInfo
+    , tydefTyvars :: [t]
     }
   deriving (Eq, Show, Ord, Data, Typeable)
   

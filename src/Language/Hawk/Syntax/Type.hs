@@ -81,16 +81,16 @@ unit :: Typed
 unit = typeCon "_#_Unit_#_" []
 
 arrow :: [Typed] -> Typed
-arrow (arg:[]) = arg
+arrow [arg] = arg
 arrow args = variadic "_#Arr_#_" args
 
 tuple :: [Typed] -> Typed
-tuple (arg:[]) = arg
+tuple [arg] = arg
 tuple args = variadic "_#_Tuple_#_" args
 
 variadic :: Text -> [Typed] -> Typed
-variadic n ts =
-    App (Con $ N.builtinQ n) ts
+variadic n =
+    App (Con $ N.builtinQ n)
     
 
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE RecursiveDo, RankNTypes #-}
+{-# LANGUAGE RankNTypes #-}
 module Language.Hawk.Parse.Grammar.TypeLevel where
 
 import Control.Applicative

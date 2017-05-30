@@ -5,7 +5,7 @@ import Conduit
 import Control.Monad.Trans.Resource (MonadResource)
 import Data.Char (isUpper, isAlphaNum)
 import Data.List (intercalate, mapAccumL)
-import Data.Time.Clock (UTCTime, getCurrentTime)
+import Data.Time.Clock (UTCTime)
 import Data.Streaming.Filesystem (getFileType, FileType(..))
 import Language.Hawk.Report.Result
 import System.Directory (getModificationTime)
@@ -26,6 +26,7 @@ data HawkSource =
 {- |
       Turns a filepath into a module path.
 
+      >>> import Data.Time.Clock (getCurrentTime)
       >>> clk <- getCurrentTime
       >>> modulePath $ HkSrc "src/" "src/Foo/Bar/Baz.hk" FTFile clk
       "Foo.Bar.Baz"
@@ -63,7 +64,7 @@ isAcceptedModuleName fp =
   in 
     case n of
       [] -> False
-      (c:[]) -> isUpper c
+      [c] -> isUpper c
       (c:cs) -> isUpper c && any isAlphaNum cs
     
 

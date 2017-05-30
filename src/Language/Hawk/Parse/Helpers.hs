@@ -130,8 +130,8 @@ sep' s p =
   sep s p <|> pure []
   
 mono :: Prod r e Token a -> Prod r e Token [a]
-mono p =
-  liftA (:[]) p
+mono =
+  fmap (:[])
   
 prepend :: Prod r e Token a -> Prod r e Token [a] -> Prod r e Token [a]  
 prepend =

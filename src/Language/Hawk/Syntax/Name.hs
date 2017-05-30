@@ -6,7 +6,7 @@ module Language.Hawk.Syntax.Name where
 import Data.Aeson ((.=))
 import Data.Binary
 import Data.Data
-import Data.List (intersperse)
+import Data.List (intercalate)
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Tree
@@ -95,13 +95,13 @@ isLocalHome = isJust
       
 
 expandPathTrees :: [PathTree] -> Paths
-expandPathTrees = concat . map expandPathTree
+expandPathTrees = concatMap expandPathTree
      
 expandPathTree :: PathTree -> Paths
 expandPathTree (Node n []) = [[n]]
 expandPathTree (Node n ns) =
     map (n:) ns'
-  where ns' = concat $ map expandPathTree ns
+  where ns' = concatMap expandPathTree ns
   
       
 -- | Name toString
@@ -119,13 +119,11 @@ instance ToString Paths where
     
 instance ToString Path where
   toString =
-    concat . intersperse "." . map toString
+    intercalate "." . map toString
 
 instance ToString Name where
   toString (Name n h) =
     Text.unpack n ++ " @ " ++ toString h
-  toString (Name n Nothing) =
-    Text.unpack n
     
 instance ToString Home where
     toString h =

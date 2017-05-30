@@ -89,7 +89,7 @@ postUpdate c =
           Nothing -> return ()
 
     handleDocTok (c, r@(R.R (R.P ln i) _)) = do
-      l <- lift $ peekLay
+      l <- lift peekLay
       if isValid i l
           then do
             open (Block i)
@@ -106,19 +106,19 @@ postUpdate c =
   
 closeInvalid :: Position -> LayoutConduit
 closeInvalid p@(R.P _ i) = do
-  l <- lift $ peekLay
+  l <- lift peekLay
   unless (isValid i l)
          (close >> closeInvalid p)
          
 closeAll :: Position -> LayoutConduit
 closeAll p = do
-  l <- lift $ peekLay
+  l <- lift peekLay
   unless (l == defLay)
          (close >> closeAll p)
                     
 coverBlock :: Position -> LayoutConduit
 coverBlock p = do
-  l <- lift $ peekLay
+  l <- lift peekLay
   case l of
       (Block i) -> open (LineFold i)
       _ -> return ()
@@ -137,9 +137,9 @@ open l = do
 
 close :: LayoutConduit
 close = do
-  l <- lift $ peekLay
+  l <- lift peekLay
   yield $ closeTok l
-  lift $ popLay
+  lift popLay
   return ()
   
   

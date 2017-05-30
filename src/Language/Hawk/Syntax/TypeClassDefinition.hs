@@ -26,8 +26,8 @@ type Typed =
 
 data TypeClassDef n e t
     = TypeClassDef 
-      { tc_decl :: TD.TypeDecl n t
-      , tc_body :: [ED.ExprDef n e t]
+      { tcDecl :: TD.TypeDecl n t
+      , tcBody :: [ED.ExprDef n e t]
       }
     deriving (Eq, Show, Data, Typeable)
     

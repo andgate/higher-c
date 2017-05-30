@@ -28,8 +28,8 @@ type Typed
 
 data ExprDef n e t
   = ExprDef 
-    { expr_decl  :: ED.ExprDecl n t
-    , expr_name  :: e
+    { exprDecl  :: ED.ExprDecl n t
+    , exprName  :: e
     }
   deriving (Eq, Show, Ord, Data, Typeable)
 

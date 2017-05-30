@@ -14,20 +14,24 @@ catalog = go [] 0
     go ts depth = do
       mayt <- await
       case mayt of
-        Just t -> if isTokClass TokenLn t
-                    then go (t:ts) (depth+1)
+        Just t 
+          | isTokClass TokenLn t -> 
+              go (t:ts) (depth+1)
 
-                  else if isTokClass TokenLn' t
-                    then if (depth-1) == 0
-                      then do 
-                        yield $ reverse (t:ts)
-                        go [] 0
-                      else go (t:ts) (depth-1)
+          | isTokClass TokenLn' t ->
+              if (depth-1) == 0
+                then do 
+                  yield $ reverse (t:ts)
+                  go [] 0
+              else
+                go (t:ts) (depth-1)
                   
-                  else if isTokClass TokenEof t
-                    then go ts depth -- discards EOF
+          | isTokClass TokenEof t ->
+              go ts depth -- discards EOF
 
-                  else go (t:ts) depth
+          | otherwise ->
+              go (t:ts) depth
+              
         Nothing -> return ()  
 
       
