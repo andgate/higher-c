@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- Tasty makes it easy to test your code. It is a test framework that can
 -- combine many different types of tests into one suite. See its website for
 -- help: <http://documentup.com/feuerbach/tasty>.

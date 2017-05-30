@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveDataTypeable
+           , OverloadedStrings
+  #-}
 module Language.Hawk.Syntax.Type where
 
 import Data.Aeson ((.=))

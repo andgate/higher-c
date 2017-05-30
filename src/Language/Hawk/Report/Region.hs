@@ -1,13 +1,13 @@
-{-# LANGUAGE OverloadedStrings, FlexibleInstances #-}
+{-# LANGUAGE  OverloadedStrings
+            , FlexibleInstances
+            , DeriveDataTypeable #-}
 module Language.Hawk.Report.Region where
 
 import Data.Data
-import Data.Typeable
 
 import Data.Aeson ((.=))
 import qualified Data.Aeson as Json
 import Data.Binary
-import Data.Int
 import Text.PrettyPrint.ANSI.Leijen ((<>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 

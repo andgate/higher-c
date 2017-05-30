@@ -1,4 +1,6 @@
-{-# LANGUAGE OverloadedStrings, FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings
+           , FlexibleInstances
+           , DeriveDataTypeable #-}
 module Language.Hawk.Syntax.Name where
 
 import Data.Aeson ((.=))

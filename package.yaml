@@ -31,9 +31,6 @@ ghc-options:
   - -fno-warn-unused-do-bind
   - -fno-warn-orphans
 
-default-extensions:
-  - DeriveDataTypeable
-  - OverloadedStrings
 
 executables:
   hkc:
@@ -130,7 +127,6 @@ library:
     - Language.Hawk.Syntax.ExpressionDeclaration
     - Language.Hawk.Syntax.Item
     - Language.Hawk.Syntax.Literal
-    - Language.Hawk.Syntax.Module
     - Language.Hawk.Syntax.Name
     - Language.Hawk.Syntax.OpInfo
     # - Language.Hawk.Syntax.Pattern
@@ -141,9 +137,9 @@ library:
 
 
 tests:
-  hawk-test-suite:
+  spec:
     source-dirs: test-suite
-    main: Main.hs
+    main: Spec.hs
     dependencies:
       - base
       - hawk
@@ -153,10 +149,23 @@ tests:
       - -rtsopts
       - -threaded
       - -with-rtsopts=-N
+
+  doctest:
+    source-dirs: test-suite
+    main: DocTest.hs
+    dependencies:
+      - base
+      - doctest
+      - Glob
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -threaded
+      - -with-rtsopts=-N
     
 
 benchmarks:
-  hawk-benchmarks:
+  criterion:
     source-dirs: benchmark
     main: Main.hs
     dependencies:

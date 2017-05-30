@@ -1,4 +1,6 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes
+           , OverloadedStrings
+  #-}
 module Language.Hawk.Compile ( compile
                              , CompilerState (..)
                              , Package (..)
@@ -37,7 +39,6 @@ import qualified Language.Hawk.Report.Info        as Info
 import qualified Language.Hawk.Report.Warning     as Warn
 import qualified Language.Hawk.Syntax.Item        as I
 import qualified Language.Hawk.Syntax.Expression  as E
-import qualified Language.Hawk.Syntax.Module      as M
 
 
 

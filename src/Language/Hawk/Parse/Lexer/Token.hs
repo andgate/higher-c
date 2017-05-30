@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveDataTypeable
+           , OverloadedStrings
+  #-}
 module Language.Hawk.Parse.Lexer.Token where
 
 import Data.Binary hiding (encode)

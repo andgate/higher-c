@@ -33,7 +33,6 @@ import qualified Language.Hawk.Parse.Grammar.TopLevel as G
 import qualified Language.Hawk.Parse.Grammar.ExprLevel as G
 import qualified Language.Hawk.Parse.Grammar.TypeLevel as G
 import qualified Language.Hawk.Syntax.Item as I
-import qualified Language.Hawk.Syntax.Module as M
 import qualified Text.Earley as E
 import qualified Text.Earley.Mixfix as E
 

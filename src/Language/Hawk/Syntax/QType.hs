@@ -1,4 +1,4 @@
--- This will be implemented along with classes and instances
+{-# LANGUAGE DeriveDataTypeable #-}
 module Language.Hawk.Syntax.QType where
 
 import Data.Binary

@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 module Language.Hawk.Syntax.TypeDeclaration where
 
 import Data.Binary

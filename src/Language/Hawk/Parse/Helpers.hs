@@ -1,4 +1,7 @@
-{-# LANGUAGE ExistentialQuantification, RankNTypes #-}
+{-# LANGUAGE ExistentialQuantification
+           , RankNTypes
+           , OverloadedStrings
+  #-}
 module Language.Hawk.Parse.Helpers where
 
 import Control.Applicative
@@ -19,7 +22,6 @@ import qualified Data.ByteString.UTF8             as UTF8
 import qualified Data.Text                        as Text
 import qualified Language.Hawk.Report.Region      as R
 import qualified Language.Hawk.Syntax.Expression  as E
-import qualified Language.Hawk.Syntax.Module      as M
 import qualified Language.Hawk.Syntax.Name        as N
 import qualified Language.Hawk.Syntax.Type        as Ty
 

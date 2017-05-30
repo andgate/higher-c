@@ -1,4 +1,5 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell
+           , DeriveDataTypeable #-}
 module Language.Hawk.Syntax.OpInfo where
 
 import Data.Binary

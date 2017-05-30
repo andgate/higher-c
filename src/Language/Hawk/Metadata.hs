@@ -59,7 +59,6 @@ import qualified Language.Hawk.Syntax.ExpressionDeclaration as EDecl
 import qualified Language.Hawk.Syntax.ExpressionDefinition as EDef
 import qualified Language.Hawk.Syntax.Item as I
 import qualified Language.Hawk.Syntax.Literal as L
-import qualified Language.Hawk.Syntax.Module as M
 import qualified Language.Hawk.Syntax.Name as N
 import qualified Language.Hawk.Syntax.OpInfo as OI
 import qualified Language.Hawk.Syntax.QType as QT

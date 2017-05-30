@@ -1,4 +1,7 @@
-{-# LANGUAGE RecursiveDo, RankNTypes #-}
+{-# LANGUAGE RecursiveDo
+           , RankNTypes
+           , OverloadedStrings
+  #-}
 module Language.Hawk.Parse.Grammar.TopLevel where
 
 import Control.Applicative
@@ -15,7 +18,6 @@ import qualified Language.Hawk.Syntax.ExpressionDeclaration as EDec
 import qualified Language.Hawk.Syntax.ExpressionDefinition  as EDef
 import qualified Language.Hawk.Syntax.Item                  as I
 import qualified Language.Hawk.Syntax.Literal               as Lit
-import qualified Language.Hawk.Syntax.Module                as M
 import qualified Language.Hawk.Syntax.Name                  as N
 import qualified Language.Hawk.Syntax.OpInfo                as OI
 import qualified Language.Hawk.Syntax.QType                 as QT
