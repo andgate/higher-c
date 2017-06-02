@@ -7,7 +7,7 @@ module Language.Hawk.Metadata where
 import Data.Binary (encode)
 
 import Conduit
-import Control.Monad (sequence, void)
+import Control.Monad (sequence, void, when)
 import Control.Monad.Trans.Reader
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control
@@ -87,7 +87,8 @@ insertSource pid src = do
       fp = Src.srcPath src
       clk = Src.srcTimestamp src
   mid <- insertModuleRecursively mp
-  mfid <- insertModuleFile pid mid fp clk
+  when (Src.isHkFile fp) $
+    void $ insertModuleFile pid mid fp clk
   return $ pure ()
 
 
@@ -138,12 +139,13 @@ insertModuleFile pid mid fp clk = do
   may_mf <- getBy $ Db.UniqueModuleFile pid mid fp'
   case may_mf of
     Nothing -> 
-        insert $ Db.ModuleFile pid mid fp' clk Fresh
+        insert $ Db.ModuleFile pid mid fp' clk Fresh False
 
     Just (Entity mfid mf)
       | clk > Db.moduleFileTimestamp mf -> do
           update mfid [ Db.ModuleFileTimestamp =. clk
                       , Db.ModuleFileCacheStatus =. Fresh
+                      , Db.ModuleFileIsBuilt =. False
                       ]
           return mfid
 

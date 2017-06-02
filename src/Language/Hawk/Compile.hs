@@ -16,7 +16,7 @@ import Data.Foldable (forM_)
 import Data.Maybe (catMaybes)
 import Data.MonoTraversable (MonoFoldable, Element)
 import Data.Text (Text)
-import Data.Vector (Vector)
+import Data.Vector (Vector  )
 import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
@@ -34,6 +34,7 @@ import qualified Data.Text                        as T
 import qualified Data.Vector                      as V
 import qualified Language.Hawk.Metadata           as Db
 import qualified Language.Hawk.Metadata.Schema    as Db
+import qualified Language.Hawk.Metadata.CacheStatus as Db
 import qualified Language.Hawk.Parse              as P
 import qualified Language.Hawk.Report.Error       as Err
 import qualified Language.Hawk.Report.Info        as Info
@@ -61,36 +62,56 @@ loadPackages = do
     s <- St.get
     let o = cOpts s
         pkgs = cPkgs s
-    -- Insert all the given packages
-    liftIO $ mapM_ (loadPackage o) pkgs
+    -- Insert all the modules for the given package
+    liftIO $ mapM_ (loadFiles o) pkgs
 
-loadPackage :: Opts -> Package -> IO ()
-loadPackage o pkg@(Package n d) = do
+loadFiles :: Opts -> Package -> IO ()
+loadFiles o pkg@(Package n d) = do
   pid <- runSqlite "hk.db" $ do
     runMigration Db.migrateAll
     Db.staleAll
     Db.insertPackage pkg
 
-  -- Pipes
   runConduitRes
     $ scanHawkSource (T.unpack d)
-      .| conduitVector 1000
-      .| mapC V.sequence
-      .| reportResultC o
       
-      -- Get rid of maybes
-      .| mapC V.toList
+      .| listConduit 100
+      .| mapC Prelude.sequence
+      .| reportResultC o
       .| mapC catMaybes
-      .| mapC V.fromList
 
       .| mapM_C (liftIO . cacheMods pid)
       .| sinkNull
+  
+  runSqlite "hk.db" $ do
+    runMigration Db.migrateAll
 
-cacheMods :: Db.PackageId -> Vector HawkSource -> IO ()
+    runConduitRes $
+      selectSource 
+          [ Db.ModuleFilePkg ==. pid
+          -- Disabled for testing purposes
+          -- Probably need to add a force option
+          -- , Db.ModuleFileCacheStatus ==. Db.Fresh
+          , Db.ModuleFileIsBuilt ==. False
+          ] []
+        .| loadC 10
+        .| mapC handleModuleFileEntity
+        .| fetchDoc
+        .| loadC 10
+        .| lexer
+        .| P.itemParser
+        .| reportResultC o
+        .| sinkNull
+
+cacheMods :: Db.PackageId -> [HawkSource] -> IO ()
 cacheMods pid fps =
   runSqlite "hk.db" $ do
     runMigration Db.migrateAll
-    mapM_ (Db.insertSource pid) (V.toList fps)
+    mapM_ (Db.insertSource pid) fps
+
+handleModuleFileEntity :: Entity Db.ModuleFile -> InfoDoc
+handleModuleFileEntity (Entity _ mf) =
+  Doc (Db.moduleFileAssoc mf) (T.unpack $ Db.moduleFilePath mf) ()
 
 fetchDoc :: MonadResource m => Conduit InfoDoc m TextDoc
 fetchDoc = awaitForever go
@@ -117,3 +138,16 @@ loadC n =
 -- | Releases values one at a time from a list
 yieldManyForever :: (Monad m, MonoFoldable mono) => Conduit mono m (Element mono)
 yieldManyForever = awaitForever yieldMany
+
+listConduit :: Monad m => Int -> Conduit a m [a]
+listConduit n = go [] 0
+  where 
+    go xs m
+        | n == m = do
+            yield $ reverse xs
+            listConduit n
+        | otherwise = do
+            mayx <- await 
+            case mayx of
+                Just x -> go (x:xs) (m+1)
+                Nothing -> yield $ reverse xs

@@ -6,20 +6,21 @@ import Language.Hawk.Report.Region (Region, Position)
 import Language.Hawk.Report.Report (Report(..), Reportable(..))
 import System.FilePath (FilePath)
 
+import qualified Language.Hawk.Parse.Lexer.Token as Tok
 import qualified Language.Hawk.Report.Region as R
 import qualified Language.Hawk.Report.Report as Report
 
 data Error
-  = Parse FilePath R.Region
+  = Parse FilePath [Tok.Token]
   | BadModuleName FilePath
   deriving Show
 
 instance Reportable Error where
     toReport err =
       case err of
-        Parse fp (R.R (R.P l c) _) ->
+        Parse fp toks ->
             Report.simple $
-              "Parse error " ++ fp ++ ":" ++ show l ++ ":" ++ show c
+              "Parse error " ++ fp ++ ": " ++ show toks
         BadModuleName fp ->
             Report.report
               "BAD MODULE NAME"

@@ -9,115 +9,110 @@
 
 => Core.(\ Control.Monad Data.Array )
 
-id ? a -> a
-  = \ x -> x
 
-// Creating variables
-a ? I32 = 4
-b = 2
-c = 1 ? I32
+// var introduces variables
+// Variables can be assigned to the result of an expression
+var a = 1 + 2
 
-SizeT - I32
+// Or bound to the result of a block
+var b:
+  return 1 + 2
 
-Color :-
-  Red I32
-  Green I32
-  Blue I32
+// sig can be used to declare the type of a var
+sig c ? Int
+var c = 3
 
-
-// Also note that tagged unions and arrays
-// can be polymorphic with the use of type variables.
-SizedArr v :-
-  arr ? [v]
-  size ? Int
-
-// Type operator's can only be constructed through a type def
-_!->!_ 4L
-  a b
-  - a -> IO b
-
-/*
-
-// Hawk has support for tagged unions
-// Tagged unions consist of a name and a block of constructor definitions
-// This is the basic tagged union syntax
-// Each constructor entry begins with a capital letter and the rest of the
-// line fold consists of a space seperated list of types.
-Color :-
-  Red I32
-  Green I32
-  Blue I32
-
-// Tagged union constructors can also be defined with a record syntax
-Color :-
-  Red:
-      alpha ? I32
-  Green:
-      alpha ? I32
-  Blue:
-      alpha ? I32
-      
-// Algebraic syntax
-Color :-
-  Red ? I32 -> Color
-  Green ? I32 -> Color
-  Blue ? I32 -> Color
+// Or the var's expression can be annotated with a type sig
+var d = 3 ? Int
 
 
-// Plain old records can be defined as well
-Car :-
-  gas       ? I32
-  max_speed ? I32
-
-// However, records are stored as single-constructor, tagged unions.
-// So, hkc will autogenerate a constructor and the result would be this.
-Car :-
-  Car:
-    gas       ? I32
-    max_speed ? I32
-  
-
-// Type class (aka interface)
-Automobile a :~
-  drive ? a -> IO ()
-  paint ? a -> Color -> IO ()
-
-// Instancing a typeclass
-Automobile Car :~
-  drive car = do
-    let out = toString max_speed
-    Core.print out
-
-  paint car color =
-    Core.print
-      $ "Car painted " +
-        $ case color of
-            Red x -> x + "% Red"
-            Green x -> x + "% Green"
-            Blue x -> x + "% Blue"
+// There are no constant variables in hawk.
+// Everything is mutable.
+// Welcome to the jungle.
 
 
-// Main function and default entry point of all programs.
-// An executable cannot compile without a main function.
-main foo 
-  ? IO ()
-  :=
-  // Create some cars
-  let car_a ? Car = Car 12 124
-      car_b ? Car = Car 19 103
+// sig is used to introduce type signatures
+sig foo ? Int -> Int -> Int
+// Fn is used to introduce a function
+// This is a function bound to an expression
+fun foo x y = (x + 2) * y / 3
+// This is a function bound to a statement block
+fun bar x y:
+    var z = (x+2)
+    z *= y
+    z /= 3
+    return z
 
-  // Drive some cars
-  drive car_a
-  drive car_b // If drive mutated car_b, and error should be thrown.
 
 
-if_then_else_ 6R
-  p a b
-  ? Bool -> [Expr a] -> [Expr a0] -> Q (Expr a)
-  = undefined
-      
-while_:_ 6R
-  ? Bool -> [Expr a] -> Q (Expr a)
-  = undefined
-  
-*/
+// Type alias, type system will treat these as interchangable
+type Inch = I32
+
+// New types are not treated as interchangable.
+newtype Size = I32
+
+// Introduce data structures, consisting of only variables
+data MyColor:
+  r ? F32
+  g ? F32
+  b ? F32
+  deriving Show
+  // Automatically derive standard type class instances (might turn into a macro)
+
+data OtherColor:
+  red ? F32
+  green ? F32
+  blue ? F32
+  alpha ? F32
+  deriving Show
+
+// Type classes define interfaces
+class HasRGB a:
+  max ? a -> F32
+
+  getR ? a -> F32
+  getG ? a -> F32
+  getB ? a -> F32
+
+  setR ? a -> F32 -> ()
+  setG ? a -> F32 -> ()
+  setB ? a -> F32 -> ()
+
+// Type classes are then instanced for a specific datatype
+inst HasRGB MyColor:
+  max c = 255
+
+  getR c = c.r
+  getG c = c.g
+  getB c = c.b
+
+  setR c r = c.r = r
+  setG c g = c.g = g
+  setB c b = c.b = b
+
+
+// Type classes are then instanced for a specific datatype
+inst HasRGB OtherColor:
+  max c = 1.0
+
+  getR c = c.red
+  getG c = c.green
+  getB c = c.blue
+
+  getR c r = c.red = r
+  getG c g = c.green = g
+  getB c b = c.blue = b
+
+
+// Then we can define a function that works over ANY data with rgb
+sig invertRgb ? HasRGB a => a -> ()
+fun invertRgb c:
+  c.setR (c.max - c.getR)
+  c.setG (c.max - c.getG)
+  c.setB (c.max - c.getB)
+  // No return automatically returns '()', or unit.
+
+// So, if there were multiple competing Color types from different libraries,
+// it's trivial to write a function that applies to all of them.
+// I didn't get into it, but the numeric values can be classified as well,
+// so floats of different sizes could be supported as well.

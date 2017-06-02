@@ -55,7 +55,7 @@ itemParser = awaitForever go
 
       yield $
         case parses of
-            []  -> throw $ Err.Parse fp (fromJust . Tok.region . head $ found)
+            []  -> throw $ Err.Parse fp (take 10 found)
             [p] -> return $ Doc mid fp p
             -- This will only happen is the grammar is wrong
             ps  -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)

@@ -6,7 +6,7 @@
 name: hawk
 maintainer: Gabriel Anderson
 synopsis: Hawk programming language
-description: Close to the metal, modern language
+description: Close to the metal with a modern typesystem
 github: andgate/hawk
 category: Compilers
 version: '0.0.0'
