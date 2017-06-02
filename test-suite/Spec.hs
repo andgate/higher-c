@@ -17,6 +17,6 @@ main = do
 spec :: Spec
 spec = parallel $
     it "Can compile" $ do
-        let pkg = C.Package "Example" "core"
+        let pkg = C.Package "Example" "example"
             cSt = C.defState {C.cPkgs = [pkg]}
         C.compile cSt

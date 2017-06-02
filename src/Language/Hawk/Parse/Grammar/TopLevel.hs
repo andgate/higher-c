@@ -36,7 +36,7 @@ toplevel = mdo
         
 -- -----------------------------------------------------------------------------
 -- Item Rules
-    item <- rule $
+    item <- rule $ linefold $
           depDeclItem
       <|> exprDefItem
       <|> aliasDefItem
@@ -155,6 +155,18 @@ toplevel = mdo
     opAssocL <- rule $ pure OI.AssocL
     opAssocR <- rule $ pure OI.AssocR
     opAssocN <- rule $ pure OI.AssocN
+
+-- -----------------------------------------------------------------------------
+-- Expression Definition Rules
+    varDecl <- rule $
+        VDec.VarDecl <$> varName <*> varDeclBody0
+
+    varDeclBody0 <- rule $
+      optional varDeclBody
+    
+    varDeclBody <- rule $
+          (rsvp ":" *> stmtBlock)
+      <|> (rsvp "=" *> expr)
 
 -- -----------------------------------------------------------------------------
 -- Expression Definition Rules

@@ -3,10 +3,13 @@
    but technically closer to C.
 */
 
--> Core.( IO.(printLn readLn Stdout Stdin)
+// Import items, place them under a "C" namespace
+-> Core.(IO.(printLn readLn Stdout Stdin)
           Math.Trig.(sin cos tan)
         ) @ C
 
+// Import Core, except for Control.Moand and Data.Array
+// Require minimal namespace qualification.
 => Core.(\ Control.Monad Data.Array )
 
 
@@ -24,11 +27,6 @@ var c = 3
 
 // Or the var's expression can be annotated with a type sig
 var d = 3 ? Int
-
-
-// There are no constant variables in hawk.
-// Everything is mutable.
-// Welcome to the jungle.
 
 
 // sig is used to introduce type signatures

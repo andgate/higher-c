@@ -50,12 +50,12 @@ itemParser = awaitForever go
   where
     go :: MonadIO m => TokenDoc -> Conduit TokenDoc m (Result DocItem)
     go (Doc mid fp toks) = do
-      let (parses, r@(Report _ needed found)) =
+      let (parses, r@(Report _ expected unconsumed)) =
               E.fullParses (E.parser G.toplevel) toks
 
       yield $
         case parses of
-            []  -> throw $ Err.Parse fp (take 10 found)
+            []  -> throw $ Err.Parse fp (unconsumed)
             [p] -> return $ Doc mid fp p
             -- This will only happen is the grammar is wrong
             ps  -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)

@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-module Language.Hawk.Syntax.DataDefinition where
+module Language.Hawk.Syntax.Item.Type.Data where
 
 import Data.Binary
 import Data.Data

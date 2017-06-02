@@ -9,14 +9,18 @@ import Data.Typeable
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
 import qualified Data.Text                                  as Text
-import qualified Language.Hawk.Syntax.AliasDefinition       as AD
-import qualified Language.Hawk.Syntax.DataDefinition        as DD
+
+import qualified Language.Hawk.Syntax.Item.Function         as F
+import qualified Language.Hawk.Syntax.Item.Type.Alias       as TyA
+import qualified Language.Hawk.Syntax.Item.Type.Class       as TyC
+import qualified Language.Hawk.Syntax.Item.Type.ClassInstance as TyCI
+import qualified Language.Hawk.Syntax.Item.Type.Data        as TyD
+import qualified Language.Hawk.Syntax.Item.Type.NewType     as TyNT
+import qualified Language.Hawk.Syntax.Item.Type.Signature   as TyS
+import qualified Language.Hawk.Syntax.Item.Variable         as V
 import qualified Language.Hawk.Syntax.Expression            as E
-import qualified Language.Hawk.Syntax.ExpressionDefinition  as ED
 import qualified Language.Hawk.Syntax.Name                  as N
 import qualified Language.Hawk.Syntax.Type                  as T
-import qualified Language.Hawk.Syntax.TypeClassDefinition   as TCD
-import qualified Language.Hawk.Syntax.TypeDeclaration       as TD
 import qualified Text.PrettyPrint.ANSI.Leijen               as PP
 
   
@@ -32,11 +36,19 @@ type Typed =
   Item N.Typed E.Typed T.Typed
   
 data Item n e t
-  = DepDecl Dependency
-  | ExprDef (ED.ExprDef n e t)
-  | AliasDef (AD.AliasDef n t)
-  | DataDef (DD.DataDef n t)
-  | TypeClassDef (TCD.TypeClassDef n e t)
+  = DepItem Dependency
+
+  | FunItem (F.Function n e t)
+  | VarItem (F.Variable n e t)
+  | SigItem (TyS.Signature n t)
+  
+  | AliasItem (TyA.Alias n t)
+  | NewTypeItem (TyCI.NewType n t)
+  | DataItem (TyD.Data n t)
+  
+  | ClassItem (TyC.Class n t)
+  | InstItem (TyCI.Instance n e t)
+  
   deriving (Eq, Show, Data, Typeable)
 
 

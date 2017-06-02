@@ -120,20 +120,25 @@ library:
     - Language.Hawk.Report.Result
     - Language.Hawk.Report.Warning
 
-    - Language.Hawk.Syntax.AliasDefinition
-    - Language.Hawk.Syntax.DataDefinition
+    
     - Language.Hawk.Syntax.Expression
-    - Language.Hawk.Syntax.ExpressionDefinition
-    - Language.Hawk.Syntax.ExpressionDeclaration
     - Language.Hawk.Syntax.Item
+    - Language.Hawk.Syntax.Item.Function
+    - Language.Hawk.Syntax.Item.Type.Alias
+    - Language.Hawk.Syntax.Item.Type.Class
+    - Language.Hawk.Syntax.Item.Type.Data
+    - Language.Hawk.Syntax.Item.Type.Instance
+    - Language.Hawk.Syntax.Item.Type.NewType
+    - Language.Hawk.Syntax.Item.Type.Signature
+    - Language.Hawk.Syntax.Item.Variable
     - Language.Hawk.Syntax.Literal
     - Language.Hawk.Syntax.Name
     - Language.Hawk.Syntax.OpInfo
     # - Language.Hawk.Syntax.Pattern
     - Language.Hawk.Syntax.QType
+    - Language.Hawk.Syntax.Statement
+    - Language.Hawk.Syntax.StatementBlock
     - Language.Hawk.Syntax.Type
-    - Language.Hawk.Syntax.TypeClassDefinition
-    - Language.Hawk.Syntax.TypeDeclaration
 
 
 tests:

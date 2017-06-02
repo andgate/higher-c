@@ -109,16 +109,32 @@ hawk :-
   \]                              { rsvp }
   \-\>                            { rsvp }
   \=\>                            { rsvp }
-  \:\=                            { rsvp }
-  \:\-                            { rsvp }
-  \:\~                            { rsvp }
-  \:                              { rsvp }      
-  \-                              { rsvp }
+  \:                              { rsvp }
   \=                              { rsvp }
   \?                              { rsvp }
   \\                              { rsvp }
   \@                              { rsvp }
   
+
+  "var"                           { rsvp }
+  "fun"                           { rsvp }
+  "sig"                           { rsvp }
+  "class"                         { rsvp }
+  "inst"                          { rsvp }
+  "type"                          { rsvp }
+  "newtype"                       { rsvp }
+  "data"                          { rsvp }
+
+  "for"                           { rsvp }
+  "foreach"                       { rsvp }
+  "while"                         { rsvp }
+  "do"                            { rsvp }
+  "if"                            { rsvp }
+  "then"                          { rsvp }
+  "else"                          { rsvp }
+  "elif"                          { rsvp }
+  "let"                           { rsvp }
+  "in"                            { rsvp }
   "case"                          { rsvp }
   "of"                            { rsvp }
   
