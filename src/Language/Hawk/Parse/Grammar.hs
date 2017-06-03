@@ -2,7 +2,7 @@
            , RankNTypes
            , OverloadedStrings
   #-}
-module Language.Hawk.Parse.Grammar.TopLevel where
+module Language.Hawk.Parse.Grammar where
 
 import Control.Applicative
 import Data.Monoid
@@ -11,18 +11,7 @@ import Language.Hawk.Parse.Helpers
 import Language.Hawk.Parse.Lexer.Token (Token, tokenToText)
 import Text.Earley
 
-import qualified Language.Hawk.Syntax.AliasDefinition       as AD
-import qualified Language.Hawk.Syntax.TypeClassDefinition   as TCD
-import qualified Language.Hawk.Syntax.DataDefinition        as DD
-import qualified Language.Hawk.Syntax.ExpressionDeclaration as EDec
-import qualified Language.Hawk.Syntax.ExpressionDefinition  as EDef
-import qualified Language.Hawk.Syntax.Item                  as I
-import qualified Language.Hawk.Syntax.Literal               as Lit
-import qualified Language.Hawk.Syntax.Name                  as N
-import qualified Language.Hawk.Syntax.OpInfo                as OI
-import qualified Language.Hawk.Syntax.QType                 as QT
-import qualified Language.Hawk.Syntax.Type                  as T
-import qualified Language.Hawk.Syntax.TypeDeclaration       as TD
+import qualified Language.Hawk.Syntax.Source
 
 
 

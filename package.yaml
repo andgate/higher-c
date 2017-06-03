@@ -103,9 +103,7 @@ library:
 
     - Language.Hawk.Parse
     - Language.Hawk.Parse.Document
-    - Language.Hawk.Parse.Grammar.ExprLevel
-    - Language.Hawk.Parse.Grammar.TopLevel
-    - Language.Hawk.Parse.Grammar.TypeLevel
+    - Language.Hawk.Parse.Grammar
     - Language.Hawk.Parse.Helpers
     - Language.Hawk.Parse.Lexer
     - Language.Hawk.Parse.Lexer.Catalog

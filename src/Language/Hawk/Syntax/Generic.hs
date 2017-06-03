@@ -5,7 +5,7 @@
 module Language.Hawk.Syntax.Generic where
 
 import Data.Binary
-import Data.Data
+import qualified Data.Data as D
 import Data.List (intercalate)
 import Data.Maybe (isJust)
 import Data.Text (Text)
@@ -32,10 +32,10 @@ data Item n e t
   | NewTypeItem (NewType n t)
   | DataItem (DataType n t)
   
-  | ClassItem (TypeClass n t)
+  | ClassItem (TypeClass n e t)
   | InstItem (TypeClassInst n e t)
   
-  deriving (Eq, Show, Ord, Data, Typeable)
+  deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -46,7 +46,7 @@ data Dependency =
     { isQual   :: Bool
     , depPath  :: DepPath
     , depAlias :: Maybe Text
-    } deriving (Eq, Show, Data, Typeable)
+    } deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -56,7 +56,7 @@ data DepPath =
     DepModule  Text DepPath
   | DepTarget  Text
   | DepTargets Bool [DepPath]
-  deriving (Eq, Show, Data, Typeable)
+  deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -68,7 +68,7 @@ data Literal
   | Chr Char
   | Str String
   | Boolean Bool
-  deriving (Show, Eq, Ord, Data, Typeable)
+  deriving (Show, Eq, Ord, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -84,20 +84,20 @@ type Home = Maybe R.Region
 
 data Name
   = Name RName Home
-    deriving (Eq, Ord, Show, Data, Typeable)
+    deriving (Eq, Ord, Show, D.Data, Typeable)
 
 data QName
   = QName RName RName Home
-    deriving (Eq, Ord, Show, Data, Typeable)
+    deriving (Eq, Ord, Show, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
 -- | Type
 
 data Type n
-  = App (Type n) [Type n]
-  | Con n
-  deriving (Eq, Show, Ord, Data, Typeable)
+  = TypeApp (Type n) [Type n]
+  | TypeCon n
+  deriving (Eq, Show, Ord, D.Data, Typeable)
 -- Type variables will require at least monomorphization,
 -- and won't be possible for a while.
 --  | Var TVar a
@@ -106,14 +106,14 @@ type TVar = String
 
 data QType t
   = QType (Context t) t
-  deriving (Eq, Show, Ord, Data, Typeable)
+  deriving (Eq, Show, Ord, D.Data, Typeable)
 
 -- Types in context are validated when parsed
 -- Comma seperated list of TypeClass instances,
 -- which define constraints for type variables
 newtype Context t
   = Context [t]
-  deriving (Eq, Show, Ord, Data, Typeable)
+  deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -139,7 +139,7 @@ data Expr n t
   | ExprCast (Expr n t) t
   
   | ExprBottom
-  deriving (Eq, Show, Ord, Data, Typeable)
+  deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -153,7 +153,7 @@ data Stmt n e t
   | StmtAssign n (Either [Stmt n e t] e)
   | StmtIf e (Stmt n e t) (Maybe (Stmt n e t))
   | StmtReturn e
-  deriving (Eq, Show, Ord, Data, Typeable)
+  deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -164,7 +164,7 @@ data TypeSig n t
     { _tySigName :: n
     , _tySigBody :: t
     }
-  deriving (Eq, Show, Ord, Data, Typeable)
+  deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -175,7 +175,7 @@ data Var n e t
     { _varName  :: n
     , _varBody  :: Maybe (Either [Stmt n e t] e)
     }
-  deriving (Eq, Show, Ord, Data, Typeable)
+  deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -187,7 +187,7 @@ data Fun n e t
     , _funParams :: [n]
     , _funBody   :: Maybe (Either [Stmt n e t] e)
     }
-  deriving (Eq, Show, Ord, Data, Typeable)
+  deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -199,7 +199,7 @@ data NewType n t
     , _newTyVars     :: [n]
     , _newTyNewBody  :: t
     }
-  deriving (Eq, Show, Ord, Data, Typeable)
+  deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -211,7 +211,7 @@ data TypeAlias n t
       , _tyAliasTyVars :: [n]
       , _tyAliasBody   :: t
       }
-    deriving (Eq, Show, Data, Typeable)
+    deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -219,12 +219,12 @@ data TypeAlias n t
 
 data TypeClass n e t
     = TypeClass 
-      { _tyClassContext :: QT.Context t
+      { _tyClassContext :: Context t
       , _tyClassName :: n
       , _tyClassVars :: [n]
       , _tyClassBody :: [Either (Fun n e t) (TypeSig n t)]
       }
-    deriving (Eq, Show, Ord, Data, Typeable)
+    deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -237,7 +237,7 @@ data TypeClassInst n e t
       , _tyClassInstArgs :: [t]
       , _tyClassInstBody :: [Fun n e t]
       }
-    deriving (Eq, Show, Ord, Data, Typeable)
+    deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -247,30 +247,49 @@ data DataType n t
     = DataType
       { _dataTyName :: n
       , _dataTyVars :: [n]
-      , _dataTyBody :: [TyS.Signature n t]
+      , _dataTyBody :: [TypeSig n t]
       }
-    deriving (Eq, Show, Ord, Data, Typeable)
+    deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
 -- | Pretty Printing Instances
 
+instance (PP.Pretty l, PP.Pretty r) => PP.Pretty (Either l r) where
+  pretty (Left l) =
+    PP.pretty l
+
+  pretty (Right r) =
+    PP.pretty r 
+
 -- Item ------------------------------------------------------------------------
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
-    pretty (DepDecl dd) =
-      PP.pretty dd
+    pretty (DepItem i) =
+      PP.pretty i
         
-    pretty (ExprDef ed) =
-      PP.pretty ed
-      
-    pretty (AliasDef ta) =
-      PP.pretty ta
-    
-    pretty (DataDef dd) =
-      PP.pretty dd
-      
-    pretty (TypeClassDef cd) =
-      PP.pretty cd
+    pretty (SigItem i) =
+      PP.pretty i
+
+    pretty (FunItem i) =
+      PP.pretty i
+
+    pretty (VarItem i) =
+      PP.pretty i
+
+    pretty (AliasItem i) =
+      PP.pretty i
+        
+    pretty (NewTypeItem i) =
+      PP.pretty i
+
+    pretty (DataItem i) =
+      PP.pretty i
+
+    pretty (ClassItem i) =
+      PP.pretty i
+
+    pretty (InstItem i) =
+      PP.pretty i
 
 
 -- Dependency ------------------------------------------------------------------
@@ -329,7 +348,7 @@ instance PP.Pretty Name where
 
 -- Type ------------------------------------------------------------------------
 instance (PP.Pretty n) => PP.Pretty (Type n) where
-  pretty (App con args) =
+  pretty (TypeApp con args) =
     PP.text "Type App:"
     PP.<$>
     PP.indent 2
@@ -338,9 +357,20 @@ instance (PP.Pretty n) => PP.Pretty (Type n) where
         PP.text "args:" PP.<$> PP.indent 2 (PP.pretty args)
       )
     
-  pretty (Con name) =
+  pretty (TypeCon name) =
     PP.text "Type Con" <+> PP.dquotes (PP.pretty name)
 
+
+instance (PP.Pretty t) => PP.Pretty (QType t) where
+    pretty (QType ctx tipe) =
+      PP.text "Qualified Type:"
+      PP.<$>
+      PP.indent 2
+        ( PP.text "context:" <+> PP.pretty ctx
+          PP.<$>
+          PP.text "type:" PP.<$> PP.pretty tipe
+        )
+        
 
 instance (PP.Pretty t) => PP.Pretty (Context t) where
     pretty (Context assrts) =
@@ -353,28 +383,28 @@ instance (PP.Pretty t) => PP.Pretty (Context t) where
 
 -- Expr -------------------------------------------------------------------------
 instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (Expr n t ) where
-  pretty (Lit lit) =
+  pretty (ExprLit lit) =
     PP.text "Literal Expression:"
     PP.<$>
     PP.indent 2 ( PP.pretty lit )
     
-  pretty (Var name) =
+  pretty (ExprVar name) =
     PP.text "Variable Expression:"
     PP.<$>
     PP.indent 2 ( PP.pretty name )
     
-  pretty (Con name) =
+  pretty (ExprCon name) =
     PP.text "Constructor Expression:"
     PP.<$>
     PP.indent 2 ( PP.pretty name )
     
-  pretty (App f xs) =
+  pretty (ExprApp f xs) =
     PP.text "Application Expression:"
     PP.<$>
     PP.indent 2 
         ( PP.pretty f PP.<$> PP.pretty xs )
         
-  pretty (Let name value definition) =
+  pretty (ExprLet name value definition) =
     PP.text "Let Expression:"
     PP.<$>
     PP.indent 2
@@ -385,7 +415,7 @@ instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (Expr n t ) where
         PP.string "definition:" <+> PP.pretty definition
       )
       
-  pretty (Cast e t) =
+  pretty (ExprCast e t) =
     PP.text "Cast Expression:"
     PP.<$>
     PP.indent 2
@@ -530,7 +560,7 @@ instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (TypeAlias n t) where
 
 
 -- Type Class ---------------------------------------------------------------------
-instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (TypeClass n t) where
+instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (TypeClass n e t) where
     pretty (TypeClass ctx name tyvars body) =
       PP.text "Type Class"
       PP.<$>
@@ -627,10 +657,10 @@ instance Binary Name where
 instance (Binary n) => Binary (Type n) where
   put tipe =
     case tipe of
-      App t1 t2 ->
+      TypeApp t1 t2 ->
         putWord8 0 >> put t1 >> put t2
         
-      Con name ->
+      TypeCon name ->
         putWord8 1 >> put name
         
       --Var name ->
@@ -639,10 +669,18 @@ instance (Binary n) => Binary (Type n) where
   get =
     do  n <- getWord8
         case n of
-          0 -> App <$> get <*> get
-          1 -> Con <$> get
+          0 -> TypeApp <$> get <*> get
+          1 -> TypeCon <$> get
           --2 -> Var <$> get
           _ -> error "Error reading a valid type from serialized string"
+
+
+instance (Binary t) => Binary (QType t) where
+  get =
+    QType <$> get <*> get
+
+  put (QType ctx tipe) =
+    put ctx >> put tipe
 
 
 instance (Binary t) => Binary (Context t) where
@@ -657,31 +695,31 @@ instance (Binary n, Binary t) => Binary (Expr n t) where
   get = do
     n <- getWord8
     case n of
-      1 -> Lit <$> get
-      2 -> Var <$> get
-      3 -> Con <$> get
-      4 -> App <$> get <*> get
-      5 -> Let <$> get <*> get <*> get
-      6 -> If <$> get <*> get
-      7 -> Access <$> get <*> get
-      8 -> RefAccess <$> get <*> get
-      9 -> Cast <$> get <*> get
+      1 -> ExprLit <$> get
+      2 -> ExprVar <$> get
+      3 -> ExprCon <$> get
+      4 -> ExprApp <$> get <*> get
+      5 -> ExprLet <$> get <*> get <*> get
+      6 -> ExprIf <$> get <*> get
+      7 -> ExprAccess <$> get <*> get
+      8 -> ExprRefAccess <$> get <*> get
+      9 -> ExprCast <$> get <*> get
       
   put e =
     case e of
-      Lit v           -> putWord8 1 >> put v
-      Var n           -> putWord8 2 >> put n
-      Con n           -> putWord8 3 >> put n
-      App f a         -> putWord8 4 >> put f >> put a
-      Let n e1 e2     -> putWord8 5 >> put n >> put e1 >> put e2
-      If ps d         -> putWord8 6 >> put ps >> put d
-      Access e1 e2    -> putWord8 7 >> put e1 >> put e2
-      RefAccess e1 e2 -> putWord8 8 >> put e1 >> put e2
-      Cast e1 t       -> putWord8 9 >> put e1 >> put t
+      ExprLit v           -> putWord8 1 >> put v
+      ExprVar n           -> putWord8 2 >> put n
+      ExprCon n           -> putWord8 3 >> put n
+      ExprApp f a         -> putWord8 4 >> put f >> put a
+      ExprLet n e1 e2     -> putWord8 5 >> put n >> put e1 >> put e2
+      ExprIf ps d         -> putWord8 6 >> put ps >> put d
+      ExprAccess e1 e2    -> putWord8 7 >> put e1 >> put e2
+      ExprRefAccess e1 e2 -> putWord8 8 >> put e1 >> put e2
+      ExprCast e1 t       -> putWord8 9 >> put e1 >> put t
 
 
 -- Statement -------------------------------------------------------------------------
-instance (Binary n, Binary e, Binary t) => Binary ( n e t) where
+instance (Binary n, Binary e, Binary t) => Binary (Stmt n e t) where
   get = do
     n <- getWord8
     case n of
@@ -750,7 +788,7 @@ instance (Binary n, Binary t) => Binary (TypeAlias n t) where
 
 
 -- Type Class ---------------------------------------------------------------------
-instance (Binary n, Binary t) => Binary (TypeClass n t) where
+instance (Binary n, Binary e, Binary t) => Binary (TypeClass n e t) where
   get =
     TypeClass <$> get <*> get <*> get <*> get
 
@@ -779,15 +817,18 @@ instance (Binary n, Binary t) => Binary (DataType n t) where
 -- -----------------------------------------------------------------------------
 -- | Helpers
 
+class ToString a where
+  toString :: a -> String
+
 -- Literal ---------------------------------------------------------------------
-toString :: Literal -> String
-toString literal =
-  case literal of
-    IntNum n -> show n
-    FloatNum n -> show n
-    Chr c -> show c
-    Str s -> s
-    Boolean bool -> show bool
+instance ToString Literal where 
+  toString literal =
+    case literal of
+      IntNum n -> show n
+      FloatNum n -> show n
+      Chr c -> show c
+      Str s -> s
+      Boolean bool -> show bool
     
 
 -- Name ------------------------------------------------------------------------
@@ -830,10 +871,6 @@ expandPathTree (Node n ns) =
   
       
 -- | Name toString
-class ToString a where
-  toString :: a -> String
-    
-
 instance ToString PathTree where
   toString =
     drawTree . fmap toString
@@ -883,12 +920,12 @@ instance ToString Home where
 -- "_Tuple"
 
 typeCon :: HasBuiltin n => Text -> [Type n] -> Type n
-typeCon n [] = Con $ builtin n
-typeCon n args = App (Con $ builtin n) args
+typeCon n [] = TypeCon $ builtin n
+typeCon n args = TypeApp (TypeCon $ builtin n) args
 
 apply :: Type n -> [Type n] -> Type n
 apply con [] = con
-apply con args = App con args
+apply con args = TypeApp con args
 
 unit :: HasBuiltin n => Type n
 unit = typeCon "_#_Unit_#_" []
@@ -903,7 +940,7 @@ tuple args = variadic "_#_Tuple_#_" args
 
 variadic :: HasBuiltin n => Text -> [Type n] -> Type n
 variadic n =
-    App (Con $ builtin n)
+    TypeApp (TypeCon $ builtin n)
 
 emptyCtx :: Context n
 emptyCtx = Context []

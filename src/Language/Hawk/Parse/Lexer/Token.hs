@@ -7,11 +7,11 @@ import Data.Binary hiding (encode)
 import Data.Text (Text)
 import Data.Data
 import Language.Hawk.Report.Region (Region(..))
+import Language.Hawk.Syntax.Generic (Name(..), exLocal)
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
 
 import qualified Data.Text                        as Text
-import qualified Language.Hawk.Syntax.Name        as N
 import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 
 -- | A `Token` augmented with `Region` information
@@ -59,12 +59,12 @@ data TokenClass
   deriving (Eq, Show, Ord, Data, Typeable)
 
 
-mkLam :: [N.Source] -> [Token] -> [Token]
+mkLam :: [Name] -> [Token] -> [Token]
 mkLam vs (t@(Token TokenBlk _):ts) = t : mkLam vs ts
 mkLam vs ts = lamOp ++ varIds ++ arrOp ++ ts
   where
     lamOp = [rsvpTok "\\"]
-    varIds = map (varIdTok . N.exLocal) vs
+    varIds = map (varIdTok . exLocal) vs
     arrOp = [rsvpTok "->"]
 
 
@@ -100,9 +100,9 @@ tokenClassToText tc =
     TokenEof          -> ""
     
     
-tokenToName :: Token -> N.Source
+tokenToName :: Token -> Name
 tokenToName (Token tc r) =
-  N.Name (tokenClassToText tc) r
+  Name (tokenClassToText tc) r
 
 
 isTok :: TokenClass -> Token -> Bool

@@ -9,8 +9,6 @@ import Database.Persist.Sqlite
 import Database.Persist.TH
 import Language.Hawk.Metadata.CacheStatus
 
-import qualified Language.Hawk.Syntax.OpInfo as OI
-
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 CompilerLog
@@ -69,20 +67,13 @@ Dependency
     deriving Show
 
 
-Op
-    src ModuleId
-    name Text
-    prec Int
-    assoc OI.Assoc
-    deriving Show
-
-
 ExprDecl
     modId ModuleId
     name Text
     op OpId
     typesig ByteString
     deriving Show
+    
     
 ExprDef
     modId ModuleId

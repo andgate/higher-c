@@ -14,6 +14,7 @@ import Data.Text.Buildable (Buildable(..))
 import Data.Text (Text)
 import Data.Word (Word8)
 import Language.Hawk.Parse.Lexer.Token
+import Language.Hawk.Syntax.Source (Name)
 import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
 import Text.Earley
 import Text.Earley.Mixfix
@@ -21,9 +22,6 @@ import Text.Earley.Mixfix
 import qualified Data.ByteString.UTF8             as UTF8
 import qualified Data.Text                        as Text
 import qualified Language.Hawk.Report.Region      as R
-import qualified Language.Hawk.Syntax.Expression  as E
-import qualified Language.Hawk.Syntax.Name        as N
-import qualified Language.Hawk.Syntax.Type        as Ty
 
 -- -----------------------------------------------------------------------------
 -- Parser type
@@ -31,8 +29,8 @@ import qualified Language.Hawk.Syntax.Type        as Ty
 --type HkGrammar a = forall r. Grammar r (Prod r Token Token a)
         
 type OpTable a = forall r. [[(Holey (Prod r Token Token Token), Associativity, Holey Token -> [a] -> a)]]
-type TypeOpTable = OpTable Ty.Typed
-type ExprOpTable = OpTable E.Source
+-- type TypeOpTable = OpTable Ty.Typed
+-- type ExprOpTable = OpTable E.Source
 
 -- -----------------------------------------------------------------------------
 -- Helpers for parsing expressions
@@ -42,6 +40,8 @@ holey ""       = []
 holey ('_':xs) = Nothing : holey xs
 holey xs       = Just (op $ Text.pack i) : holey rest
   where (i, rest) = span (/= '_') xs
+
+{-
 
 defExprOps :: ExprOpTable
 defExprOps =
@@ -63,6 +63,7 @@ typParens _ = Ty.typeCon "(_)"
 typDollar :: Holey Token  -> [Ty.Typed] -> Ty.Typed
 typDollar _ = Ty.typeCon "_$_"
 
+-}
 
 -- -----------------------------------------------------------------------------
 -- Terminal Production Helpers
@@ -172,7 +173,7 @@ mixfixblk :: Text -> Prod r e Token Token
 mixfixblk txt = satisfy (isMixfixBlk txt)
 
 
-name :: Prod r e Token Token -> Prod r e Token N.Source
+name :: Prod r e Token Token -> Prod r e Token Name
 name p = tokenToName <$> p
 
 
