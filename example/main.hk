@@ -23,6 +23,7 @@ var b:
 
 // sig can be used to declare the type of a var
 sig c ? Int
+con c ? var -> ref -> val -> var
 var c = 3
 
 // Or the var's expression can be annotated with a type sig
@@ -31,7 +32,7 @@ var d = 3 ? Int
 
 // sig is used to introduce type signatures
 sig foo ? Int -> Int -> Int
-// Fn is used to introduce a function
+// fun is used to introduce a function
 // This is a function bound to an expression
 fun foo x y = (x + 2) * y / 3
 // This is a function bound to a statement block
