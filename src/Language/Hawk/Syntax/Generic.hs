@@ -103,15 +103,18 @@ data Type n
   deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
-data QType t
-  = QType (Context t) t
+data QType n t
+  = QType (TyContext n t) t
+  deriving (Eq, Show, Ord, D.Data, Typeable)
+  
+
+newtype TyContext n t
+  = TyContext [TyAssertion n t]
   deriving (Eq, Show, Ord, D.Data, Typeable)
 
--- Types in context are validated when parsed
--- Comma seperated list of TypeClass instances,
--- which define constraints for type variables
-newtype Context t
-  = Context [t]
+
+data TyAssertion n t
+  = TyAssert n [t]
   deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
@@ -123,7 +126,7 @@ data Expr n t
   | ExprVar n
   | ExprCon n
 
-  | ExprAssign (Expr n t) (AssignRhs n (Expr n t) t)
+  | ExprAssign (Expr n t) (Body n (Expr n t) t)
 
   | ExprLam [n] (Expr n t)
 
@@ -148,11 +151,6 @@ data LetField n t
   deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
-data AssignRhs n e t
-  = AssignBlock [Stmt n e t]
-  | AssignExpr (Expr n t)
-  deriving (Eq, Show, Ord, D.Data, Typeable)
-
 
 -- -----------------------------------------------------------------------------
 -- | Statement
@@ -165,6 +163,15 @@ data Stmt n e t
   | StmtIf e [Stmt n e t] (Maybe [Stmt n e t])
   | StmtWhile e [Stmt n e t]
   | StmtReturn e
+  deriving (Eq, Show, Ord, D.Data, Typeable)
+
+
+-- -----------------------------------------------------------------------------
+-- | Body
+
+data Body n e t
+  = BodyBlock [Stmt n e t]
+  | BodyExpr (Expr n t)
   deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
@@ -185,7 +192,7 @@ data TypeSig n t
 data Var n e t
   = Var
     { _varName  :: n
-    , _varBody  :: Maybe (AssignRhs n e t)
+    , _varBody  :: Maybe (Body n e t)
     }
   deriving (Eq, Show, Ord, D.Data, Typeable)
 
@@ -197,7 +204,7 @@ data Fun n e t
   = Fun
     { _funName   :: n
     , _funParams :: [n]
-    , _funBody   :: Maybe (Either [Stmt n e t] e)
+    , _funBody   :: Body n e t
     }
   deriving (Eq, Show, Ord, D.Data, Typeable)
 
@@ -231,7 +238,7 @@ data TypeAlias n t
 
 data TypeClass n e t
     = TypeClass 
-      { _tyClassContext :: Context t
+      { _tyClassContext :: Maybe (Context t)
       , _tyClassName :: n
       , _tyClassVars :: [n]
       , _tyClassBody :: [Either (Fun n e t) (TypeSig n t)]
@@ -517,14 +524,6 @@ instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (LetField n t ) where
       PP.text "Let Type Sig:" <+> PP.pretty s
 
 
-instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (AssignRhs n e t ) where
-    pretty (AssignBlock blk) =
-      PP.text "Assignment Block:" <+> PP.pretty blk
-
-    pretty (AssignExpr expr) =
-      PP.text "Assignment Expression:" <+> PP.pretty expr
-
-
 -- Statement -------------------------------------------------------------------------
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Stmt n e t ) where
     pretty (StmtExpr expr) =
@@ -574,6 +573,15 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Stmt n e t ) wher
       PP.text "Return Expression:"
       PP.<$>
       PP.indent 2 ( PP.pretty expr )
+
+
+-- Body -------------------------------------------------------------------------  
+instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Body n e t ) where
+    pretty (BodyBlock blk) =
+      PP.text "Body Block:" <+> PP.pretty blk
+
+    pretty (BodyExpr expr) =
+      PP.text "Body Expression:" <+> PP.pretty expr
 
 
 -- Type Signature ---------------------------------------------------------------
@@ -820,17 +828,18 @@ instance (Binary n, Binary t) => Binary (LetField n t) where
       LetFun f   -> putWord8 2 >> put f
       LetSig s   -> putWord8 3 >> put s
 
-instance (Binary n, Binary e, Binary t) => Binary (AssignRhs n e t) where
+-- Body ----------------------------------------------------------------------------
+instance (Binary n, Binary e, Binary t) => Binary (Body n e t) where
   get = do
     n <- getWord8
     case n of
-      1 -> AssignBlock <$> get
-      2 -> AssignExpr <$> get
+      1 -> BodyBlock <$> get
+      2 -> BodyExpr <$> get
 
   put e =
     case e of
-      AssignBlock e   -> putWord8 1 >> put e
-      AssignExpr b    -> putWord8 2 >> put b
+      BodyBlock e   -> putWord8 1 >> put e
+      BodyExpr b    -> putWord8 2 >> put b
 
 -- Statement -------------------------------------------------------------------------
 instance (Binary n, Binary e, Binary t) => Binary (Stmt n e t) where

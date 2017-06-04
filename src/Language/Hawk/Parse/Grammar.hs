@@ -192,108 +192,133 @@ toplevel = mdo
 
 
 -- -----------------------------------------------------------------------------
--- Expression Definition Rules
+-- Type Context Rules
 
-    exprDecl <- rule $
-        EDec.ExprDecl <$> exprDefName <*> opInfo0 <*> exprVars <*> typesig0
+    qtyp0 <- rule $
+        qtyp <|> typ
+       
+    qtyp <- rule $
+        QType <$> (Context <$> tyCtx) <*> (rsvp "=>" *> tpy)
     
-    exprDef <- rule $
-        EDef.ExprDef <$> exprDecl <*> exprDefBody
+    tyCtx <- rule $
+        Context <$> tyAsserts
 
-    exprDefName <- rule $
-        varName <|> parens opName
+    tyAsserts <- rule $
+      parens (sep' (rsvp ",") tyAssert)
+      <|> tyAssert
     
-    exprDefOp <- rule $
-        rsvp "=" <|> rsvp ":=" <|> rsvp ":"
-     
-    exprVars <- rule $
-        many exprVar
+    tyAssert <- rule $
+        TyAssert <$> conId <*> many typ
+
+
+-- -----------------------------------------------------------------------------
+-- Expression Rules
+
+    expr <- rule $
+          exprTyped
+      <|> expr0
     
-    exprVar <- rule $
-        varName <|> name (rsvp "_")
     
-    exprDefBody <- rule $
-        exprDefOp *> raw
+    exprTyped <- rule $
+      ExprTypeAnnot <$> expr0 <*> (rsvp "?" *> typ)
+    
+    
+    expr0 <- rule $
+          fexpr
+      <|> aexpr
+    
+    fexpr <- rule $
+        ExprApp <$> bexpr <*> many aexpr
+    
+    aexpr <- rule $
+          litExpr
+      <|> bexpr
+      
+    bexpr <- rule $ 
+          varExpr
+      <|> conExpr
+      <|> nestedExpr
+    
+    varExpr <- rule $ ExprVar <$> varName
+    conExpr <- rule $ ExprCon <$> conName
+    litExpr <- rule $ ExprLit <$> lit
+
+    nestedExpr <- rule $ parens expr
+
+
+-- -----------------------------------------------------------------------------
+-- Statement Rules   
+    stmtblk <- rule $ block stmt
+    
+    stmt <- rule $
+          (StmtExpr <$> expr)
+      <|> stmtDecl
+      <|> stmtIf
+      <|> stmtWhile
+      <|> stmtReturn
+      
+    stmtDecl <- rule $
+      (StmtVar <$> var)
+      <|> (StmtFun <$> fun)
+      <|> (StmtSig <$> tySig)
+    
+    stmtRet <- rule $
+      StmtReturn <$> (rsvp "return" *> expr)    
+
+
+-- -----------------------------------------------------------------------------
+-- Body Rules
+
+    body <- rule $
+            bodyBlock
+        <|> bodyExpr
+
+    bodyBlock <- rule $
+      BodyBlock <$> (rsvp ":" *> stmtblk)
+
+    bodyExpr <- rule $
+      BodyExpr <$> (rsvp "=" *> expr)
 
 
 -- -----------------------------------------------------------------------------
 -- Variable Rules
 
     var <- rule $
-        Var <$> (rsvp "var" *> varName) <*> varDeclBody0
-
-    varDeclBody0 <- rule $
-      optional varDeclBody
-    
-    varDeclBody <- rule $
-          (rsvp ":" *> stmtBlock)
-      <|> (rsvp "=" *> expr)
+      Var <$> (rsvp "var" *> varName) <*> optional body
 
 
 -- -----------------------------------------------------------------------------
--- Type Context Rules
+-- Variable Rules
 
-    typeCtx0 <- rule $
-        typeCtx <|> pure emptyCtx
-       
-    typeCtx <- rule $
-        (Context <$> typeCtx') <* rsvp "=>"
-    
-    typeCtx' <- rule $
-        typeCtxConstraintList <|> parens typeCtxConstraintList
-    
-    typeCtxConstraintList <- rule $
-        sep' (rsvp ",") typeCtxConstraint
-    
-    typeCtxConstraint <- rule $
-        prepend conId typeCtxArgList
-
-        
-    typeCtxArgList <- rule $
-        concat <$> some typeCtxArg
-    
-    typeCtxArg <- rule $
-        mono typeCtxTVar <|> typeCtxArgParens
-        
-    typeCtxArgParens <- rule $
-        parens typeCtxArgList
-        
-    typeCtxTVar <- rule varId
+    fun <- rule $
+      Fun <$> (rsvp "fun" *> varName) <*> many varName <*> body
 
 
 -- -----------------------------------------------------------------------------
 -- Type Signature Rules
-    typesig0 <- rule $
-        typesig <|> pure []
-        
-    typesig <- rule $
-        rsvp "?" *> tipes
-   
-    tipes <- rule $
-        concat <$> some tipe
-   
-    tipe <- rule $
-        mono tipeId <|> tipeGroup
-        
-    tipeGroup <- rule $
-        concat <$> parens (many tipe)
-    
-    -- A cheap hack to get reserved operators that can exist in the type
-    -- namespace
-    tipeId <- rule $ 
-            varId
-        <|> conId
-        <|> opId
-        <|> mixfixId
-        <|> rsvp "->"
-        <|> rsvp "=>"
-        <|> rsvp "."
-        <|> rsvp ","
-        <|> rsvp "["
-        <|> rsvp "]"
-        <|> rsvp "_"
-        <|> rsvp "\\"
-        <|> rsvp "@"
+
+    tySig <- rule $
+      TypeSig <$> (rsvp "sig" *> varName) <*> (rsvp "?" *> qtyp0)
+
+
+-- -----------------------------------------------------------------------------
+-- New Type Rules
+
+    newType <- rule $
+      NewType <$> (rsvp "newtype" *> conName) <*> many varName <*> (rsvp "=" *> typ)
+
+-- -----------------------------------------------------------------------------
+-- Type Alias Rules
+
+    typeAlias <- rule $
+      TypeAlias <$> (rsvp "type" *> conName) <*> many varName <*> (rsvp "=" *> typ)
+
+
+-- -----------------------------------------------------------------------------
+-- Type Class Rules
+
+    typeClass <- rule $
+      TypeClass <$> context0 (rsvp "class" *> conName) <*> many varName <*> (rsvp "=" *> typ)
 
 -- -----------------------------------------------------------------------------
 -- Type Declaration Rules
@@ -401,93 +426,6 @@ toplevel = mdo
       
     rawParens <- rule $
       surroundList <$> rsvp "(" <*> raw0 <*> rsvp ")"
-
-
-{- Types are parsed using a different grammar
--- -----------------------------------------------------------------------------
--- Type expressions
-    typesig0 <- rule $
-      (Just <$> typesig) <|> pure Nothing
-    
-    typesig <- rule $ rsvp "::" *> typ
-    
-    typ <- mixfixExpressionSeparate typOps typ'
-    
-    typ' <- rule $ parens typApp <|> typApp
-    
-    typApp <- rule $ 
-      Ty.apply <$> typVal <*> many typVal
-    
-    typVal <- rule $ tyTuple <|> typCon <|> typUnit
-      
-    tyTuple <- rule $ Ty.tuple <$> (parens $ sep (rsvp ",") typApp)
-        
-    typCon <- rule $ Ty.Con <$> conName
-    
-    typUnit <- rule $ rsvp "(" *> rsvp ")" *> pure Ty.unit
--}
-
-
-{- Expressions are another type of parser
--- -----------------------------------------------------------------------------
--- Statement Rules   
-    stmtblock <- rule $ block statement
-    
-    statement <- rule $
-          stmtRet
-      <|> stmtCall
-      <|> stmtAssign
-      <|> stmtVarBind
-      
-    stmtCall <- rule $ 
-      Stmt.Call <$> fexpr
-    
-    stmtVarBind <- rule $ 
-      Stmt.Let <$> var
-    
-    stmtAssign <- rule $
-      Stmt.Assign <$> varName <*> typesig0 <*> (op "=" *> expr)
-    
-    stmtRet <- rule $
-      Stmt.Return <$> (rsvp "return" *> expr)
-    
-
--- -----------------------------------------------------------------------------
--- Expression Rules
-    expr <- mixfixExpressionSeparate exprOps expr'
-
-    expr' <- rule $
-          exprTyped
-      <|> expr0
-    
-    
-    exprTyped <- rule $
-      E.Cast <$> expr0 <*> typesig
-    
-    
-    expr0 <- rule $
-          fexpr
-      <|> aexpr
-    
-    
-    fexpr <- rule $
-        E.App <$> bexpr <*> many aexpr
-    
-    aexpr <- rule $
-          litExpr
-      <|> bexpr
-      
-    bexpr <- rule $ 
-          varExpr
-      <|> conExpr
-      <|> nestedExpr
-    
-    varExpr <- rule $ E.Var <$> varName
-    conExpr <- rule $ E.Con <$> conName
-    litExpr <- rule $ E.Lit <$> lit
-    nestedExpr <- rule $ parens expr
-    
--}
     
     
     return item
