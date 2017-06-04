@@ -13,7 +13,7 @@ import Data.Tree
 import Data.Typeable
 import Text.PrettyPrint.ANSI.Leijen ((<+>))
 
-import qualified Data.Text                        as Text
+import qualified Data.Text                        as T
 import qualified Language.Hawk.Report.Region      as R
 import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 
@@ -95,14 +95,13 @@ data QName
 -- | Type
 
 data Type n
-  = TypeApp (Type n) [Type n]
+  = TypeFun (Type n) (Type n)
+  | TypeTuple [Type n]
+  | TypeApp (Type n) [Type n]
+  | TypeVar n
   | TypeCon n
   deriving (Eq, Show, Ord, D.Data, Typeable)
--- Type variables will require at least monomorphization,
--- and won't be possible for a while.
---  | Var TVar a
 
-type TVar = String
 
 data QType t
   = QType (Context t) t
@@ -316,17 +315,17 @@ instance PP.Pretty Dependency where
           PP.<$>
           PP.text "Path:" PP.<+> PP.pretty p
           PP.<$>
-          PP.text "Alias:" PP.<+> PP.text (show (Text.unpack <$> a))
+          PP.text "Alias:" PP.<+> PP.text (show (T.unpack <$> a))
         )
 
 
 -- Dependency Path ---------------------------------------------------------------
 instance PP.Pretty DepPath where
     pretty (DepModule n r) =
-      PP.text (Text.unpack n) PP.<> PP.text "."  PP.<> PP.pretty r
+      PP.text (T.unpack n) PP.<> PP.text "."  PP.<> PP.pretty r
         
     pretty (DepTarget n) =
-      PP.text (Text.unpack n)
+      PP.text (T.unpack n)
         
     pretty (DepTargets False rs) =
       PP.text "(" PP.<> PP.pretty rs PP.<> PP.text ")"
@@ -362,17 +361,37 @@ instance PP.Pretty Name where
 
 -- Type ------------------------------------------------------------------------
 instance (PP.Pretty n) => PP.Pretty (Type n) where
-  pretty (TypeApp con args) =
-    PP.text "Type App:"
-    PP.<$>
-    PP.indent 2
-      ( PP.text "con:" <+> PP.pretty con
-        PP.<$>
-        PP.text "args:" PP.<$> PP.indent 2 (PP.pretty args)
-      )
-    
-  pretty (TypeCon name) =
-    PP.text "Type Con" <+> PP.dquotes (PP.pretty name)
+    pretty (TypeFun x y) =
+      PP.text "Type Function:"
+      PP.<$>
+      PP.indent 2
+        ( PP.text "from:" <+> PP.pretty x
+          PP.<$>
+          PP.text "to:" PP.<$> PP.pretty y
+        )
+
+    pretty (TypeTuple mems) =
+      PP.text "Type Tuple:"
+      PP.<$>
+      PP.indent 2
+        ( PP.text "members:" <+> PP.pretty mems
+        )
+        
+
+    pretty (TypeApp con args) =
+      PP.text "Type App:"
+      PP.<$>
+      PP.indent 2
+        ( PP.text "con:" <+> PP.pretty con
+          PP.<$>
+          PP.text "args:" PP.<$> PP.pretty args
+        )
+      
+    pretty (TypeVar name) =
+      PP.text "Type Var" <+> PP.dquotes (PP.pretty name)
+
+    pretty (TypeCon name) =
+      PP.text "Type Con" <+> PP.dquotes (PP.pretty name)
 
 
 instance (PP.Pretty t) => PP.Pretty (QType t) where
@@ -980,7 +999,7 @@ instance ToString Path where
 
 instance ToString Name where
   toString (Name n h) =
-    Text.unpack n ++ " @ " ++ toString h
+    T.unpack n ++ " @ " ++ toString h
     
 instance ToString Home where
     toString h =
@@ -1014,28 +1033,18 @@ instance ToString Home where
 -- Tuple [Type n]
 -- "_Tuple"
 
-typeCon :: HasBuiltin n => Text -> [Type n] -> Type n
-typeCon n [] = TypeCon $ builtin n
-typeCon n args = TypeApp (TypeCon $ builtin n) args
+tyUnitConName :: HasBuiltin n => n
+tyUnitConName = builtin "_#_Unit_#_"
 
-apply :: Type n -> [Type n] -> Type n
-apply con [] = con
-apply con args = TypeApp con args
+tyFunConName :: HasBuiltin n => n
+tyFunConName = builtin "_#_Fun_#_"
 
-unit :: HasBuiltin n => Type n
-unit = typeCon "_#_Unit_#_" []
+tyListConName :: HasBuiltin n => n
+tyListConName = builtin "_#_List_#_"
 
-arrow :: HasBuiltin n => [Type n] -> Type n
-arrow [arg] = arg
-arrow args = variadic "_#Arr_#_" args
+tyTupleConName :: HasBuiltin n => Int -> n
+tyTupleConName n = builtin $ T.pack ("_#_" ++ show n ++ "_Tuple_#_")
 
-tuple :: HasBuiltin n => [Type n] -> Type n
-tuple [arg] = arg
-tuple args = variadic "_#_Tuple_#_" args
-
-variadic :: HasBuiltin n => Text -> [Type n] -> Type n
-variadic n =
-    TypeApp (TypeCon $ builtin n)
 
 emptyCtx :: Context n
 emptyCtx = Context []

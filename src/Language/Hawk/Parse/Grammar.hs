@@ -9,6 +9,7 @@ import Data.Monoid
 import Data.Tree
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Parse.Lexer.Token (Token, tokenToText)
+import Language.Hawk.Syntax.Generic (tyUnitConName, tyFunConName, tyListConName, tyTupleConName, emptyCtx)
 import Language.Hawk.Syntax.Source
 import Text.Earley
 
@@ -142,6 +143,55 @@ toplevel = mdo
         tokenToText <$> conId
 
 -- -----------------------------------------------------------------------------
+-- Type Rules
+    
+    typ <- rule $
+      (TypeFun <$> btyp <*> (rsvp "->" *> typ))
+      <|> btyp
+
+    btyp <- rule $
+      TypeApp <$> atyp <*> many atyp
+
+    atyp <- rule $
+      gtyCon
+      <|> tyVar
+      <|> tyTuple
+      <|> tyList
+      <|> parens typ
+    
+    gtyCon <- rule $
+      tyCon
+      <|> tyUnitCon
+      <|> tyFunCon
+      <|> tyListCon
+      <|> tyTupleCon
+
+    tyCon <- rule $
+      TypeCon <$> conName
+
+    tyUnitCon <- rule $ 
+      TypeCon tyUnitConName <* (rspv "(" *> rsvp ")")
+
+    tyFunCon <- rule $ 
+       TypeCon tyFunConName <* parens (rsvp "->")
+
+    tyListCon <- rule $
+       TypeCon tyListConName <* (rspv "[" *> rsvp "]")
+
+    tyTupleCon <- rule $
+       TypeCon . tyTupleConName . length <$> (rspv "(" *> rsvp ")")
+
+    tyVar <- rule $
+      TypeVar <$> varName
+      
+    tyTuple <- rule $ 
+      TypeTuple <$> parens (sep (rsvp ",") typ)
+
+    tyList <- rule $
+      brackets typ
+
+
+-- -----------------------------------------------------------------------------
 -- Expression Definition Rules
 
     exprDecl <- rule $
@@ -170,7 +220,7 @@ toplevel = mdo
 -- Variable Rules
 
     var <- rule $
-        Var <$> varName <*> varDeclBody0
+        Var <$> (rsvp "var" *> varName) <*> varDeclBody0
 
     varDeclBody0 <- rule $
       optional varDeclBody
@@ -184,10 +234,10 @@ toplevel = mdo
 -- Type Context Rules
 
     typeCtx0 <- rule $
-        typeCtx <|> pure QT.emptyCtx
+        typeCtx <|> pure emptyCtx
        
     typeCtx <- rule $
-        (QT.Context <$> typeCtx') <* rsvp "=>"
+        (Context <$> typeCtx') <* rsvp "=>"
     
     typeCtx' <- rule $
         typeCtxConstraintList <|> parens typeCtxConstraintList
