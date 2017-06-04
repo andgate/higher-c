@@ -123,22 +123,35 @@ data Expr n t
   = ExprLit Literal
   | ExprVar n
   | ExprCon n
-  
+
+  | ExprAssign (Expr n t) (AssignRhs n (Expr n t) t)
+
   | ExprLam [n] (Expr n t)
-  
+
   | ExprApp (Expr n t) [Expr n t]
-  | ExprLet n (Expr n t) (Expr n t)
-  -- Probably need to add suport for operators later
-  
-  | ExprIf [Expr n t] (Expr n t)
-  
+  | ExprLet [LetField n t] (Expr n t)
+
+  | ExprIf (Expr n t) (Expr n t) (Expr n t)
+
   -- Specific stucture access
-  | ExprAccess (Expr n t) (Expr n t)
-  | ExprRefAccess (Expr n t) (Expr n t)
-  
-  | ExprCast (Expr n t) t
-  
+  | ExprMember (Expr n t) n
+  | ExprIndex (Expr n t) (Expr n t)
+
+  | ExprTypeAnnot (Expr n t) t
   | ExprBottom
+  deriving (Eq, Show, Ord, D.Data, Typeable)
+
+
+data LetField n t
+  = LetVar (Var n (Expr n t) t)
+  | LetFun (Fun n (Expr n t) t)
+  | LetSig (TypeSig (Expr n t) t)
+  deriving (Eq, Show, Ord, D.Data, Typeable)
+
+
+data AssignRhs n e t
+  = AssignBlock [Stmt n e t]
+  | AssignExpr (Expr n t)
   deriving (Eq, Show, Ord, D.Data, Typeable)
 
 
@@ -146,12 +159,12 @@ data Expr n t
 -- | Statement
 
 data Stmt n e t
-  = StmtCall n [e]
+  = StmtExpr e
   | StmtVar (Var n e t)
   | StmtFun (Fun n e t)
   | StmtSig (TypeSig n t)
-  | StmtAssign n (Either [Stmt n e t] e)
-  | StmtIf e (Stmt n e t) (Maybe (Stmt n e t))
+  | StmtIf e [Stmt n e t] (Maybe [Stmt n e t])
+  | StmtWhile e [Stmt n e t]
   | StmtReturn e
   deriving (Eq, Show, Ord, D.Data, Typeable)
 
@@ -173,7 +186,7 @@ data TypeSig n t
 data Var n e t
   = Var
     { _varName  :: n
-    , _varBody  :: Maybe (Either [Stmt n e t] e)
+    , _varBody  :: Maybe (AssignRhs n e t)
     }
   deriving (Eq, Show, Ord, D.Data, Typeable)
 
@@ -256,11 +269,12 @@ data DataType n t
 -- | Pretty Printing Instances
 
 instance (PP.Pretty l, PP.Pretty r) => PP.Pretty (Either l r) where
-  pretty (Left l) =
-    PP.pretty l
+    pretty (Left l) =
+      PP.pretty l
 
-  pretty (Right r) =
-    PP.pretty r 
+    pretty (Right r) =
+      PP.pretty r 
+
 
 -- Item ------------------------------------------------------------------------
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
@@ -383,98 +397,164 @@ instance (PP.Pretty t) => PP.Pretty (Context t) where
 
 -- Expr -------------------------------------------------------------------------
 instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (Expr n t ) where
-  pretty (ExprLit lit) =
-    PP.text "Literal Expression:"
-    PP.<$>
-    PP.indent 2 ( PP.pretty lit )
-    
-  pretty (ExprVar name) =
-    PP.text "Variable Expression:"
-    PP.<$>
-    PP.indent 2 ( PP.pretty name )
-    
-  pretty (ExprCon name) =
-    PP.text "Constructor Expression:"
-    PP.<$>
-    PP.indent 2 ( PP.pretty name )
-    
-  pretty (ExprApp f xs) =
-    PP.text "Application Expression:"
-    PP.<$>
-    PP.indent 2 
-        ( PP.pretty f PP.<$> PP.pretty xs )
-        
-  pretty (ExprLet name value definition) =
-    PP.text "Let Expression:"
-    PP.<$>
-    PP.indent 2
-      ( PP.string "name:" <+> PP.pretty name
-        PP.<$>
-        PP.string "value:" <+> PP.pretty value
-        PP.<$> 
-        PP.string "definition:" <+> PP.pretty definition
-      )
+    pretty (ExprLit lit) =
+      PP.text "Literal Expression:" PP.<$> PP.pretty lit
       
-  pretty (ExprCast e t) =
-    PP.text "Cast Expression:"
-    PP.<$>
-    PP.indent 2
-      ( PP.string "expression:" <+> PP.pretty e
-        PP.<$>
-        PP.string "type:" <+> PP.pretty t
-      )
+    pretty (ExprVar name) =
+      PP.text "Variable Expression:" PP.<$> PP.pretty name
+      
+    pretty (ExprCon name) =
+      PP.text "Constructor Expression:" PP.<$> PP.pretty name
+
+    pretty (ExprAssign assignee rhs) =
+      PP.text "Let Expression:"
+      PP.<$>
+      PP.indent 2
+        ( PP.string "Assignee:" <+> PP.pretty assignee
+          PP.<$>
+          PP.string "rhs:" <+> PP.pretty rhs
+        )
+
+    pretty (ExprLam params expr) =
+      PP.text "Lambda Expression:"
+      PP.<$>
+      PP.indent 2 
+          ( PP.pretty params PP.<$> PP.pretty expr )
+
+    pretty (ExprLam params rhs) =
+      PP.text "Let Expression:"
+      PP.<$>
+      PP.indent 2
+        ( PP.string "params:" <+> PP.pretty params
+          PP.<$>
+          PP.string "rhs:" <+> PP.pretty rhs
+        )
+
+    pretty (ExprApp f xs) =
+      PP.text "Application Expression:"
+      PP.<$>
+      PP.indent 2 
+          ( PP.pretty f PP.<$> PP.pretty xs )
+          
+    pretty (ExprLet lets expr) =
+      PP.text "Let Expression:"
+      PP.<$>
+      PP.indent 2
+        ( PP.string "let fields:" <+> PP.pretty lets
+          PP.<$>
+          PP.string "expression:" <+> PP.pretty expr
+        )
+
+    pretty (ExprIf pred thenBranch elseBranch) =
+      PP.text "Let Expression:"
+      PP.<$>
+      PP.indent 2
+        ( PP.string "predicate:" <+> PP.pretty pred
+          PP.<$>
+          PP.string "then branch:" <+> PP.pretty thenBranch
+          PP.<$>
+          PP.string "else branch:" <+> PP.pretty elseBranch
+        )
+
+    pretty (ExprMember expr mem) =
+      PP.text "Member Expression:"
+      PP.<$>
+      PP.indent 2
+        ( PP.string "expression:" <+> PP.pretty expr
+          PP.<$>
+          PP.string "member:" <+> PP.pretty mem
+        )
+
+    pretty (ExprIndex expr index)  =
+      PP.text "Index Expression:"
+      PP.<$>
+      PP.indent 2
+        ( PP.string "expression:" <+> PP.pretty expr
+          PP.<$>
+          PP.string "index:" <+> PP.pretty index
+        )
+        
+    pretty (ExprTypeAnnot e t) =
+      PP.text "Type Annotated Expression:"
+      PP.<$>
+      PP.indent 2
+        ( PP.string "expression:" <+> PP.pretty e
+          PP.<$>
+          PP.string "type:" <+> PP.pretty t
+        )
+
+    pretty ExprBottom =
+      PP.text "Bottom Expression"
+
+
+instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (LetField n t ) where
+    pretty (LetVar v) =
+      PP.text "Let Variable:" <+> PP.pretty v
+
+    pretty (LetFun f) =
+      PP.text "Let Function:" <+> PP.pretty f
+
+    pretty (LetSig s) =
+      PP.text "Let Type Sig:" <+> PP.pretty s
+
+
+instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (AssignRhs n e t ) where
+    pretty (AssignBlock blk) =
+      PP.text "Assignment Block:" <+> PP.pretty blk
+
+    pretty (AssignExpr expr) =
+      PP.text "Assignment Expression:" <+> PP.pretty expr
 
 
 -- Statement -------------------------------------------------------------------------
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Stmt n e t ) where
-  pretty (StmtCall name args) =
-    PP.text "Call Statement:"
-    PP.<$>
-    PP.indent 2
-      ( PP.string "name:" <+> PP.pretty name
-        PP.<$>
-        PP.string "args:" <+> PP.pretty args
-      )
-    
-  pretty (StmtVar v) =
-    PP.text "Variable Declaration Statement:"
-    PP.<$>
-    PP.indent 2 ( PP.pretty v )
+    pretty (StmtExpr expr) =
+      PP.text "Expression Statement:"
+      PP.<$>
+      PP.indent 2
+        ( PP.string "expr:" <+> PP.pretty expr
+        )
+      
+    pretty (StmtVar v) =
+      PP.text "Variable Declaration Statement:"
+      PP.<$>
+      PP.indent 2 ( PP.pretty v )
 
-  pretty (StmtFun f) =
-    PP.text "Function Declaration Statement:"
-    PP.<$>
-    PP.indent 2 ( PP.pretty f )
+    pretty (StmtFun f) =
+      PP.text "Function Declaration Statement:"
+      PP.<$>
+      PP.indent 2 ( PP.pretty f )
 
-  pretty (StmtSig s) =
-    PP.text "Type Signature Declaration Statement:"
-    PP.<$>
-    PP.indent 2 ( PP.pretty s )
+    pretty (StmtSig s) =
+      PP.text "Type Signature Declaration Statement:"
+      PP.<$>
+      PP.indent 2 ( PP.pretty s )
 
-  pretty (StmtAssign assignee assignment) =
-    PP.text "Assignment Statement:"
-    PP.<$>
-    PP.indent 2
-      ( PP.string "assignee:" <+> PP.pretty assignee
-        PP.<$>
-        PP.string "assignment:" <+> PP.pretty assignment
-      )
+    pretty (StmtIf pred thenStmt elseStmt) =
+      PP.text "If Statement:"
+      PP.<$>
+      PP.indent 2
+        ( PP.string "predicate:" <+> PP.pretty pred
+          PP.<$>
+          PP.string "then block:" <+> PP.pretty thenStmt
+          PP.<$>
+          PP.string "else block:" <+> PP.pretty elseStmt
+        )
 
-  pretty (StmtIf pred thenStmt elseStmt) =
-    PP.text "If Statement:"
-    PP.<$>
-    PP.indent 2
-      ( PP.string "predicate:" <+> PP.pretty pred
-        PP.<$>
-        PP.string "then stmt:" <+> PP.pretty thenStmt
-        PP.<$>
-        PP.string "else stmt:" <+> PP.pretty elseStmt
-      )
-    
-  pretty (StmtReturn exp) =
-    PP.text "Return Expression:"
-    PP.<$>
-    PP.indent 2 ( PP.pretty exp )
+    pretty (StmtWhile cond stmtBlk) =
+      PP.text "While Statement:"
+      PP.<$>
+      PP.indent 2
+        ( PP.string "condition:" <+> PP.pretty cond
+          PP.<$>
+          PP.string "block:" <+> PP.pretty stmtBlk
+        )
+      
+      
+    pretty (StmtReturn expr) =
+      PP.text "Return Expression:"
+      PP.<$>
+      PP.indent 2 ( PP.pretty expr )
 
 
 -- Type Signature ---------------------------------------------------------------
@@ -491,29 +571,13 @@ instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (TypeSig n t) where
 
 -- Variable ----------------------------------------------------------------------
 instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Var n e t) where
-  pretty (Var name Nothing) =
-    PP.text "Variable Item:"
-    PP.<$>
-    PP.indent 2
-      ( PP.text "name:" <+> PP.pretty name
-      )
-
-  pretty (Var name (Just (Left exp))) =
+  pretty (Var name body) =
     PP.text "Variable Item:"
     PP.<$>
     PP.indent 2
       ( PP.text "name:" <+> PP.pretty name
         PP.<$>
-        PP.text "body:" <+> PP.pretty exp
-      )
-
-  pretty (Var name (Just (Right stmtblk))) =
-    PP.text "Variable Item:"
-    PP.<$>
-    PP.indent 2
-      ( PP.text "name:" <+> PP.pretty name
-        PP.<$>
-        PP.text "body:" <+> PP.pretty stmtblk
+        PP.text "body:" <+> PP.pretty body
       )
 
 
@@ -698,47 +762,78 @@ instance (Binary n, Binary t) => Binary (Expr n t) where
       1 -> ExprLit <$> get
       2 -> ExprVar <$> get
       3 -> ExprCon <$> get
-      4 -> ExprApp <$> get <*> get
-      5 -> ExprLet <$> get <*> get <*> get
-      6 -> ExprIf <$> get <*> get
-      7 -> ExprAccess <$> get <*> get
-      8 -> ExprRefAccess <$> get <*> get
-      9 -> ExprCast <$> get <*> get
+      4 -> ExprAssign <$> get <*> get
+      5 -> ExprLam <$> get <*> get
+      6 -> ExprApp <$> get <*> get
+      7 -> ExprLet <$> get <*> get
+      8 -> ExprIf <$> get <*> get <*> get
+      9 -> ExprMember <$> get <*> get
+      10 -> ExprIndex <$> get <*> get
+      11 -> ExprTypeAnnot <$> get <*> get
+      12 -> pure ExprBottom
       
   put e =
     case e of
-      ExprLit v           -> putWord8 1 >> put v
+      ExprLit l           -> putWord8 1 >> put l
       ExprVar n           -> putWord8 2 >> put n
       ExprCon n           -> putWord8 3 >> put n
-      ExprApp f a         -> putWord8 4 >> put f >> put a
-      ExprLet n e1 e2     -> putWord8 5 >> put n >> put e1 >> put e2
-      ExprIf ps d         -> putWord8 6 >> put ps >> put d
-      ExprAccess e1 e2    -> putWord8 7 >> put e1 >> put e2
-      ExprRefAccess e1 e2 -> putWord8 8 >> put e1 >> put e2
-      ExprCast e1 t       -> putWord8 9 >> put e1 >> put t
+      ExprAssign v rhs    -> putWord8 4 >> put v >> put rhs
+      ExprLam p e         -> putWord8 5 >> put p >> put e
+      ExprApp f a         -> putWord8 6 >> put f >> put a
+      ExprLet lblk e      -> putWord8 7 >> put lblk >> put e
+      ExprIf p a b        -> putWord8 8 >> put p >> put a >> put b
+      ExprMember e n      -> putWord8 9 >> put e >> put n
+      ExprIndex e i       -> putWord8 10 >> put e >> put i
+      ExprTypeAnnot e t   -> putWord8 11 >> put e >> put t
+      ExprBottom          -> putWord8 12
 
+instance (Binary n, Binary t) => Binary (LetField n t) where
+  get = do
+    n <- getWord8
+    case n of
+      1 -> LetVar <$> get
+      2 -> LetFun <$> get
+      3 -> LetSig <$> get
+
+  put e =
+    case e of
+      LetVar v   -> putWord8 1 >> put v
+      LetFun f   -> putWord8 2 >> put f
+      LetSig s   -> putWord8 3 >> put s
+
+instance (Binary n, Binary e, Binary t) => Binary (AssignRhs n e t) where
+  get = do
+    n <- getWord8
+    case n of
+      1 -> AssignBlock <$> get
+      2 -> AssignExpr <$> get
+
+  put e =
+    case e of
+      AssignBlock e   -> putWord8 1 >> put e
+      AssignExpr b    -> putWord8 2 >> put b
 
 -- Statement -------------------------------------------------------------------------
 instance (Binary n, Binary e, Binary t) => Binary (Stmt n e t) where
   get = do
     n <- getWord8
     case n of
-      1 -> StmtCall <$> get <*> get
+      1 -> StmtExpr <$> get
       2 -> StmtVar <$> get
       3 -> StmtFun <$> get
       4 -> StmtSig <$> get
-      5 -> StmtAssign <$> get <*> get
-      6 -> StmtIf <$> get <*> get <*> get
+      5 -> StmtIf <$> get <*> get <*> get
+      6 -> StmtWhile <$> get <*> get
       7 -> StmtReturn <$> get
       
   put e =
     case e of
-      StmtCall callee args                -> putWord8 1 >> put callee >> put args
+      StmtExpr e                          -> putWord8 1 >> put e
       StmtVar v                           -> putWord8 2 >> put v
       StmtVar f                           -> putWord8 3 >> put f
       StmtVar s                           -> putWord8 4 >> put s
-      StmtAssign assignee assignment      -> putWord8 5 >> put assignee >> put assignment
-      StmtIf pred ifStmt elseStmt         -> putWord8 6 >> put pred >> put ifStmt >> put elseStmt
+      StmtIf pred thenBlk elseBlk         -> putWord8 5 >> put pred >> put thenBlk >> put elseBlk
+      StmtWhile cond blk                  -> putWord8 6 >> put cond >> put blk
       StmtReturn exp                      -> putWord8 7 >> put exp
 
 

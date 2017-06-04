@@ -9,9 +9,8 @@ import Data.Monoid
 import Data.Tree
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Parse.Lexer.Token (Token, tokenToText)
+import Language.Hawk.Syntax.Source
 import Text.Earley
-
-import qualified Language.Hawk.Syntax.Source
 
 
 
@@ -20,7 +19,7 @@ surroundList a xs z = (a:xs) ++ [z]
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-toplevel :: Grammar r (Prod r Token Token I.Source)
+toplevel :: Grammar r (Prod r Token Token Item)
 toplevel = mdo
         
 -- -----------------------------------------------------------------------------
@@ -31,40 +30,99 @@ toplevel = mdo
       <|> aliasDefItem
       <|> dataDefItem
       <|> typeClassDefItem
-    
-    
-      
-    depDeclItem <- rule $
-      I.DepDecl <$> depDecl  
-      
-    exprDefItem <- rule $
-      I.ExprDef <$> exprDef  
 
-    aliasDefItem <- rule $
-      I.AliasDef <$> aliasDef  
       
-    dataDefItem <- rule $
-      I.DataDef <$> dataDef
+    depItem <- rule $
+      DepItem <$> depDecl
+
+    sigItem <- rule $
+      TypeSigItem <$> typeSig
+
+    funItem <- rule $
+      FunItem <$> fun
+
+    varItem <- rule $
+      VarItem <$> var
+
+    typeAliasItem <- rule $
+      TypeAliasItem <$> typeAlias  
       
-    typeClassDefItem <- rule $
-      I.TypeClassDef <$> typeClassDef
+    newTypeItem <- rule $
+      NewTypeItem <$> newType
+
+    dataTypeItem <- rule $
+      DataTypeItem <$> dataType
       
+    typeClassItem <- rule $
+      TypeClass <$> typeClass
+
+    instItem <- rule $
+      instItem <$> typeClassInst
+
+
+-- -----------------------------------------------------------------------------
+-- Dependency Rules   
+    depDecl <- rule $
+        Dep <$> depQual <*> depPath <*> depAlias
       
-    opInfo0 <- rule $
-        opInfo <|> pure OI.defOpInfo
+    depQual <- rule $
+          (rsvp "->"  *> pure False)
+      <|> (rsvp "=>" *> pure True)
+      
+    depAlias <- rule $
+          (rsvp "@" *> fmap Just conIdText)
+      <|> pure Nothing
+
+
+-- -----------------------------------------------------------------------------
+-- Dependency Path Rules
+
+    depPath <- rule $
+        depMod <|> depTargetCon
+
+    depMod <- rule $
+        DepModule <$> conIdText
+                  <*> depNext
+
+    depNext <- rule $
+        rsvp "." *> (depTerm <|> depTargets)
+    
+    depTerm <- rule $
+        depTarget <|> depMod
+    
+    depTarget <- rule $
+        depTargetItem <|> depTargetCon
+
+    depTargetItem <- rule $
+        DepTarget <$> itemIdText
+   
+    depTargetCon <- rule $
+        DepTarget <$> conIdText
+    
+    depTargets <- rule $
+        parens (DepTargets <$> depHide0 <*> some depTerm)
+    
+    depHide0 <- rule $ 
+        depHide <|> pure False
+        
+    depHide <- rule $
+        rsvp "\\" *> pure True
+
 
 -- -----------------------------------------------------------------------------
 -- Literal Rules
+
     lit <- rule $
-            ( Lit.IntNum <$> tInteger )
-        <|> ( Lit.FloatNum <$> tReal )
-        <|> ( Lit.Chr <$> tChar )
-        <|> ( Lit.Str <$> tString )
-        <|> ( Lit.Boolean <$> tBool )
-    
+            ( IntNum <$> tInteger )
+        <|> ( FloatNum <$> tReal )
+        <|> ( Chr <$> tChar )
+        <|> ( Str <$> tString )
+        <|> ( Boolean <$> tBool )
+
 
 -- -----------------------------------------------------------------------------
 -- Name rules
+
     varName       <- rule $ name varId
     conName       <- rule $ name conId
     opName        <- rule $ name opId
@@ -84,81 +142,8 @@ toplevel = mdo
         tokenToText <$> conId
 
 -- -----------------------------------------------------------------------------
--- Item Path Rules
-
-    depPath <- rule $
-        depMod <|> depTargetCon
-
-    depMod <- rule $
-        I.DepModule <$> conIdText
-                    <*> depNext
-
-    depNext <- rule $
-        rsvp "." *> (depTerm <|> depTargets)
-    
-    depTerm <- rule $
-        depTarget <|> depMod
-    
-    depTarget <- rule $
-        depTargetItem <|> depTargetCon
-
-    depTargetItem <- rule $
-        I.DepTarget <$> itemIdText
-   
-    depTargetCon <- rule $
-        I.DepTarget <$> conIdText
-    
-    depTargets <- rule $
-        parens (I.DepTargets <$> depHide0 <*> some depTerm)
-    
-    depHide0 <- rule $ 
-        depHide <|> pure False
-        
-    depHide <- rule $
-        rsvp "\\" *> pure True
-
-
--- -----------------------------------------------------------------------------
--- Dependency Declaration Rules   
-    depDecl <- rule $
-        I.Dep <$> depQual <*> depPath <*> depAlias
-      
-    depQual <- rule $
-          (rsvp "->"  *> pure False)
-      <|> (rsvp "=>" *> pure True)
-      
-    depAlias <- rule $
-          (rsvp "@" *> fmap Just conIdText)
-      <|> pure Nothing
-
--- -----------------------------------------------------------------------------
--- Operator Information Rules    
-    opInfo <- rule $
-        OI.OpInfo <$> tInteger <*> opAssoc
-    
-    opAssoc <- rule $
-          (con "L" *> opAssocL)
-      <|> (con "R" *> opAssocR)
-      <|> (con "N" *> opAssocN)
-      
-    opAssocL <- rule $ pure OI.AssocL
-    opAssocR <- rule $ pure OI.AssocR
-    opAssocN <- rule $ pure OI.AssocN
-
--- -----------------------------------------------------------------------------
 -- Expression Definition Rules
-    varDecl <- rule $
-        VDec.VarDecl <$> varName <*> varDeclBody0
 
-    varDeclBody0 <- rule $
-      optional varDeclBody
-    
-    varDeclBody <- rule $
-          (rsvp ":" *> stmtBlock)
-      <|> (rsvp "=" *> expr)
-
--- -----------------------------------------------------------------------------
--- Expression Definition Rules
     exprDecl <- rule $
         EDec.ExprDecl <$> exprDefName <*> opInfo0 <*> exprVars <*> typesig0
     
@@ -180,6 +165,19 @@ toplevel = mdo
     exprDefBody <- rule $
         exprDefOp *> raw
 
+
+-- -----------------------------------------------------------------------------
+-- Variable Rules
+
+    var <- rule $
+        Var <$> varName <*> varDeclBody0
+
+    varDeclBody0 <- rule $
+      optional varDeclBody
+    
+    varDeclBody <- rule $
+          (rsvp ":" *> stmtBlock)
+      <|> (rsvp "=" *> expr)
 
 
 -- -----------------------------------------------------------------------------
@@ -212,8 +210,9 @@ toplevel = mdo
         
     typeCtxTVar <- rule varId
 
+
 -- -----------------------------------------------------------------------------
--- Type Context Rules
+-- Type Signature Rules
     typesig0 <- rule $
         typesig <|> pure []
         
