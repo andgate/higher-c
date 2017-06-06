@@ -48,21 +48,16 @@ executables:
 library:
   source-dirs: src
   dependencies:
-    - aeson
     - ansi-wl-pprint
     - array
     - base
     - binary
-    # - bound
     - bytestring
     - conduit-combinators
     - containers
-    - convertible
     - directory
     - Earley
     - edit-distance
-    - either-unwrap
-    - fgl
     - filepath
     - lens
     - mmorph
@@ -77,15 +72,12 @@ library:
     - resourcet
     - safe
     - streaming-commons
-    - syb
     - text
     - text-format
     - time
     - transformers
-    - uniplate
     - utf8-string
     - vector
-    - yaml
   exposed-modules:      
     - Language.Hawk.Compile
     - Language.Hawk.Compile.Flags
@@ -119,10 +111,7 @@ library:
     - Language.Hawk.Report.Result
     - Language.Hawk.Report.Warning
 
-    - Language.Hawk.Syntax.Generic
-    - Language.Hawk.Syntax.Source
-    - Language.Hawk.Syntax.Valid
-    - Language.Hawk.Syntax.Typed
+    - Language.Hawk.Syntax
 
     - Language.Hawk.TypeCheck
     - Language.Hawk.TypeCheck.Context
@@ -144,17 +133,17 @@ tests:
       - -threaded
       - -with-rtsopts=-N
 
-  doctest:
-    source-dirs: test-suite
-    main: DocTest.hs
-    dependencies:
-      - base
-      - doctest
-      - Glob
-    ghc-options:
-      - -rtsopts
-      - -threaded
-      - -with-rtsopts=-N
+#  doctest:
+#    source-dirs: test-suite
+#    main: DocTest.hs
+#    dependencies:
+#      - base
+#      - doctest
+#      - Glob
+#    ghc-options:
+#      - -rtsopts
+#      - -threaded
+#      - -with-rtsopts=-N
 
   hlint:
     source-dirs: test-suite

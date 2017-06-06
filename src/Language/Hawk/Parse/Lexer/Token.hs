@@ -7,7 +7,7 @@ import Data.Binary hiding (encode)
 import Data.Text (Text)
 import Data.Data
 import Language.Hawk.Report.Region (Region(..))
-import Language.Hawk.Syntax.Generic (Name(..), exLocal)
+import Language.Hawk.Syntax (Name(..), exLocal)
 import Text.PrettyPrint.ANSI.Leijen ((<+>), (<>))
 
 

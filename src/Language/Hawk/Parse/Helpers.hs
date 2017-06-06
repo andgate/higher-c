@@ -14,7 +14,7 @@ import Data.Text.Buildable (Buildable(..))
 import Data.Text (Text)
 import Data.Word (Word8)
 import Language.Hawk.Parse.Lexer.Token
-import Language.Hawk.Syntax.Source (Name)
+import Language.Hawk.Syntax (Name)
 import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
 import Text.Earley
 import Text.Earley.Mixfix

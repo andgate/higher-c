@@ -47,79 +47,109 @@ ModuleFile
 
 
 Name
+    pkg PackageId
+    mod ModuleId
+    cacheStatus CacheStatus
     name Text
-    maybePos PositionId Maybe
-    deriving Show
-    
-Position
-    linenum Int
-    colnum Int
+    pos ByteString
+    UniqueName pkg mod name
     deriving Show
  
 
 Dependency
-    modId   ModuleId
+    pkg PackageId
+    mod ModuleId
+    cacheStatus CacheStatus
     isQual  Bool
     target  ByteString
     alias   Text Maybe
     deriving Show
 
-
-ExprDecl
-    modId ModuleId
+    
+TypeSig
+    pkg PackageId
+    mod ModuleId
+    cacheStatus CacheStatus
     name Text
-    typesig ByteString
+    body ByteString
     deriving Show
-    
-    
-ExprDef
-    modId ModuleId
-    decId ExprDeclId
+
+
+Var
+    pkg PackageId
+    mod ModuleId
+    cacheStatus CacheStatus
+    name Text
+    pos ByteString
     body ByteString
     deriving Show
     
     
-TypeDecl
-    modId ModuleId
+Fun
+    pkg PackageId
+    mod ModuleId
+    cacheStatus CacheStatus
     name Text
+    pos ByteString
+    params ByteString
+    body ByteString
+    deriving Show
+    
+
+NewType
+    pkg PackageId
+    mod ModuleId
+    cacheStatus CacheStatus
+    name Text
+    pos ByteString
+    vars ByteString
+    body ByteString
+    deriving Show
+    
+
+TypeAlias
+    pkg PackageId
+    mod ModuleId
+    cacheStatus CacheStatus
+    name Text
+    pos ByteString
+    vars ByteString
+    body ByteString
+    deriving Show
+
+
+TypeClass
+    pkg PackageId
+    mod ModuleId
+    cacheStatus CacheStatus
+    name Text
+    pos ByteString
     ctx ByteString
-    vars [ByteString]
-    deriving Show    
-    
-    
-AliasDef
-    modId ModuleId
-    decId TypeDeclId
-    tipe ByteString
+    vars ByteString
+    body ByteString
     deriving Show
-    
-    
-DataDef
-    modId ModuleId
-    decId TypeDeclId
-    body [DataConId]
-    deriving Show
-    
-DataCon
-    modId ModuleId
-    dataId DataDefId
+
+
+TypeClassInst
+    pkg PackageId
+    mod ModuleId
+    cacheStatus CacheStatus
     name Text
-    tipe ByteString
-    rows [DataRowId]
+    pos ByteString
+    ctx ByteString
+    args ByteString
+    body ByteString
     deriving Show
-    
-DataRow
-    modId ModuleId
-    dataId DataDefId
-    conId DataConId
-    name Text Maybe
-    tipe ByteString
+
+
+DataType
+    pkg PackageId
+    mod ModuleId
+    cacheStatus CacheStatus
+    name Text
+    pos ByteString
+    vars ByteString
+    body ByteString
     deriving Show
-    
-    
-TypeClassDef
-    modId ModuleId
-    decId TypeDeclId
-    body [ExprDefId]
-    deriving Show
+
 |]

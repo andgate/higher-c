@@ -9,11 +9,10 @@ import Data.Monoid
 import Data.Tree
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Parse.Lexer.Token (Token, tokenToText)
-import Language.Hawk.Syntax.Generic
+import Language.Hawk.Syntax
 import Text.Earley
 
 
-import qualified Language.Hawk.Syntax.Source as Src
 
 
 surroundList :: a -> [a] -> a -> [a]
@@ -21,7 +20,7 @@ surroundList a xs z = (a:xs) ++ [z]
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-toplevel :: Grammar r (Prod r Token Token Src.Item)
+toplevel :: Grammar r (Prod r Token Token SrcItem)
 toplevel = mdo
         
 -- -----------------------------------------------------------------------------

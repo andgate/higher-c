@@ -15,18 +15,10 @@
 module Language.Hawk.Parse where
 
 import Conduit
-import Control.Monad.Trans.Class  (lift)
-import Control.Monad.Trans.Except (Except, throwE, runExceptT)
-import Data.Either.Unwrap (fromLeft, fromRight)
-import Data.Functor.Identity (runIdentity)
-import Data.Maybe (fromJust)
-import Data.Text (Text)
 import Language.Hawk.Parse.Document
-import Language.Hawk.Parse.Lexer.Token (Token)
 import Language.Hawk.Report.Result
 import Text.Earley (Report (..), Prod)
-import Text.Earley.Mixfix (Holey, Associativity)
-import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
+import Text.PrettyPrint.ANSI.Leijen (pretty)
 
 import qualified Data.Text as Text
 import qualified Language.Hawk.Parse.Lexer.Layout as LO
@@ -34,9 +26,7 @@ import qualified Language.Hawk.Parse.Lexer.Token as Tok
 import qualified Language.Hawk.Parse.Grammar as G
 import qualified Language.Hawk.Report.Info as Info
 import qualified Language.Hawk.Report.Error as Err
-import qualified Language.Hawk.Syntax.Source (Item)
 import qualified Text.Earley as E
-import qualified Text.Earley.Mixfix as E
 
 
 -- -----------------------------------------------------------------------------
@@ -52,7 +42,7 @@ itemParser = awaitForever go
 
       yield $
         case parses of
-            []  -> throw $ Err.Parse fp (unconsumed)
+            []  -> throw $ Err.Parse fp unconsumed
             [p] -> return $ Doc mid fp p
             -- This will only happen is the grammar is wrong
             ps  -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)

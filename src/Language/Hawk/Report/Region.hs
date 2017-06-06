@@ -5,8 +5,6 @@ module Language.Hawk.Report.Region where
 
 import Data.Data
 
-import Data.Aeson ((.=))
-import qualified Data.Aeson as Json
 import Data.Binary
 import Text.PrettyPrint.ANSI.Leijen ((<>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
@@ -70,22 +68,6 @@ instance HasPosition a => HasRegion (a, a) where
     toRegion =
       uncurry mkRegion
 
-
-      
-instance Json.ToJSON Region where
-  toJSON (R start end) =
-    Json.object
-      [ "start" .= start
-      , "end"   .= end
-      ]
-      
-      
-instance Json.ToJSON Position where
-  toJSON (P line column) =
-    Json.object
-      [ "line"    .= line
-      , "column"  .= column
-      ]
       
 
 instance PP.Pretty Region where
@@ -93,11 +75,13 @@ instance PP.Pretty Region where
     PP.pretty start
     <> PP.text "-"
     <> PP.pretty end
-    
+
+
 instance PP.Pretty Position where
   pretty (P line column) =
     PP.text $ show line ++ ":" ++ show column
-     
+
+
 instance Binary Region where
   put r =
     put (start r) >> put (end r)
