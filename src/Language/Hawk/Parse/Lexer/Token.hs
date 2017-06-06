@@ -36,12 +36,62 @@ instance Binary Token where
 
 -- The token type:
 data TokenClass
-  = TokenRsvp Text
-  | TokenVarId Text
+  = TokenVarId Text
   | TokenConId Text
   | TokenOpId Text
-  | TokenMixfixId Text
-  | TokenMixfixBlkId Text
+
+  | TokenWhiteSpace
+  | TokenNewLine
+
+  | TokenCommentLine String
+  | TokenCommentOpen
+  | TokenCommentContents String
+  | TokenCommentClose
+
+  | TokenVar
+  | TokenVal
+  | TokenRef
+  | TokenFun
+  | TokenSig
+  | TokenVow
+  | TokenExpose
+
+
+  | TokenClass
+  | TokenInst
+  | TokenType
+  | TokenNewType
+  | TokenData
+
+  | TokenComma
+  | TokenPeriod
+  | TokenBackslash
+  | TokenAt
+  | TokenQuestion
+  | TokenExclaim
+  | TokenColon
+  | TokenEqual
+
+  | TokenAmpersand
+  | TokenPlus
+  | TokenDash
+  | TokenStar
+  | TokenForwardSlash
+
+  | TokenLArrow
+  | TokenRArrow
+  | TokenThickLArrow
+  | TokenThickRArrow
+
+
+  | TokenLParen
+  | TokenRParen
+  | TokenLSquareBracket
+  | TokenRSquareBracket
+  | TokenLCurlyBracket
+  | TokenRCurlyBracket
+  | TokenLAngleBracket
+  | TokenRAngleBracket
   
   | TokenInteger Integer
   | TokenDouble Double

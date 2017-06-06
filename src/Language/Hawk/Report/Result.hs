@@ -4,8 +4,6 @@
   #-}
 module Language.Hawk.Report.Result where
 
-import Control.Applicative
-import Control.Monad.Except (Except, runExcept)
 import Data.Monoid
 import Language.Hawk.Compile.Flags
 import Language.Hawk.Compile.Options

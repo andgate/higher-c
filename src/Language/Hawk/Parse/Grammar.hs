@@ -5,13 +5,10 @@
 module Language.Hawk.Parse.Grammar where
 
 import Control.Applicative
-import Data.Monoid
-import Data.Tree
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Parse.Lexer.Token (Token, tokenToText)
 import Language.Hawk.Syntax
 import Text.Earley
-
 
 
 

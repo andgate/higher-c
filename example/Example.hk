@@ -33,8 +33,8 @@ var d = 3 ? Int
 // sig is used to introduce type signatures
 sig foo ? Int -> Int -> Int
 
-// con is used for contract programming
-con foo val val
+// vow is used for contract programming
+vow foo val val
 // fun is used to introduce a function
 // This is a function bound to an expression
 fun foo x y = (x + 2) * y / 3

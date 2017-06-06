@@ -122,7 +122,7 @@ reportResultC :: MonadIO m => Opts -> Conduit (Result a) m a
 reportResultC o = awaitForever go
   where
     go r = do
-      liftIO $ putReports (toReports (o, r))
+      liftIO $ putReports (o, r)
       forM_ (getAnswer r) yield
 
 

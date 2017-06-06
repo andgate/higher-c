@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Hawk.Report.Report where
 
+import Data.List (filter)
 import System.IO (Handle)
 import Text.PrettyPrint.ANSI.Leijen
     ( Doc, SimpleDoc(..), (<>), displayS, displayIO, dullcyan, fillSep
@@ -33,13 +34,13 @@ report title highlight pre =
 simple :: String -> Report
 simple = SimpleReport . text
 
-putReport :: Report -> IO ()
+putReport :: Reportable r => r -> IO ()
 putReport =
-  putDoc . toDoc
+  putDoc . toDoc . toReport
 
-putReports :: [Report] -> IO ()
+putReports :: MultiReportable r => r -> IO ()
 putReports =
-  putDoc . wrapHardLine . vcat . map toDoc
+  putDoc . vcat . map toDoc . toReports
 
 wrapHardLine :: Doc -> Doc
 wrapHardLine d =
@@ -47,7 +48,7 @@ wrapHardLine d =
 
 toDoc :: Report -> Doc
 toDoc (SimpleReport doc) =
-  doc
+  wrapHardLine doc
 
 toDoc (Report title highlight preHint postHint) =
   messageBar title ""
