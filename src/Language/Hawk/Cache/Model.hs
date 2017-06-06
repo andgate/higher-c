@@ -1,22 +1,18 @@
 {-# LANGUAGE TypeSynonymInstances, EmptyDataDecls, FlexibleContexts, GADTs, GeneralizedNewtypeDeriving, MultiParamTypeClasses, OverloadedStrings, QuasiQuotes, TemplateHaskell,TypeFamilies #-}
-module Language.Hawk.Metadata.Schema where
+module Language.Hawk.Cache.Model where
 
+import Control.Monad.Trans.Reader
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime)
 
 import Database.Persist.Sqlite
 import Database.Persist.TH
-import Language.Hawk.Metadata.CacheStatus
+import Language.Hawk.Cache.Types
 
+type BackendT m a = ReaderT SqlBackend m a
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-CompilerLog
-    startTime Int
-    checkpoint Int
-    endTime Int Maybe
-    deriving Show
-
 Package
     name Text
     srcDir Text
@@ -24,17 +20,19 @@ Package
     deriving Show
 
 Module
+    pkg PackageId
     name Text
     qualName Text
     cacheStatus CacheStatus
-    UniqueModule qualName
+    UniqueModule pkg qualName
     deriving Show
 
 ModulePath
+    pkg PackageId
     ancestor ModuleId
     descendent ModuleId
     cacheStatus CacheStatus
-    UniqueModulePath ancestor descendent
+    UniqueModulePath pkg ancestor descendent
     deriving Show
 
 ModuleFile
@@ -70,7 +68,6 @@ Dependency
 ExprDecl
     modId ModuleId
     name Text
-    op OpId
     typesig ByteString
     deriving Show
     
@@ -85,7 +82,6 @@ ExprDef
 TypeDecl
     modId ModuleId
     name Text
-    op OpId
     ctx ByteString
     vars [ByteString]
     deriving Show    

@@ -1,16 +1,13 @@
-{-# LANGUAGE DeriveDataTypeable
-           , FlexibleInstances
+{-# LANGUAGE FlexibleInstances
            , OverloadedStrings
   #-}
 module Language.Hawk.Syntax.Generic where
 
 import Data.Binary
-import qualified Data.Data as D
 import Data.List (intercalate)
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Tree
-import Data.Typeable
 import Text.PrettyPrint.ANSI.Leijen ((<+>))
 
 import qualified Data.Text                        as T
@@ -25,17 +22,18 @@ data Item n e t
   = DepItem Dependency
 
   | SigItem (TypeSig n t)
-  | FunItem (Fun n e t)
   | VarItem (Var n e t)
+  | FunItem (Fun n e t)
   
-  | AliasItem (TypeAlias n t)
-  | NewTypeItem (NewType n t)
+  | NewTyItem (NewType n t)
+  | TyAliasItem (TypeAlias n t)
+  
+  | TyClassItem (TypeClass n e t)
+  | TyInstItem (TypeClassInst n e t)
+  
   | DataItem (DataType n t)
   
-  | ClassItem (TypeClass n e t)
-  | InstItem (TypeClassInst n e t)
-  
-  deriving (Eq, Show, Ord, D.Data, Typeable)
+  deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -46,7 +44,7 @@ data Dependency =
     { isQual   :: Bool
     , depPath  :: DepPath
     , depAlias :: Maybe Text
-    } deriving (Eq, Show, Ord, D.Data, Typeable)
+    } deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -56,7 +54,7 @@ data DepPath =
     DepModule  Text DepPath
   | DepTarget  Text
   | DepTargets Bool [DepPath]
-  deriving (Eq, Show, Ord, D.Data, Typeable)
+  deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -68,7 +66,7 @@ data Literal
   | Chr Char
   | Str String
   | Boolean Bool
-  deriving (Show, Eq, Ord, D.Data, Typeable)
+  deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -84,11 +82,11 @@ type Home = Maybe R.Region
 
 data Name
   = Name RName Home
-    deriving (Eq, Ord, Show, D.Data, Typeable)
+    deriving (Eq, Show, Ord)
 
 data QName
   = QName RName RName Home
-    deriving (Eq, Ord, Show, D.Data, Typeable)
+    deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -100,22 +98,25 @@ data Type n
   | TypeApp (Type n) [Type n]
   | TypeVar n
   | TypeCon n
-  deriving (Eq, Show, Ord, D.Data, Typeable)
+  deriving (Eq, Show, Ord)
 
 
 data QType n t
   = QType (TyContext n t) t
-  deriving (Eq, Show, Ord, D.Data, Typeable)
-  
+  deriving (Eq, Show, Ord)
+
+
+-- -----------------------------------------------------------------------------
+-- | Type Context
 
 newtype TyContext n t
-  = TyContext [TyAssertion n t]
-  deriving (Eq, Show, Ord, D.Data, Typeable)
+  = TyContext [TyAssert n t]
+  deriving (Eq, Show, Ord)
 
 
-data TyAssertion n t
+data TyAssert n t
   = TyAssert n [t]
-  deriving (Eq, Show, Ord, D.Data, Typeable)
+  deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -141,14 +142,14 @@ data Expr n t
 
   | ExprTypeAnnot (Expr n t) t
   | ExprBottom
-  deriving (Eq, Show, Ord, D.Data, Typeable)
+  deriving (Eq, Show, Ord)
 
 
 data LetField n t
   = LetVar (Var n (Expr n t) t)
   | LetFun (Fun n (Expr n t) t)
   | LetSig (TypeSig (Expr n t) t)
-  deriving (Eq, Show, Ord, D.Data, Typeable)
+  deriving (Eq, Show, Ord)
 
 
 
@@ -163,7 +164,7 @@ data Stmt n e t
   | StmtIf e [Stmt n e t] (Maybe [Stmt n e t])
   | StmtWhile e [Stmt n e t]
   | StmtReturn e
-  deriving (Eq, Show, Ord, D.Data, Typeable)
+  deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -172,7 +173,7 @@ data Stmt n e t
 data Body n e t
   = BodyBlock [Stmt n e t]
   | BodyExpr (Expr n t)
-  deriving (Eq, Show, Ord, D.Data, Typeable)
+  deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -181,9 +182,9 @@ data Body n e t
 data TypeSig n t
   = TypeSig
     { _tySigName :: n
-    , _tySigBody :: t
+    , _tySigBody :: QType n t
     }
-  deriving (Eq, Show, Ord, D.Data, Typeable)
+  deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -194,7 +195,7 @@ data Var n e t
     { _varName  :: n
     , _varBody  :: Maybe (Body n e t)
     }
-  deriving (Eq, Show, Ord, D.Data, Typeable)
+  deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -206,7 +207,7 @@ data Fun n e t
     , _funParams :: [n]
     , _funBody   :: Body n e t
     }
-  deriving (Eq, Show, Ord, D.Data, Typeable)
+  deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -218,7 +219,7 @@ data NewType n t
     , _newTyVars     :: [n]
     , _newTyNewBody  :: t
     }
-  deriving (Eq, Show, Ord, D.Data, Typeable)
+  deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -230,7 +231,7 @@ data TypeAlias n t
       , _tyAliasTyVars :: [n]
       , _tyAliasBody   :: t
       }
-    deriving (Eq, Show, Ord, D.Data, Typeable)
+    deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -238,12 +239,12 @@ data TypeAlias n t
 
 data TypeClass n e t
     = TypeClass 
-      { _tyClassContext :: Maybe (Context t)
+      { _tyClassContext :: Maybe (TyContext n t)
       , _tyClassName :: n
       , _tyClassVars :: [n]
       , _tyClassBody :: [Either (Fun n e t) (TypeSig n t)]
       }
-    deriving (Eq, Show, Ord, D.Data, Typeable)
+    deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -251,12 +252,12 @@ data TypeClass n e t
 
 data TypeClassInst n e t
     = TypeClassInst 
-      { _tyClassInstContext :: QType t
+      { _tyClassInstContext :: Maybe (TyContext n t)
       , _tyClassInstName :: n
       , _tyClassInstArgs :: [t]
       , _tyClassInstBody :: [Fun n e t]
       }
-    deriving (Eq, Show, Ord, D.Data, Typeable)
+    deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -268,7 +269,7 @@ data DataType n t
       , _dataTyVars :: [n]
       , _dataTyBody :: [TypeSig n t]
       }
-    deriving (Eq, Show, Ord, D.Data, Typeable)
+    deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -295,22 +296,21 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Item n e t) where
 
     pretty (VarItem i) =
       PP.pretty i
-
-    pretty (AliasItem i) =
-      PP.pretty i
         
-    pretty (NewTypeItem i) =
+    pretty (NewTyItem i) =
+      PP.pretty i
+
+    pretty (TyAliasItem i) =
+      PP.pretty i
+
+    pretty (TyClassItem i) =
+      PP.pretty i
+
+    pretty (TyInstItem i) =
       PP.pretty i
 
     pretty (DataItem i) =
       PP.pretty i
-
-    pretty (ClassItem i) =
-      PP.pretty i
-
-    pretty (InstItem i) =
-      PP.pretty i
-
 
 -- Dependency ------------------------------------------------------------------
 instance PP.Pretty Dependency where
@@ -401,36 +401,45 @@ instance (PP.Pretty n) => PP.Pretty (Type n) where
       PP.text "Type Con" <+> PP.dquotes (PP.pretty name)
 
 
-instance (PP.Pretty t) => PP.Pretty (QType t) where
+instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (QType n t) where
     pretty (QType ctx tipe) =
       PP.text "Qualified Type:"
       PP.<$>
       PP.indent 2
         ( PP.text "context:" <+> PP.pretty ctx
           PP.<$>
-          PP.text "type:" PP.<$> PP.pretty tipe
+          PP.text "type:" <+> PP.pretty tipe
         )
         
 
-instance (PP.Pretty t) => PP.Pretty (Context t) where
-    pretty (Context assrts) =
+instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (TyContext n t) where
+    pretty (TyContext assrts) =
       PP.text "Context:"
       PP.<$>
       PP.indent 2
         ( PP.text "Assertions:" <+> PP.pretty assrts
         )
 
+instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (TyAssert n t) where
+    pretty (TyAssert con tys) =
+      PP.text "Type Assertion:"
+      PP.<$>
+      PP.indent 2
+        ( PP.text "Constructor:" <+> PP.pretty con
+          PP.<$>
+          PP.text "Arguments:" <+> PP.pretty tys
+        )
 
 -- Expr -------------------------------------------------------------------------
 instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (Expr n t ) where
     pretty (ExprLit lit) =
-      PP.text "Literal Expression:" PP.<$> PP.pretty lit
+      PP.text "Literal Expression:" PP.<+> PP.pretty lit
       
     pretty (ExprVar name) =
-      PP.text "Variable Expression:" PP.<$> PP.pretty name
+      PP.text "Variable Expression:" PP.<+> PP.pretty name
       
     pretty (ExprCon name) =
-      PP.text "Constructor Expression:" PP.<$> PP.pretty name
+      PP.text "Constructor Expression:" PP.<+> PP.pretty name
 
     pretty (ExprAssign assignee rhs) =
       PP.text "Let Expression:"
@@ -440,12 +449,6 @@ instance (PP.Pretty n, PP.Pretty t) => PP.Pretty (Expr n t ) where
           PP.<$>
           PP.string "rhs:" <+> PP.pretty rhs
         )
-
-    pretty (ExprLam params expr) =
-      PP.text "Lambda Expression:"
-      PP.<$>
-      PP.indent 2 
-          ( PP.pretty params PP.<$> PP.pretty expr )
 
     pretty (ExprLam params rhs) =
       PP.text "Let Expression:"
@@ -570,7 +573,7 @@ instance (PP.Pretty n, PP.Pretty e, PP.Pretty t) => PP.Pretty (Stmt n e t ) wher
       
       
     pretty (StmtReturn expr) =
-      PP.text "Return Expression:"
+      PP.text "Return Statement:"
       PP.<$>
       PP.indent 2 ( PP.pretty expr )
 
@@ -707,6 +710,7 @@ instance Binary DepPath where
       1 -> DepModule  <$> get <*> get
       2 -> DepTarget  <$> get
       3 -> DepTargets <$> get <*> get
+      _ -> undefined
       
   put d =
     case d of
@@ -748,25 +752,24 @@ instance Binary Name where
 instance (Binary n) => Binary (Type n) where
   put tipe =
     case tipe of
-      TypeApp t1 t2 ->
-        putWord8 0 >> put t1 >> put t2
-        
-      TypeCon name ->
-        putWord8 1 >> put name
-        
-      --Var name ->
-      --  putWord8 2 >> put name
+      TypeFun t1 t2 -> putWord8 1 >> put t1 >> put t2
+      TypeTuple ts  -> putWord8 2 >> put ts
+      TypeApp tc ta -> putWord8 3 >> put tc >> put ta
+      TypeVar n     -> putWord8 4 >> put n
+      TypeCon n     -> putWord8 5 >> put n
         
   get =
     do  n <- getWord8
         case n of
-          0 -> TypeApp <$> get <*> get
-          1 -> TypeCon <$> get
-          --2 -> Var <$> get
-          _ -> error "Error reading a valid type from serialized string"
+          1 -> TypeFun <$> get <*> get
+          2 -> TypeTuple <$> get
+          3 -> TypeApp <$> get <*> get
+          4 -> TypeVar <$> get
+          5 -> TypeCon <$> get
+          _ -> undefined
 
 
-instance (Binary t) => Binary (QType t) where
+instance (Binary n, Binary t) => Binary (QType n t) where
   get =
     QType <$> get <*> get
 
@@ -774,12 +777,22 @@ instance (Binary t) => Binary (QType t) where
     put ctx >> put tipe
 
 
-instance (Binary t) => Binary (Context t) where
-  get =
-    Context <$> get
+-- Type Context --------------------------------------------------------------------
 
-  put (Context assrts) =
+instance (Binary n, Binary t) => Binary (TyContext n t) where
+  get =
+    TyContext <$> get
+
+  put (TyContext assrts) =
     put assrts
+
+instance (Binary n, Binary t) => Binary (TyAssert n t) where
+  get =
+    TyAssert <$> get <*> get
+
+  put (TyAssert con args) =
+    put con >> put args
+
           
 -- Expr -------------------------------------------------------------------------
 instance (Binary n, Binary t) => Binary (Expr n t) where
@@ -798,6 +811,7 @@ instance (Binary n, Binary t) => Binary (Expr n t) where
       10 -> ExprIndex <$> get <*> get
       11 -> ExprTypeAnnot <$> get <*> get
       12 -> pure ExprBottom
+      _ -> undefined
       
   put e =
     case e of
@@ -821,6 +835,7 @@ instance (Binary n, Binary t) => Binary (LetField n t) where
       1 -> LetVar <$> get
       2 -> LetFun <$> get
       3 -> LetSig <$> get
+      _ -> undefined
 
   put e =
     case e of
@@ -835,6 +850,7 @@ instance (Binary n, Binary e, Binary t) => Binary (Body n e t) where
     case n of
       1 -> BodyBlock <$> get
       2 -> BodyExpr <$> get
+      _ -> undefined
 
   put e =
     case e of
@@ -853,13 +869,14 @@ instance (Binary n, Binary e, Binary t) => Binary (Stmt n e t) where
       5 -> StmtIf <$> get <*> get <*> get
       6 -> StmtWhile <$> get <*> get
       7 -> StmtReturn <$> get
+      _ -> undefined
       
   put e =
     case e of
       StmtExpr e                          -> putWord8 1 >> put e
       StmtVar v                           -> putWord8 2 >> put v
-      StmtVar f                           -> putWord8 3 >> put f
-      StmtVar s                           -> putWord8 4 >> put s
+      StmtFun f                           -> putWord8 3 >> put f
+      StmtSig s                           -> putWord8 4 >> put s
       StmtIf pred thenBlk elseBlk         -> putWord8 5 >> put pred >> put thenBlk >> put elseBlk
       StmtWhile cond blk                  -> putWord8 6 >> put cond >> put blk
       StmtReturn exp                      -> putWord8 7 >> put exp
@@ -1053,7 +1070,3 @@ tyListConName = builtin "_#_List_#_"
 
 tyTupleConName :: HasBuiltin n => Int -> n
 tyTupleConName n = builtin $ T.pack ("_#_" ++ show n ++ "_Tuple_#_")
-
-
-emptyCtx :: Context n
-emptyCtx = Context []

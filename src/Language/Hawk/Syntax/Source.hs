@@ -14,13 +14,13 @@ type Name
   = G.Name
 
 type Type
-  = [Token]
+  = G.Type Name
 
 type QType
   = G.QType Type
 
 type Expr
-  = [Token]
+  = G.Expr Name Type
 
 type Stmt
   = G.Stmt Name Expr Type

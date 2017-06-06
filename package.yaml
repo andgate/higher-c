@@ -94,12 +94,13 @@ library:
     - Language.Hawk.Compile.Source
 
     - Language.Hawk.Data.Bag
-    - Language.Hawk.Data.Emittable
 
-    - Language.Hawk.Metadata
-    - Language.Hawk.Metadata.CacheStatus
-    - Language.Hawk.Metadata.Namespace
-    - Language.Hawk.Metadata.Schema
+    - Language.Hawk.Cache
+    - Language.Hawk.Cache.Item
+    - Language.Hawk.Cache.Model
+    - Language.Hawk.Cache.Module
+    - Language.Hawk.Cache.Package
+    - Language.Hawk.Cache.Types
 
     - Language.Hawk.Parse
     - Language.Hawk.Parse.Document
@@ -122,6 +123,10 @@ library:
     - Language.Hawk.Syntax.Source
     - Language.Hawk.Syntax.Valid
     - Language.Hawk.Syntax.Typed
+
+    - Language.Hawk.TypeCheck
+    - Language.Hawk.TypeCheck.Context
+    - Language.Hawk.TypeCheck.NameGen
 
 
 tests:

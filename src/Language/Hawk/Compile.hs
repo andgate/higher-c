@@ -32,15 +32,14 @@ import Language.Hawk.Report.Report (putReports, toReports)
 import qualified Control.Monad.Trans.State.Strict as St
 import qualified Data.Text                        as T
 import qualified Data.Vector                      as V
-import qualified Language.Hawk.Metadata           as Db
-import qualified Language.Hawk.Metadata.Schema    as Db
-import qualified Language.Hawk.Metadata.CacheStatus as Db
+import qualified Language.Hawk.Cache.Package      as Db
+import qualified Language.Hawk.Cache.Module       as Db
+import qualified Language.Hawk.Cache.Model        as Db
+import qualified Language.Hawk.Cache.Types        as Db
 import qualified Language.Hawk.Parse              as P
 import qualified Language.Hawk.Report.Error       as Err
 import qualified Language.Hawk.Report.Info        as Info
 import qualified Language.Hawk.Report.Warning     as Warn
-import qualified Language.Hawk.Syntax.Item        as I
-import qualified Language.Hawk.Syntax.Expression  as E
 
 
 
@@ -69,7 +68,6 @@ loadFiles :: Opts -> Package -> IO ()
 loadFiles o pkg@(Package n d) = do
   pid <- runSqlite "hk.db" $ do
     runMigration Db.migrateAll
-    Db.staleAll
     Db.insertPackage pkg
 
   runConduitRes

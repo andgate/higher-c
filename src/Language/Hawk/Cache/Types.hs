@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Language.Hawk.Metadata.CacheStatus where
+module Language.Hawk.Cache.Types where
 
 import Database.Persist.TH
 

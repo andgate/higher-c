@@ -22,7 +22,6 @@ import Data.Functor.Identity (runIdentity)
 import Data.Maybe (fromJust)
 import Data.Text (Text)
 import Language.Hawk.Parse.Document
-import Language.Hawk.Parse.Helpers (defTypeOps, defExprOps, ExprOpTable, TypeOpTable)
 import Language.Hawk.Parse.Lexer.Token (Token)
 import Language.Hawk.Report.Result
 import Text.Earley (Report (..), Prod)
@@ -32,12 +31,10 @@ import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
 import qualified Data.Text as Text
 import qualified Language.Hawk.Parse.Lexer.Layout as LO
 import qualified Language.Hawk.Parse.Lexer.Token as Tok
-import qualified Language.Hawk.Parse.Grammar.TopLevel as G
-import qualified Language.Hawk.Parse.Grammar.ExprLevel as G
-import qualified Language.Hawk.Parse.Grammar.TypeLevel as G
+import qualified Language.Hawk.Parse.Grammar as G
 import qualified Language.Hawk.Report.Info as Info
 import qualified Language.Hawk.Report.Error as Err
-import qualified Language.Hawk.Syntax.Item as I
+import qualified Language.Hawk.Syntax.Source (Item)
 import qualified Text.Earley as E
 import qualified Text.Earley.Mixfix as E
 
