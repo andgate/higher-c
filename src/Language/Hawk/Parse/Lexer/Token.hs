@@ -14,74 +14,17 @@ import Language.Hawk.Report.Region (Region(..))
 -- | A `Token` augmented with `Region` information
 data Token = Token
     { _tokClass     :: TokenClass
+    , _tokText      :: Text
     , _tokFilepath  :: FilePath
     , _tokRegion    :: Region
     } deriving (Eq, Show, Ord)
 
 -- The token type:
 data TokenClass
-  = TokenVarId Text
+  = TokenRsvp Text
+  | TokenVarId Text
   | TokenConId Text
   | TokenOpId Text
-
-  | TokenWhiteSpace
-  | TokenNewLine
-
-  | TokenCommentLine Text
-  | TokenCommentOpen
-  | TokenCommentContents Text
-  | TokenCommentClose
-
-  | TokenDocCommentLine Text
-  | TokenDocCommentOpen
-  | TokenDocCommentContents Text
-  | TokenDocCommentClose
-
-  | TokenVar
-  | TokenVal
-  | TokenRef
-  | TokenFun
-  | TokenSig
-  | TokenVow
-
-  | TokenExpose
-  | TokenForeign
-
-  | TokenClass
-  | TokenInst
-  | TokenType
-  | TokenNewType
-  | TokenData
-
-  | TokenComma
-  | TokenPeriod
-  | TokenBackslash
-  | TokenAt
-  | TokenQuestion
-  | TokenExclaim
-  | TokenColon
-  | TokenEqual
-
-  | TokenAmpersand
-  | TokenPlus
-  | TokenDash
-  | TokenStar
-  | TokenForwardSlash
-
-  | TokenLArrow
-  | TokenRArrow
-  | TokenThickLArrow
-  | TokenThickRArrow
-
-
-  | TokenLParen
-  | TokenRParen
-  | TokenLSquareBracket
-  | TokenRSquareBracket
-  | TokenLCurlyBracket
-  | TokenRCurlyBracket
-  | TokenLAngleBracket
-  | TokenRAngleBracket
   
   | TokenInteger Integer
   | TokenDouble Double
@@ -103,41 +46,14 @@ makeLenses ''Token
 
 
 -- -----------------------------------------------------------------------------
--- Helpers
-
-isSpaceClass :: TokenClass -> Bool
-isSpaceClass tc =
-  case tc of
-    TokenWhiteSpace -> True
-    TokenNewLine -> True
-
-    TokenCommentLine _ -> True
-    TokenCommentOpen -> True
-    TokenCommentContents _ -> True
-    TokenCommentClose -> True
-
-    TokenDocCommentLine _ -> True
-    TokenDocCommentOpen -> True
-    TokenDocCommentContents _ -> True
-    TokenDocCommentClose -> True
-
-    _ -> False
-
-
-isEofClass :: TokenClass -> Bool
-isEofClass TokenEof = True
-isEofClass _ = False
-
-
--- -----------------------------------------------------------------------------
 -- Binary Instances
 
 instance Binary Token where
   get =
-    Token <$> get <*> get <*> get
+    Token <$> get <*> get <*> get <*> get
       
-  put (Token c p r) =
-    put c >> put p >> put r
+  put (Token c t p r) =
+    put c >> put t >> put p >> put r
 
 
 instance Binary TokenClass where

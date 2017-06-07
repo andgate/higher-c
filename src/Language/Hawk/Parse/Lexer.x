@@ -8,22 +8,23 @@
 module Language.Hawk.Parse.Lexer where
 
 import Conduit
+import Control.Lens
 import Control.Monad
-import Control.Monad.State.Class
 import Control.Monad.Trans.State.Strict (StateT)
 import Data.Bits (shiftR, (.&.))
 import Data.Char (digitToInt, ord)
 import Data.Text (Text)
 import Data.Word (Word8)
 import Language.Hawk.Parse.Document
+import Language.Hawk.Parse.Lexer.State
 import Language.Hawk.Parse.Lexer.Layout (layout)
 import Language.Hawk.Parse.Lexer.Catalog (catalog)
 import Language.Hawk.Parse.Lexer.Token
-import Language.Hawk.Report.Region (Region(..), Position (..))
+import Language.Hawk.Report.Region
 import System.FilePath (FilePath)
 
-import qualified Control.Monad.Trans.State.Strict as State
-import qualified Data.Text                        as Text
+import qualified Data.Text                        as T
+import qualified Data.Text.Read                   as T
 import qualified Language.Hawk.Parse.Lexer.Layout as LO
 import qualified System.FilePath                  as Filesystem
 
@@ -84,6 +85,10 @@ hawk :-
   \)                              { rsvp }
   \[                              { rsvp }
   \]                              { rsvp }
+  \{                              { rsvp }
+  \}                              { rsvp }
+  \<                              { rsvp }
+  \>                              { rsvp }
   \-\>                            { rsvp }
   \=\>                            { rsvp }
   \:                              { rsvp }
@@ -91,11 +96,18 @@ hawk :-
   \?                              { rsvp }
   \\                              { rsvp }
   \@                              { rsvp }
-  
 
+  "expose"                        { rsvp }
+  "foreign"                       { rsvp }
+  "ccall"                         { rsvp }   
+  
+  "vow"                           { rsvp }
   "var"                           { rsvp }
+  "val"                           { rsvp }
+  "ref"                           { rsvp }
   "fun"                           { rsvp }
   "sig"                           { rsvp }
+
   "class"                         { rsvp }
   "inst"                          { rsvp }
   "type"                          { rsvp }
@@ -116,11 +128,17 @@ hawk :-
   "of"                            { rsvp }
   
   
-  @varid                          { \text -> yieldTokAt (TokenVarId text) }
-  @conid                          { \text -> yieldTokAt (TokenConId text) }
-  @opid                           { \text -> yieldTokAt (TokenOpId text) }
+  @varid                          { \text -> yieldTokAt text (TokenVarId text) }
+  @conid                          { \text -> yieldTokAt text  (TokenConId text) }
+  @opid                           { \text -> yieldTokAt text (TokenOpId text) }
 
-  $digit+                         { \text -> yieldTokAt (TokenInteger $ toInt text) }
+  [\+\-] $digit* \. $digit+       { \text -> yieldTokAt text (TokenDouble $ readSignedDbl text) }
+  [\+\-] $digit+ \. $digit*       { \text -> yieldTokAt text (TokenDouble $ readSignedDbl text) }
+  $digit* \. $digit+              { \text -> yieldTokAt text (TokenDouble $ readDbl text) }
+  $digit+ \. $digit*              { \text -> yieldTokAt text (TokenDouble $ readDbl text) }
+  
+  $digit+                         { \text -> yieldTokAt text (TokenInteger $ readInt text) }
+  [\+\-] $digit+                  { \text -> yieldTokAt text (TokenInteger $ readSignedInt text) }
 }
 
 <stringSC> {
@@ -138,68 +156,63 @@ hawk :-
 
 {
 
-
-data LexState =
-  LexState  { curReg :: Region
-            , startcode :: Int
-            , commentDepth :: Int
-            , stringBuf :: String
-            } deriving Show
-            
-defState :: LexState
-defState = LexState (R (P 0 0) (P 0 0)) 0 0 ""
-
 type Lex a = forall m. Monad m => StateT LexState m a
 type LexAction = forall m. Monad m => Text -> Int -> Producer (StateT LexState m) Token
 
-tag :: TokenClass -> Lex Token
-tag tokClass = do
-  s <- State.get
-  return $ Token tokClass (Just $ curReg s)
+tag :: Text -> TokenClass -> Lex Token
+tag text tc = do
+  fp <- use lexFilePath
+  r <- use lexRegion
+  return $ Token tc text fp r
 
-resetLex :: Lex ()
-resetLex =
-  State.put defState
 
 moveRegion :: Int -> Lex ()
-moveRegion len = do
-  s <- State.get
-  let (R _ p1@(P l c)) = curReg s
-      p2 = P l (c+len)
-  State.put s{curReg = (R p1 p2)}
+moveRegion len =
+  zoom lexRegion $ do
+    r1 <- use regEnd
+    regStart .= r1 
+    regEnd . posColumn += len
+
 
 growRegion :: Int -> Lex ()
-growRegion len = do
-  s <- State.get
-  let (R p1 (P l c)) = curReg s
-      p2 = P l (c+len)
-  State.put s{curReg = (R p1 p2)}
+growRegion len =
+  lexRegion . regEnd . posColumn += len
+
   
 nextLineBreak :: Lex ()
-nextLineBreak = do
-  s <- State.get
-  let (R _ (P l _)) = curReg s
-  State.put s{curReg = (R (P (l+1) 0) (P (l+1) 0))}
+nextLineBreak =
+  zoom lexRegion $ do
+    zoom regStart $ do
+      posLine += 1
+      posColumn .= 0
+    
+    zoom regEnd $ do
+      posLine += 1
+      posColumn .= 0
+
 
 nextLineContinue :: Lex ()
-nextLineContinue = do
-  s <- State.get
-  let (R p1 (P l _)) = curReg s
-  State.put s{curReg = (R p1 (P (l+1) 0))}
+nextLineContinue =
+  zoom (lexRegion . regEnd) $ do
+    posLine += 1
+    posColumn .= 0
 
-yieldTokAt :: forall m. Monad m => TokenClass -> Int -> Producer (StateT LexState m) Token
-yieldTokAt c len = do
+
+yieldTokAt :: forall m. Monad m => Text -> TokenClass -> Int -> Producer (StateT LexState m) Token
+yieldTokAt text c len = do
   lift $ moveRegion len
-  yieldTok c
+  yieldTok text c
 
-yieldTok :: forall m. Monad m => TokenClass -> Producer (StateT LexState m) Token
-yieldTok c = do
-  t <- lift $ tag c
+
+yieldTok :: forall m. Monad m => Text -> TokenClass -> Producer (StateT LexState m) Token
+yieldTok text c = do
+  t <- lift $ tag text c
   yield t
+
 
 rsvp :: LexAction
 rsvp text =
-  yieldTokAt (TokenRsvp text)
+  yieldTokAt text (TokenRsvp text)
 
 
 skipBreak :: LexAction
@@ -211,76 +224,93 @@ skipContinue text len = do
   lift $ growRegion len
 
 beginString :: LexAction
-beginString text len = lift $ do
-  moveRegion len
-  s <- State.get
-  State.put s{startcode = stringSC}
+beginString text len =
+  lift $ do
+    moveRegion len
+    lexStartcode .= stringSC
   
 endString :: LexAction
 endString text len = do
   buf <- lift $ do
     growRegion len
-    s <- State.get
-    let buf = stringBuf s
-    State.put s{ startcode = 0
-              , stringBuf = ""
-              }
-    return buf
-  yieldTok (TokenString $ reverse buf)
+    use lexStringBuf
+
+  yieldTok text (TokenString $ reverse buf)
+  
+  lift $ do
+    lexStringBuf .= ""
+    lexStartcode .= 0
   
 appendString :: LexAction
-appendString text len = lift $ do
-  growRegion len
-  s <- State.get
-  let c = Text.head text
-      buf = stringBuf s
-  State.put s{stringBuf = c:(stringBuf s)}
+appendString text len =
+  lift $ do
+    growRegion len
+    let c = T.head text
+    lexStringBuf %= (c:)
 
 escapeString :: LexAction
 escapeString text len = lift $ do
-  let c = Text.head $ Text.tail text
+  let c = T.head $ T.tail text
       unesc =
         case c of
           'n' -> '\n'
           't' -> '\t'
           '"' -> '"'
   growRegion len
-  s <- State.get
-  State.put s{stringBuf = unesc:(stringBuf s)}
+  lexStringBuf %= (unesc:)
+
     
 
 handleChar :: LexAction
 handleChar text len = do
-  let trim = Text.unpack . Text.tail . Text.init
-      yieldCharAt ch = yieldTokAt (TokenChar ch) len
+  let trim = T.unpack . T.tail . T.init
+      yieldCharAt ch = yieldTokAt text (TokenChar ch) len
   case (trim text) of
       ([])   -> yieldCharAt '\0'
       (c:_)  -> yieldCharAt '\n'
       "\t"   -> yieldCharAt '\t'
       "\r"   -> yieldCharAt '\r'
       "\'"   -> yieldCharAt '\''
-      _      -> return $ error $ "[Lexical Error] Invalid Character Literal: " ++ Text.unpack text
+      _      -> return $ error $ "[Lexical Error] Invalid Character Literal: " ++ T.unpack text
 
 
 beginComment :: LexAction
-beginComment text len = lift $ do
-  moveRegion len
-  s <- State.get
-  State.put s {startcode = commentSC,
-               commentDepth = (commentDepth s)+1}
+beginComment text len =
+  lift $ do
+    moveRegion len
+    lexStartcode .= commentSC
+    lexCommentDepth += 1
          
          
 endComment :: LexAction      
-endComment _ len = lift $ do
-  growRegion len
-  s <- State.get
-  let cd = commentDepth s
-  let sc' = if cd == 1 then 0 else commentSC
-  State.put s {startcode = sc', commentDepth = cd-1}
+endComment _ len =
+  lift $ do
+    growRegion len
+    
+    lexCommentDepth -= 1
+    cd <- use lexCommentDepth
+
+    lexStartcode .=
+      if cd == 0
+        then 0
+        else commentSC
 
 
-toInt :: Text -> Integer
-toInt = Text.foldl' (\x c -> 10 * x + fromIntegral (digitToInt c)) 0
+forceRight :: Either a b -> b
+forceRight (Right b) = b
+forceRight _ = undefined
+
+readInt :: Text -> Integer
+readInt = fst . forceRight . T.decimal
+
+readSignedInt :: Text -> Integer
+readSignedInt = fst . forceRight . T.signed T.decimal
+
+readDbl :: Text -> Double
+readDbl = fst . forceRight . T.double
+
+readSignedDbl :: Text -> Double
+readSignedDbl = fst . forceRight . T.signed T.double
 
 -- This was lifted almost intact from the @alex@ source code
 encode :: Char -> (Word8, [Word8])
@@ -320,7 +350,7 @@ data AlexInput = AlexInput
 alexGetByte :: AlexInput -> Maybe (Word8,AlexInput)
 alexGetByte (AlexInput c bytes text) = case bytes of
     b:ytes -> Just (b, AlexInput c ytes text)
-    []     -> case Text.uncons text of
+    []     -> case T.uncons text of
         Nothing       -> Nothing
         Just (t, ext) -> case encode t of
             (b, ytes) -> Just (b, AlexInput t ytes ext)
@@ -334,32 +364,34 @@ alexInputPrevChar = prevChar
     `lexModl` keeps track of position and returns the remainder of the input if
     lexing fails.
 -}
-tokenize :: Monad m => Conduit Text m Token
-tokenize =
-  evalStateC defState $
+tokenize :: Monad m => FilePath -> Conduit Text m Token
+tokenize fp =
+  evalStateC (defState fp) $
     awaitForever start
   where
     start text = go (AlexInput '\n' [] text)
 
     go input = do
-      s <- lift State.get
-      case alexScan input (startcode s) of
+      sc <- lift $ use lexStartcode
+      case alexScan input sc of
         AlexEOF                        -> do
-            yieldTok TokenEof
-            return ()
+            yieldTok "" TokenEof
+
         AlexError (AlexInput p cs text) ->
-            error $ "Lexical Error: Cannot produce token.\n\tPrevious Char: \'" ++ [p] ++ "\'\n\tCurrent Chars: " ++ show cs ++ "\n\tRest of file: " ++ Text.unpack text
+            error $ "Lexical Error: Cannot produce token.\n\tPrevious Char: \'" ++ [p] ++ "\'\n\tCurrent Chars: " ++ show cs ++ "\n\tRest of file: " ++ T.unpack text
+        
         AlexSkip  input' len           -> do
             error $ "Lexical Error: default Alex skip should never be invoked."
+        
         AlexToken input' len act       -> do
-            act (Text.take (fromIntegral len) (currInput input)) (fromIntegral len)
+            act (T.take (fromIntegral len) (currInput input)) (fromIntegral len)
             go input'
 
 lexer :: Monad m => Conduit TextDoc m TokenDoc
 lexer = awaitForever go
   where
     go (Doc mid fp txt) =
-      yield txt .| tokenize .| layout .| catalog .| mapC (Doc mid fp)
+      yield txt .| tokenize fp .| layout .| catalog .| mapC (Doc mid fp)
 
 
 

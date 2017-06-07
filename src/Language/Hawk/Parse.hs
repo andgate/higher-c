@@ -42,7 +42,7 @@ itemParser = awaitForever go
 
       yield $
         case parses of
-            []  -> throw $ Err.Parse fp unconsumed
+            []  -> throw $ Err.Parse (head unconsumed)
             [p] -> return $ Doc mid fp p
             -- This will only happen is the grammar is wrong
             ps  -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)

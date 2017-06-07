@@ -6,14 +6,9 @@ module Language.Hawk.Parse.Grammar where
 
 import Control.Applicative
 import Language.Hawk.Parse.Helpers
-import Language.Hawk.Parse.Lexer.Token (Token, tokenToText)
+import Language.Hawk.Parse.Lexer.Token (Token)
 import Language.Hawk.Syntax
 import Text.Earley
-
-
-
-surroundList :: a -> [a] -> a -> [a]
-surroundList a xs z = (a:xs) ++ [z]
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
@@ -24,8 +19,11 @@ toplevel = mdo
 -- Item Rules
     item <- rule $ linefold $
           (DepItem <$> depDecl)
+      <|> (ForeignItem <$> forgn)
+      <|> (ExposeItem <$> expose)
       <|> (SigItem <$> tySig)
       <|> (VarItem <$> var)
+      <|> (ValItem <$> val)
       <|> (FunItem <$> fun)
       <|> (NewTyItem <$> newType)
       <|> (TyAliasItem <$> typeAlias)
@@ -44,7 +42,7 @@ toplevel = mdo
       <|> (rsvp "=>" *> pure True)
       
     depAlias <- rule $
-          (rsvp "@" *> fmap Just conIdText)
+          (rsvp "@" *> fmap Just conNameText)
       <|> pure Nothing
 
 
@@ -55,7 +53,7 @@ toplevel = mdo
         depMod <|> depTargetCon
 
     depMod <- rule $
-        DepModule <$> conIdText
+        DepModule <$> conNameText
                   <*> depNext
 
     depNext <- rule $
@@ -68,10 +66,10 @@ toplevel = mdo
         depTargetItem <|> depTargetCon
 
     depTargetItem <- rule $
-        DepTarget <$> itemIdText
+        DepTarget <$> varNameText
    
     depTargetCon <- rule $
-        DepTarget <$> conIdText
+        DepTarget <$> conNameText
     
     depTargets <- rule $
         parens (DepTargets <$> depHide0 <*> some depTerm)
@@ -82,6 +80,23 @@ toplevel = mdo
     depHide <- rule $
         rsvp "\\" *> pure True
 
+-- -----------------------------------------------------------------------------
+-- Foreign Rules
+
+    forgn <- rule $
+      rsvp "foreign" *> forgn'
+
+    forgn' <- rule $
+      Foreign <$> forgnType <*> tySig'
+
+    forgnType <- rule $
+      rsvp "ccall" *> pure ForeignC
+
+-- -----------------------------------------------------------------------------
+-- Expose Rules
+
+    expose <- rule $
+      Expose <$> (rsvp "expose" *> varName)
 
 -- -----------------------------------------------------------------------------
 -- Literal Rules
@@ -96,24 +111,12 @@ toplevel = mdo
 
 -- -----------------------------------------------------------------------------
 -- Name rules
-
-    varName       <- rule $ name varId
-    conName       <- rule $ name conId
-    opName        <- rule $ name opId
-    mixfixName    <- rule $ name mixfixId
-    mixfixBlkName <- rule $ name (mixfixId <|> mixfixblkId)
         
-    itemName <- rule $ 
-        varName <|> parens opName <|> mixfixBlkName
+    varNameText <- rule $ 
+        _nameText <$> varName
        
-    itemId <- rule $ 
-        varId <|> mixfixId <|> mixfixblkId 
-        
-    itemIdText <- rule $ 
-        tokenToText <$> itemId
-       
-    conIdText <- rule $
-        tokenToText <$> conId
+    conNameText <- rule $
+        _nameText <$> conName
 
 -- -----------------------------------------------------------------------------
 -- Type Rules
@@ -161,7 +164,7 @@ toplevel = mdo
       TypeTuple <$> parens (sep (rsvp ",") typ)
 
     tyList <- rule $
-      brackets typ
+      sqrBrackets typ
 
 
 -- -----------------------------------------------------------------------------
@@ -277,7 +280,16 @@ toplevel = mdo
 
 
 -- -----------------------------------------------------------------------------
--- Variable Rules
+-- Value Rules
+
+    val <- rule $
+      rsvp "val" *> val'
+
+    val' <- rule $
+      Val <$> varName <*> optional body
+
+-- -----------------------------------------------------------------------------
+-- Function Rules
 
     fun <- rule $
       rsvp "fun" *> fun'
@@ -285,6 +297,19 @@ toplevel = mdo
     fun' <- rule $
       Fun <$> varName <*> many varName <*> body
 
+-- -----------------------------------------------------------------------------
+-- Vow Rules
+
+    vow <- rule $
+      rsvp "vow" *> val'
+
+    vow' <- rule $
+      Vow <$> varName <*> some vowType
+
+    vowType <- rule $
+      (rsvp "var" *> pure VowVar)
+      <|> (rsvp "val" *> pure VowVal)
+      <|> (rsvp "ref" *> pure VowRef)
 
 -- -----------------------------------------------------------------------------
 -- Type Signature Rules
@@ -341,7 +366,7 @@ toplevel = mdo
     dataType <- rule $
       DataType
         <$> (rsvp "data" *> conName)
-        <*> some varName
+        <*> many varName
         <*> (rsvp ":" *> block tySig')
 
 

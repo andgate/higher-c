@@ -21,8 +21,13 @@ import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 data Item n
   = DepItem Dependency
 
+  | ForeignItem (Foreign n)
+  | ExposeItem (Expose n)
+
+  | VowItem (Vow n)
   | SigItem (TypeSig n)
   | VarItem (Var n)
+  | ValItem (Val n)
   | FunItem (Fun n)
   
   | NewTyItem (NewType n)
@@ -37,6 +42,24 @@ data Item n
 
 
 type SrcItem = Item Name
+
+-- -----------------------------------------------------------------------------
+-- | Foreign
+
+data Foreign n =
+  Foreign ForeignType (TypeSig n)
+  deriving (Eq, Show, Ord)
+
+data ForeignType =
+  ForeignC
+  deriving (Eq, Show, Ord)
+
+-- -----------------------------------------------------------------------------
+-- | Expose
+
+newtype Expose n =
+  Expose n
+  deriving (Eq, Show, Ord)
 
 -- -----------------------------------------------------------------------------
 -- | Dependency
@@ -80,10 +103,19 @@ type PathTree = Tree Name
 type Paths = [Path]
 type Path = [Name]
 
-type Home = Maybe R.Region
+data Home =
+    Home
+    { homePath :: FilePath
+    , homeRegion :: R.Region
+    }
+  | Builtin
+  deriving (Eq, Show, Ord)
 
 data Name
-  = Name RName Home
+  = Name 
+    { _nameText :: RName
+    , _nameHome :: Home
+    }
     deriving (Eq, Show, Ord)
 
 data QName
@@ -190,12 +222,40 @@ data TypeSig n
 
 
 -- -----------------------------------------------------------------------------
+-- | Type Signature
+
+data Vow n
+  = Vow
+    { _vowName :: n
+    , _vows :: [VowType]
+    }
+  deriving (Eq, Show, Ord)
+
+data VowType =
+  VowVar
+  | VowVal
+  | VowRef
+  deriving (Eq, Show, Ord)
+
+
+-- -----------------------------------------------------------------------------
 -- | Variable
 
 data Var n
   = Var
     { _varName  :: n
     , _varBody  :: Maybe (Body n)
+    }
+  deriving (Eq, Show, Ord)
+
+
+-- -----------------------------------------------------------------------------
+-- | Variable
+
+data Val n
+  = Val
+    { _valName  :: n
+    , _valBody  :: Maybe (Body n)
     }
   deriving (Eq, Show, Ord)
 
@@ -750,6 +810,20 @@ instance Binary Name where
       Name <$> get <*> get
 
 
+instance Binary Home where
+    put h =
+      case h of
+        Home fp r -> putWord8 0 >> put fp >> put r
+        Builtin   -> putWord8 1
+          
+    get = do
+      n <- getWord8
+      case n of
+        0 -> Home <$> get <*> get
+        1 -> pure Builtin
+        _ -> error "Corrupted data"
+
+
 -- Type ------------------------------------------------------------------------
 instance (Binary n) => Binary (Type n) where
   put tipe =
@@ -975,31 +1049,19 @@ instance ToString Literal where
 
 -- Name ------------------------------------------------------------------------
 empty :: Name
-empty = Name "" Nothing
+empty = Name "" Builtin
 
-
-exLocal :: Name -> Text
-exLocal (Name t _) = t
-
-
-local :: R.Region -> Text -> Name
-local r n =
-  Name n (Just r)
 
 class HasBuiltin n where
   builtin :: Text -> n
 
 instance HasBuiltin Name where
   builtin n =
-    Name n Nothing
+    Name n Builtin
 
 instance HasBuiltin QName where
   builtin n =
-    QName n "" Nothing
-
-
-isLocalHome :: Home -> Bool
-isLocalHome = isJust
+    QName n "" Builtin
       
 
 expandPathTrees :: [PathTree] -> Paths
@@ -1032,11 +1094,11 @@ instance ToString Name where
 instance ToString Home where
     toString h =
       case h of
-        Nothing ->
+        Builtin ->
           "Builtin"
           
-        Just (R.R (R.P r1 c1) (R.P r2 c2)) ->
-          show r1 ++ ":" ++ show c1 ++ "-" ++ show r2 ++ ":" ++ show c2
+        Home fp (R.R (R.P r1 c1) (R.P r2 c2)) ->
+          fp ++ ":" ++ show r1 ++ ":" ++ show c1 ++ "-" ++ show r2 ++ ":" ++ show c2
 
 
 -- Type ------------------------------------------------------------------------

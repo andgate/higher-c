@@ -14,7 +14,7 @@ catalog = go [] 0
     go ts depth = do
       mayt <- await
       case mayt of
-        Just t@(Token c _ _) ->
+        Just t@(Token c _ _ _) ->
             case c of
               TokenLn -> 
                 go (t:ts) (depth+1)

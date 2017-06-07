@@ -59,15 +59,13 @@ data MyColor:
   r ? F32
   g ? F32
   b ? F32
-  deriving Show
-  // Automatically derive standard type class instances (might turn into a macro)
+
 
 data OtherColor:
   red ? F32
   green ? F32
   blue ? F32
   alpha ? F32
-  deriving Show
 
 // Type classes define interfaces
 class HasRGB a:

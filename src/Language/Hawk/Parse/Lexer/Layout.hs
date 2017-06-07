@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts
+           , OverloadedStrings
            , RankNTypes
            , TemplateHaskell
   #-}
@@ -7,7 +8,7 @@ module Language.Hawk.Parse.Lexer.Layout where
 import Conduit
 import Control.Lens
 import Control.Monad (Monad, when, unless, void, (>=>))
-import Control.Monad.State.Strict (StateT, get, put, modify)
+import Control.Monad.State.Strict (StateT)
 import Data.Maybe (isJust)
 import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Report.Region (Region, Position)
@@ -68,22 +69,21 @@ layout =
         handleTok t
 
 handleTok :: Token -> LayoutConduit
-handleTok t@(Token tc _ _)
-  | isSpaceClass tc = yield t
-  | isEofClass   tc = closeStack
+handleTok t@(Token tc _ _ _)
+  | tc == TokenEof = closeStack
 
   | otherwise = do
       -- Blocks triggered on last token need to be handled
       emitBlk <- lift $ use blkTriggered
       when emitBlk $ do
         lift $ blkTriggered .= False
-        open Block >> open LineFold
+        open Block
 
       closeInvalid
       yield t
 
       -- Colons trigger block emission for the next token
-      when (tc == TokenColon)
+      when (tc == TokenRsvp ":")
            (lift $ blkTriggered .= True)
 
 
@@ -151,7 +151,7 @@ peekLayout = lift . peekLay
 -- Layout Helpers
 
 updateLocation :: Token -> Layout ()
-updateLocation (Token _ fp r) = do
+updateLocation (Token _ _ fp r) = do
     layFilePath .= fp
     layRegion .= r
 
@@ -186,15 +186,15 @@ peekCell =
 openTok :: FilePath -> Region -> Cell -> Token
 openTok fp r c =
   case c ^. cellType of
-      Block -> Token TokenBlk fp r
-      LineFold -> Token TokenLn fp r
+      Block -> Token TokenBlk "" fp r
+      LineFold -> Token TokenLn "" fp r
 
 
 closeTok :: FilePath -> Region -> Cell -> Token
 closeTok fp r c =
   case c ^. cellType of
-      Block -> Token TokenBlk' fp r
-      LineFold -> Token TokenLn' fp r
+      Block -> Token TokenBlk' "" fp r
+      LineFold -> Token TokenLn' "" fp r
   
   
 isValid :: Int -> Cell -> Bool

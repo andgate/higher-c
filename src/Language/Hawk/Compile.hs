@@ -96,7 +96,7 @@ loadFiles o pkg@(Package n d) = do
         .| mapC handleModuleFileEntity
         .| fetchDoc
         .| loadC 10
-        .| lexer
+        .| lexer       
         .| P.itemParser
         .| reportResultC o
         .| sinkNull
