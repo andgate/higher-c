@@ -112,6 +112,8 @@ library:
     - Language.Hawk.Report.Warning
 
     - Language.Hawk.Syntax
+    - Language.Hawk.Syntax.Literal
+    - Language.Hawk.Syntax.Prim
 
     - Language.Hawk.TypeCheck
     - Language.Hawk.TypeCheck.Context

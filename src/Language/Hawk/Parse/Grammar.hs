@@ -8,6 +8,8 @@ import Control.Applicative
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Parse.Lexer.Token (Token)
 import Language.Hawk.Syntax
+import Language.Hawk.Syntax.Literal
+import Language.Hawk.Syntax.Prim
 import Text.Earley
 
 -- -----------------------------------------------------------------------------
@@ -22,6 +24,7 @@ toplevel = mdo
       <|> (ForeignItem <$> forgn)
       <|> (ExposeItem <$> expose)
       <|> (SigItem <$> tySig)
+      <|> (VowItem <$> vow)
       <|> (VarItem <$> var)
       <|> (ValItem <$> val)
       <|> (FunItem <$> fun)
@@ -301,10 +304,10 @@ toplevel = mdo
 -- Vow Rules
 
     vow <- rule $
-      rsvp "vow" *> val'
+      rsvp "vow" *> vow'
 
     vow' <- rule $
-      Vow <$> varName <*> some vowType
+      Vow <$> varName <*> many vowType
 
     vowType <- rule $
       (rsvp "var" *> pure VowVar)

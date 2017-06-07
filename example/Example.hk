@@ -36,15 +36,14 @@ sig foo ? Int -> Int -> Int
 // vow is used for contract programming
 vow foo val val
 // fun is used to introduce a function
-// This is a function bound to an expression
-fun foo x y = (x + 2) * y / 3
+// This is a function bound to a statement
+fun foo x y:
+  val z = #add x 2 // Prim ops start with a hashtag
+  z = #mul z y     // They can only take name bindings or literals, no expressions.
+  return #div z 3
 
-// This is a function bound to a statement block
-fun bar x y:
-    var z = (x+2)
-    z *= y
-    z /= 3
-    return z
+// This is a function bound to an expression
+fun five = #add 2 3 
 
 
 

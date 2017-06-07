@@ -76,6 +76,10 @@ rsvp :: Text -> Prod r e Token Token
 rsvp text =
   match $ TokenRsvp text
 
+prim :: Text -> Prod r e Token Token
+prim text =
+  match $ TokenPrim text
+
 -- -----------------------------------------------------------------------------
 -- Combinator Helpers
 

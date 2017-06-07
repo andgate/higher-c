@@ -57,6 +57,8 @@ $whiteNoNewline = $white # \n
 @conid = $large $idchar*
 @opid  = $opchar+
 
+@primid = \# @varid
+
 
 -- -----------------------------------------------------------------------------
 -- Alex "Identifier"
@@ -75,7 +77,6 @@ hawk :-
   \"                              { beginString }
   \' .* \'                        { handleChar }
   "/*"                            { beginComment }
-  
   
 
   \_                              { rsvp }
@@ -127,7 +128,7 @@ hawk :-
   "case"                          { rsvp }
   "of"                            { rsvp }
   
-  
+  @primid                         { \text -> yieldTokAt text (TokenPrim text) }
   @varid                          { \text -> yieldTokAt text (TokenVarId text) }
   @conid                          { \text -> yieldTokAt text  (TokenConId text) }
   @opid                           { \text -> yieldTokAt text (TokenOpId text) }
