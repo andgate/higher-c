@@ -1,10 +1,10 @@
-{-# LANGUAGE  OverloadedStrings
-            , FlexibleInstances
-            , DeriveDataTypeable #-}
+{-# LANGUAGE  FlexibleInstances
+            , OverloadedStrings
+            , TemplateHaskell
+  #-}
 module Language.Hawk.Report.Region where
 
-import Data.Data
-
+import Control.Lens
 import Data.Binary
 import Text.PrettyPrint.ANSI.Leijen ((<>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
@@ -12,18 +12,25 @@ import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 data Region
   = R
-    { start :: Position
-    , end   :: Position
+    { _regStart :: Position
+    , _regEnd   :: Position
     }
-    deriving (Eq, Ord, Show, Data, Typeable)
-    
+    deriving (Eq, Ord, Show)
+
 
 data Position
   = P
-    { line    :: {-# UNPACK #-} !Int
-    , column  :: {-# UNPACK #-} !Int
+    { _posLine    :: {-# UNPACK #-} !Int
+    , _posColumn  :: {-# UNPACK #-} !Int
     }
-    deriving (Eq, Ord, Show, Data, Typeable)
+    deriving (Eq, Ord, Show)
+
+
+makeLenses ''Position
+makeLenses ''Region
+
+-- -----------------------------------------------------------------------------
+-- Helpers
     
 mkRegion :: HasPosition a => a -> a -> Region
 mkRegion start end = R (toPosition start) (toPosition end)
@@ -33,22 +40,10 @@ stretch a n = mkRegion p1 p2
   where
     p1@(P l c) = toPosition a
     p2 = P l (c + n)
-    
-    
-merge :: Region -> Region -> Region
-merge (R start _) (R _ end) =
-  R start end
-  
-  
-toString :: Region -> String
-toString (R start end) =
-  if line start == line end
-    then
-      "on line " ++ show (line end) ++ ", column "
-      ++ show (column start) ++ " to " ++ show (column end)
-    else
-      "between lines " ++ show (line start)
-      ++ " and " ++ show (line end)
+
+
+-- -----------------------------------------------------------------------------
+-- Has Position Class
 
 class HasPosition a where
     toPosition :: a -> Position     
@@ -56,6 +51,9 @@ class HasPosition a where
 instance HasPosition Position where
     toPosition = id
 
+
+-- -----------------------------------------------------------------------------
+-- Has Region Class
 
 class HasRegion a where
     toRegion :: a -> Region
@@ -68,7 +66,8 @@ instance HasPosition a => HasRegion (a, a) where
     toRegion =
       uncurry mkRegion
 
-      
+-- -----------------------------------------------------------------------------
+-- Pretty Instances   
 
 instance PP.Pretty Region where
   pretty (R start end) =
@@ -82,16 +81,27 @@ instance PP.Pretty Position where
     PP.text $ show line ++ ":" ++ show column
 
 
+-- -----------------------------------------------------------------------------
+-- Binary Instances
+
 instance Binary Region where
-  put r =
-    put (start r) >> put (end r)
+  put (R a b) =
+    put a >> put b
     
   get = R <$> get <*> get
   
 
 instance Binary Position where
-  put p =
-    put (line p) >> put (column p)
+  put (P l c) =
+    put l >> put c
     
   get =
     P <$> get <*> get
+
+-- -----------------------------------------------------------------------------
+-- Helper Instances
+
+instance Monoid Region where
+    mempty = R (P 0 0) (P 0 0)
+    mappend (R start _) (R _ end) =
+      R start end

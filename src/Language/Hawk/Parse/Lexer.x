@@ -37,15 +37,10 @@ $digit = 0-9
 $blkchar = \:
 
 $opchar = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~]
-$opblkchar = [$opchar $blkchar]
-
 
 $small        = [a-z]
 $large        = [A-Z]
 $idchar       = [A-Za-z0-9]
-
-$blkchar      = [A-Za-z $blkchar]
-$blkbodychar  = [A-Za-z0-9 $blkchar]
 
 $nonwhite       = ~$white
 $whiteNoNewline = $white # \n
@@ -60,23 +55,6 @@ $whiteNoNewline = $white # \n
 @varid = $small $idchar*
 @conid = $large $idchar*
 @opid  = $opchar+
-
-
--- Blockable id's, these are used by the mifix macro
-@id    = @varid | @conid | @opid
-
-@mixfixA = \_+ @id
-@mixfixB = @id \_+
-@mixfixC = \_+ @id \_+
-@mixfix = (@mixfixA | @mixfixB | @mixfixC)+
-
--- Blockable id's, these are used by the mifix macro
-@blkid    = $blkchar $blkbodychar* | $opblkchar+
-
-@mixfixblkA = \_+ @blkid
-@mixfixblkB = @blkid \_+
-@mixfixblkC = \_+ @blkid \_+
-@mixfixblk = (@mixfixblkA | @mixfixblkB | @mixfixblkC)+
 
 
 -- -----------------------------------------------------------------------------
@@ -141,8 +119,6 @@ hawk :-
   @varid                          { \text -> yieldTokAt (TokenVarId text) }
   @conid                          { \text -> yieldTokAt (TokenConId text) }
   @opid                           { \text -> yieldTokAt (TokenOpId text) }
-  @mixfix                         { \text -> yieldTokAt (TokenMixfixId text) }
-  @mixfixblk                      { \text -> yieldTokAt (TokenMixfixBlkId text) }
 
   $digit+                         { \text -> yieldTokAt (TokenInteger $ toInt text) }
 }

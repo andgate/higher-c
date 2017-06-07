@@ -1,8 +1,12 @@
-{-# LANGUAGE RankNTypes, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts
+           , RankNTypes
+           , TemplateHaskell
+  #-}
 module Language.Hawk.Parse.Lexer.Layout where
 
 import Conduit
-import Control.Monad (Monad, when, unless)
+import Control.Lens
+import Control.Monad (Monad, when, unless, void, (>=>))
 import Control.Monad.State.Strict (StateT, get, put, modify)
 import Data.Maybe (isJust)
 import Language.Hawk.Parse.Lexer.Token
@@ -13,200 +17,191 @@ import qualified Control.Monad.State.Strict   as State
 import qualified Language.Hawk.Report.Region  as R
 import qualified Data.Text                    as Text
 
+
 -- -----------------------------------------------------------------------------
--- Layout Types
-data Container = 
-  Block Int | LineFold Int
+-- Cell Type
+
+data CellType =
+    Block
+  | LineFold
   deriving (Eq, Ord, Show)
 
-defLay :: Container
-defLay = Block 0
+data Cell =
+  Cell
+  { _cellIndent :: !Int
+  , _cellType :: CellType
+  } deriving (Eq, Ord, Show)
 
-type Layout a = forall m. Monad m => StateT [Container] m a
+makeLenses ''Cell
 
-type LayoutConduit = forall m. Monad m => Conduit Token (StateT [Container] m) Token
+defCell :: Cell
+defCell = Cell 0 Block
 
-defLayout :: [Container]
-defLayout = []
+-- -----------------------------------------------------------------------------
+-- Layout Types
+
+data LayoutState =
+    LayoutState
+    { _layFilePath :: FilePath
+    , _layRegion :: Region
+    , _layStack :: [Cell]
+    , _blkTriggered :: Bool
+    } deriving (Eq, Ord, Show)
+
+makeLenses ''LayoutState
+
+type Layout a = forall m. Monad m => StateT LayoutState m a
+
+type LayoutConduit = forall m. Monad m => Conduit Token (StateT LayoutState m) Token
+
+defLayout :: LayoutState
+defLayout = LayoutState  "" mempty [defCell] False
 
 
 -- -----------------------------------------------------------------------------
 -- Layout Driver  
 layout :: Monad m => Conduit Token m Token
-layout = evalStateC defLayout (awaitForever go)
-  where go t@(Token c (Just r)) = do
-            preUpdate c r
-            yield t
-            postUpdate c
+layout =
+    evalStateC defLayout $
+      awaitForever $ \t -> do
+        lift $ updateLocation t
+        handleTok t
 
-        go t = yield t
-  
-preUpdate :: TokenClass -> Region -> LayoutConduit
-preUpdate c (R.R p _) = do
-  -- Close invalid layouts on the stack
-  -- until the top of the stack is a
-  -- valid or negative layout.
-  closeInvalid p
-  
-  -- since a linefold might have just been closed,
-  -- we may be left with a block layout.
-  -- Block layouts must sit under a linefold.
-  coverBlock p
+handleTok :: Token -> LayoutConduit
+handleTok t@(Token tc _ _)
+  | isSpaceClass tc = yield t
+  | isEofClass   tc = closeStack
 
-  handleEof c p
-  
-  
-postUpdate :: TokenClass -> LayoutConduit
-postUpdate c =
-  when (hasBlkTrig c && isNotBlkClass c) emitBlk
-      
-  where
-    hasBlkTrig = isJust . Text.find (==':') . tokenClassToText
-    isNotBlkClass (TokenMixfixBlkId _) = False
-    isNotBlkClass (TokenString _) = False
-    isNotBlkClass (TokenChar _) = False
-    isNotBlkClass _ = True
-    
-    -- Wait til a document (non-builtin) token arrives
-    -- Passes builtin tokens along.
-    -- Document tokens have position, so they represent a change in layout.
-    awaitDocTok = do
-      mt <- await
-      case mt of
-          Just t -> recieveTok t
-          Nothing -> return Nothing
+  | otherwise = do
+      -- Blocks triggered on last token need to be handled
+      emitBlk <- lift $ use blkTriggered
+      when emitBlk $ do
+        lift $ blkTriggered .= False
+        open Block >> open LineFold
 
-    recieveTok t@(Token c (Just p)) =
-        preUpdate c p >> return (Just (c,p))
-    
-    recieveTok t@(Token c Nothing) =
-        yield t >> awaitDocTok
-    
-    emitBlk = do
-      mayDocTok <- awaitDocTok
-      case mayDocTok of 
-          Just docTok -> handleDocTok docTok
-          Nothing -> return ()
+      closeInvalid
+      yield t
 
-    handleDocTok (c, r@(R.R (R.P ln i) _)) = do
-      l <- lift peekLay
-      if isValid i l
-          then do
-            open (Block i)
-            open (LineFold i)
-            yield $ Token c (Just r)
-          else
-            error $ "\nExpected Indentation: " ++ show l ++
-                    "\nActual Indentation: " ++ show i ++
-                    "\nwith \"" ++ Text.unpack (tokenClassToText c) ++
-                      "\" at " ++ show ln ++ ":" ++ show i
+      -- Colons trigger block emission for the next token
+      when (tc == TokenColon)
+           (lift $ blkTriggered .= True)
+
 
 -- -----------------------------------------------------------------------------
 -- Driver Helpers
   
-closeInvalid :: Position -> LayoutConduit
-closeInvalid p@(R.P _ i) = do
-  l <- lift peekLay
-  unless (isValid i l)
-         (close >> closeInvalid p)
-         
-closeAll :: Position -> LayoutConduit
-closeAll p = do
-  l <- lift peekLay
-  unless (l == defLay)
-         (close >> closeAll p)
-                    
-coverBlock :: Position -> LayoutConduit
-coverBlock p = do
-  l <- lift peekLay
-  case l of
-      (Block i) -> open (LineFold i)
-      _ -> return ()
-      
-      
-handleEof :: TokenClass -> Position -> LayoutConduit
-handleEof c p =
-  when (c == TokenEof)
-       (closeAll p)
+
+closeStack :: LayoutConduit
+closeStack = do
+  cl <- lift peekCell
+  unless (cl == defCell)
+         (close >> closeStack)
+
+
+closeInvalid :: LayoutConduit
+closeInvalid = do
+  go =<< lift getCurrIndent
+  fillBlock
+  where
+    go i = do
+      cl <- lift peekCell
+      unless (isValid i cl)
+             (close >> go i)
+
+
+fillBlock :: LayoutConduit
+fillBlock = do
+  (Cell _ ct) <- lift peekCell
+  when (ct == Block)
+       (open LineFold)
   
       
-open :: Container -> LayoutConduit
-open l = do
-  lift $ pushLay l
-  yield $ openTok l
+open :: CellType -> LayoutConduit
+open ct = do
+  fp <- lift $ use layFilePath
+  r <- lift $ use layRegion
+  i <- lift getCurrIndent
+
+  let cl = Cell i ct
+  pushLayout cl
+  yield $ openTok fp r cl
 
 close :: LayoutConduit
 close = do
-  l <- lift peekLay
-  yield $ closeTok l
-  lift popLay
-  return ()
+  l <- lift peekCell
+  fp <- lift $ use layFilePath
+  r <- lift $ use layRegion
+  yield $ closeTok fp r l
+  lift $ void popCell
   
   
-pushLayout :: Container -> LayoutConduit
-pushLayout = lift . pushLay
+pushLayout :: Cell -> LayoutConduit
+pushLayout = lift . pushCell
 
 {-
-popLayout :: Pipe Token Token Layout Container
-popLayout = lift $ popLay
+popLayout :: Pipe Token Token Layout Cell
+popLayout = lift . popLay
 
-peekLayout :: Pipe Token Token Layout Container
-peekLayout = lift $ peekLay
+peekLayout :: Pipe Token Token Layout Cell
+peekLayout = lift . peekLay
 -}
+
 
 -- -----------------------------------------------------------------------------
 -- Layout Helpers
 
-getIndent :: Layout Int
-getIndent = do
-  lo <- headDef defLay <$> State.get
-  case lo of
-    Block i -> return i
-    LineFold i -> return i
+updateLocation :: Token -> Layout ()
+updateLocation (Token _ fp r) = do
+    layFilePath .= fp
+    layRegion .= r
+
+getCellIndent :: Layout Int
+getCellIndent =
+  _cellIndent <$> peekCell
+
+getCurrIndent :: Layout Int
+getCurrIndent =
+  use $ layRegion . R.regStart . R.posColumn
     
 setIndent :: Int -> Layout ()
-setIndent i = do
-  l <- popLay
-  let l' = case l of
-              Block _ -> Block i
-              LineFold _ -> LineFold i
-  pushLay l'
+setIndent i =
+  layStack . ix 0 . cellIndent .= i
 
 
-pushLay :: Container -> Layout ()
-pushLay l =
-  modify (l:)
+pushCell :: Cell -> Layout ()
+pushCell l =
+  layStack %= (l:)
 
-popLay :: Layout Container
-popLay = do
-  ls <- get
-  case ls of
-    [] -> return defLay
-    l:ls' -> put ls' >> return l
+popCell :: Layout Cell
+popCell = do
+  cn <- peekCell
+  layStack %= tail
+  return cn
 
-peekLay :: Layout Container
-peekLay = do
-  ls <- get
-  case ls of
-    [] -> return defLay
-    l:_ -> return l
+peekCell :: Layout Cell
+peekCell = 
+  uses layStack head
 
     
-openTok :: Container -> Token
-openTok l =
-  case l of
-      Block _ -> Token TokenBlk Nothing
-      LineFold _ -> Token TokenLn Nothing   
+openTok :: FilePath -> Region -> Cell -> Token
+openTok fp r c =
+  case c ^. cellType of
+      Block -> Token TokenBlk fp r
+      LineFold -> Token TokenLn fp r
+
+
+closeTok :: FilePath -> Region -> Cell -> Token
+closeTok fp r c =
+  case c ^. cellType of
+      Block -> Token TokenBlk' fp r
+      LineFold -> Token TokenLn' fp r
+  
+  
+isValid :: Int -> Cell -> Bool
+isValid i (Cell ci ct) =
+  case ct of
+    Block -> 
+      ci <= i
     
-closeTok :: Container -> Token
-closeTok l =
-  case l of
-      Block _ -> Token TokenBlk' Nothing
-      LineFold _ -> Token TokenLn' Nothing
-  
-  
-isValid :: Int -> Container -> Bool
-isValid i' (Block i) = i <= i'
--- LineFold should be layCol < curCol || (curLine == layLine && layCol <= curCol)
--- but this seems to work
-isValid i' (LineFold i) = i < i'
+    LineFold ->
+      ci < i

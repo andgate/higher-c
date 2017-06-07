@@ -150,12 +150,6 @@ conId = satisfy isConId
 opId :: Prod r e Token Token
 opId = satisfy isOpId
 
-mixfixId :: Prod r e Token Token
-mixfixId = satisfy isMixfixId
-
-mixfixblkId :: Prod r e Token Token
-mixfixblkId = satisfy isMixfixBlkId
-
 
 var :: Text -> Prod r e Token Token
 var txt = satisfy (isVar txt)
@@ -165,12 +159,6 @@ con txt = satisfy (isCon txt)
 
 op :: Text -> Prod r e Token Token
 op txt = satisfy (isOp txt)
-
-mixfix :: Text -> Prod r e Token Token
-mixfix txt = satisfy (isMixfix txt)
-
-mixfixblk :: Text -> Prod r e Token Token
-mixfixblk txt = satisfy (isMixfixBlk txt)
 
 
 name :: Prod r e Token Token -> Prod r e Token Name
