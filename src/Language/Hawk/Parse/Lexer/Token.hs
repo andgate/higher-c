@@ -23,9 +23,17 @@ data Token = Token
 data TokenClass
   = TokenRsvp Text
   | TokenPrim Text
+
   | TokenVarId Text
   | TokenConId Text
+  | TokenModId Text
   | TokenOpId Text
+  
+  | TokenQVarId Text
+  | TokenQConId Text
+  | TokenQModId Text
+  | TokenQOpId Text
+
   
   | TokenInteger Integer
   | TokenDouble Double

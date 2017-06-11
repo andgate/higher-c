@@ -2,7 +2,7 @@
 {-# LANGUAGE   OverloadedStrings
              , TupleSections
              , RankNTypes
-             , NoMonomorphismRestriction  -- everyday we stray further from god's light
+             , NoMonomorphismRestriction
   #-}
 
 module Language.Hawk.Parse.Lexer where
@@ -10,7 +10,7 @@ module Language.Hawk.Parse.Lexer where
 import Conduit
 import Control.Lens
 import Control.Monad
-import Control.Monad.Trans.State.Strict (StateT)
+import Control.Monad.State.Strict (StateT, evalStateT)
 import Data.Bits (shiftR, (.&.))
 import Data.Char (digitToInt, ord)
 import Data.Text (Text)
@@ -35,29 +35,28 @@ import qualified System.FilePath                  as Filesystem
 
 $digit = 0-9
 
-$blkchar = \:
 
-$opchar = [\!\#\$\%\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~]
+$opchar = [\!\#\$\%\&\*\+\/\<\=\>\?\@\\\^\|\-\~\:]
 
 $small        = [a-z]
 $large        = [A-Z]
 $idchar       = [A-Za-z0-9]
+$idcharsym    = [A-Za-z0-9\_\']
+
 
 $nonwhite       = ~$white
 $whiteNoNewline = $white # \n
 
 
-
 -- -----------------------------------------------------------------------------
 -- Alex "Regular expression macros"
 
-
-
-@varid = $small $idchar*
-@conid = $large $idchar*
+-- Basic Ids
+@primid = \# $small+
+@modid = $large $idchar*
+@varid = $small $idcharsym*
+@conid = $large $idcharsym*
 @opid  = $opchar+
-
-@primid = \# @varid
 
 
 -- -----------------------------------------------------------------------------
@@ -80,8 +79,8 @@ hawk :-
   
 
   \_                              { rsvp }
-  \,                              { rsvp }
   \.                              { rsvp }
+  \,                              { rsvp }
   \(                              { rsvp }
   \)                              { rsvp }
   \[                              { rsvp }
@@ -100,8 +99,12 @@ hawk :-
 
   "expose"                        { rsvp }
   "foreign"                       { rsvp }
-  "ccall"                         { rsvp }   
+  "ccall"                         { rsvp }
   
+  "infix"                         { rsvp }
+  "infixl"                        { rsvp }
+  "infixr"                        { rsvp }
+
   "vow"                           { rsvp }
   "var"                           { rsvp }
   "val"                           { rsvp }
@@ -128,18 +131,17 @@ hawk :-
   "case"                          { rsvp }
   "of"                            { rsvp }
   
-  @primid                         { \text -> yieldTokAt text (TokenPrim text) }
-  @varid                          { \text -> yieldTokAt text (TokenVarId text) }
-  @conid                          { \text -> yieldTokAt text  (TokenConId text) }
-  @opid                           { \text -> yieldTokAt text (TokenOpId text) }
+  @primid                         { \text -> yieldTokAt (TokenPrim text) text }
 
-  [\+\-] $digit* \. $digit+       { \text -> yieldTokAt text (TokenDouble $ readSignedDbl text) }
-  [\+\-] $digit+ \. $digit*       { \text -> yieldTokAt text (TokenDouble $ readSignedDbl text) }
-  $digit* \. $digit+              { \text -> yieldTokAt text (TokenDouble $ readDbl text) }
-  $digit+ \. $digit*              { \text -> yieldTokAt text (TokenDouble $ readDbl text) }
+  @modid                          { \text -> yieldTokAt (TokenModId text) text }
+  @conid                          { \text -> yieldTokAt (TokenConId text) text }
+  @varid                          { \text -> yieldTokAt (TokenVarId text) text }
+  @opid                           { \text -> yieldTokAt (TokenOpId text) text }
+
+  $digit* \. $digit+              { \text -> yieldTokAt (TokenDouble $ readDbl text) text }
+  $digit+ \. $digit*              { \text -> yieldTokAt (TokenDouble $ readDbl text) text }
   
-  $digit+                         { \text -> yieldTokAt text (TokenInteger $ readInt text) }
-  [\+\-] $digit+                  { \text -> yieldTokAt text (TokenInteger $ readSignedInt text) }
+  $digit+                         { \text -> yieldTokAt (TokenInteger $ readInt text) text }
 }
 
 <stringSC> {
@@ -158,6 +160,9 @@ hawk :-
 {
 
 type Lex a = forall m. Monad m => StateT LexState m a
+
+type TokenProducer = forall m. Monad m => Producer (StateT LexState m) Token
+
 type LexAction = forall m. Monad m => Text -> Int -> Producer (StateT LexState m) Token
 
 tag :: Text -> TokenClass -> Lex Token
@@ -199,21 +204,21 @@ nextLineContinue =
     posColumn .= 0
 
 
-yieldTokAt :: forall m. Monad m => Text -> TokenClass -> Int -> Producer (StateT LexState m) Token
-yieldTokAt text c len = do
+yieldTokAt :: TokenClass -> LexAction
+yieldTokAt c text len = do
   lift $ moveRegion len
-  yieldTok text c
+  yieldTaggedTok c text
 
 
-yieldTok :: forall m. Monad m => Text -> TokenClass -> Producer (StateT LexState m) Token
-yieldTok text c = do
+yieldTaggedTok :: TokenClass -> Text -> TokenProducer
+yieldTaggedTok c text = do
   t <- lift $ tag text c
   yield t
 
 
 rsvp :: LexAction
 rsvp text =
-  yieldTokAt text (TokenRsvp text)
+  yieldTokAt (TokenRsvp text) text
 
 
 skipBreak :: LexAction
@@ -236,7 +241,7 @@ endString text len = do
     growRegion len
     use lexStringBuf
 
-  yieldTok text (TokenString $ reverse buf)
+  yieldTaggedTok (TokenString $ reverse buf) text
   
   lift $ do
     lexStringBuf .= ""
@@ -265,7 +270,7 @@ escapeString text len = lift $ do
 handleChar :: LexAction
 handleChar text len = do
   let trim = T.unpack . T.tail . T.init
-      yieldCharAt ch = yieldTokAt text (TokenChar ch) len
+      yieldCharAt ch = yieldTokAt (TokenChar ch) text len
   case (trim text) of
       ([])   -> yieldCharAt '\0'
       (c:_)  -> yieldCharAt '\n'
@@ -283,7 +288,7 @@ beginComment text len =
     lexCommentDepth += 1
          
          
-endComment :: LexAction      
+endComment :: LexAction
 endComment _ len =
   lift $ do
     growRegion len
@@ -367,8 +372,8 @@ alexInputPrevChar = prevChar
 -}
 tokenize :: Monad m => FilePath -> Conduit Text m Token
 tokenize fp =
-  evalStateC (defState fp) $
-    awaitForever start
+    evalStateC (defState fp) $ awaitForever start
+
   where
     start text = go (AlexInput '\n' [] text)
 
@@ -376,7 +381,8 @@ tokenize fp =
       sc <- lift $ use lexStartcode
       case alexScan input sc of
         AlexEOF                        -> do
-            yieldTok "" TokenEof
+            yieldTaggedTok TokenEof ""
+            return ()
 
         AlexError (AlexInput p cs text) ->
             error $ "Lexical Error: Cannot produce token.\n\tPrevious Char: \'" ++ [p] ++ "\'\n\tCurrent Chars: " ++ show cs ++ "\n\tRest of file: " ++ T.unpack text

@@ -1,0 +1,18 @@
+// Simple program that computes a fibbonacci number
+// and prints it
+
+// Link to printd from c
+foreign ccall "printd" ? Double -> ()
+
+// Define a fibonacci function
+sig fib ? Double -> Double
+fun fib n:
+  if n < 3:
+    1
+  else:
+    fib (x-1) + fib (x-2)
+
+
+// Program entry point, prints 40th fibonacci number
+sig main ? ()
+fun main = printd (fun 40)

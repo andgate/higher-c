@@ -8,6 +8,7 @@ import Data.List (intercalate)
 import Data.Text (Text)
 import Data.Tree
 import Language.Hawk.Syntax.Literal
+import Language.Hawk.Syntax.Operator
 import Language.Hawk.Syntax.Prim
 import Text.PrettyPrint.ANSI.Leijen ((<+>))
 
@@ -41,8 +42,44 @@ data Item n
   
   deriving (Eq, Show, Ord)
 
-
 type SrcItem = Item Name
+
+
+-- -----------------------------------------------------------------------------
+-- | Dependency
+
+data Dependency =
+  Dep
+    { _depIsQual  :: Bool
+    , _depPath    :: DepPath
+    , _depAlias   :: Maybe Text
+    } deriving (Eq, Show, Ord)
+
+
+-- -----------------------------------------------------------------------------
+-- | Dependency Path
+
+data DepPath = 
+    DepPath     Text DepPath
+  | DepBase     Text
+  | DepSpecify
+    { _depSpecIsHidden  :: Bool
+    , _depSpecfiers     :: [DepPath]
+    }
+  deriving (Eq, Show, Ord)
+
+
+-- -----------------------------------------------------------------------------
+-- | Nested Items
+
+data NestedItem n
+  = NestedVar (Var n)
+  | NestedVal (Val n)
+  | NestedFun (Fun n)
+  | NestedVow (Vow n)
+  | NestedSig (TypeSig n)
+  deriving (Eq, Show, Ord)
+
 
 -- -----------------------------------------------------------------------------
 -- | Foreign
@@ -55,6 +92,7 @@ data ForeignType =
   ForeignC
   deriving (Eq, Show, Ord)
 
+
 -- -----------------------------------------------------------------------------
 -- | Expose
 
@@ -62,35 +100,9 @@ newtype Expose n =
   Expose n
   deriving (Eq, Show, Ord)
 
--- -----------------------------------------------------------------------------
--- | Dependency
-
-data Dependency =
-  Dep
-    { isQual   :: Bool
-    , depPath  :: DepPath
-    , depAlias :: Maybe Text
-    } deriving (Eq, Show, Ord)
-
-
--- -----------------------------------------------------------------------------
--- | Dependency Path
-
-data DepPath = 
-    DepModule  Text DepPath
-  | DepTarget  Text
-  | DepTargets Bool [DepPath]
-  deriving (Eq, Show, Ord)
-
 
 -- -----------------------------------------------------------------------------
 -- | Name
-
-type RName = Text
-
-type PathTree = Tree Name
-type Paths = [Path]
-type Path = [Name]
 
 data Home =
     Home
@@ -102,14 +114,18 @@ data Home =
 
 data Name
   = Name 
-    { _nameText :: RName
+    { _nameText :: Text
     , _nameHome :: Home
+    , _nameIsQual :: Bool
     }
     deriving (Eq, Show, Ord)
 
 data QName
-  = QName RName RName Home
-    deriving (Eq, Show, Ord)
+  = QName
+    { _qnamePath :: [Text]
+    , _qnameBase :: Text
+    , _qnameHome :: Home
+    } deriving (Eq, Show, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -146,48 +162,56 @@ data TyAssert n
 -- | Expression
 
 data Expr n
-  = ExprLit Literal
-  | ExprVar n
-  | ExprCon n
-  | ExprPrim (PrimOp n)
+  = ELit Literal
+  | EVar n
+  | ECon n
 
-  | ExprAssign (Expr n) (Body n)
+  | EApp (Expr n) [Expr n] -- Function application, which is left associative
+  | EInfixApp (Expr n) -- rhs
+              (Expr n) -- applied exp
+              (Expr n) -- lhs
 
-  | ExprLam [n] (Expr n)
+  | ELam [n] (Expr n)
 
-  | ExprApp (Expr n) [Expr n]
-  | ExprLet [LetField n] (Expr n)
+  -- Control Flow
+  | EDo [Stmt n]
+  | EReturn (Expr n)
+  
+  | EIf (Expr n) -- conditional
+        [Stmt n] -- then body
+        [Stmt n] -- else body
+  
+  | EWhile (Expr n) -- Loop condition
+           [Stmt n] -- Loop body
 
-  | ExprIf (Expr n) (Expr n) (Expr n)
+-- Too complex for now 
+--  | EFor (Expr n) -- Iterator
+--         (Expr n) -- List
+--         [Stmt n] -- Loop body
 
-  -- Specific stucture access
-  | ExprMember (Expr n) n
-  | ExprIndex (Expr n) (Expr n)
+--  | ECase (Expr n)
+--          (ECaseEntry n)
 
-  | ExprTypeAnnot (Expr n) (Type n)
-  | ExprBottom
+
+  -- Operators
+  | EPrim PrimInstr (Expr n) (Expr n)
+  | EBinary (Expr n) BinaryOp (Expr n)
+  | EUnary UnaryOp (Expr n)
+  | EAssign (Expr n) AssignOp (Expr n)
+
+  -- Type hints and bottom
+  | ETypeHint (Expr n) (Type n)
+  | EBottom
   deriving (Eq, Show, Ord)
 
-
-data LetField n
-  = LetVar (Var n)
-  | LetFun (Fun n)
-  | LetSig (TypeSig n)
-  deriving (Eq, Show, Ord)
-
-
+type SourceExpr = Expr Name
 
 -- -----------------------------------------------------------------------------
 -- | Statement
 
 data Stmt n
   = StmtExpr (Expr n)
-  | StmtVar (Var n)
-  | StmtFun (Fun n)
-  | StmtSig (TypeSig n)
-  | StmtIf (Expr n) [Stmt n] (Maybe [Stmt n])
-  | StmtWhile (Expr n) [Stmt n]
-  | StmtReturn (Expr n)
+  | StmtDecl (NestedItem n)
   deriving (Eq, Show, Ord)
 
 
@@ -339,14 +363,26 @@ instance (PP.Pretty l, PP.Pretty r) => PP.Pretty (Either l r) where
 instance (PP.Pretty n) => PP.Pretty (Item n) where
     pretty (DepItem i) =
       PP.pretty i
-        
+
+    pretty (ForeignItem i) =
+      PP.pretty i
+
+    pretty (ExposeItem i) =
+      PP.pretty i
+
+    pretty (VowItem i) =
+      PP.pretty i
+
     pretty (SigItem i) =
       PP.pretty i
 
-    pretty (FunItem i) =
+    pretty (VarItem i) =
       PP.pretty i
 
-    pretty (VarItem i) =
+    pretty (ValItem i) =
+      PP.pretty i
+
+    pretty (FunItem i) =
       PP.pretty i
         
     pretty (NewTyItem i) =
@@ -364,10 +400,29 @@ instance (PP.Pretty n) => PP.Pretty (Item n) where
     pretty (DataItem i) =
       PP.pretty i
 
+
+-- Vested Item ---------------------------------------------------------------------
+instance (PP.Pretty n) => PP.Pretty (NestedItem n) where
+    pretty (NestedVar v) =
+      PP.text "Nested Variable:" <+> PP.pretty v
+
+    pretty (NestedVal v) =
+      PP.text "Nested Value:" <+> PP.pretty v
+
+    pretty (NestedFun f) =
+      PP.text "Nested Function:" <+> PP.pretty f
+    
+    pretty (NestedVow v) =
+      PP.text "Nested Vow:" <+> PP.pretty v
+
+    pretty (NestedSig s) =
+      PP.text "Nested Type Sig:" <+> PP.pretty s
+
+
 -- Dependency ------------------------------------------------------------------
 instance PP.Pretty Dependency where
     pretty (Dep ql p a) =
-      PP.text "Import:"
+      PP.text "Dependency:"
       PP.<$>
       PP.indent 2
         ( PP.text "Is Qualified:" PP.<+> PP.pretty ql
@@ -378,18 +433,44 @@ instance PP.Pretty Dependency where
         )
 
 
--- Dependency Path ---------------------------------------------------------------
+-- Foreign ------------------------------------------------------------------
+instance PP.Pretty n => PP.Pretty (Foreign n) where
+    pretty (Foreign ft fs) =
+      PP.text "Foreign:"
+      PP.<$>
+      PP.indent 2
+        ( PP.text "Foreign Type:" PP.<+> PP.pretty ft
+          PP.<$>
+          PP.text "Foreign Sig:" PP.<+> PP.pretty fs
+        )
+
+instance PP.Pretty ForeignType where
+    pretty ForeignC =
+      PP.text "ForeignC"
+
+
+-- Expose --------------------------------------------------------------------
+instance PP.Pretty n => PP.Pretty (Expose n) where
+    pretty (Expose n) =
+      PP.text "Expose:"
+      PP.<$>
+      PP.indent 2
+        ( PP.text "name:" PP.<+> PP.pretty n
+        )
+
+
+-- Dependency Path ------------------------------------------------------------
 instance PP.Pretty DepPath where
-    pretty (DepModule n r) =
+    pretty (DepPath n r) =
       PP.text (T.unpack n) PP.<> PP.text "."  PP.<> PP.pretty r
         
-    pretty (DepTarget n) =
+    pretty (DepBase n) =
       PP.text (T.unpack n)
         
-    pretty (DepTargets False rs) =
+    pretty (DepSpecify False rs) =
       PP.text "(" PP.<> PP.pretty rs PP.<> PP.text ")"
 
-    pretty (DepTargets True rs) =
+    pretty (DepSpecify True rs) =
       PP.text "(\\" PP.<> PP.pretty rs PP.<> PP.text ")"
 
 
@@ -463,152 +544,152 @@ instance (PP.Pretty n) => PP.Pretty (TyAssert n) where
           PP.text "Arguments:" <+> PP.pretty tys
         )
 
+
 -- Expr -------------------------------------------------------------------------
 instance (PP.Pretty n) => PP.Pretty (Expr n) where
-    pretty (ExprLit lit) =
+    pretty (ELit lit) =
       PP.text "Literal Expression:" PP.<+> PP.pretty lit
-      
-    pretty (ExprVar name) =
+
+    pretty (EVar name) =
       PP.text "Variable Expression:" PP.<+> PP.pretty name
       
-    pretty (ExprCon name) =
+    pretty (ECon name) =
       PP.text "Constructor Expression:" PP.<+> PP.pretty name
 
-    pretty (ExprAssign assignee rhs) =
-      PP.text "Let Expression:"
-      PP.<$>
-      PP.indent 2
-        ( PP.string "Assignee:" <+> PP.pretty assignee
-          PP.<$>
-          PP.string "rhs:" <+> PP.pretty rhs
-        )
 
-    pretty (ExprLam params rhs) =
-      PP.text "Let Expression:"
-      PP.<$>
-      PP.indent 2
-        ( PP.string "params:" <+> PP.pretty params
-          PP.<$>
-          PP.string "rhs:" <+> PP.pretty rhs
-        )
-
-    pretty (ExprApp f xs) =
+    pretty (EApp f as) =
       PP.text "Application Expression:"
       PP.<$>
       PP.indent 2 
-          ( PP.pretty f PP.<$> PP.pretty xs )
-          
-    pretty (ExprLet lets expr) =
-      PP.text "Let Expression:"
-      PP.<$>
-      PP.indent 2
-        ( PP.string "let fields:" <+> PP.pretty lets
+        ( PP.string "expression:" <+> PP.pretty f
           PP.<$>
-          PP.string "expression:" <+> PP.pretty expr
+          PP.string "applied to:" <+> PP.pretty as
         )
 
-    pretty (ExprIf pred thenBranch elseBranch) =
-      PP.text "Let Expression:"
+    pretty (EInfixApp l f r) =
+      PP.text "Infix Application Expression:"
       PP.<$>
       PP.indent 2
-        ( PP.string "predicate:" <+> PP.pretty pred
+        ( PP.string "expression:" <+> PP.pretty f
+          PP.<$>
+          PP.string "lhs:" <+> PP.pretty l
+          PP.<$>
+          PP.string "rhs:" <+> PP.pretty r
+        )
+
+
+    pretty (ELam ps b) =
+      PP.text "Lambda Expression:"
+      PP.<$>
+      PP.indent 2
+        ( PP.string "params:" <+> PP.pretty ps
+          PP.<$>
+          PP.string "body:" <+> PP.pretty b
+        )
+
+          
+    pretty (EDo b) =
+      PP.text "Do Expression:"
+      PP.<$>
+      PP.indent 2
+        ( PP.string "body:" <+> PP.pretty b
+        )
+
+    pretty (EReturn e) =
+      PP.text "Return Expression:"
+      PP.<$>
+      PP.indent 2
+        ( PP.string "expression:" <+> PP.pretty e
+        )
+
+    pretty (EIf predicate thenBranch elseBranch) =
+      PP.text "If Expression:"
+      PP.<$>
+      PP.indent 2
+        ( PP.string "predicate:" <+> PP.pretty predicate
           PP.<$>
           PP.string "then branch:" <+> PP.pretty thenBranch
           PP.<$>
           PP.string "else branch:" <+> PP.pretty elseBranch
         )
 
-    pretty (ExprMember expr mem) =
-      PP.text "Member Expression:"
+    pretty (EWhile cond body) =
+      PP.text "While Expression:"
       PP.<$>
       PP.indent 2
-        ( PP.string "expression:" <+> PP.pretty expr
+        ( PP.string "condition:" <+> PP.pretty cond
           PP.<$>
-          PP.string "member:" <+> PP.pretty mem
+          PP.string "body:" <+> PP.pretty body
         )
 
-    pretty (ExprIndex expr index)  =
-      PP.text "Index Expression:"
+    
+    pretty (EPrim i a b) =
+      PP.text "Primitive Instruction Expression:"
       PP.<$>
-      PP.indent 2
-        ( PP.string "expression:" <+> PP.pretty expr
+      PP.indent 2 
+        ( PP.string "instruction:" <+> PP.pretty i
           PP.<$>
-          PP.string "index:" <+> PP.pretty index
+          PP.string "arg1:" <+> PP.pretty a
+          PP.<$>
+          PP.string "arg2:" <+> PP.pretty b
         )
+
+    pretty (EBinary l o r) =
+      PP.text "Binary Operator Expression:"
+      PP.<$>
+      PP.indent 2 
+        ( PP.string "op:" <+> PP.pretty o
+          PP.<$>
+          PP.string "lhs:" <+> PP.pretty l
+          PP.<$>
+          PP.string "rhs:" <+> PP.pretty r
+        )
+
+    pretty (EUnary o e) =
+      PP.text "Unary Operator Expression:"
+      PP.<$>
+      PP.indent 2 
+        ( PP.string "op:" <+> PP.pretty o
+          PP.<$>
+          PP.string "expression:" <+> PP.pretty e
+        )
+
+    pretty (EAssign l o r) =
+      PP.text "Assignment Expression:"
+      PP.<$>
+      PP.indent 2 
+        ( PP.string "op:" <+> PP.pretty o
+          PP.<$>
+          PP.string "lhs:" <+> PP.pretty l
+          PP.<$>
+          PP.string "rhs:" <+> PP.pretty r
+        )
+
         
-    pretty (ExprTypeAnnot e t) =
-      PP.text "Type Annotated Expression:"
+    pretty (ETypeHint e t) =
+      PP.text "Type Hint:"
       PP.<$>
       PP.indent 2
         ( PP.string "expression:" <+> PP.pretty e
           PP.<$>
-          PP.string "type:" <+> PP.pretty t
+          PP.string "hint:" <+> PP.pretty t
         )
 
-    pretty ExprBottom =
+    pretty EBottom =
       PP.text "Bottom Expression"
-
-
-instance (PP.Pretty n) => PP.Pretty (LetField n) where
-    pretty (LetVar v) =
-      PP.text "Let Variable:" <+> PP.pretty v
-
-    pretty (LetFun f) =
-      PP.text "Let Function:" <+> PP.pretty f
-
-    pretty (LetSig s) =
-      PP.text "Let Type Sig:" <+> PP.pretty s
 
 
 -- Statement -------------------------------------------------------------------------
 instance (PP.Pretty n) => PP.Pretty (Stmt n) where
     pretty (StmtExpr expr) =
-      PP.text "Expression Statement:"
-      PP.<$>
-      PP.indent 2
-        ( PP.string "expr:" <+> PP.pretty expr
-        )
-      
-    pretty (StmtVar v) =
-      PP.text "Variable Declaration Statement:"
-      PP.<$>
-      PP.indent 2 ( PP.pretty v )
-
-    pretty (StmtFun f) =
-      PP.text "Function Declaration Statement:"
-      PP.<$>
-      PP.indent 2 ( PP.pretty f )
-
-    pretty (StmtSig s) =
-      PP.text "Type Signature Declaration Statement:"
-      PP.<$>
-      PP.indent 2 ( PP.pretty s )
-
-    pretty (StmtIf pred thenStmt elseStmt) =
-      PP.text "If Statement:"
-      PP.<$>
-      PP.indent 2
-        ( PP.string "predicate:" <+> PP.pretty pred
-          PP.<$>
-          PP.string "then block:" <+> PP.pretty thenStmt
-          PP.<$>
-          PP.string "else block:" <+> PP.pretty elseStmt
-        )
-
-    pretty (StmtWhile cond stmtBlk) =
-      PP.text "While Statement:"
-      PP.<$>
-      PP.indent 2
-        ( PP.string "condition:" <+> PP.pretty cond
-          PP.<$>
-          PP.string "block:" <+> PP.pretty stmtBlk
-        )
-      
-      
-    pretty (StmtReturn expr) =
-      PP.text "Return Statement:"
+      PP.text "Statement Expression:"
       PP.<$>
       PP.indent 2 ( PP.pretty expr )
+      
+    pretty (StmtDecl i) =
+      PP.text "Statement Declaration:"
+      PP.<$>
+      PP.indent 2 ( PP.pretty i )
 
 
 -- Body -------------------------------------------------------------------------  
@@ -632,10 +713,44 @@ instance (PP.Pretty n) => PP.Pretty (TypeSig n) where
         )
 
 
+-- Vow --------------------------------------------------------------------------
+instance (PP.Pretty n) => PP.Pretty (Vow n) where
+  pretty (Vow name vows) =
+    PP.text "Vow Item:"
+    PP.<$>
+    PP.indent 2
+      ( PP.text "name:" <+> PP.pretty name
+        PP.<$>
+        PP.text "vows:" <+> PP.pretty vows
+      )
+
+instance PP.Pretty VowType where
+  pretty VowVar =
+    PP.text "Var"
+
+  pretty VowVal =
+    PP.text "Var"
+
+  pretty VowRef =
+    PP.text "Var"
+
+
 -- Variable ----------------------------------------------------------------------
 instance (PP.Pretty n) => PP.Pretty (Var n) where
   pretty (Var name body) =
     PP.text "Variable Item:"
+    PP.<$>
+    PP.indent 2
+      ( PP.text "name:" <+> PP.pretty name
+        PP.<$>
+        PP.text "body:" <+> PP.pretty body
+      )
+
+
+-- Value -------------------------------------------------------------------------
+instance (PP.Pretty n) => PP.Pretty (Val n) where
+  pretty (Val name body) =
+    PP.text "Value Item:"
     PP.<$>
     PP.indent 2
       ( PP.text "name:" <+> PP.pretty name
@@ -735,51 +850,133 @@ instance (PP.Pretty n) => PP.Pretty (DataType n) where
 -- -----------------------------------------------------------------------------
 -- | Binary Instances
 
--- Dependency Path ---------------------------------------------------------------
+-- Nested Item -----------------------------------------------------------------
+instance (Binary n) => Binary (Item n) where
+  get = do
+    n <- getWord8
+    case n of
+      1  -> DepItem <$> get
+      2  -> ForeignItem <$> get
+      3  -> ExposeItem <$> get
+      4  -> VowItem <$> get
+      5  -> SigItem <$> get
+      6  -> VarItem <$> get
+      7  -> ValItem <$> get
+      8  -> FunItem <$> get
+      9  -> NewTyItem <$> get
+      10 -> TyAliasItem <$> get
+      11 -> TyClassItem <$> get
+      12 -> TyInstItem <$> get
+      13 -> DataItem <$> get
+      _ -> undefined
+
+  put e =
+    case e of
+      DepItem i       -> putWord8 1 >> put i
+      ForeignItem i   -> putWord8 2 >> put i
+      ExposeItem i    -> putWord8 3 >> put i
+      VowItem i       -> putWord8 4 >> put i
+      SigItem i       -> putWord8 5 >> put i
+      VarItem i       -> putWord8 6 >> put i
+      ValItem i       -> putWord8 7 >> put i
+      FunItem i       -> putWord8 8 >> put i
+      NewTyItem i     -> putWord8 9 >> put i
+      TyAliasItem i   -> putWord8 10 >> put i
+      TyClassItem i   -> putWord8 11 >> put i
+      TyInstItem i    -> putWord8 12 >> put i
+      DataItem i      -> putWord8 13 >> put i
+
+
+-- Nested Item -----------------------------------------------------------------
+instance (Binary n) => Binary (NestedItem n) where
+  get = do
+    n <- getWord8
+    case n of
+      1 -> NestedVar <$> get
+      2 -> NestedVal <$> get
+      3 -> NestedFun <$> get
+      4 -> NestedVow <$> get
+      5 -> NestedSig <$> get
+      _ -> undefined
+
+  put e =
+    case e of
+      NestedVar v   -> putWord8 1 >> put v
+      NestedVal v   -> putWord8 2 >> put v
+      NestedFun f   -> putWord8 3 >> put f
+      NestedVow v   -> putWord8 4 >> put v
+      NestedSig s   -> putWord8 5 >> put s
+
+
+-- Dependency ---------------------------------------------------------------
+instance Binary Dependency where
+  get =
+    Dep <$> get <*> get <*> get
+      
+  put (Dep qual path alias) =
+    put qual >> put path >> put alias
+
+
+-- Dependency Path -------------------------------------------------------------
 instance Binary DepPath where
   get = do
     n <- getWord8
     case n of
-      1 -> DepModule  <$> get <*> get
-      2 -> DepTarget  <$> get
-      3 -> DepTargets <$> get <*> get
+      1 -> DepPath    <$> get <*> get
+      2 -> DepBase    <$> get
+      3 -> DepSpecify <$> get <*> get
       _ -> undefined
       
   put d =
     case d of
-      DepModule n p     -> putWord8 1 >> put n >> put p
-      DepTarget n       -> putWord8 2 >> put n
-      DepTargets hq ns  -> putWord8 3 >> put hq >> put ns
+      DepPath n p       -> putWord8 1 >> put n >> put p
+      DepBase n         -> putWord8 2 >> put n
+      DepSpecify hq ns  -> putWord8 3 >> put hq >> put ns
 
--- Literal ---------------------------------------------------------------------
-instance Binary Literal where
+
+-- Foreign ------------------------------------------------------------------
+instance Binary n => Binary (Foreign n) where
+  get =
+    Foreign <$> get <*> get
+      
+  put (Foreign ft fs) =
+    put ft >> put fs
+
+
+instance Binary ForeignType where
   get = do
     n <- getWord8
     case n of
-      1 -> IntNum <$> get
-      2 -> FloatNum <$> get
-      3 -> Chr <$> get
-      4 -> Str <$> get
-      5 -> Boolean <$> get
-      _ -> error "unexpected input"
+      1 -> pure ForeignC
+      _ -> undefined
+      
+  put f =
+    case f of
+      ForeignC  -> putWord8 1
 
-  put literal =
-    case literal of
-      IntNum v    -> putWord8 1 >> put v
-      FloatNum v  -> putWord8 2 >> put v
-      Chr v       -> putWord8 3 >> put v
-      Str v       -> putWord8 4 >> put v
-      Boolean v   -> putWord8 5 >> put v
+-- Expose ---------------------------------------------------------------------
+instance Binary n => Binary (Expose n) where
+  get =
+    Expose <$> get
+      
+  put (Expose n) =
+    put n
 
 
 -- Name ------------------------------------------------------------------------
 instance Binary Name where
-    put (Name h n) =
-      put h >> put n
+    put (Name h n q) =
+      put h >> put n >> put q
           
     get =
-      Name <$> get <*> get
+      Name <$> get <*> get <*> get
 
+instance Binary QName where
+    put (QName path base home) =
+      put path >> put base >> put home
+          
+    get =
+      QName <$> get <*> get <*> get
 
 instance Binary Home where
     put h =
@@ -846,49 +1043,52 @@ instance (Binary n) => Binary (Expr n) where
   get = do
     n <- getWord8
     case n of
-      1 -> ExprLit <$> get
-      2 -> ExprVar <$> get
-      3 -> ExprCon <$> get
-      4 -> ExprAssign <$> get <*> get
-      5 -> ExprLam <$> get <*> get
-      6 -> ExprApp <$> get <*> get
-      7 -> ExprLet <$> get <*> get
-      8 -> ExprIf <$> get <*> get <*> get
-      9 -> ExprMember <$> get <*> get
-      10 -> ExprIndex <$> get <*> get
-      11 -> ExprTypeAnnot <$> get <*> get
-      12 -> pure ExprBottom
+      1 -> ELit <$> get
+      2 -> EVar <$> get
+      3 -> ECon <$> get
+
+      4 -> EApp <$> get <*> get
+      5 -> EInfixApp <$> get <*> get <*> get
+      
+      6 -> ELam <$> get <*> get
+      
+      7 -> EDo <$> get
+      8 -> EReturn <$> get
+      9 -> EIf <$> get <*> get <*> get
+      10 -> EWhile <$> get <*> get
+
+      11 -> EPrim <$> get <*> get <*> get
+      12 -> EBinary <$> get <*> get <*> get
+      13 -> EUnary <$> get <*> get
+      14 -> EAssign <$> get <*> get <*> get
+      
+      15 -> ETypeHint <$> get <*> get
+      16 -> pure EBottom
       _ -> undefined
       
   put e =
     case e of
-      ExprLit l           -> putWord8 1 >> put l
-      ExprVar n           -> putWord8 2 >> put n
-      ExprCon n           -> putWord8 3 >> put n
-      ExprAssign v rhs    -> putWord8 4 >> put v >> put rhs
-      ExprLam p e         -> putWord8 5 >> put p >> put e
-      ExprApp f a         -> putWord8 6 >> put f >> put a
-      ExprLet lblk e      -> putWord8 7 >> put lblk >> put e
-      ExprIf p a b        -> putWord8 8 >> put p >> put a >> put b
-      ExprMember e n      -> putWord8 9 >> put e >> put n
-      ExprIndex e i       -> putWord8 10 >> put e >> put i
-      ExprTypeAnnot e t   -> putWord8 11 >> put e >> put t
-      ExprBottom          -> putWord8 12
+      ELit l           -> putWord8 1 >> put l
+      EVar n           -> putWord8 2 >> put n
+      ECon n           -> putWord8 3 >> put n
 
-instance (Binary n) => Binary (LetField n) where
-  get = do
-    n <- getWord8
-    case n of
-      1 -> LetVar <$> get
-      2 -> LetFun <$> get
-      3 -> LetSig <$> get
-      _ -> undefined
+      EApp f as        -> putWord8 4 >> put f >> put as
+      EInfixApp l f r  -> putWord8 5 >> put l >> put f >> put r
+      
+      ELam p e         -> putWord8 6 >> put p >> put e
 
-  put e =
-    case e of
-      LetVar v   -> putWord8 1 >> put v
-      LetFun f   -> putWord8 2 >> put f
-      LetSig s   -> putWord8 3 >> put s
+      EDo e            -> putWord8 7 >> put e 
+      EReturn e        -> putWord8 8 >> put e
+      EIf p a b        -> putWord8 9 >> put p >> put a >> put b
+      EWhile c a       -> putWord8 10 >> put c >> put a
+
+      EPrim i a b      -> putWord8 11 >> put i >> put a >> put b
+      EBinary l o r    -> putWord8 12 >> put l >> put o >> put r
+      EUnary o a       -> putWord8 13 >> put o >> put a
+      EAssign l o r    -> putWord8 14 >> put l >> put o >> put r
+
+      ETypeHint e t    -> putWord8 15 >> put e >> put t
+      EBottom          -> putWord8 16
 
 -- Body ----------------------------------------------------------------------------
 instance (Binary n) => Binary (Body n) where
@@ -910,23 +1110,13 @@ instance (Binary n) => Binary (Stmt n) where
     n <- getWord8
     case n of
       1 -> StmtExpr <$> get
-      2 -> StmtVar <$> get
-      3 -> StmtFun <$> get
-      4 -> StmtSig <$> get
-      5 -> StmtIf <$> get <*> get <*> get
-      6 -> StmtWhile <$> get <*> get
-      7 -> StmtReturn <$> get
+      2 -> StmtDecl <$> get
       _ -> undefined
       
   put e =
     case e of
-      StmtExpr e                          -> putWord8 1 >> put e
-      StmtVar v                           -> putWord8 2 >> put v
-      StmtFun f                           -> putWord8 3 >> put f
-      StmtSig s                           -> putWord8 4 >> put s
-      StmtIf pred thenBlk elseBlk         -> putWord8 5 >> put pred >> put thenBlk >> put elseBlk
-      StmtWhile cond blk                  -> putWord8 6 >> put cond >> put blk
-      StmtReturn exp                      -> putWord8 7 >> put exp
+      StmtExpr e     -> putWord8 1 >> put e
+      StmtDecl i     -> putWord8 2 >> put i
 
 
 -- Type Signature ---------------------------------------------------------------
@@ -938,12 +1128,46 @@ instance (Binary n) => Binary (TypeSig n) where
     put name >> put body
 
 
+-- Vow -------------------------------------------------------------------------
+instance (Binary n) => Binary (Vow n) where
+  get =
+      Vow <$> get <*> get
+      
+  put (Vow name vs) =
+      put name >> put vs
+
+
+instance Binary VowType where
+  get =
+    do  n <- getWord8
+        case n of
+          1 -> pure VowVar
+          2 -> pure VowVal
+          3 -> pure VowRef
+          _ -> undefined
+      
+  put v =
+    case v of
+      VowVar -> putWord8 1
+      VowVal -> putWord8 2
+      VowRef -> putWord8 3
+
+
 -- Variable ----------------------------------------------------------------------
 instance (Binary n) => Binary (Var n) where
   get =
       Var <$> get <*> get
       
   put (Var name body) =
+      put name >> put body
+
+
+-- Value -------------------------------------------------------------------------
+instance (Binary n) => Binary (Val n) where
+  get =
+      Val <$> get <*> get
+      
+  put (Val name body) =
       put name >> put body
 
 
@@ -1020,7 +1244,11 @@ instance ToString Literal where
 
 -- Name ------------------------------------------------------------------------
 empty :: Name
-empty = Name "" Builtin
+empty = Name "" Builtin False
+
+
+splitQual :: Text -> [Text]
+splitQual = T.splitOn "."
 
 
 class HasBuiltin n where
@@ -1028,38 +1256,15 @@ class HasBuiltin n where
 
 instance HasBuiltin Name where
   builtin n =
-    Name n Builtin
+    Name n Builtin False
 
 instance HasBuiltin QName where
   builtin n =
-    QName n "" Builtin
-      
+    QName [] n Builtin
 
-expandPathTrees :: [PathTree] -> Paths
-expandPathTrees = concatMap expandPathTree
-     
-expandPathTree :: PathTree -> Paths
-expandPathTree (Node n []) = [[n]]
-expandPathTree (Node n ns) =
-    map (n:) ns'
-  where ns' = concatMap expandPathTree ns
-  
-      
--- | Name toString
-instance ToString PathTree where
-  toString =
-    drawTree . fmap toString
-
-instance ToString Paths where
-  toString ps =
-    show $ map toString ps
-    
-instance ToString Path where
-  toString =
-    intercalate "." . map toString
 
 instance ToString Name where
-  toString (Name n h) =
+  toString (Name n h q) =
     T.unpack n ++ " @ " ++ toString h
     
 instance ToString Home where

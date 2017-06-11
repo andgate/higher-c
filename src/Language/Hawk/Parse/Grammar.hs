@@ -11,6 +11,7 @@ import Language.Hawk.Syntax
 import Language.Hawk.Syntax.Literal
 import Language.Hawk.Syntax.Prim
 import Text.Earley
+import Text.Earley.Mixfix
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
@@ -34,18 +35,42 @@ toplevel = mdo
       <|> (TyInstItem <$> typeClassInst)
       <|> (DataItem <$> dataType)
 
+    
+
+    nestedItem <- rule $
+      (NestedVar <$> var)
+      <|> (NestedVal <$> val)
+      <|> (NestedFun <$> fun)
+      <|> (NestedVow <$> vow)
+      <|> (NestedSig <$> tySig)
+
 
 -- -----------------------------------------------------------------------------
--- Dependency Rules   
+-- Name rules
+
+    modNameText <- rule $
+        _nameText <$> modName
+
+    conNameText' <- rule $
+        _nameText <$> conName'
+
+    varNameText <- rule $ 
+        _nameText <$> varName
+
+    opNameText <- rule $
+        _nameText <$> opName
+
+-- -----------------------------------------------------------------------------
+-- Dependency Rules
     depDecl <- rule $
         Dep <$> depQual <*> depPath <*> depAlias
-      
+
     depQual <- rule $
           (rsvp "->"  *> pure False)
       <|> (rsvp "=>" *> pure True)
-      
+
     depAlias <- rule $
-          (rsvp "@" *> fmap Just conNameText)
+          (rsvp "@" *> fmap Just modNameText)
       <|> pure Nothing
 
 
@@ -53,29 +78,27 @@ toplevel = mdo
 -- Dependency Path Rules
 
     depPath <- rule $
-        depMod <|> depTargetCon
+        depPath'
+        <|> (DepBase <$> modNameText)
 
-    depMod <- rule $
-        DepModule <$> conNameText
-                  <*> depNext
 
-    depNext <- rule $
-        rsvp "." *> (depTerm <|> depTargets)
+    depPath' <- rule $
+        DepPath <$> modNameText
+                <*> depPathNext
     
-    depTerm <- rule $
-        depTarget <|> depMod
-    
-    depTarget <- rule $
-        depTargetItem <|> depTargetCon
+    depPathNext <- rule $
+        rsvp "." *> (depPath' <|> depBase <|> depSpecify)
 
-    depTargetItem <- rule $
-        DepTarget <$> varNameText
-   
-    depTargetCon <- rule $
-        DepTarget <$> conNameText
+
+    depBase <- rule $
+        DepBase <$> (varNameText <|> modNameText <|> conNameText')
     
-    depTargets <- rule $
-        parens (DepTargets <$> depHide0 <*> some depTerm)
+
+    depSpecify <- rule $
+        parens (DepSpecify <$> depHide0 <*> some depSpecifiers)
+
+    depSpecifiers <- rule $
+        depPath' <|> depBase
     
     depHide0 <- rule $ 
         depHide <|> pure False
@@ -110,16 +133,6 @@ toplevel = mdo
         <|> ( Chr <$> tChar )
         <|> ( Str <$> tString )
         <|> ( Boolean <$> tBool )
-
-
--- -----------------------------------------------------------------------------
--- Name rules
-        
-    varNameText <- rule $ 
-        _nameText <$> varName
-       
-    conNameText <- rule $
-        _nameText <$> conName
 
 -- -----------------------------------------------------------------------------
 -- Type Rules
@@ -197,36 +210,28 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Expression Rules
 
-    expr <- rule $
-          exprTyped
-      <|> expr0
-    
-    
-    exprTyped <- rule $
-      ExprTypeAnnot <$> expr0 <*> (rsvp "?" *> typ)
-    
-    
-    expr0 <- rule $
-          fexpr
-      <|> aexpr
-    
-    fexpr <- rule $
-        ExprApp <$> bexpr <*> many aexpr
-    
-    aexpr <- rule $
-          litExpr
-      <|> bexpr
-      
-    bexpr <- rule $ 
-          varExpr
-      <|> conExpr
-      <|> nestedExpr
-    
-    varExpr <- rule $ ExprVar <$> varName
-    conExpr <- rule $ ExprCon <$> conName
-    litExpr <- rule $ ExprLit <$> lit
+    -- Going to need to introduce qnames into the lexer for
+    -- this to work out properly. Will also require a qname splitter
+    exp <- mixfixExpressionSeparate exprOpTable bexp
 
-    nestedExpr <- rule $ parens expr
+
+    bexp <- rule $
+      (EApp <$> aexp <*> some aexp)
+      <|> aexp
+
+    aexp <- rule $
+          parens exp
+      <|> (EVar <$> varName)
+      <|> (ELit <$> lit)
+     -- <|> (ETyped <$> expAtom <*> (rsvp "?" *> typ))
+      <|> expBottom
+
+    expVar <- rule $
+      EVar <$> varName
+    
+    expBottom <- rule $
+        rsvp "_" *> pure EBottom
+
 
 
 -- -----------------------------------------------------------------------------
@@ -234,28 +239,8 @@ toplevel = mdo
     stmtblk <- rule $ block stmt
     
     stmt <- rule $
-          (StmtExpr <$> expr)
-      <|> stmtDecl
-      <|> stmtIf
-      <|> stmtWhile
-      <|> stmtReturn
-      
-    stmtDecl <- rule $
-      (StmtVar <$> var)
-      <|> (StmtFun <$> fun)
-      <|> (StmtSig <$> tySig)
-
-    stmtIf <- rule $
-      StmtIf <$> (rsvp "if" *> expr)
-             <*> (rsvp ":" *> stmtblk)
-             <*> optional ((rsvp "else" *> rsvp ":") *> stmtblk)
-
-    stmtWhile <- rule $
-      StmtWhile <$> (rsvp "while" *> expr)
-                <*> (rsvp ":" *> stmtblk) 
-    
-    stmtReturn <- rule $
-      StmtReturn <$> (rsvp "return" *> expr)
+          (StmtExpr <$> exp)
+      <|> (StmtDecl <$> nestedItem)
 
 
 -- -----------------------------------------------------------------------------
@@ -269,7 +254,7 @@ toplevel = mdo
       BodyBlock <$> (rsvp ":" *> stmtblk)
 
     bodyExpr <- rule $
-      BodyExpr <$> (rsvp "=" *> expr)
+      BodyExpr <$> (rsvp "=" *> exp)
 
 
 -- -----------------------------------------------------------------------------
