@@ -221,7 +221,6 @@ toplevel = mdo
           expTypeHint
       <|> cexp
 
-
     cexp <- mixfixExpressionSeparate exprOpTable bexp
 
     bexp <- rule $
@@ -288,7 +287,7 @@ toplevel = mdo
       <|> (StmtDecl <$> nestedItem)
 
     stmtReturn <- rule $
-      StmtExpr . EReturn <$> exp
+      StmtExpr . EReturn <$> (rsvp "return" *> exp)
     
     stmtIf <- rule $
       EIf <$> (rsvp "if" *> dexp) <*> expDo' <*> stmtIfTail
