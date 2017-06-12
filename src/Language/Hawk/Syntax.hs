@@ -176,8 +176,8 @@ data Expr n
   | EReturn (Expr n)
   
   | EIf (Expr n) -- conditional
-        (Expr n) -- then body
-        (Maybe (Expr n)) -- else body
+        (Expr n) -- then expr
+        (Maybe (Expr n)) -- else exp
   
   | EWhile (Expr n) -- Loop condition
            (Expr n) -- Loop body

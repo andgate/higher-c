@@ -243,7 +243,6 @@ toplevel = mdo
     expControl <- rule $
           expDo
       <|> expReturn
-      <|> expIf
 
     expDo <- rule $ 
       rsvp "do" *> expDo'
@@ -291,24 +290,21 @@ toplevel = mdo
     
     stmt <- rule $
           (StmtExpr <$> exp)
-          (StmtExpr <$> stmtIf)
+      <|> (StmtExpr <$> stmtIf)
       <|> (StmtDecl <$> nestedItem)
 
     
     stmtIf <- rule $
-      EIf <$> (rsvp "if" *> dexp) <*> expDo' <*> stmtElif0
+      EIf <$> (rsvp "if" *> dexp) <*> expDo' <*> stmtIfTail
 
-    stmtElif0 <- rule $
-      stmtElif <|> pure Nothing
+    stmtElif <- rule $
+      EIf <$> (rsvp "elif" *> dexp) <*> expDo' <*> stmtIfTail
 
-    stmtElif <- rule $ linefold $
-      Just . EIf <$> (rsvp "elif" *> dexp) <*> expDo' <*> (stmtElif <|> stmtElse0)
+    stmtElse <- rule $
+      rsvp "else" *> expDo'
 
-    stmtElse0 <- rule $
-      expElse <|> pure Nothing
-
-    stmtElse <- rule $ linefold $
-      Just <$> (rsvp "else" *> expDo')
+    stmtIfTail <- rule $ optional $
+      (ln' *> ln) *> (stmtElif <|> stmtElse)
 
 
 -- -----------------------------------------------------------------------------

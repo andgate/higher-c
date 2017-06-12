@@ -7,7 +7,7 @@ foreign ccall "printd" printd ? Double -> ()
 
 // Define a fibonacci function
 sig fib ? Double -> Double
-fun fib n =
+fun fib n:
   if n < 3:
     1
   else:

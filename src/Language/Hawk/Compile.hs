@@ -99,7 +99,7 @@ loadFiles o pkg@(Package n d) = do
         .| fetchDoc
         .| loadC 10
         .| lexer
---        .| iterMC (\(Doc _ _ toks) -> liftIO . putDoc . pretty $ toks)      
+        .| iterMC (\(Doc _ _ toks) -> liftIO . putDoc . pretty $ toks)      
         .| P.itemParser
         .| reportResultC o
         .| sinkNull
