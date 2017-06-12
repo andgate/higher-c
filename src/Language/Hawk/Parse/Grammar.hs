@@ -214,7 +214,7 @@ toplevel = mdo
 
     -- The expression chain, starting at aexp as the base with the highest precedence.
     exp <- rule $
-          expControl
+          expDo
       <|> dexp
 
     dexp <- rule $
@@ -240,18 +240,11 @@ toplevel = mdo
     expTypeHint <- rule $
       ETypeHint <$> exp <*> (rsvp "?" *> qtyp0)
 
-    expControl <- rule $
-          expDo
-      <|> expReturn
-
     expDo <- rule $ 
       rsvp "do" *> expDo'
 
     expDo' <- rule $
       EDo <$> (rsvp ":" *> stmtblk)
-
-    expReturn <- rule $
-      EReturn <$> (rsvp "return" *> exp)
 
     expPrim <- rule $
       EPrim <$> primInstr <*> aexp <*> aexp
@@ -291,8 +284,11 @@ toplevel = mdo
     stmt <- rule $
           (StmtExpr <$> exp)
       <|> (StmtExpr <$> stmtIf)
+      <|> stmtReturn
       <|> (StmtDecl <$> nestedItem)
 
+    stmtReturn <- rule $
+      StmtExpr . EReturn <$> exp
     
     stmtIf <- rule $
       EIf <$> (rsvp "if" *> dexp) <*> expDo' <*> stmtIfTail
