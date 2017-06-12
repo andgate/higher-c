@@ -8,6 +8,8 @@ import Language.Hawk.Report.Region (Region, Position)
 import Language.Hawk.Report.Report (Report(..), Reportable(..))
 import System.FilePath (FilePath)
 
+import Text.PrettyPrint.ANSI.Leijen (pretty, text, (<>), (<+>))
+
 import qualified Language.Hawk.Report.Region as R
 import qualified Language.Hawk.Report.Report as Report
 
@@ -23,19 +25,19 @@ instance Reportable Info where
       case info of
         FileFound fp ->
             Report.simple $
-              "Found file: " ++ fp
+              text "Found file: " <> text fp
         
         DirectoryFound fp ->
             Report.simple $
-              "Found Directory: " ++ fp
+              text "Found Directory: " <> text fp
 
         FreshModuleFound mp ->
             Report.simple $
-              "Cached Module: " ++ mp
+              text "Cached Module: " <> text mp
         
         ModulePreserved mp ->
             Report.simple $
-              "PreservedModule: " ++ mp
+              text "PreservedModule: " <> text mp
 
 
 

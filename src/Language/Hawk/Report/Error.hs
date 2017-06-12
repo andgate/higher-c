@@ -6,6 +6,8 @@ import Language.Hawk.Report.Region (Region, Position)
 import Language.Hawk.Report.Report (Report(..), Reportable(..))
 import System.FilePath (FilePath)
 
+import Text.PrettyPrint.ANSI.Leijen (pretty, text, (<>), (<+>), dullred)
+
 import qualified Data.Text as T
 import qualified Language.Hawk.Parse.Lexer.Token as Tk
 import qualified Language.Hawk.Report.Region as R
@@ -20,8 +22,8 @@ instance Reportable Error where
     toReport err =
       case err of
         Parse (Tk.Token _ t fp (R.R (R.P l c) _)) ->
-            Report.simple $
-              "Error parsing '" ++ T.unpack t ++ "' at " ++ fp ++ ":" ++ show (l+1) ++ ":" ++ show (c+1)  
+            Report.simple $ dullred $
+              text "Error parsing '" <> text (T.unpack t) <> text "' at " <> text fp <> ":" <> text (show (l+1)) <> ":" <> text (show (c+1))  
         BadModuleName fp ->
             Report.report
               "BAD MODULE NAME"

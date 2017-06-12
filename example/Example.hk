@@ -28,22 +28,21 @@ var c = 3
 // Or the var's expression can be annotated with a type sig
 var d = 3 ? Int
 
-
-
 // sig is used to introduce type signatures
 sig foo ? Int -> Int -> Int
 
 // vow is used for contract programming
 vow foo val val
 // fun is used to introduce a function
-// This is a function bound to a statement
-fun foo x y:
-  val z = #add x 2 // Prim ops start with a hashtag
-  z = #mul z y     // They can only take name bindings or literals, no expressions.
-  return #div z 3
+// This is a function bound to an expression
+fun foo x y =
+  #div (#mul (#add x 2) y) 3 // '#' prefix is for primitive instructions
+
 
 // This is a function bound to an expression
-fun five = #add 2 3 
+fun five:
+  var z = #add 2 3
+  return z
 
 
 

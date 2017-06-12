@@ -35,20 +35,26 @@ type ExprOpTable r = OpTable r SourceExpr
 
 -- -----------------------------------------------------------------------------
 -- Mixfix
-
-
-holey :: String -> Holey (Prod r Token Token Token)
-holey ""       = []
-holey ('_':xs) = Nothing : holey xs
-holey xs       = Just (rsvp $ Text.pack i) : holey rest
-  where (i, rest) = span (/= '_') xs
-
-
 exprOpTable :: ExprOpTable r
 exprOpTable =
-  [ [([Nothing, Just (op "+"), Nothing], LeftAssoc, \ _ [l,r] -> EBinary l AddOp r)]
+  [ [assign]
+  , [lt, gt, leq, geq]
+  , [binadd, binsub]
+  , [postAccess]
   -- , [(holey "_$_", RightAssoc, typDollar)]
   ]
+  where
+    assign = ([Nothing, Just (rsvp "="), Nothing], RightAssoc, \ _ [l,r] -> EAssign l AssignOp r)
+    
+    lt = ([Nothing, Just (rsvp "<"), Nothing], NonAssoc, \ _ [l,r] -> EBinary l LeOp r)
+    gt = ([Nothing, Just (rsvp ">"), Nothing], NonAssoc, \ _ [l,r] -> EBinary l GrOp r)
+    leq = ([Nothing, Just (op "<="), Nothing], NonAssoc, \ _ [l,r] -> EBinary l LeqOp r)
+    geq = ([Nothing, Just (op ">="), Nothing], NonAssoc, \ _ [l,r] -> EBinary l GeqOp r)
+
+    binadd = ([Nothing, Just (op "+"), Nothing], LeftAssoc, \ _ [l,r] -> EBinary l AddOp r)
+    binsub = ([Nothing, Just (op "-"), Nothing], LeftAssoc, \ _ [l,r] -> EBinary l SubOp r)
+
+    postAccess = ([Nothing, Just (rsvp "."), Nothing], LeftAssoc, \ _ [a, b] -> EBinary a AccessOp b)
 
 {- 
 defTypeOps :: TypeOpTable
@@ -76,16 +82,16 @@ match c = satisfy p
   where p (Token c' _ _ _) = c == c'
 
 rsvp :: Text -> Prod r e Token Token
-rsvp text =
-  match $ TokenRsvp text
+rsvp =
+  match . TokenRsvp
 
 prim :: Text -> Prod r e Token Token
-prim text =
-  match $ TokenPrim text
+prim =
+  match . TokenPrim
 
 op :: Text -> Prod r e Token Token
-op text =
-  match $ TokenOpId text
+op =
+  match . TokenOpId
 
 -- -----------------------------------------------------------------------------
 -- Combinator Helpers

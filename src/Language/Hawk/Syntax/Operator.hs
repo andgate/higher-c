@@ -13,7 +13,6 @@ data UnaryOp
     | PreDecOp
     | PostIncOp
     | PostDecOp
-    | AccessOp -- Data member access
     | AdrOp -- address operator
     | IndOp -- indirection operator
     | PrePlusOp
@@ -23,7 +22,8 @@ data UnaryOp
     deriving (Show, Eq, Ord, Enum)
 
 data BinaryOp
-    = MulOp
+    = AccessOp -- Data member access
+    | MulOp
     | DivOp
     | RmdOp
     | AddOp

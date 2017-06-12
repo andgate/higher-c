@@ -130,7 +130,6 @@ tests:
       - tasty
       - tasty-hspec
     ghc-options:
-      - -fhpc
       - -rtsopts
       - -threaded
       - -with-rtsopts=-N

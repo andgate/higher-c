@@ -45,4 +45,4 @@ itemParser = awaitForever go
             []  -> throw $ Err.Parse (head unconsumed)
             [p] -> return $ Doc mid fp p
             -- This will only happen is the grammar is wrong
-            ps  -> error $ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)
+            ps  -> error $ "BUG FOUND: " ++ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)

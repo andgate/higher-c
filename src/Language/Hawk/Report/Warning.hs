@@ -8,6 +8,9 @@ import Language.Hawk.Report.Region (Region, Position)
 import Language.Hawk.Report.Report (Reportable(..))
 import System.FilePath (FilePath)
 
+
+import Text.PrettyPrint.ANSI.Leijen (pretty, text, (<>), (<+>), yellow)
+
 import qualified Language.Hawk.Report.Region as R
 import qualified Language.Hawk.Report.Report as Report
 
@@ -21,16 +24,16 @@ instance Reportable Warning where
     toReport warn =
       case warn of
           FileIgnored fp ->
-            Report.simple $
-              "Ignored directory: " ++ fp
+            Report.simple $ yellow $
+              text "Ignored directory:" <+> text fp
 
           DirectoryIgnored fp ->
-            Report.simple $
-              "Ignored directory: " ++ fp
+            Report.simple $ yellow $
+              text "Ignored directory:" <+> text fp
 
           SymLinkIgnored fp ->
-            Report.simple $
-              "Ignored Symbolic Link: " ++ fp
+            Report.simple $ yellow $
+              text "Ignored Symbolic Link:" <+> text fp
 
 
 

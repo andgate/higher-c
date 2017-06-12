@@ -5,10 +5,12 @@
 module Language.Hawk.Parse.Grammar where
 
 import Control.Applicative
+import Data.Text (pack)
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Parse.Lexer.Token (Token)
 import Language.Hawk.Syntax
 import Language.Hawk.Syntax.Literal
+import Language.Hawk.Syntax.Operator
 import Language.Hawk.Syntax.Prim
 import Text.Earley
 import Text.Earley.Mixfix
@@ -113,7 +115,7 @@ toplevel = mdo
       rsvp "foreign" *> forgn'
 
     forgn' <- rule $
-      Foreign <$> forgnType <*> tySig'
+      Foreign <$> forgnType <*> (pack <$> tString) <*> tySig'
 
     forgnType <- rule $
       rsvp "ccall" *> pure ForeignC
@@ -210,29 +212,96 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Expression Rules
 
-    -- Going to need to introduce qnames into the lexer for
-    -- this to work out properly. Will also require a qname splitter
-    exp <- mixfixExpressionSeparate exprOpTable bexp
+    -- The expression chain, starting at aexp as the base with the highest precedence.
+    exp <- rule $
+          expControl
+      <|> dexp
 
+    dexp <- rule $
+          expTypeHint
+      <|> cexp
+
+
+    cexp <- mixfixExpressionSeparate exprOpTable bexp
 
     bexp <- rule $
-      (EApp <$> aexp <*> some aexp)
+      expApp
+      <|> expPrim
       <|> aexp
 
     aexp <- rule $
-          parens exp
-      <|> (EVar <$> varName)
-      <|> (ELit <$> lit)
-     -- <|> (ETyped <$> expAtom <*> (rsvp "?" *> typ))
+          parens dexp
+      <|> expVar
+      <|> expLit
       <|> expBottom
+
+
+    -- Expression forms
+    expTypeHint <- rule $
+      ETypeHint <$> exp <*> (rsvp "?" *> qtyp0)
+
+    expControl <- rule $
+          expDo
+      <|> expReturn
+      <|> expIf
+
+    expDo <- rule $ 
+      rsvp "do" *> expDo'
+
+    expDo' <- rule $
+      EDo <$> (rsvp ":" *> stmtblk)
+
+    expReturn <- rule $
+      EReturn <$> (rsvp "return" *> exp)
+
+    expIf <- rule $
+      EIf <$> (rsvp "if" *> dexp) <*> expThen <*> expElif0
+
+    expThen <- rule $
+      rsvp "then" *> (expDo' <|> dexp)
+
+    expElif0 <- rule $
+      expElif <|> pure Nothing
+
+    expElif <- rule $
+      Just . EIf <$> (rsvp "elif" *> dexp) <*> (expDo' <|> dexp) <*> (expElif <|> expElse0))
+
+    expElse0 <- rule $
+      expElse <|> pure Nothing
+
+    expElse <- rule $
+      Just <$> (rsvp "else" *> (rsvp ":" *> stmtblk))
+
+    expPrim <- rule $
+      EPrim <$> primInstr <*> aexp <*> aexp
+
+    expApp <- rule $
+      EApp <$> aexp <*> some aexp
 
     expVar <- rule $
       EVar <$> varName
+
+    expLit <- rule $
+      ELit <$> lit
     
     expBottom <- rule $
         rsvp "_" *> pure EBottom
 
 
+-- -----------------------------------------------------------------------------
+-- Primitive Instruction Rules
+
+    primInstr <- rule $
+          (prim "#add" *> pure PrimAdd)
+      <|> (prim "#fadd" *> pure PrimFAdd)
+      <|> (prim "#sub" *> pure PrimSub)
+      <|> (prim "#fsub" *> pure PrimFSub)
+      <|> (prim "#mul" *> pure PrimMul)
+      <|> (prim "#fmul" *> pure PrimFMul)
+      <|> (prim "#div" *> pure PrimDiv)
+      <|> (prim "#udiv" *> pure PrimUDiv)
+      <|> (prim "#sdiv" *> pure PrimSDiv)
+      <|> (prim "#fdiv" *> pure PrimFDiv)
 
 -- -----------------------------------------------------------------------------
 -- Statement Rules   
@@ -274,7 +343,7 @@ toplevel = mdo
       rsvp "val" *> val'
 
     val' <- rule $
-      Val <$> varName <*> optional body
+      Val <$> varName <*> body
 
 -- -----------------------------------------------------------------------------
 -- Function Rules

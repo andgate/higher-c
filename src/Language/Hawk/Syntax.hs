@@ -4,9 +4,7 @@
 module Language.Hawk.Syntax where
 
 import Data.Binary
-import Data.List (intercalate)
 import Data.Text (Text)
-import Data.Tree
 import Language.Hawk.Syntax.Literal
 import Language.Hawk.Syntax.Operator
 import Language.Hawk.Syntax.Prim
@@ -85,7 +83,7 @@ data NestedItem n
 -- | Foreign
 
 data Foreign n =
-  Foreign ForeignType (TypeSig n)
+  Foreign ForeignType Text (TypeSig n)
   deriving (Eq, Show, Ord)
 
 data ForeignType =
@@ -178,11 +176,11 @@ data Expr n
   | EReturn (Expr n)
   
   | EIf (Expr n) -- conditional
-        [Stmt n] -- then body
-        [Stmt n] -- else body
+        (Expr n) -- then body
+        (Maybe (Expr n)) -- else body
   
   | EWhile (Expr n) -- Loop condition
-           [Stmt n] -- Loop body
+           (Expr n) -- Loop body
 
 -- Too complex for now 
 --  | EFor (Expr n) -- Iterator
@@ -200,7 +198,7 @@ data Expr n
   | EAssign (Expr n) AssignOp (Expr n)
 
   -- Type hints and bottom
-  | ETypeHint (Expr n) (Type n)
+  | ETypeHint (Expr n) (QType n)
   | EBottom
   deriving (Eq, Show, Ord)
 
@@ -269,7 +267,7 @@ data Var n
 data Val n
   = Val
     { _valName  :: n
-    , _valBody  :: Maybe (Body n)
+    , _valBody  :: Body n
     }
   deriving (Eq, Show, Ord)
 
@@ -435,11 +433,13 @@ instance PP.Pretty Dependency where
 
 -- Foreign ------------------------------------------------------------------
 instance PP.Pretty n => PP.Pretty (Foreign n) where
-    pretty (Foreign ft fs) =
+    pretty (Foreign ft n fs) =
       PP.text "Foreign:"
       PP.<$>
       PP.indent 2
         ( PP.text "Foreign Type:" PP.<+> PP.pretty ft
+          PP.<$>
+          PP.text "Foreign Name:" PP.<+> PP.pretty (T.unpack n)
           PP.<$>
           PP.text "Foreign Sig:" PP.<+> PP.pretty fs
         )
@@ -937,10 +937,10 @@ instance Binary DepPath where
 -- Foreign ------------------------------------------------------------------
 instance Binary n => Binary (Foreign n) where
   get =
-    Foreign <$> get <*> get
+    Foreign <$> get <*> get <*> get
       
-  put (Foreign ft fs) =
-    put ft >> put fs
+  put (Foreign ft n fs) =
+    put ft >> put n >> put fs
 
 
 instance Binary ForeignType where

@@ -5,8 +5,11 @@ module Language.Hawk.Parse.Lexer.Token where
 
 import Control.Lens
 import Data.Binary hiding (encode)
-import Data.Text (Text)
+import Data.Text (Text, unpack)
 import Language.Hawk.Report.Region (Region(..))
+import Text.PrettyPrint.ANSI.Leijen (pretty, (<+>))
+
+import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 
 -- -----------------------------------------------------------------------------
 -- Token Types
@@ -52,6 +55,21 @@ data TokenClass
 
 
 makeLenses ''Token
+
+-- -----------------------------------------------------------------------------
+-- Pretty Instances
+
+instance PP.Pretty Token where
+    pretty (Token tc txt fp reg) =
+      PP.text "Token"
+        <+> pretty tc
+        <+> PP.dquotes (PP.text $ unpack txt)
+        <+> PP.dquotes (PP.text fp)
+        <+> pretty reg
+
+instance PP.Pretty TokenClass where
+    pretty tc =
+      PP.text (show tc)
 
 
 -- -----------------------------------------------------------------------------

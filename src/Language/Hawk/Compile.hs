@@ -28,6 +28,8 @@ import Language.Hawk.Parse.Lexer (lexer, tokenize)
 import Language.Hawk.Parse.Lexer.Token (Token)
 import Language.Hawk.Report.Result
 import Language.Hawk.Report.Report (putReports, toReports)
+import Text.PrettyPrint.ANSI.Leijen (pretty, putDoc)
+
 
 import qualified Control.Monad.Trans.State.Strict as St
 import qualified Data.Text                        as T
@@ -96,7 +98,8 @@ loadFiles o pkg@(Package n d) = do
         .| mapC handleModuleFileEntity
         .| fetchDoc
         .| loadC 10
-        .| lexer       
+        .| lexer
+--        .| iterMC (\(Doc _ _ toks) -> liftIO . putDoc . pretty $ toks)      
         .| P.itemParser
         .| reportResultC o
         .| sinkNull

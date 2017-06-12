@@ -1,8 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Language.Hawk.Report.Report where
 
-import Data.List (filter)
-import System.IO (Handle)
 import Text.PrettyPrint.ANSI.Leijen
     ( Doc, SimpleDoc(..), (<>), displayS, displayIO, dullcyan, fillSep
     , hardline, renderPretty, text, putDoc, vcat
@@ -31,8 +29,8 @@ report :: String -> Maybe R.Region -> String -> Doc -> Report
 report title highlight pre =
   Report title highlight (fillSep (text <$> words pre))
 
-simple :: String -> Report
-simple = SimpleReport . text
+simple :: Doc -> Report
+simple = SimpleReport
 
 putReport :: Reportable r => r -> IO ()
 putReport =

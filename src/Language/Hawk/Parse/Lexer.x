@@ -118,6 +118,8 @@ hawk :-
   "newtype"                       { rsvp }
   "data"                          { rsvp }
 
+  "do"                            { rsvp }
+  "return"                        { rsvp }
   "for"                           { rsvp }
   "foreach"                       { rsvp }
   "while"                         { rsvp }
