@@ -15,6 +15,7 @@
 module Language.Hawk.Parse where
 
 import Conduit
+import Control.Lens
 import Language.Hawk.Parse.Document
 import Language.Hawk.Report.Result
 import Text.Earley (Report (..), Prod)
@@ -36,13 +37,13 @@ itemParser :: MonadIO m => Conduit TokenDoc m (Result DocItem)
 itemParser = awaitForever go
   where
     go :: MonadIO m => TokenDoc -> Conduit TokenDoc m (Result DocItem)
-    go (Doc mid fp toks) = do
+    go d = do
       let (parses, r@(Report _ expected unconsumed)) =
-              E.fullParses (E.parser G.toplevel) toks
+              E.fullParses (E.parser G.toplevel) (d^.docData)
 
       yield $
         case parses of
             []  -> throw $ Err.Parse (head unconsumed)
-            [p] -> return $ Doc mid fp p
+            [p] -> return $ const p <$> d
             -- This will only happen is the grammar is wrong
             ps  -> error $ "BUG FOUND: " ++ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)

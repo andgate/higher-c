@@ -399,8 +399,8 @@ tokenize fp =
 lexer :: Monad m => Conduit TextDoc m TokenDoc
 lexer = awaitForever go
   where
-    go (Doc mid fp txt) =
-      yield txt .| tokenize fp .| layout .| catalog .| mapC (Doc mid fp)
+    go d =
+      yield (d^.docData) .| tokenize (d^.docPath) .| layout .| catalog .| mapC (\toks -> const toks <$> d)
 
 
 

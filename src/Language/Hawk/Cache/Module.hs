@@ -17,8 +17,8 @@ import qualified Language.Hawk.Compile.Source     as Src
 insertSource :: MonadIO m => PackageId -> HawkSource -> BackendT m (Result ())
 insertSource pid src = do
   -- Build a name forest from the module file paths
-  let mp   = Src.splitModulePath src
-      fp = Src.srcPath src
+  let mp  = Src.splitModulePath src
+      fp  = Src.srcPath src
       clk = Src.srcTimestamp src
   mid <- insertModuleRecursively pid mp
   when (Src.isHkFile fp) $
@@ -85,4 +85,5 @@ insertModuleFile pid mid fp clk = do
 
       | otherwise -> do
           update mfid [ ModuleFileCacheStatus =. Preserved ]
+          updateWhere [ ItemMfid ==. mfid ] [ItemCacheStatus =. Preserved]
           return mfid

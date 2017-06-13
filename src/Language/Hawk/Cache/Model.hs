@@ -1,4 +1,15 @@
-{-# LANGUAGE TypeSynonymInstances, EmptyDataDecls, FlexibleContexts, GADTs, GeneralizedNewtypeDeriving, MultiParamTypeClasses, OverloadedStrings, QuasiQuotes, TemplateHaskell,TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances
+           , EmptyDataDecls
+           , FlexibleContexts
+           , GADTs
+           , GeneralizedNewtypeDeriving
+           , MultiParamTypeClasses
+           , OverloadedStrings
+           , QuasiQuotes
+           , TemplateHaskell
+           , TypeFamilies
+           , FlexibleInstances
+  #-}
 module Language.Hawk.Cache.Model where
 
 import Control.Monad.Trans.Reader
@@ -12,7 +23,11 @@ import Language.Hawk.Cache.Types
 
 type BackendT m a = ReaderT SqlBackend m a
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
+share [mkPersist sqlSettings
+      , mkDeleteCascade sqlSettings
+      , mkMigrate "migrateAll"
+      ]
+      [persistLowerCase|
 Package
     name Text
     srcDir Text
@@ -46,110 +61,89 @@ ModuleFile
     deriving Show
 
 
-Name
+Item
     pkg PackageId
-    mod ModuleId
+    mid ModuleId
+    mfid ModuleFileId
     cacheStatus CacheStatus
-    name Text
-    pos ByteString
-    UniqueName pkg mod name
-    deriving Show
- 
-
-Dependency
-    pkg PackageId
-    mod ModuleId
-    cacheStatus CacheStatus
-    isQual  Bool
-    target  ByteString
-    alias   Text Maybe
+    bin ByteString
     deriving Show
 
-    
+
+ExpandedDependency
+    item        ItemId
+    path        Text
+    isExcluded  Bool
+    isQual      Bool
+    hasAlias    Text Maybe
+    deriving Show
+
+
+Foreign
+    item ItemId
+    UniqueForeign item
+    deriving Show
+
+Expose
+    item ItemId
+    UniqueExpose item
+    deriving Show
+
+Vow
+    item ItemId
+    UniqueVow item
+    deriving Show
+
 TypeSig
-    pkg PackageId
-    mod ModuleId
-    cacheStatus CacheStatus
-    name Text
-    body ByteString
+    item ItemId
+    UniqueTypeSig item
     deriving Show
-
+    
 
 Var
-    pkg PackageId
-    mod ModuleId
-    cacheStatus CacheStatus
-    name Text
-    pos ByteString
-    body ByteString
+    item ItemId
+    UniqueVar item
+    deriving Show
+
+Val
+    item ItemId
+    UniqueVal item
     deriving Show
     
     
 Fun
-    pkg PackageId
-    mod ModuleId
-    cacheStatus CacheStatus
-    name Text
-    pos ByteString
-    params ByteString
-    body ByteString
+    item ItemId
+    UniqueFun item
     deriving Show
     
 
 NewType
-    pkg PackageId
-    mod ModuleId
-    cacheStatus CacheStatus
-    name Text
-    pos ByteString
-    vars ByteString
-    body ByteString
+    item ItemId
+    UniqueNewType item
     deriving Show
     
 
 TypeAlias
-    pkg PackageId
-    mod ModuleId
-    cacheStatus CacheStatus
-    name Text
-    pos ByteString
-    vars ByteString
-    body ByteString
+    item ItemId
+    UniqueTypeAlias item
     deriving Show
 
 
 TypeClass
-    pkg PackageId
-    mod ModuleId
-    cacheStatus CacheStatus
-    name Text
-    pos ByteString
-    ctx ByteString
-    vars ByteString
-    body ByteString
+    item ItemId
+    UniqueTypeClass item
     deriving Show
 
 
 TypeClassInst
-    pkg PackageId
-    mod ModuleId
-    cacheStatus CacheStatus
-    name Text
-    pos ByteString
-    ctx ByteString
-    args ByteString
-    body ByteString
+    item ItemId
+    UniqueTypeClassInst item
     deriving Show
 
 
 DataType
-    pkg PackageId
-    mod ModuleId
-    cacheStatus CacheStatus
-    name Text
-    pos ByteString
-    vars ByteString
-    body ByteString
+    item ItemId
+    UniqueDataType item
     deriving Show
 
 |]

@@ -9,6 +9,8 @@ module Language.Hawk.Compile ( compile
                              where
 
 import Conduit
+import Control.Lens
+import Control.Monad (void)
 import Control.Monad.Primitive (PrimMonad)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Resource (MonadResource)
@@ -16,7 +18,7 @@ import Data.Foldable (forM_)
 import Data.Maybe (catMaybes)
 import Data.MonoTraversable (MonoFoldable, Element)
 import Data.Text (Text)
-import Data.Vector (Vector  )
+import Data.Vector (Vector)
 import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
@@ -34,9 +36,11 @@ import Text.PrettyPrint.ANSI.Leijen (pretty, putDoc)
 import qualified Control.Monad.Trans.State.Strict as St
 import qualified Data.Text                        as T
 import qualified Data.Vector                      as V
-import qualified Language.Hawk.Cache.Package      as Db
+import qualified Language.Hawk.Cache.Item         as Db
+import qualified Language.Hawk.Cache.Janitor      as Db
 import qualified Language.Hawk.Cache.Module       as Db
 import qualified Language.Hawk.Cache.Model        as Db
+import qualified Language.Hawk.Cache.Package      as Db
 import qualified Language.Hawk.Cache.Types        as Db
 import qualified Language.Hawk.Parse              as P
 import qualified Language.Hawk.Report.Error       as Err
@@ -85,22 +89,31 @@ loadFiles o pkg@(Package n d) = do
   
   runSqlite "hk.db" $ do
     runMigration Db.migrateAll
+    
+    Db.removeStale
 
     runConduitRes $
       selectSource 
           [ Db.ModuleFilePkg ==. pid
-          -- Disabled for testing purposes
-          -- Probably need to add a force option
-          -- , Db.ModuleFileCacheStatus ==. Db.Fresh
+          , Db.ModuleFileCacheStatus ==. Db.Fresh
           , Db.ModuleFileIsBuilt ==. False
           ] []
+        
         .| loadC 10
-        .| mapC handleModuleFileEntity
+        .| mapC (handleModuleFileEntity pid)
+        
         .| fetchDoc
         .| loadC 10
         .| lexer
-        .| iterMC (\(Doc _ _ toks) -> liftIO . putDoc . pretty $ toks)      
+--        .| iterMC (\(Doc _ _ toks) -> liftIO . putDoc . pretty $ toks)      
+        
         .| P.itemParser
+        .| reportResultC o
+        
+        .| mapM_C 
+              (\(Doc pid mid mfid _ i)
+                -> void $ lift $ Db.cache (pid, mid, mfid, i))
+        
         .| reportResultC o
         .| sinkNull
 
@@ -110,15 +123,19 @@ cacheMods pid fps =
     runMigration Db.migrateAll
     mapM_ (Db.insertSource pid) fps
 
-handleModuleFileEntity :: Entity Db.ModuleFile -> InfoDoc
-handleModuleFileEntity (Entity _ mf) =
-  Doc (Db.moduleFileAssoc mf) (T.unpack $ Db.moduleFilePath mf) ()
+
+handleModuleFileEntity :: Db.PackageId -> Entity Db.ModuleFile -> InfoDoc
+handleModuleFileEntity pid (Entity mfid mf) =
+  let mid = Db.moduleFileAssoc mf
+      fp = T.unpack $ Db.moduleFilePath mf
+  in Doc pid mid mfid fp ()
+
 
 fetchDoc :: MonadResource m => Conduit InfoDoc m TextDoc
 fetchDoc = awaitForever go
   where
-    go (Doc mid fp _) =
-      sourceFile fp .| decodeUtf8C .| mapC (Doc mid fp)
+    go d =
+      sourceFile (d^.docPath) .| decodeUtf8C .| mapC (\t -> const t <$> d)
 
 
 reportResultC :: MonadIO m => Opts -> Conduit (Result a) m a

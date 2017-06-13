@@ -89,10 +89,13 @@ library:
 
     - Language.Hawk.Cache
     - Language.Hawk.Cache.Item
+    - Language.Hawk.Cache.Janitor
     - Language.Hawk.Cache.Model
     - Language.Hawk.Cache.Module
     - Language.Hawk.Cache.Package
     - Language.Hawk.Cache.Types
+
+    - Language.Hawk.NameCheck.DepExpansion
 
     - Language.Hawk.Parse
     - Language.Hawk.Parse.Document
