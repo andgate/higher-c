@@ -16,6 +16,8 @@ import qualified Language.Hawk.Report.Report as Report
 data Error
   = Parse Tk.Token
   | BadModuleName FilePath
+  | UndeclaredVariable -- In expression, from item
+  | TypeMismatch -- Expected type, Actual type, in expression, from item
   deriving Show
 
 instance Reportable Error where

@@ -13,7 +13,7 @@ import Data.Text (Text, pack, intercalate)
 import Database.Persist
 import Language.Hawk.Cache.Model (BackendT)
 import Language.Hawk.Report.Result
-import Language.Hawk.NameCheck.DepExpansion
+import Language.Hawk.DepExpansion
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Language.Hawk.Cache.Model as Db

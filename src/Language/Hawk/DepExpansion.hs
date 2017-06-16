@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Language.Hawk.NameCheck.DepExpansion where
+module Language.Hawk.DepExpansion where
 
 import Control.Lens
 import Data.Text (Text)

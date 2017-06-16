@@ -279,7 +279,7 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Statement Rules   
     stmtblk <- rule $ block stmt
-    
+     
     stmt <- rule $
           (StmtExpr <$> exp)
       <|> (StmtExpr <$> stmtIf)

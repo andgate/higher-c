@@ -59,6 +59,7 @@ library:
     - Earley
     - edit-distance
     - filepath
+    - ghc-prim
     - lens
     - mmorph
     - monad-control
@@ -78,6 +79,7 @@ library:
     - transformers
     - utf8-string
     - vector
+
   exposed-modules:      
     - Language.Hawk.Compile
     - Language.Hawk.Compile.Flags
@@ -95,8 +97,10 @@ library:
     - Language.Hawk.Cache.Package
     - Language.Hawk.Cache.Types
 
-    - Language.Hawk.NameCheck.DepExpansion
+    - Language.Hawk.DepExpansion
 
+    - Language.Hawk.Namespace
+    
     - Language.Hawk.Parse
     - Language.Hawk.Parse.Document
     - Language.Hawk.Parse.Grammar
@@ -115,7 +119,8 @@ library:
     - Language.Hawk.Report.Warning
 
     - Language.Hawk.Syntax
-    - Language.Hawk.Syntax.Literal
+    - Language.Hawk.Syntax.HkLit
+    - Language.Hawk.Syntax.Pass
     - Language.Hawk.Syntax.Prim
 
     - Language.Hawk.TypeCheck

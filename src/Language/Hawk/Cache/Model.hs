@@ -61,6 +61,19 @@ ModuleFile
     deriving Show
 
 
+VarSymbol sql=varsymbols
+    mid ModuleId
+    item ItemId
+    name Text
+    tipe ByteString
+    deriving Show
+
+TySymbol sql=tysymbols
+    mid ModuleId
+    item ItemId
+    name Text
+    deriving Show
+
 Item
     pkg PackageId
     mid ModuleId
