@@ -27,6 +27,6 @@ data Document a =
 type InfoDoc = Document ()
 type TextDoc = Document Text
 type TokenDoc = Document [Token]
-type DocItem = Document SrcItem
+type DocItem = Document ItemPs
 
 makeLenses ''Document

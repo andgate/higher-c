@@ -16,21 +16,21 @@ module Language.Hawk.Syntax where
 import Data.Binary
 import Data.Text (Text)
 import GHC.Types (Constraint)
-import Language.Hawk.Syntax.HkLit
+import Language.Hawk.Report.SrcLoc
 import Language.Hawk.Syntax.Operator
 import Language.Hawk.Syntax.Pass
 import Language.Hawk.Syntax.Prim
 import Text.PrettyPrint.ANSI.Leijen ((<+>))
 
 import qualified Data.Text                        as T
-import qualified Language.Hawk.Report.Region      as R
 import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 
 
 type ForallX (c :: * -> Constraint) (x :: *)
-  = ( ForallHkLit c x
-    , ForallHkExp c x
-    , ForallHkType c x
+  = ( ForallLit c x
+    , ForallExp c x
+    , ForallType c x
+    , c (XName x)
     )
 
 type ShowX (x :: *)
@@ -55,7 +55,7 @@ data Item x
   = DepItem Dependency
 
   | ForeignItem (Foreign x)
-  | ExposeItem Expose
+  | ExposeItem (Expose x)
 
   | VowItem (Vow x)
   | SigItem (TypeSig x)
@@ -71,8 +71,10 @@ data Item x
   
   | DataItem (DataType x)
 
-deriving instance (ShowX x, Show x) => Show (Item x)
-deriving instance (EqX x, Eq x) => Eq (Item x)
+deriving instance ShowX x => Show (Item x)
+deriving instance EqX x => Eq (Item x)
+
+type ItemPs = Item HkcPs
 
 
 -- -----------------------------------------------------------------------------
@@ -119,8 +121,8 @@ deriving instance EqX x => Eq (NestedItem x)
 data Foreign x =
   Foreign ForeignType Text (TypeSig x)
 
-deriving instance (ShowType x, ShowExp x) => Show (Foreign x)
-deriving instance (EqType x, EqExp x) => Eq (Foreign x)
+deriving instance ShowX x => Show (Foreign x)
+deriving instance EqX x => Eq (Foreign x)
 
 
 data ForeignType =
@@ -131,118 +133,153 @@ data ForeignType =
 -- -----------------------------------------------------------------------------
 -- | Expose
 
-newtype Expose =
-  Expose Name
-  deriving (Eq, Show)
+data Expose x =
+  Expose (Name x)
+
+
+deriving instance ShowX x => Show (Expose x)
+deriving instance EqX x => Eq (Expose x)
 
 
 -- -----------------------------------------------------------------------------
 -- | Name
 
-type Name = Text
-
--- Shouldn't need explicit name annotations
--- with eXtensible trees
-{-
-data Home =
-    Home
-    { homePath :: FilePath
-    , homeRegion :: R.Region
-    }
-  | Builtin
-  deriving (Eq, Show)
-
-data Name
+data Name x
   = Name 
     { _nameText :: Text
-    , _nameHome :: Home
-    , _nameIsQual :: Bool
+    , _nameExt  :: XName x
     }
-    deriving (Eq, Show)
 
-data QName
-  = QName
-    { _qnamePath :: [Text]
-    , _qnameBase :: Text
-    , _qnameHome :: Home
-    } deriving (Eq, Show)
--}
+type family XName x
+
+type instance XName HkcPs = SrcLoc
+type instance XName HkcRn = ()
+type instance XName HkcTc = ()
+
+deriving instance ShowX x => Show (Name x)
+deriving instance EqX x => Eq (Name x)
+
+type NamePs = Name HkcPs
+
+
+-- -----------------------------------------------------------------------------
+-- | Literal
+
+data Lit x
+  = IntLit (XIntLit x) Integer
+  | DblLit (XDblLit x) Double
+  | ChrLit (XChrLit x) Char
+  | StrLit (XStrLit x) String
+  | BoolLit (XBoolLit x) Bool
+  | Lit (XLit x)
+
+type family XIntLit x
+type family XDblLit x
+type family XChrLit x
+type family XStrLit x
+type family XBoolLit x
+type family XLit x
+
+type ForallLit (c :: * -> Constraint) (x :: *) =
+  ( c (XIntLit x)
+  , c (XDblLit x)
+  , c (XChrLit x)
+  , c (XStrLit x)
+  , c (XBoolLit x)
+  , c (XLit x)
+  )
+
+
+deriving instance ShowX x => Show (Lit x)
+deriving instance EqX x => Eq (Lit x)
+
+
+type instance XIntLit      HkcPs = ()
+type instance XDblLit    HkcPs = ()
+type instance XChrLit     HkcPs = ()
+type instance XStrLit   HkcPs = ()
+type instance XBoolLit  HkcPs = ()
+type instance XLit      HkcPs = ()
+
+
+type instance XIntLit      HkcRn = ()
+type instance XDblLit    HkcRn = ()
+type instance XChrLit     HkcRn = ()
+type instance XStrLit   HkcRn = ()
+type instance XBoolLit  HkcRn = ()
+type instance XLit      HkcRn = ()
+
+
+type instance XIntLit      HkcTc = ()
+type instance XDblLit    HkcTc = ()
+type instance XChrLit     HkcTc = ()
+type instance XStrLit   HkcTc = ()
+type instance XBoolLit  HkcTc = ()
+type instance XLit      HkcTc = ()
+
 
 -- -----------------------------------------------------------------------------
 -- | Type
 
-data HkType x
-  = HkTyFun   (XHkTyFun x)    (HkType x) (HkType x)
-  | HkTyTuple (XHkTyTuple x)  [HkType x]
-  | HkTyApp   (XHkTyApp x)    (HkType x) [HkType x]
-  | HkTyVar   (XHkTyVar x)    Name
-  | HkTyCon   (XHkTyCon x)    Name
-  | HkType    (XHkType x)
+data Type x
+  = TyFun   (XTyFun x)    (Type x) (Type x)
+  | TyTuple (XTyTuple x)  [Type x]
+  | TyApp   (XTyApp x)    (Type x) [Type x]
+  | TyVar   (XTyVar x)    (Name x)
+  | TyCon   (XTyCon x)    (Name x)
+  | Type    (XType x)
 
-type family XHkTyFun x
-type family XHkTyTuple x
-type family XHkTyApp x
-type family XHkTyVar x
-type family XHkTyCon x
-type family XHkType x
+type family XTyFun x
+type family XTyTuple x
+type family XTyApp x
+type family XTyVar x
+type family XTyCon x
+type family XType x
 
 
-type ForallHkType (c :: * -> Constraint) (x :: *) =
-  ( c (XHkTyFun x)
-  , c (XHkTyTuple x)
-  , c (XHkTyApp x)
-  , c (XHkTyVar x)
-  , c (XHkTyCon x)
-  , c (XHkType x)
+type ForallType (c :: * -> Constraint) (x :: *) =
+  ( c (XTyFun x)
+  , c (XTyTuple x)
+  , c (XTyApp x)
+  , c (XTyVar x)
+  , c (XTyCon x)
+  , c (XType x)
   )
 
-type ShowType (x :: *)
-  = ForallHkType Show x
+deriving instance ShowX x => Show (Type x)
+deriving instance EqX x => Eq (Type x)
 
-type EqType (x :: *)
-  = ForallHkType Eq x
+type instance XTyFun    HkcPs = ()
+type instance XTyTuple  HkcPs = ()
+type instance XTyApp    HkcPs = ()
+type instance XTyVar    HkcPs = ()
+type instance XTyCon    HkcPs = ()
+type instance XType     HkcPs = ()
 
-type OrdType (x :: *)
-  = ForallHkType Ord x
+type instance XTyFun    HkcRn = ()
+type instance XTyTuple  HkcRn = ()
+type instance XTyApp    HkcRn = ()
+type instance XTyVar    HkcRn = ()
+type instance XTyCon    HkcRn = ()
+type instance XType     HkcRn = ()
 
-type PrettyType (x :: *)
-  = ForallHkType PP.Pretty x
+type instance XTyFun    HkcTc = ()
+type instance XTyTuple  HkcTc = ()
+type instance XTyApp    HkcTc = ()
+type instance XTyVar    HkcTc = ()
+type instance XTyCon    HkcTc = ()
+type instance XType     HkcTc = ()
 
-type BinaryType (x :: *)
-  = ForallHkType Binary x
 
-deriving instance ShowType x => Show (HkType x)
-deriving instance EqType x => Eq (HkType x)
-
-type instance XHkTyFun    HkcPs = ()
-type instance XHkTyTuple  HkcPs = ()
-type instance XHkTyApp    HkcPs = ()
-type instance XHkTyVar    HkcPs = ()
-type instance XHkTyCon    HkcPs = ()
-type instance XHkType     HkcPs = ()
-
-type instance XHkTyFun    HkcRn = ()
-type instance XHkTyTuple  HkcRn = ()
-type instance XHkTyApp    HkcRn = ()
-type instance XHkTyVar    HkcRn = ()
-type instance XHkTyCon    HkcRn = ()
-type instance XHkType     HkcRn = ()
-
-type instance XHkTyFun    HkcTc = ()
-type instance XHkTyTuple  HkcTc = ()
-type instance XHkTyApp    HkcTc = ()
-type instance XHkTyVar    HkcTc = ()
-type instance XHkTyCon    HkcTc = ()
-type instance XHkType     HkcTc = ()
-
+type TypePs = Type HkcPs
 
 -- -----------------------------------------------------------------------------
 -- | Qualified Type
 data QType x
-  = QType (TyContext x) (HkType x)
+  = QType (TyContext x) (Type x)
 
-deriving instance (ForallHkType Eq x) => Eq (QType x)
-deriving instance (ForallHkType Show x) => Show (QType x)
+deriving instance ShowX x => Show (QType x)
+deriving instance EqX x => Eq (QType x)
 
 
 -- -----------------------------------------------------------------------------
@@ -251,41 +288,41 @@ deriving instance (ForallHkType Show x) => Show (QType x)
 data TyContext x
   = TyContext [TyAssert x]
 
-deriving instance ForallHkType Show x => Show (TyContext x)
-deriving instance ForallHkType Eq x => Eq (TyContext x)
+deriving instance ShowX x => Show (TyContext x)
+deriving instance EqX x => Eq (TyContext x)
 
 data TyAssert x
-  = TyAssert Name [HkType x]
+  = TyAssert (Name x) [Type x]
 
-deriving instance ForallHkType Show x => Show (TyAssert x)
-deriving instance ForallHkType Eq x => Eq (TyAssert x)
+deriving instance ShowX x => Show (TyAssert x)
+deriving instance EqX x => Eq (TyAssert x)
 
 
 -- -----------------------------------------------------------------------------
 -- | Expression
 
-data HkExp x
-  = HkELit (XHkELit x) (HkLit x)
-  | HkEVar (XHkEVar x) Name
-  | HkECon (XHkECon x) Name
+data Exp x
+  = ELit (XELit x) (Lit x)
+  | EVar (XEVar x) (Name x)
+  | ECon (XECon x) (Name x)
 
-  | HkEApp (XHkEApp x) (HkExp x) [HkExp x] -- Function application, which is left associative
-  | HkEInfixApp (XHkEInfixApp x) (HkExp x) -- rhs
-                         (HkExp x) -- applied exp
-                         (HkExp x) -- lhs
+  | EApp (XEApp x) (Exp x) [Exp x] -- Function application, which is left associative
+  | EInfixApp (XEInfixApp x) (Exp x) -- rhs
+                         (Exp x) -- applied exp
+                         (Exp x) -- lhs
 
-  | HkELam (XHkELam x) [Name] (HkExp x)
+  | ELam (XELam x) [Name x] (Exp x)
 
   -- Control Flow
-  | HkEDo (XHkEDo x) [Stmt x]
-  | HkEReturn (XHkEReturn x) (HkExp x)
+  | EDo (XEDo x) [Stmt x]
+  | EReturn (XEReturn x) (Exp x)
   
-  | HkEIf (XHkEIf x) (HkExp x) -- conditional
-                   (HkExp x) -- then expr
-                   (Maybe (HkExp x)) -- else exp
+  | EIf (XEIf x) (Exp x) -- conditional
+                   (Exp x) -- then expr
+                   (Maybe (Exp x)) -- else exp
   
-  | HkEWhile (XHkEWhile x) (HkExp x) -- Loop condition
-                      (HkExp x) -- Loop body
+  | EWhile (XEWhile x) (Exp x) -- Loop condition
+                      (Exp x) -- Loop body
 
 -- Too complex for now 
 --  | EFor (Exp ex) -- Iterator
@@ -297,124 +334,120 @@ data HkExp x
 
 
   -- Operators
-  | HkEPrim (XHkEPrim x) PrimInstr (HkExp x) (HkExp x)
-  | HkEBinary (XHkEBinary x) (HkExp x) BinaryOp (HkExp x)
-  | HkEUnary (XHkEUnary x) UnaryOp (HkExp x)
-  | HkEAssign (XHkEAssign x) (HkExp x) AssignOp (HkExp x)
+  | EPrim (XEPrim x) PrimInstr (Exp x) (Exp x)
+  | EBinary (XEBinary x) (Exp x) BinaryOp (Exp x)
+  | EUnary (XEUnary x) UnaryOp (Exp x)
+  | EAssign (XEAssign x) (Exp x) AssignOp (Exp x)
 
   -- Type hints and bottom
-  | HkETypeHint (XHkETypeHint x) (HkExp x) (QType x)
-  | HkEBottom (XHkEBottom x)
-  | HkExp (XHkExp x)
+  | ETypeHint (XETypeHint x) (Exp x) (QType x)
+  | EBottom (XEBottom x)
+  | Exp (XExp x)
 
-type family XHkELit x
-type family XHkEVar x
-type family XHkECon x
-type family XHkEApp x
-type family XHkEInfixApp x
-type family XHkELam x
-type family XHkEDo x
-type family XHkEReturn x
-type family XHkEIf x
-type family XHkEWhile x
-type family XHkEPrim x
-type family XHkEBinary x
-type family XHkEUnary x
-type family XHkEAssign x
-type family XHkETypeHint x
-type family XHkEBottom x
-type family XHkExp x
+type family XELit x
+type family XEVar x
+type family XECon x
+type family XEApp x
+type family XEInfixApp x
+type family XELam x
+type family XEDo x
+type family XEReturn x
+type family XEIf x
+type family XEWhile x
+type family XEPrim x
+type family XEBinary x
+type family XEUnary x
+type family XEAssign x
+type family XETypeHint x
+type family XEBottom x
+type family XExp x
 
 
-type ForallHkExp (c :: * -> Constraint) (x :: *) =
-  ( c (XHkELit x)
-  , c (XHkEVar x)
-  , c (XHkECon x)
-  , c (XHkEApp x)
-  , c (XHkEInfixApp x)
-  , c (XHkELam x)
-  , c (XHkEDo x)
-  , c (XHkEReturn x)
-  , c (XHkEPrim x)
-  , c (XHkEIf x)
-  , c (XHkEWhile x)
-  , c (XHkEBinary x)
-  , c (XHkEUnary x)
-  , c (XHkEAssign x)
-  , c (XHkETypeHint x)
-  , c (XHkEBottom x)
-  , c (XHkExp x)
+type ForallExp (c :: * -> Constraint) (x :: *) =
+  ( c (XELit x)
+  , c (XEVar x)
+  , c (XECon x)
+  , c (XEApp x)
+  , c (XEInfixApp x)
+  , c (XELam x)
+  , c (XEDo x)
+  , c (XEReturn x)
+  , c (XEPrim x)
+  , c (XEIf x)
+  , c (XEWhile x)
+  , c (XEBinary x)
+  , c (XEUnary x)
+  , c (XEAssign x)
+  , c (XETypeHint x)
+  , c (XEBottom x)
+  , c (XExp x)
   )
 
-type ShowExp (x :: *)
-  = ForallHkExp Show x
+deriving instance ShowX x => Show (Exp x)
+deriving instance EqX x => Eq (Exp x)
 
-type EqExp (x :: *)
-  = ForallHkExp Eq x
+type instance XELit         HkcPs = ()
+type instance XEVar         HkcPs = ()
+type instance XECon         HkcPs = ()
+type instance XEApp         HkcPs = ()
+type instance XEInfixApp    HkcPs = ()
+type instance XELam         HkcPs = ()
+type instance XEDo          HkcPs = ()
+type instance XEReturn      HkcPs = ()
+type instance XEIf          HkcPs = ()
+type instance XEWhile       HkcPs = ()
+type instance XEPrim        HkcPs = ()
+type instance XEBinary      HkcPs = ()
+type instance XEUnary       HkcPs = ()
+type instance XEAssign      HkcPs = ()
+type instance XETypeHint    HkcPs = ()
+type instance XEBottom      HkcPs = ()
+type instance XExp          HkcPs = ()
 
-deriving instance ShowX x => Show (HkExp x)
-deriving instance EqX x => Eq (HkExp x)
+type instance XELit         HkcRn = ()
+type instance XEVar         HkcRn = ()
+type instance XECon         HkcRn = ()
+type instance XEApp         HkcRn = ()
+type instance XEInfixApp    HkcRn = ()
+type instance XELam         HkcRn = ()
+type instance XEDo          HkcRn = ()
+type instance XEReturn      HkcRn = ()
+type instance XEIf          HkcRn = ()
+type instance XEWhile       HkcRn = ()
+type instance XEPrim        HkcRn = ()
+type instance XEBinary      HkcRn = ()
+type instance XEUnary       HkcRn = ()
+type instance XEAssign      HkcRn = ()
+type instance XETypeHint    HkcRn = ()
+type instance XEBottom      HkcRn = ()
+type instance XExp          HkcRn = ()
 
-type instance XHkELit         HkcPs = ()
-type instance XHkEVar         HkcPs = ()
-type instance XHkECon         HkcPs = ()
-type instance XHkEApp         HkcPs = ()
-type instance XHkEInfixApp    HkcPs = ()
-type instance XHkELam         HkcPs = ()
-type instance XHkEDo          HkcPs = ()
-type instance XHkEReturn      HkcPs = ()
-type instance XHkEIf          HkcPs = ()
-type instance XHkEWhile       HkcPs = ()
-type instance XHkEPrim        HkcPs = ()
-type instance XHkEBinary      HkcPs = ()
-type instance XHkEUnary       HkcPs = ()
-type instance XHkEAssign      HkcPs = ()
-type instance XHkETypeHint    HkcPs = ()
-type instance XHkEBottom      HkcPs = ()
-type instance XHkEBottom      HkcPs = ()
+type instance XELit         HkcTc = ()
+type instance XEVar         HkcTc = ()
+type instance XECon         HkcTc = ()
+type instance XEApp         HkcTc = ()
+type instance XEInfixApp    HkcTc = ()
+type instance XELam         HkcTc = ()
+type instance XEDo          HkcTc = ()
+type instance XEReturn      HkcTc = ()
+type instance XEIf          HkcTc = ()
+type instance XEWhile       HkcTc = ()
+type instance XEPrim        HkcTc = ()
+type instance XEBinary      HkcTc = ()
+type instance XEUnary       HkcTc = ()
+type instance XEAssign      HkcTc = ()
+type instance XETypeHint    HkcTc = ()
+type instance XEBottom      HkcTc = ()
+type instance XExp          HkcRn = ()
 
-type instance XHkELit         HkcRn = ()
-type instance XHkEVar         HkcRn = ()
-type instance XHkECon         HkcRn = ()
-type instance XHkEApp         HkcRn = ()
-type instance XHkEInfixApp    HkcRn = ()
-type instance XHkELam         HkcRn = ()
-type instance XHkEDo          HkcRn = ()
-type instance XHkEReturn      HkcRn = ()
-type instance XHkEIf          HkcRn = ()
-type instance XHkEWhile       HkcRn = ()
-type instance XHkEPrim        HkcRn = ()
-type instance XHkEBinary      HkcRn = ()
-type instance XHkEUnary       HkcRn = ()
-type instance XHkEAssign      HkcRn = ()
-type instance XHkETypeHint    HkcRn = ()
-type instance XHkEBottom      HkcRn = ()
-type instance XHkExp          HkcRn = ()
 
-type instance XHkELit         HkcTc = ()
-type instance XHkEVar         HkcTc = ()
-type instance XHkECon         HkcTc = ()
-type instance XHkEApp         HkcTc = ()
-type instance XHkEInfixApp    HkcTc = ()
-type instance XHkELam         HkcTc = ()
-type instance XHkEDo          HkcTc = ()
-type instance XHkEReturn      HkcTc = ()
-type instance XHkEIf          HkcTc = ()
-type instance XHkEWhile       HkcTc = ()
-type instance XHkEPrim        HkcTc = ()
-type instance XHkEBinary      HkcTc = ()
-type instance XHkEUnary       HkcTc = ()
-type instance XHkEAssign      HkcTc = ()
-type instance XHkETypeHint    HkcTc = ()
-type instance XHkEBottom      HkcTc = ()
-type instance XHkExp          HkcRn = ()
-
+type ExpPs = Exp HkcPs
 
 -- -----------------------------------------------------------------------------
 -- | Statement
 
 data Stmt x
-  = StmtExpr (HkExp x)
+  = StmtExpr (Exp x)
   | StmtDecl (NestedItem x)
 
 deriving instance ShowX x => Show (Stmt x)
@@ -426,7 +459,7 @@ deriving instance EqX x => Eq (Stmt x)
 
 data Body x
   = BodyBlock [Stmt x]
-  | BodyExpr (HkExp x)
+  | BodyExpr (Exp x)
 
 deriving instance ShowX x => Show (Body x)
 deriving instance EqX x => Eq (Body x)
@@ -436,12 +469,12 @@ deriving instance EqX x => Eq (Body x)
 
 data TypeSig x
   = TypeSig
-    { _tySigName :: Name
+    { _tySigName :: Name x
     , _tySigBody :: QType x
     }
 
-deriving instance ShowType x => Show (TypeSig x)
-deriving instance EqType x => Eq (TypeSig x)
+deriving instance ShowX x => Show (TypeSig x)
+deriving instance EqX x => Eq (TypeSig x)
 
 
 -- -----------------------------------------------------------------------------
@@ -449,10 +482,12 @@ deriving instance EqType x => Eq (TypeSig x)
 
 data Vow x
   = Vow
-    { _vowName :: Name
+    { _vowName :: Name x
     , _vows :: [VowType]
     }
-  deriving (Eq, Show)
+
+deriving instance ShowX x => Show (Vow x)
+deriving instance EqX x => Eq (Vow x)
 
 data VowType =
   VowVar
@@ -466,7 +501,7 @@ data VowType =
 
 data Var x
   = Var
-    { _varName  :: Name
+    { _varName  :: Name x
     , _varBody  :: Maybe (Body x)
     }
 
@@ -479,7 +514,7 @@ deriving instance EqX x => Eq (Var x)
 
 data Val x
   = Val
-    { _valName  :: Name
+    { _valName  :: Name x
     , _valBody  :: Body x
     }
 
@@ -492,8 +527,8 @@ deriving instance EqX x => Eq (Val x)
 
 data Fun x
   = Fun
-    { _funName   :: Name
-    , _funParams :: [Name]
+    { _funName   :: Name x
+    , _funParams :: [Name x]
     , _funBody   :: Body x
     }
 
@@ -506,26 +541,26 @@ deriving instance EqX x => Eq (Fun x)
 
 data NewType x
   = NewType
-    { _newTyName     :: Name
-    , _newTyVars     :: [Name]
-    , _newTyNewBody  :: HkType x
+    { _newTyName     :: Name x
+    , _newTyVars     :: [Name x]
+    , _newTyNewBody  :: Type x
     }
 
-deriving instance ShowType x => Show (NewType x)
-deriving instance EqType x => Eq (NewType x)
+deriving instance ShowX x => Show (NewType x)
+deriving instance EqX x => Eq (NewType x)
 
 -- -----------------------------------------------------------------------------
 -- | Type Alias
 
 data TypeAlias x
     = TypeAlias
-      { _tyAliasName   :: Name
-      , _tyAliasTyVars :: [Name]
-      , _tyAliasBody   :: HkType x
+      { _tyAliasName   :: Name x
+      , _tyAliasTyVars :: [Name x]
+      , _tyAliasBody   :: Type x
       }
 
-deriving instance ShowType x => Show (TypeAlias x)
-deriving instance EqType x => Eq (TypeAlias x)
+deriving instance ShowX x => Show (TypeAlias x)
+deriving instance EqX x => Eq (TypeAlias x)
 
 
 -- -----------------------------------------------------------------------------
@@ -534,8 +569,8 @@ deriving instance EqType x => Eq (TypeAlias x)
 data TypeClass x
     = TypeClass 
       { _tyClassContext :: Maybe (TyContext x)
-      , _tyClassName :: Name
-      , _tyClassVars :: [Name]
+      , _tyClassName :: Name x
+      , _tyClassVars :: [Name x]
       , _tyClassBody :: [Either (Fun x) (TypeSig x)]
       }
 
@@ -549,8 +584,8 @@ deriving instance EqX x => Eq (TypeClass x)
 data TypeClassInst x
     = TypeClassInst 
       { _tyClassInstContext :: Maybe (TyContext x)
-      , _tyClassInstName :: Name
-      , _tyClassInstArgs :: [HkType x]
+      , _tyClassInstName :: Name x
+      , _tyClassInstArgs :: [Type x]
       , _tyClassInstBody :: [Fun x]
       }
 
@@ -562,13 +597,13 @@ deriving instance EqX x => Eq (TypeClassInst x)
 
 data DataType x
     = DataType
-      { _dataTyName :: Name
-      , _dataTyVars :: [Name]
+      { _dataTyName :: Name x
+      , _dataTyVars :: [Name x]
       , _dataTyBody :: [TypeSig x]
       }
 
-deriving instance ShowType x => Show (DataType x)
-deriving instance EqType x => Eq (DataType x)
+deriving instance ShowX x => Show (DataType x)
+deriving instance EqX x => Eq (DataType x)
 
 
 -- -----------------------------------------------------------------------------
@@ -657,7 +692,7 @@ instance PP.Pretty Dependency where
 
 
 -- Foreign ------------------------------------------------------------------
-instance PrettyType x => PP.Pretty (Foreign x) where
+instance PrettyX x => PP.Pretty (Foreign x) where
     pretty (Foreign ft n fs) =
       PP.text "Foreign:"
       PP.<$>
@@ -675,12 +710,12 @@ instance PP.Pretty ForeignType where
 
 
 -- Expose --------------------------------------------------------------------
-instance PP.Pretty Expose where
+instance PrettyX x => PP.Pretty (Expose x) where
     pretty (Expose n) =
       PP.text "Expose:"
       PP.<$>
       PP.indent 2
-        ( PP.text "name:" PP.<+> PP.text (T.unpack n)
+        ( PP.text "name:" PP.<+> PP.pretty n
         )
 
 
@@ -700,16 +735,51 @@ instance PP.Pretty DepPath where
 
 
 -- Name ------------------------------------------------------------------------
-{-
-instance PP.Pretty Name where
-    pretty n =
-      PP.string (toString n)
--}
+
+instance PrettyX x => PP.Pretty (Name x) where
+    pretty (Name n ex) =
+      PP.text (T.unpack n)
+      PP.<$>
+      PP.pretty ex
+
+
+-- Literal ------------------------------------------------------------------------
+
+instance PrettyX x => PP.Pretty (Lit x) where
+  pretty lit =
+    case lit of
+      IntLit x v ->
+        PP.string (show v)
+        PP.<$>
+        PP.string "Ext:" <+> PP.pretty x
+         
+      DblLit x v ->
+        PP.string (show v)
+        PP.<$>
+        PP.string "Ext:" <+> PP.pretty x
+      
+      ChrLit x v ->
+        PP.string (show v)
+        PP.<$>
+        PP.string "Ext:" <+> PP.pretty x
+      
+      StrLit x v ->
+        PP.string (show v)
+        PP.<$>
+        PP.string "Ext:" <+> PP.pretty x
+      
+      BoolLit x v ->
+        PP.string (show v)
+        PP.<$>
+        PP.string "Ext:" <+> PP.pretty x
+
+      Lit x ->
+        PP.string "Lit Con Ext:" <+> PP.pretty x
 
 
 -- Type ------------------------------------------------------------------------
-instance ForallHkType PP.Pretty x => PP.Pretty (HkType x) where
-    pretty (HkTyFun ext x y) =
+instance PrettyX x => PP.Pretty (Type x) where
+    pretty (TyFun ext x y) =
       PP.text "Type Function:"
       PP.<$>
       PP.indent 2
@@ -720,7 +790,7 @@ instance ForallHkType PP.Pretty x => PP.Pretty (HkType x) where
           PP.text "ext:" PP.<$> PP.pretty ext
         )
 
-    pretty (HkTyTuple ext mems) =
+    pretty (TyTuple ext mems) =
       PP.text "Type Tuple:"
       PP.<$>
       PP.indent 2
@@ -730,7 +800,7 @@ instance ForallHkType PP.Pretty x => PP.Pretty (HkType x) where
         )
         
 
-    pretty (HkTyApp ext con args) =
+    pretty (TyApp ext con args) =
       PP.text "Type App:"
       PP.<$>
       PP.indent 2
@@ -741,17 +811,17 @@ instance ForallHkType PP.Pretty x => PP.Pretty (HkType x) where
           PP.text "ext:" PP.<$> PP.pretty ext
         )
       
-    pretty (HkTyVar ext name) =
-      PP.text "Type Var" <+> PP.dquotes (PP.text $ T.unpack name)
+    pretty (TyVar ext name) =
+      PP.text "Type Var" <+> PP.dquotes (PP.pretty name)
       PP.<$>
       PP.text "ext:" PP.<$> PP.pretty ext
 
-    pretty (HkTyCon ext name) =
-      PP.text "Type Con" <+> PP.dquotes (PP.text $ T.unpack name)
+    pretty (TyCon ext name) =
+      PP.text "Type Con" <+> PP.dquotes (PP.pretty name)
       PP.<$>
       PP.text "ext:" PP.<$> PP.pretty ext
 
-    pretty (HkType ext) =
+    pretty (Type ext) =
       PP.text "Type Ext:"
       PP.<$>
       PP.indent 2
@@ -759,7 +829,7 @@ instance ForallHkType PP.Pretty x => PP.Pretty (HkType x) where
         )
 
 
-instance PrettyType x => PP.Pretty (QType x) where
+instance PrettyX x => PP.Pretty (QType x) where
     pretty (QType ctx tipe) =
       PP.text "Qualified Type:"
       PP.<$>
@@ -770,7 +840,7 @@ instance PrettyType x => PP.Pretty (QType x) where
         )
         
 
-instance PrettyType x => PP.Pretty (TyContext x) where
+instance PrettyX x => PP.Pretty (TyContext x) where
     pretty (TyContext assrts) =
       PP.text "Context:"
       PP.<$>
@@ -778,36 +848,36 @@ instance PrettyType x => PP.Pretty (TyContext x) where
         ( PP.text "Assertions:" <+> PP.pretty assrts
         )
 
-instance PrettyType x => PP.Pretty (TyAssert x) where
+instance PrettyX x => PP.Pretty (TyAssert x) where
     pretty (TyAssert con tys) =
       PP.text "Type Assertion:"
       PP.<$>
       PP.indent 2
-        ( PP.text "Constructor:" <+> (PP.text $ T.unpack con)
+        ( PP.text "Constructor:" <+> PP.pretty con
           PP.<$>
           PP.text "Arguments:" <+> PP.pretty tys
         )
 
 
 -- Expr -------------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (HkExp x) where
-    pretty (HkELit ext lit) =
+instance PrettyX x => PP.Pretty (Exp x) where
+    pretty (ELit ext lit) =
       PP.text "Literal:" PP.<+> PP.pretty lit
       PP.<$>
       PP.string "ext:" <+> PP.pretty ext
 
-    pretty (HkEVar ext name) =
-      PP.text "Variable:" PP.<+> PP.pretty (PP.text $ T.unpack name)
+    pretty (EVar ext name) =
+      PP.text "Variable:" PP.<+> PP.pretty name
       PP.<$>
       PP.string "ext:" <+> PP.pretty ext
       
-    pretty (HkECon ext name) =
-      PP.text "Constructor:" PP.<+> PP.pretty (PP.text $ T.unpack name)
+    pretty (ECon ext name) =
+      PP.text "Constructor:" PP.<+> PP.pretty name
       PP.<$>
       PP.string "ext:" <+> PP.pretty ext
 
 
-    pretty (HkEApp ext f as) =
+    pretty (EApp ext f as) =
       PP.text "Application:"
       PP.<$>
       PP.indent 2 
@@ -818,7 +888,7 @@ instance PrettyX x => PP.Pretty (HkExp x) where
           PP.string "ext:" <+> PP.pretty ext
         )
 
-    pretty (HkEInfixApp ext l f r) =
+    pretty (EInfixApp ext l f r) =
       PP.text "Infix Application:"
       PP.<$>
       PP.indent 2
@@ -832,11 +902,11 @@ instance PrettyX x => PP.Pretty (HkExp x) where
         )
 
 
-    pretty (HkELam ext ps b) =
+    pretty (ELam ext ps b) =
       PP.text "Lambda:"
       PP.<$>
       PP.indent 2
-        ( PP.string "params:" <+> PP.pretty (T.unpack <$> ps)
+        ( PP.string "params:" <+> PP.pretty ps
           PP.<$>
           PP.string "body:" <+> PP.pretty b
           PP.<$>
@@ -844,7 +914,7 @@ instance PrettyX x => PP.Pretty (HkExp x) where
         )
 
           
-    pretty (HkEDo ext b) =
+    pretty (EDo ext b) =
       PP.text "Do:"
       PP.<$>
       PP.indent 2
@@ -853,7 +923,7 @@ instance PrettyX x => PP.Pretty (HkExp x) where
           PP.string "ext:" <+> PP.pretty ext
         )
 
-    pretty (HkEReturn ext e) =
+    pretty (EReturn ext e) =
       PP.text "Return:"
       PP.<$>
       PP.indent 2
@@ -862,7 +932,7 @@ instance PrettyX x => PP.Pretty (HkExp x) where
           PP.string "ext:" <+> PP.pretty ext
         )
 
-    pretty (HkEIf ext predicate thenBranch elseBranch) =
+    pretty (EIf ext predicate thenBranch elseBranch) =
       PP.text "If:"
       PP.<$>
       PP.indent 2
@@ -875,7 +945,7 @@ instance PrettyX x => PP.Pretty (HkExp x) where
           PP.string "ext:" <+> PP.pretty ext
         )
 
-    pretty (HkEWhile ext cond body) =
+    pretty (EWhile ext cond body) =
       PP.text "While:"
       PP.<$>
       PP.indent 2
@@ -887,7 +957,7 @@ instance PrettyX x => PP.Pretty (HkExp x) where
         )
 
     
-    pretty (HkEPrim ext i a b) =
+    pretty (EPrim ext i a b) =
       PP.text "Primitive Instruction:"
       PP.<$>
       PP.indent 2 
@@ -900,7 +970,7 @@ instance PrettyX x => PP.Pretty (HkExp x) where
           PP.string "ext:" <+> PP.pretty ext
         )
 
-    pretty (HkEBinary ext l o r) =
+    pretty (EBinary ext l o r) =
       PP.text "Binary Operator:"
       PP.<$>
       PP.indent 2 
@@ -913,7 +983,7 @@ instance PrettyX x => PP.Pretty (HkExp x) where
           PP.string "ext:" <+> PP.pretty ext
         )
 
-    pretty (HkEUnary ext o e) =
+    pretty (EUnary ext o e) =
       PP.text "Unary Operator:"
       PP.<$>
       PP.indent 2 
@@ -924,7 +994,7 @@ instance PrettyX x => PP.Pretty (HkExp x) where
           PP.string "ext:" <+> PP.pretty ext
         )
 
-    pretty (HkEAssign ext l o r) =
+    pretty (EAssign ext l o r) =
       PP.text "Assignment:"
       PP.<$>
       PP.indent 2 
@@ -938,7 +1008,7 @@ instance PrettyX x => PP.Pretty (HkExp x) where
         )
 
         
-    pretty (HkETypeHint ext e t) =
+    pretty (ETypeHint ext e t) =
       PP.text "Type Hint:"
       PP.<$>
       PP.indent 2
@@ -949,12 +1019,12 @@ instance PrettyX x => PP.Pretty (HkExp x) where
           PP.string "ext:" <+> PP.pretty ext
         )
 
-    pretty (HkEBottom ext) =
+    pretty (EBottom ext) =
       PP.text "Bottom"
       PP.<$>
       PP.string "ext:" <+> PP.pretty ext
 
-    pretty (HkExp ext) =
+    pretty (Exp ext) =
       PP.string "ext:" <+> PP.pretty ext
 
 
@@ -981,12 +1051,12 @@ instance PrettyX x => PP.Pretty (Body x) where
 
 
 -- Type Signature ---------------------------------------------------------------
-instance PrettyType x => PP.Pretty (TypeSig x) where
+instance PrettyX x => PP.Pretty (TypeSig x) where
     pretty (TypeSig name body) =
       PP.text "Type Signature:"
       PP.<$>
       PP.indent 2
-        ( PP.text "name:" <+> PP.text (T.unpack name)
+        ( PP.text "name:" <+> PP.pretty name
           PP.<$>
           PP.text "body:" <+> PP.pretty body
         )
@@ -998,7 +1068,7 @@ instance PrettyX x => PP.Pretty (Vow x) where
     PP.text "Vow Item:"
     PP.<$>
     PP.indent 2
-      ( PP.text "name:" <+> PP.text (T.unpack name)
+      ( PP.text "name:" <+> PP.pretty name
         PP.<$>
         PP.text "vows:" <+> PP.pretty vows
       )
@@ -1020,7 +1090,7 @@ instance PrettyX x => PP.Pretty (Var x) where
     PP.text "Variable Item:"
     PP.<$>
     PP.indent 2
-      ( PP.text "name:" <+> PP.text (T.unpack name)
+      ( PP.text "name:" <+> PP.pretty name
         PP.<$>
         PP.text "body:" <+> PP.pretty body
       )
@@ -1032,7 +1102,7 @@ instance PrettyX x => PP.Pretty (Val x) where
     PP.text "Value Item:"
     PP.<$>
     PP.indent 2
-      ( PP.text "name:" <+> PP.text (T.unpack name)
+      ( PP.text "name:" <+> PP.pretty name
         PP.<$>
         PP.text "body:" <+> PP.pretty body
       )
@@ -1044,37 +1114,37 @@ instance PrettyX x => PP.Pretty (Fun x) where
     PP.text "Function Item:"
     PP.<$>
     PP.indent 2
-      ( PP.text "name:" <+> PP.text (T.unpack name)
+      ( PP.text "name:" <+> PP.pretty name
         PP.<$>
-        PP.text "params:" <+> PP.pretty (T.unpack <$> params)
+        PP.text "params:" <+> PP.pretty params
         PP.<$>
         PP.text "body:" <+> PP.pretty body
       )
 
 
 -- New Type ----------------------------------------------------------------------
-instance PrettyType x => PP.Pretty (NewType x) where
+instance PrettyX x => PP.Pretty (NewType x) where
     pretty (NewType name tyvars body) =
       PP.text "New Type:"
       PP.<$>
       PP.indent 2
         ( 
-          PP.text "name:" <+> PP.text (T.unpack name)
+          PP.text "name:" <+> PP.pretty name
           PP.<$>
-          PP.text "tyvars:" <+> PP.pretty (T.unpack <$> tyvars)
+          PP.text "tyvars:" <+> PP.pretty tyvars
           PP.<$>
           PP.text "body:" <+> PP.pretty body
         )
 
 -- Type Alias ---------------------------------------------------------------------
-instance PrettyType x => PP.Pretty (TypeAlias x) where
+instance PrettyX x => PP.Pretty (TypeAlias x) where
     pretty (TypeAlias name tyvars body) =
       PP.text "Type Alias:"
       PP.<$>
       PP.indent 2
-        ( PP.text "name:" <+> PP.text (T.unpack name)
+        ( PP.text "name:" <+> PP.pretty name
           PP.<$>
-          PP.text "tyvars:" <+> PP.pretty (T.unpack <$> tyvars)
+          PP.text "tyvars:" <+> PP.pretty tyvars
           PP.<$>
           PP.text "body:" <+> PP.pretty body
         )
@@ -1088,9 +1158,9 @@ instance PrettyX x => PP.Pretty (TypeClass x) where
       PP.indent 2
         ( PP.text "context:" <+> PP.pretty ctx
           PP.<$>
-          PP.text "name:" <+> PP.text (T.unpack name)
+          PP.text "name:" <+> PP.pretty name
           PP.<$>
-          PP.text "type vars:" <+> PP.pretty (T.unpack <$> tyvars)
+          PP.text "type vars:" <+> PP.pretty tyvars
           PP.<$>
           PP.text "body:" <+> PP.pretty body
         )
@@ -1104,7 +1174,7 @@ instance PrettyX x => PP.Pretty (TypeClassInst x) where
       PP.indent 2
         ( PP.text "context:" <+> PP.pretty ctx
           PP.<$>
-          PP.text "name:" <+> PP.text (T.unpack name)
+          PP.text "name:" <+> PP.pretty name
           PP.<$>
           PP.text "args:" <+> PP.pretty args
           PP.<$>
@@ -1113,14 +1183,14 @@ instance PrettyX x => PP.Pretty (TypeClassInst x) where
 
 
 -- Data Type -----------------------------------------------------------------------
-instance PrettyType x => PP.Pretty (DataType x) where
+instance PrettyX x => PP.Pretty (DataType x) where
     pretty (DataType name tyvars body) =
       PP.text "Data Type:"
       PP.<$>
       PP.indent 2
-        ( PP.text "name:" <+> PP.text (T.unpack name)
+        ( PP.text "name:" <+> PP.pretty name
           PP.<$>
-          PP.text "tyvars:" <+> PP.pretty (T.unpack <$> tyvars)
+          PP.text "tyvars:" <+> PP.pretty tyvars
           PP.<$>
           PP.text "body:" <+> PP.pretty body
         )
@@ -1234,7 +1304,7 @@ instance Binary ForeignType where
       ForeignC  -> putWord8 1
 
 -- Expose ---------------------------------------------------------------------
-instance Binary Expose where
+instance BinaryX x => Binary (Expose x) where
   get =
     Expose <$> get
       
@@ -1244,61 +1314,62 @@ instance Binary Expose where
 
 -- Name ------------------------------------------------------------------------
 
--- To be replaced|subsumed by Trees that Grow annotations
-{-
-instance Binary Name where
-    put (Name h n q) =
-      put h >> put n >> put q
+instance BinaryX x => Binary (Name x) where
+    put (Name n ex) =
+      put n >> put ex
           
     get =
-      Name <$> get <*> get <*> get
+      Name <$> get <*> get
 
-instance Binary QName where
-    put (QName path base home) =
-      put path >> put base >> put home
-          
-    get =
-      QName <$> get <*> get <*> get
 
-instance Binary Home where
-    put h =
-      case h of
-        Home fp r -> putWord8 0 >> put fp >> put r
-        Builtin   -> putWord8 1
-          
-    get = do
-      n <- getWord8
-      case n of
-        0 -> Home <$> get <*> get
-        1 -> pure Builtin
-        _ -> error "Corrupted data"
+-- Literal ---------------------------------------------------------------------
+instance BinaryX x => Binary (Lit x) where
+  get = do
+    n <- getWord8
+    case n of
+      1 -> IntLit <$> get <*> get
+      2 -> DblLit <$> get <*> get
+      3 -> ChrLit <$> get <*> get
+      4 -> StrLit <$> get <*> get
+      5 -> BoolLit <$> get <*> get
+      6 -> Lit <$> get
+      _ -> error "unexpected input"
 
--}
+  put literal =
+    case literal of
+      IntLit x v    -> putWord8 1 >> put x >> put v
+      DblLit x v    -> putWord8 2 >> put x >> put v
+      ChrLit x v    -> putWord8 3 >> put x >> put v
+      StrLit x v    -> putWord8 4 >> put x >> put v
+      BoolLit x v   -> putWord8 5 >> put x >> put v
+      Lit x         -> putWord8 6 >> put x
+
+
 
 -- Type ------------------------------------------------------------------------
-instance (ForallHkType Binary x) => Binary (HkType x) where
+instance BinaryX x => Binary (Type x) where
   put tipe =
     case tipe of
-      HkTyFun ex t1 t2      -> putWord8 1 >> put ex >> put t1 >> put t2
-      HkTyTuple ex ts       -> putWord8 2 >> put ex >> put ts
-      HkTyApp ex tc ta      -> putWord8 3 >> put ex >> put tc >> put ta
-      HkTyVar ex n          -> putWord8 4 >> put ex >> put n
-      HkTyCon ex n          -> putWord8 5 >> put ex >> put n
-      HkType ex             -> putWord8 6 >> put ex
+      TyFun ex t1 t2      -> putWord8 1 >> put ex >> put t1 >> put t2
+      TyTuple ex ts       -> putWord8 2 >> put ex >> put ts
+      TyApp ex tc ta      -> putWord8 3 >> put ex >> put tc >> put ta
+      TyVar ex n          -> putWord8 4 >> put ex >> put n
+      TyCon ex n          -> putWord8 5 >> put ex >> put n
+      Type ex             -> putWord8 6 >> put ex
         
   get =
     do  n <- getWord8
         case n of
-          1 -> HkTyFun <$> get <*> get <*> get
-          2 -> HkTyTuple <$> get <*> get
-          3 -> HkTyApp <$> get <*> get <*> get
-          4 -> HkTyVar <$> get <*> get
-          5 -> HkTyCon <$> get <*> get
-          6 -> HkType <$> get
+          1 -> TyFun <$> get <*> get <*> get
+          2 -> TyTuple <$> get <*> get
+          3 -> TyApp <$> get <*> get <*> get
+          4 -> TyVar <$> get <*> get
+          5 -> TyCon <$> get <*> get
+          6 -> Type <$> get
           _ -> undefined
 
 
-instance BinaryType x => Binary (QType x) where
+instance BinaryX x => Binary (QType x) where
   get =
     QType <$> get <*> get
 
@@ -1308,14 +1379,14 @@ instance BinaryType x => Binary (QType x) where
 
 -- Type Context --------------------------------------------------------------------
 
-instance BinaryType x => Binary (TyContext x) where
+instance BinaryX x => Binary (TyContext x) where
   get =
     TyContext <$> get
 
   put (TyContext assrts) =
     put assrts
 
-instance BinaryType x => Binary (TyAssert x) where
+instance BinaryX x => Binary (TyAssert x) where
   get =
     TyAssert <$> get <*> get
 
@@ -1324,58 +1395,58 @@ instance BinaryType x => Binary (TyAssert x) where
 
           
 -- Expr -------------------------------------------------------------------------
-instance BinaryX x => Binary (HkExp x) where
+instance BinaryX x => Binary (Exp x) where
   get = do
     n <- getWord8
     case n of
-      1 -> HkELit <$> get <*> get
-      2 -> HkEVar <$> get <*> get
-      3 -> HkECon <$> get <*> get
+      1 -> ELit <$> get <*> get
+      2 -> EVar <$> get <*> get
+      3 -> ECon <$> get <*> get
 
-      4 -> HkEApp <$> get <*> get <*> get
-      5 -> HkEInfixApp <$> get <*> get <*> get <*> get
+      4 -> EApp <$> get <*> get <*> get
+      5 -> EInfixApp <$> get <*> get <*> get <*> get
       
-      6 -> HkELam <$> get <*> get <*> get
+      6 -> ELam <$> get <*> get <*> get
       
-      7 -> HkEDo <$> get <*> get
-      8 -> HkEReturn <$> get <*> get
-      9 -> HkEIf <$> get <*> get <*> get <*> get
-      10 -> HkEWhile <$> get <*> get <*> get
+      7 -> EDo <$> get <*> get
+      8 -> EReturn <$> get <*> get
+      9 -> EIf <$> get <*> get <*> get <*> get
+      10 -> EWhile <$> get <*> get <*> get
 
-      11 -> HkEPrim <$> get <*> get <*> get <*> get
-      12 -> HkEBinary <$> get <*> get <*> get <*> get
-      13 -> HkEUnary <$> get <*> get <*> get
-      14 -> HkEAssign <$> get <*> get <*> get <*> get
+      11 -> EPrim <$> get <*> get <*> get <*> get
+      12 -> EBinary <$> get <*> get <*> get <*> get
+      13 -> EUnary <$> get <*> get <*> get
+      14 -> EAssign <$> get <*> get <*> get <*> get
       
-      15 -> HkETypeHint <$> get <*> get <*> get
-      16 -> HkEBottom <$> get
-      17 -> HkExp <$> get
+      15 -> ETypeHint <$> get <*> get <*> get
+      16 -> EBottom <$> get
+      17 -> Exp <$> get
       _ -> undefined
       
   put e =
     case e of
-      HkELit ex l           -> putWord8 1 >> put ex >> put l
-      HkEVar ex n           -> putWord8 2 >> put ex >> put n
-      HkECon ex n           -> putWord8 3 >> put ex >> put n
+      ELit ex l           -> putWord8 1 >> put ex >> put l
+      EVar ex n           -> putWord8 2 >> put ex >> put n
+      ECon ex n           -> putWord8 3 >> put ex >> put n
 
-      HkEApp ex f as        -> putWord8 4 >> put ex >> put f >> put as
-      HkEInfixApp ex l f r  -> putWord8 5 >> put ex >> put l >> put f >> put r
+      EApp ex f as        -> putWord8 4 >> put ex >> put f >> put as
+      EInfixApp ex l f r  -> putWord8 5 >> put ex >> put l >> put f >> put r
       
-      HkELam ex p e         -> putWord8 6 >> put ex >> put p >> put e
+      ELam ex p e         -> putWord8 6 >> put ex >> put p >> put e
 
-      HkEDo ex e            -> putWord8 7 >> put ex >> put e 
-      HkEReturn ex e        -> putWord8 8 >> put ex >> put e
-      HkEIf ex p a b        -> putWord8 9 >> put ex >> put p >> put a >> put b
-      HkEWhile ex c a       -> putWord8 10 >> put ex >> put c >> put a
+      EDo ex e            -> putWord8 7 >> put ex >> put e 
+      EReturn ex e        -> putWord8 8 >> put ex >> put e
+      EIf ex p a b        -> putWord8 9 >> put ex >> put p >> put a >> put b
+      EWhile ex c a       -> putWord8 10 >> put ex >> put c >> put a
 
-      HkEPrim ex i a b      -> putWord8 11 >> put ex >> put i >> put a >> put b
-      HkEBinary ex l o r    -> putWord8 12 >> put ex >> put l >> put o >> put r
-      HkEUnary ex o a       -> putWord8 13 >> put ex >> put o >> put a
-      HkEAssign ex l o r    -> putWord8 14 >> put ex >> put l >> put o >> put r
+      EPrim ex i a b      -> putWord8 11 >> put ex >> put i >> put a >> put b
+      EBinary ex l o r    -> putWord8 12 >> put ex >> put l >> put o >> put r
+      EUnary ex o a       -> putWord8 13 >> put ex >> put o >> put a
+      EAssign ex l o r    -> putWord8 14 >> put ex >> put l >> put o >> put r
 
-      HkETypeHint ex e t    -> putWord8 15 >> put ex >> put e >> put t
-      HkEBottom ex          -> putWord8 16 >> put ex
-      HkExp ex              -> putWord8 17 >> put ex
+      ETypeHint ex e t    -> putWord8 15 >> put ex >> put e >> put t
+      EBottom ex          -> putWord8 16 >> put ex
+      Exp ex              -> putWord8 17 >> put ex
 
 -- Body ----------------------------------------------------------------------------
 instance BinaryX x => Binary (Body x) where
@@ -1468,7 +1539,7 @@ instance BinaryX x => Binary (Fun x) where
 
 
 -- New Type ----------------------------------------------------------------------
-instance BinaryType x => Binary (NewType x) where
+instance BinaryX x => Binary (NewType x) where
   get =
     NewType <$> get <*> get <*> get
 
@@ -1477,7 +1548,7 @@ instance BinaryType x => Binary (NewType x) where
 
 
 -- Type Alias ---------------------------------------------------------------------
-instance BinaryType x => Binary (TypeAlias x) where
+instance BinaryX x => Binary (TypeAlias x) where
   get =
     TypeAlias <$> get <*> get <*> get
 

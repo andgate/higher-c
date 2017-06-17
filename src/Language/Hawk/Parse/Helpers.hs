@@ -1,19 +1,24 @@
 {-# LANGUAGE ExistentialQuantification
            , RankNTypes
            , OverloadedStrings
+           , TypeFamilies
   #-}
 module Language.Hawk.Parse.Helpers where
 
 import Control.Applicative
 import Control.Arrow
+import Control.Lens hiding (op)
 import Control.Monad
 import Control.Monad.Trans.Class  (lift)
 import Control.Monad.Trans.Except (Except, throwE, runExceptT)
 import Control.Monad.Trans.State.Strict (evalState)
+import Data.Monoid
 import Data.Text.Buildable (Buildable(..))
 import Data.Text (Text)
 import Data.Word (Word8)
 import Language.Hawk.Parse.Lexer.Token
+import Language.Hawk.Report.Region (region)
+import Language.Hawk.Report.SrcLoc
 import Language.Hawk.Syntax
 import Language.Hawk.Syntax.Operator
 import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
@@ -21,7 +26,7 @@ import Text.Earley
 import Text.Earley.Mixfix
 
 import qualified Data.ByteString.UTF8             as UTF8
-import qualified Data.Text                        as Text
+import qualified Data.Text                        as T
 import qualified Language.Hawk.Report.Region      as R
 
 -- -----------------------------------------------------------------------------
@@ -31,7 +36,7 @@ import qualified Language.Hawk.Report.Region      as R
         
 type OpTable r a = [[(Holey (Prod r Token Token Token), Associativity, Holey Token -> [a] -> a)]]
 --type TypeOpTable r = OpTable r Ty.Typed
-type ExprOpTable r = OpTable r SourceExpr
+type ExprOpTable r = OpTable r ExpPs
 
 -- -----------------------------------------------------------------------------
 -- Mixfix
@@ -44,17 +49,17 @@ exprOpTable =
   -- , [(holey "_$_", RightAssoc, typDollar)]
   ]
   where
-    assign = ([Nothing, Just (rsvp "="), Nothing], RightAssoc, \ _ [l,r] -> EAssign l AssignOp r)
+    assign = ([Nothing, Just (rsvp "="), Nothing], RightAssoc, \ _ [l,r] -> EAssign () l AssignOp r)
     
-    lt = ([Nothing, Just (rsvp "<"), Nothing], NonAssoc, \ _ [l,r] -> EBinary l LeOp r)
-    gt = ([Nothing, Just (rsvp ">"), Nothing], NonAssoc, \ _ [l,r] -> EBinary l GrOp r)
-    leq = ([Nothing, Just (op "<="), Nothing], NonAssoc, \ _ [l,r] -> EBinary l LeqOp r)
-    geq = ([Nothing, Just (op ">="), Nothing], NonAssoc, \ _ [l,r] -> EBinary l GeqOp r)
+    lt = ([Nothing, Just (rsvp "<"), Nothing], NonAssoc, \ _ [l,r] -> EBinary () l LeOp r)
+    gt = ([Nothing, Just (rsvp ">"), Nothing], NonAssoc, \ _ [l,r] -> EBinary () l GrOp r)
+    leq = ([Nothing, Just (op "<="), Nothing], NonAssoc, \ _ [l,r] -> EBinary () l LeqOp r)
+    geq = ([Nothing, Just (op ">="), Nothing], NonAssoc, \ _ [l,r] -> EBinary () l GeqOp r)
 
-    binadd = ([Nothing, Just (op "+"), Nothing], LeftAssoc, \ _ [l,r] -> EBinary l AddOp r)
-    binsub = ([Nothing, Just (op "-"), Nothing], LeftAssoc, \ _ [l,r] -> EBinary l SubOp r)
+    binadd = ([Nothing, Just (op "+"), Nothing], LeftAssoc, \ _ [l,r] -> EBinary () l AddOp r)
+    binsub = ([Nothing, Just (op "-"), Nothing], LeftAssoc, \ _ [l,r] -> EBinary () l SubOp r)
 
-    postAccess = ([Nothing, Just (rsvp "."), Nothing], LeftAssoc, \ _ [a, b] -> EBinary a AccessOp b)
+    postAccess = ([Nothing, Just (rsvp "."), Nothing], LeftAssoc, \ _ [a, b] -> EBinary () a AccessOp b)
 
 {- 
 defTypeOps :: TypeOpTable
@@ -132,38 +137,38 @@ prepend =
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Name Tokens
 
-varName :: Prod r e Token Name
+varName :: Prod r e Token NamePs
 varName = fmap unsafeExtract (satisfy p)
   where
     p (Token (TokenVarId _) _ _ _) = True
     p  _                         = False
-    unsafeExtract (Token (TokenVarId n) _ fp r) = Name n (Home fp r) False
+    unsafeExtract (Token (TokenVarId n) _ fp r) = Name n (SrcLoc fp r)
 
-conName :: Prod r e Token Name
+conName :: Prod r e Token NamePs
 conName = modName <|> conName'
 
-conName' :: Prod r e Token Name
+conName' :: Prod r e Token NamePs
 conName' = fmap unsafeExtract (satisfy p)
   where
     p (Token (TokenConId _) _ _ _) = True
     p  _                         = False
-    unsafeExtract (Token (TokenConId n) _ fp r) = Name n (Home fp r) False
+    unsafeExtract (Token (TokenConId n) _ fp r) = Name n (SrcLoc fp r)
 
 
-modName :: Prod r e Token Name
+modName :: Prod r e Token NamePs
 modName = fmap unsafeExtract (satisfy p)
   where
     p (Token (TokenModId _) _ _ _) = True
     p  _                         = False
-    unsafeExtract (Token (TokenModId n) _ fp r) = Name n (Home fp r) False
+    unsafeExtract (Token (TokenModId n) _ fp r) = Name n (SrcLoc fp r)
 
 
-opName :: Prod r e Token Name
+opName :: Prod r e Token NamePs
 opName = fmap unsafeExtract (satisfy p)
   where
     p (Token (TokenOpId _) _ _ _) = True
     p  _                        = False
-    unsafeExtract (Token (TokenOpId n) _ fp r) = Name n (Home fp r) False
+    unsafeExtract (Token (TokenOpId n) _ fp r) = Name n (SrcLoc fp r)
 
 
 -- -----------------------------------------------------------------------------
@@ -235,3 +240,31 @@ ln = match TokenLn
 
 ln' :: Prod r e Token Token
 ln' = match TokenLn'
+
+
+-- -----------------------------------------------------------------------------
+-- Syntax Constructor Helpers
+
+mkUnitTyCon :: Token -> Token -> TypePs
+mkUnitTyCon t1 t2 =
+    TyCon () $
+      Name  "()"
+            (SrcLoc (t1^.tokFilepath) (t1^.region <> t2^.region))
+
+mkFunTyCon :: Token -> Token -> Token -> TypePs
+mkFunTyCon t1 t2 t3 =
+    TyCon () $
+      Name  "->"
+            (SrcLoc (t1^.tokFilepath) (t1^.region <> t3^.region))
+
+mkListTyCon :: Token -> Token -> TypePs
+mkListTyCon t1 t2 =
+    TyCon () $
+      Name  "[]"
+            (SrcLoc (t1^.tokFilepath) (t1^.region <> t2^.region))
+
+mkTupleTyCon :: Token -> [Token] -> Token -> TypePs
+mkTupleTyCon t1 t2s t3 =
+    TyCon () $
+      Name  (T.pack ("Tuple" ++ (show . length) t2s))
+            (SrcLoc (t1^.tokFilepath) (t1^.region <> t3^.region))

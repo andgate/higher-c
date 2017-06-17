@@ -83,6 +83,19 @@ Item
     deriving Show
 
 
+ItemBinPs
+    bin ByteString
+    deriving Show
+
+ItemBinRn
+    bin ByteString
+    deriving Show
+
+ItemBinTc
+    bin ByteString
+    deriving Show
+
+
 ExpandedDependency
     item        ItemId
     path        Text

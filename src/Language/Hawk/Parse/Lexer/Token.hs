@@ -6,7 +6,7 @@ module Language.Hawk.Parse.Lexer.Token where
 import Control.Lens
 import Data.Binary hiding (encode)
 import Data.Text (Text, unpack)
-import Language.Hawk.Report.Region (Region(..))
+import Language.Hawk.Report.Region (Region(..), HasRegion(..))
 import Text.PrettyPrint.ANSI.Leijen (pretty, (<+>))
 
 import qualified Text.PrettyPrint.ANSI.Leijen     as PP
@@ -55,6 +55,9 @@ data TokenClass
 
 
 makeLenses ''Token
+
+instance HasRegion Token where
+    region = tokRegion
 
 -- -----------------------------------------------------------------------------
 -- Pretty Instances

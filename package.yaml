@@ -116,10 +116,10 @@ library:
     - Language.Hawk.Report.Region
     - Language.Hawk.Report.Report
     - Language.Hawk.Report.Result
+    - Language.Hawk.Report.SrcLoc
     - Language.Hawk.Report.Warning
 
     - Language.Hawk.Syntax
-    - Language.Hawk.Syntax.HkLit
     - Language.Hawk.Syntax.Pass
     - Language.Hawk.Syntax.Prim
 

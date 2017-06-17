@@ -9,7 +9,6 @@ import Data.Text (pack)
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Parse.Lexer.Token (Token)
 import Language.Hawk.Syntax
-import Language.Hawk.Syntax.Literal
 import Language.Hawk.Syntax.Operator
 import Language.Hawk.Syntax.Prim
 import Text.Earley
@@ -17,7 +16,7 @@ import Text.Earley.Mixfix
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-toplevel :: Grammar r (Prod r Token Token SrcItem)
+toplevel :: Grammar r (Prod r Token Token ItemPs)
 toplevel = mdo
         
 -- -----------------------------------------------------------------------------
@@ -130,21 +129,21 @@ toplevel = mdo
 -- Literal Rules
 
     lit <- rule $
-            ( IntNum <$> tInteger )
-        <|> ( FloatNum <$> tReal )
-        <|> ( Chr <$> tChar )
-        <|> ( Str <$> tString )
-        <|> ( Boolean <$> tBool )
+            ( IntLit () <$> tInteger )
+        <|> ( DblLit () <$> tReal )
+        <|> ( ChrLit () <$> tChar )
+        <|> ( StrLit () <$> tString )
+        <|> ( BoolLit () <$> tBool )
 
 -- -----------------------------------------------------------------------------
 -- Type Rules
     
     typ <- rule $
-      (TypeFun <$> btyp <*> (rsvp "->" *> typ))
+      (TyFun () <$> btyp <*> (rsvp "->" *> typ))
       <|> btyp
 
     btyp <- rule $
-      TypeApp <$> atyp <*> many atyp
+      TyApp () <$> atyp <*> many atyp
 
     atyp <- rule $
       gtyCon
@@ -161,25 +160,25 @@ toplevel = mdo
       <|> tyTupleCon
 
     tyCon <- rule $
-      TypeCon <$> conName
+      TyCon () <$> conName
 
     tyUnitCon <- rule $ 
-      pure (TypeCon tyUnitConName) <* (rsvp "(" *> rsvp ")")
+      mkUnitTyCon <$> rsvp "(" <*> rsvp ")"
 
     tyFunCon <- rule $ 
-      pure (TypeCon tyFunConName) <* parens (rsvp "->")
+      mkFunTyCon <$> rsvp "(" <*> rsvp "->" <*> rsvp ")"
 
     tyListCon <- rule $
-       pure (TypeCon tyListConName) <* (rsvp "[" *> rsvp "]")
+       mkListTyCon <$> rsvp "[" <*> rsvp "]"
 
     tyTupleCon <- rule $
-       TypeCon . tyTupleConName . length <$> parens (some $ rsvp ",")
+       mkTupleTyCon <$> rsvp "(" <*> some (rsvp ",") <*> rsvp ")"
 
     tyVar <- rule $
-      TypeVar <$> varName
+      TyVar () <$> varName
       
     tyTuple <- rule $ 
-      TypeTuple <$> parens (sep (rsvp ",") typ)
+      TyTuple () <$> parens (sep (rsvp ",") typ)
 
     tyList <- rule $
       sqrBrackets typ
@@ -237,28 +236,28 @@ toplevel = mdo
 
     -- Expression forms
     expTypeHint <- rule $
-      ETypeHint <$> exp <*> (rsvp "?" *> qtyp0)
+      ETypeHint () <$> exp <*> (rsvp "?" *> qtyp0)
 
     expDo <- rule $ 
       rsvp "do" *> expDo'
 
     expDo' <- rule $
-      EDo <$> (rsvp ":" *> stmtblk)
+      EDo () <$> (rsvp ":" *> stmtblk)
 
     expPrim <- rule $
-      EPrim <$> primInstr <*> aexp <*> aexp
+      EPrim () <$> primInstr <*> aexp <*> aexp
 
     expApp <- rule $
-      EApp <$> aexp <*> some aexp
+      EApp () <$> aexp <*> some aexp
 
     expVar <- rule $
-      EVar <$> varName
+      EVar () <$> varName
 
     expLit <- rule $
-      ELit <$> lit
+      ELit () <$> lit
     
     expBottom <- rule $
-        rsvp "_" *> pure EBottom
+        rsvp "_" *> pure (EBottom ())
 
 
 -- -----------------------------------------------------------------------------
@@ -287,13 +286,13 @@ toplevel = mdo
       <|> (StmtDecl <$> nestedItem)
 
     stmtReturn <- rule $
-      StmtExpr . EReturn <$> (rsvp "return" *> exp)
+      StmtExpr . EReturn () <$> (rsvp "return" *> exp)
     
     stmtIf <- rule $
-      EIf <$> (rsvp "if" *> dexp) <*> expDo' <*> stmtIfTail
+      EIf () <$> (rsvp "if" *> dexp) <*> expDo' <*> stmtIfTail
 
     stmtElif <- rule $
-      EIf <$> (rsvp "elif" *> dexp) <*> expDo' <*> stmtIfTail
+      EIf () <$> (rsvp "elif" *> dexp) <*> expDo' <*> stmtIfTail
 
     stmtElse <- rule $
       rsvp "else" *> expDo'

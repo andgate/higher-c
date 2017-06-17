@@ -11,7 +11,7 @@
 -- that filters the token stream and outputs layout tokens
 -- when necessary.
 --
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE  RankNTypes #-}
 module Language.Hawk.Parse where
 
 import Conduit
@@ -46,4 +46,4 @@ itemParser = awaitForever go
             []  -> throw $ Err.Parse (head unconsumed)
             [p] -> return $ const p <$> d
             -- This will only happen is the grammar is wrong
-            ps  -> error $ "BUG FOUND: " ++ show (length ps) ++ " possible parses found.\n\n" ++ show (map pretty ps)
+            ps  -> error $ "BUG FOUND: " ++ show (length ps) ++ " possible parses found.\n\n" ++ (show.pretty) ps

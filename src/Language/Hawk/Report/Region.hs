@@ -27,7 +27,7 @@ data Position
 
 
 makeLenses ''Position
-makeLenses ''Region
+makeClassy ''Region
 
 -- -----------------------------------------------------------------------------
 -- Helpers
@@ -50,21 +50,6 @@ class HasPosition a where
 
 instance HasPosition Position where
     toPosition = id
-
-
--- -----------------------------------------------------------------------------
--- Has Region Class
-
-class HasRegion a where
-    toRegion :: a -> Region
-    
-
-instance HasRegion Region where
-    toRegion = id
-  
-instance HasPosition a => HasRegion (a, a) where
-    toRegion =
-      uncurry mkRegion
 
 -- -----------------------------------------------------------------------------
 -- Pretty Instances   

@@ -18,3 +18,4 @@ deriving instance Ord Pass
 type HkcPs = HkcPass 'Parsed
 type HkcRn = HkcPass 'Renamed
 type HkcTc = HkcPass 'Typechecked
+

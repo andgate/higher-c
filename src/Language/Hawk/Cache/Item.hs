@@ -2,6 +2,7 @@
            , OverloadedStrings
            , MultiParamTypeClasses
            , FlexibleInstances
+           , FlexibleContexts
            , InstanceSigs
   #-}
 module Language.Hawk.Cache.Item where
@@ -24,10 +25,10 @@ class Cacheable a where
     cache :: MonadIO m => a -> BackendT m (Result ())
 
 
-instance (Binary n) => Cacheable ( Db.PackageId
+instance (Syn.BinaryX x) => Cacheable ( Db.PackageId
                                   , Db.ModuleId
                                   , Db.ModuleFileId
-                                  , Syn.Item n
+                                  , Syn.Item x
                                   ) where
     cache (pid, mid, mfid, i) = do
       iid <- insert $ Db.Item pid mid mfid Db.Fresh (BS.toStrict $ encode i)
