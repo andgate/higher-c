@@ -1,18 +1,20 @@
 {-# LANGUAGE RankNTypes
            , OverloadedStrings
+           , FlexibleContexts
+           , AllowAmbiguousTypes
   #-}
-module Language.Hawk.Compile ( compile
-                             , CompilerState (..)
-                             , Package (..)
-                             , defState
-                             )
-                             where
+module Language.Hawk.Compile where
 
 import Conduit
 import Control.Lens
 import Control.Monad (void)
 import Control.Monad.Primitive (PrimMonad)
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Chronicle
+import Control.Monad.Catch
+import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Log
+import Control.Monad.Reader
+import qualified Control.Monad.State as St
 import Control.Monad.Trans.Resource (MonadResource)
 import Data.Foldable (forM_)
 import Data.Maybe (catMaybes)
@@ -22,18 +24,19 @@ import Data.Vector (Vector)
 import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
+import Language.Hawk.Compile.Config
+import Language.Hawk.Compile.Error
+import Language.Hawk.Compile.Message
 import Language.Hawk.Compile.Monad
 import Language.Hawk.Compile.Source
+import Language.Hawk.Compile.State
 import Language.Hawk.Compile.Options
+import Language.Hawk.Compile.Package
 import Language.Hawk.Parse.Document
 import Language.Hawk.Parse.Lexer (lexer, tokenize)
 import Language.Hawk.Parse.Lexer.Token (Token)
-import Language.Hawk.Report.Result
-import Language.Hawk.Report.Report (putReports, toReports)
-import Text.PrettyPrint.ANSI.Leijen (pretty, putDoc)
 
 
-import qualified Control.Monad.Trans.State.Strict as St
 import qualified Data.Text                        as T
 import qualified Data.Vector                      as V
 import qualified Language.Hawk.Cache.Item         as Db
@@ -48,28 +51,64 @@ import qualified Language.Hawk.Report.Info        as Info
 import qualified Language.Hawk.Report.Warning     as Warn
 
 
+hkc :: Hkc ()
+hkc = compile
 
 compile
-  :: CompilerState
-  -> IO ()
-compile s =
-  runCompiler s $
-    do
-      loadPackages
-      --typecheck
-      --optimize
-      --codegen
-      return ()
+  :: ( MonadReader c m
+     , HasHkcConfig c, HasPackage c
+     , St.MonadState s m
+     , HasHkcState s, HasParseState s, HasNameCheckState s, HasTypeCheckState s
+     , MonadLog (WithSeverity msg) m, AsLoaderMessage msg
+     , MonadChronicle [e] m
+     , AsHkcError e, AsLoaderError e, AsParseError e, AsNameCheckError e, AsTypeCheckError e
+     , MonadIO m, MonadBase IO m, MonadBaseControl IO m, MonadCatch m)
+  => m ()
+compile = do
+  loadModules
+  --parseItems
+  --namecheck
+  --typecheck
+  --optimize
+  --codegen
+  return ()
 
 -- | Parse the modules in the given packages and store them accordingly
-loadPackages :: Compiler ()
-loadPackages = do
-    s <- St.get
-    let o = cOpts s
-        pkgs = cPkgs s
-    -- Insert all the modules for the given package
-    liftIO $ mapM_ (loadFiles o) pkgs
+loadModules
+  :: ( St.MonadState s m
+     , HasHkcState s
+     , MonadReader c m , HasHkcConfig c, HasPackage c
+     , MonadLog (WithSeverity msg) m, AsLoaderMessage msg
+     , MonadChronicle [e] m, AsLoaderError e
+     , MonadIO m, MonadBase IO m, MonadBaseControl IO m, MonadCatch m)
+  => m ()
+loadModules = do
+    runSqlite "hk.db" $ do
+      runMigration Db.migrateAll
+      Db.insertPackage
 
+    condemn $
+      runConduitRes $
+        scanHawkSource
+          -- .| conduitVector 100
+          -- .| mapM_C (storeModules)
+          .| sinkNull
+
+
+storeModules
+    ::  ( St.MonadState s m
+        , HasHkcState s
+        , MonadReader c m , HasHkcConfig c, HasPackage c
+        , MonadLog (WithSeverity msg) m, AsLoaderMessage msg
+        , MonadChronicle [e] m, AsLoaderError e
+        , MonadIO m, MonadBase IO m, MonadBaseControl IO m, MonadResource m, MonadCatch m)
+    => Vector HawkSource -> m ()
+storeModules srcs =
+  runSqlite "hk.db" $ do
+    runMigration Db.migrateAll
+    mapM_ Db.insertSource srcs
+
+{-
 loadFiles :: Opts -> Package -> IO ()
 loadFiles o pkg@(Package n d) = do
   pid <- runSqlite "hk.db" $ do
@@ -117,13 +156,9 @@ loadFiles o pkg@(Package n d) = do
         .| reportResultC o
         .| sinkNull
 
-cacheMods :: Db.PackageId -> [HawkSource] -> IO ()
-cacheMods pid fps =
-  runSqlite "hk.db" $ do
-    runMigration Db.migrateAll
-    mapM_ (Db.insertSource pid) fps
+-}
 
-
+{-
 handleModuleFileEntity :: Db.PackageId -> Entity Db.ModuleFile -> InfoDoc
 handleModuleFileEntity pid (Entity mfid mf) =
   let mid = Db.moduleFileAssoc mf
@@ -145,6 +180,7 @@ reportResultC o = awaitForever go
       liftIO $ putReports (o, r)
       forM_ (getAnswer r) yield
 
+-}
 
 -- | Loads values n from the stream into memory.
 --   Useful for forcing disk reads.

@@ -55,12 +55,15 @@ library:
     - bytestring
     - conduit-combinators
     - containers
+    - data-default-class
     - directory
     - Earley
     - edit-distance
+    - exceptions
     - filepath
     - ghc-prim
     - lens
+    - logging-effect
     - mmorph
     - monad-control
     - monad-logger
@@ -75,17 +78,25 @@ library:
     - streaming-commons
     - text
     - text-format
+    - these
     - time
     - transformers
+    - transformers-base
     - utf8-string
     - vector
 
   exposed-modules:      
     - Language.Hawk.Compile
+    - Language.Hawk.Compile.Config
+    - Language.Hawk.Compile.Error
     - Language.Hawk.Compile.Flags
+    - Language.Hawk.Compile.Message
     - Language.Hawk.Compile.Monad
     - Language.Hawk.Compile.Options
+    - Language.Hawk.Compile.Package
+    - Language.Hawk.Compile.PhaseStatus
     - Language.Hawk.Compile.Source
+    - Language.Hawk.Compile.State
 
     - Language.Hawk.Data.Bag
 
@@ -99,6 +110,7 @@ library:
 
     - Language.Hawk.DepExpansion
 
+    - Language.Hawk.NameCheck.Message
     - Language.Hawk.Namespace
     
     - Language.Hawk.Parse
@@ -109,6 +121,7 @@ library:
     - Language.Hawk.Parse.Lexer.Catalog
     - Language.Hawk.Parse.Lexer.Layout
     - Language.Hawk.Parse.Lexer.Token
+    - Language.Hawk.Parse.Message
 
     - Language.Hawk.Report.Error
     - Language.Hawk.Report.Helpers

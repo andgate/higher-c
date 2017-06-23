@@ -1,24 +1,27 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes, FlexibleContexts #-}
 module Language.Hawk.Compile.Source where
 
 import Conduit
+import Control.Lens
+import Control.Monad.Chronicle
+import Control.Monad.Log
+import Control.Monad.Reader
 import Control.Monad.Trans.Resource (MonadResource)
 import Data.Char (isUpper, isAlphaNum)
 import Data.List (intercalate, mapAccumL)
 import Data.Time.Clock (UTCTime)
 import Data.Streaming.Filesystem (getFileType, FileType(..))
-import Language.Hawk.Report.Result
+import Language.Hawk.Compile.Error
+import Language.Hawk.Compile.Message
+import Language.Hawk.Compile.Package
 import System.Directory (getModificationTime)
 import System.FilePath ( takeExtension, takeBaseName, splitDirectories, makeRelative )
 
 import qualified Language.Hawk.Report.Error       as Err
-import qualified Language.Hawk.Report.Info        as Info
-import qualified Language.Hawk.Report.Warning     as Warn
 
 data HawkSource =
     HkSrc
-    { srcRoot :: FilePath
-    , srcPath :: FilePath
+    { srcPath :: FilePath
     , srcFileType :: FileType
     , srcTimestamp :: UTCTime
     } deriving Show
@@ -31,15 +34,17 @@ data HawkSource =
       >>> modulePath $ HkSrc "src/" "src/Foo/Bar/Baz.hk" FTFile clk
       "Foo.Bar.Baz"
 -}
-modulePath :: HawkSource -> String
-modulePath =
-  intercalate "." . splitModulePath
+modulePath :: (MonadReader c m, HasPackage c)
+           => HawkSource -> m String
+modulePath src =
+  intercalate "." <$> splitModulePath src
 
-splitModulePath :: HawkSource -> [String]
-splitModulePath src = map takeBaseName . splitDirectories $ makeRelative root path
-  where
-    root = srcRoot src
-    path = srcPath src
+
+splitModulePath :: (MonadReader c m, HasPackage c)
+                => HawkSource -> m [String]
+splitModulePath src = do
+  root <- view (package.pkgSrcDir)
+  return $ map takeBaseName . splitDirectories $ makeRelative root (srcPath src)
 
 
 qualifyModulePath :: [String] -> [(String, String)]
@@ -70,54 +75,67 @@ isAcceptedModuleName fp =
 
 
 
-scanHawkSource  :: MonadResource m
-                  => FilePath -- ^ Root directory
-                  -> Producer m (Result (Maybe HawkSource))
-scanHawkSource root = start root
+scanHawkSource 
+    :: ( MonadIO m, MonadBase IO m, MonadBaseControl IO m, MonadResource m
+       , MonadReader c m, HasPackage c
+       , MonadLog (WithSeverity msg) m, AsLoaderMessage msg
+       , MonadChronicle [e] m, AsLoaderError e
+       )
+    => Producer m HawkSource
+scanHawkSource = do
+    root <- view $ package.pkgSrcDir
+    start root
+    
   where
-    start :: MonadResource m => FilePath -> Producer m (Result (Maybe HawkSource))
+    start ::  
+      ( MonadIO m, MonadBase IO m, MonadBaseControl IO m, MonadResource m
+      , MonadReader c m, HasPackage c
+      , MonadLog (WithSeverity msg) m, AsLoaderMessage msg
+      , MonadChronicle [e] m, AsLoaderError e
+      ) => FilePath -> Producer m HawkSource
     start dir = sourceDirectory dir .| awaitForever go
 
-    go :: MonadResource m => FilePath -> Producer m (Result (Maybe HawkSource))
+    go :: ( MonadIO m, MonadBase IO m, MonadBaseControl IO m, MonadResource m
+          , MonadReader c m, HasPackage c
+          , MonadLog (WithSeverity msg) m, AsLoaderMessage msg
+          , MonadChronicle [e] m, AsLoaderError e
+          )
+        => FilePath -> Producer m HawkSource
     go fp = do
         ft <- liftIO $ getFileType fp
         ts <- liftIO $ getModificationTime fp
-        let src = HkSrc root fp ft ts
+        let src = HkSrc fp ft ts
         case ft of
-            FTFile          ->  yield $
-                                  if not $ isHkFile fp then do
-                                    warn $ Warn.FileIgnored fp
-                                    return Nothing
+            FTFile          ->    if not $ isHkFile fp then
+                                    lift $ logMessage $ WithSeverity Warning $ review _WarnFileIgnored fp
 
-                                  else if not $ isAcceptedModuleName fp then do
-                                    throw $ Err.BadModuleName fp
-                                    return Nothing
+                                  else if not $ isAcceptedModuleName fp then
+                                    lift $ do
+                                      logMessage $ WithSeverity Error	$ review (_LoaderErrMsg . _BadModuleName) fp
+                                      disclose $ [review _BadModuleName fp]
 
                                   else do
-                                    info $ Info.FileFound fp
-                                    return (Just src)
+                                    lift $ logMessage $ WithSeverity Informational	$ review _FileFound fp
+                                    yield src
                                     
 
-            FTFileSym       ->  yield $ do
-                                  warn $ Warn.SymLinkIgnored fp
-                                  return Nothing
+            FTFileSym       ->  lift $ logMessage $ WithSeverity Warning $ review _WarnSymLinkIgnored fp
+
+            FTDirectory     ->  if not $ isAcceptedModuleName fp
+                                  then lift $ do
+                                    logMessage $ WithSeverity Error	$ review (_LoaderErrMsg . _BadModuleName) fp
+                                    disclose $ [review _BadModuleName fp]
+
+                                  else do
+                                    lift $
+                                      logMessage $ WithSeverity Informational	$ review _DirectoryFound fp
+                                    yield src
+                                    start fp
 
 
-            FTDirectory     ->  if not $ isAcceptedModuleName fp then
-                                    yield $ do
-                                      throw $ Err.BadModuleName fp
-                                      return Nothing
-
-                                else do
-                                  yield $ do
-                                    info $ Info.DirectoryFound fp
-                                    return (Just src)
-                                  start fp
-
-
-            FTDirectorySym  ->  yield $ do
-                                  warn $ Warn.SymLinkIgnored fp
-                                  return Nothing
+            FTDirectorySym  -> 
+              lift $
+                logMessage $ WithSeverity Warning	$ review _WarnSymLinkIgnored fp
 
             FTOther         ->  return ()
           

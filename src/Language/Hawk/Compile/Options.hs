@@ -1,5 +1,7 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Language.Hawk.Compile.Options where
 
+import Data.Default.Class
 import Language.Hawk.Compile.Flags
 
 data Command
@@ -16,16 +18,16 @@ data Opts = Opts
     }
 
 
-defOpts :: Opts
-defOpts =
-  Opts
-  { optCommand = Build ""
+instance Default Opts where
+  def = 
+    Opts
+    { optCommand = Build ""
 
-  -- Warning Flags
-  , optInfoVerbosity = 2
-  , optWarnVerbosity = 1
-  , optFlags = []
-  }
+    -- Warning Flags
+    , optInfoVerbosity = 2
+    , optWarnVerbosity = 1
+    , optFlags = []
+    }
 
 
 class HasVerbosity a where

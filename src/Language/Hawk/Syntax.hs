@@ -10,11 +10,13 @@
            , FlexibleContexts
            , OverloadedStrings
            , UndecidableInstances
+           , TemplateHaskell
   #-}
 module Language.Hawk.Syntax where
 
 import Data.Binary
 import Data.Text (Text)
+import Control.Lens
 import GHC.Types (Constraint)
 import Language.Hawk.Report.SrcLoc
 import Language.Hawk.Syntax.Operator
@@ -534,7 +536,6 @@ data Fun x
 
 deriving instance ShowX x => Show (Fun x)
 deriving instance EqX x => Eq (Fun x)
-
 
 -- -----------------------------------------------------------------------------
 -- | New Type
@@ -1681,3 +1682,7 @@ tyListConName = builtin "_#_List_#_"
 tyTupleConName :: HasBuiltin n => Int -> n
 tyTupleConName n = builtin $ T.pack ("_#_" ++ show n ++ "_Tuple_#_")
 -}
+
+
+makeLenses ''Name
+makeLenses ''Fun
