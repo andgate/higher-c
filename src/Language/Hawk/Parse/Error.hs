@@ -4,9 +4,11 @@ module Language.Hawk.Parse.Error where
 import Control.Lens
 
 import Language.Hawk.Parse.Lexer.Token
+import Language.Hawk.Syntax (ItemPs)
 
-data ParseError
+data ParseErr
   = UnexcpectedToken Token
-  | UnableToParseAT Token
+  | ParseFail Token
+  | AmbiguousGrammar [[ItemPs]]
 
-makeClassyPrisms ''ParseError
+makeClassyPrisms ''ParseErr

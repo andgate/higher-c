@@ -1,7 +1,7 @@
 {-# LANGUAGE  TemplateHaskell #-}
 module Language.Hawk.Compile.Error
     ( module Language.Hawk.Compile.Error
-    , module Language.Hawk.Loader.Error
+    , module Language.Hawk.Load.Error
     , module Language.Hawk.Parse.Error
     , module Language.Hawk.NameCheck.Error
     , module Language.Hawk.TypeCheck.Error
@@ -9,27 +9,27 @@ module Language.Hawk.Compile.Error
 
 
 import Control.Lens
-import Language.Hawk.Loader.Error
+import Language.Hawk.Load.Error
 import Language.Hawk.Parse.Error
 import Language.Hawk.NameCheck.Error
 import Language.Hawk.TypeCheck.Error
 
-data HkcError
-  = HkcLoaderError LoaderError
-  | HkcParseError ParseError
+data HkcErr
+  = HkcLoadErr LoadErr
+  | HkcParseErr ParseErr
   | HkcNameCheckError NameCheckError
   | HkcTypeCheckError TypeCheckError
 
-makeClassyPrisms ''HkcError
+makeClassyPrisms ''HkcErr
 
-instance AsLoaderError HkcError where
-  _LoaderError = _HkcLoaderError
+instance AsLoadErr HkcErr where
+  _LoadErr = _HkcLoadErr
 
-instance AsParseError HkcError where
-  _ParseError = _HkcParseError
+instance AsParseErr HkcErr where
+  _ParseErr = _HkcParseErr
 
-instance AsNameCheckError HkcError where
+instance AsNameCheckError HkcErr where
   _NameCheckError = _HkcNameCheckError
 
-instance AsTypeCheckError HkcError where
+instance AsTypeCheckError HkcErr where
   _TypeCheckError = _HkcTypeCheckError

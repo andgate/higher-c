@@ -9,32 +9,25 @@ import Data.Default.Class
 import Data.Text (Text)
 import System.FilePath (FilePath)
 
-import Language.Hawk.Compile.Package
 import Language.Hawk.Compile.Options
 
 
 data HkcConfig
   = HkcConfig
-    { _hkcArch :: Text
-    , _hkcOS   :: Text
-    , _hkcRoot  :: FilePath
-    , _hkcPkg   :: Package
-    , _hkcOpts :: Opts
+    { _hkcSrcFiles  :: [FilePath]
+    , _hkcOutFile   :: FilePath
+    , _hkcProd      :: HkcProduct
+    , _hkcExAst     :: [FilePath] -- List of serialized ast files (hkast)
+    , _hkcExLib     :: [FilePath] -- List of library files (.dll or .so)
+    , _hkcOpts      :: Opts
     }
 
 
-instance Default HkcConfig where
-  def = 
-    HkcConfig
-      { _hkcArch  = "x86_64"
-      , _hkcOS    = "Win10"
-      , _hkcRoot  = ""
-      , _hkcPkg   = def
-      , _hkcOpts  = def
-      }
+data HkcProduct
+    = Bin
+    | Lib
+    | Ast
+    deriving(Show, Eq)
 
 makeClassy ''HkcConfig
-
-
-instance HasPackage HkcConfig where
-  package = hkcPkg
+makeClassyPrisms ''HkcProduct

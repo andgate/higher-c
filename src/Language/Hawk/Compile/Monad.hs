@@ -10,8 +10,6 @@
 module Language.Hawk.Compile.Monad where
 
 
-import Control.Applicative
-import Control.Lens
 import Control.Monad.Except
 import Control.Monad.Chronicle
 import Control.Monad.Catch
@@ -21,40 +19,35 @@ import Control.Monad.State.Lazy
 import Control.Monad.Base
 import Control.Monad.Trans.Resource
 import Control.Monad.Trans.Control
-import Data.Binary
-import Data.Data
-import Data.Monoid
 import Data.Semigroup
-import Data.Text (Text)
 import Data.These
-import Data.Typeable
-import Database.Persist.TH
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.Error
 import Language.Hawk.Compile.Message
-import Language.Hawk.Compile.Package
 import Language.Hawk.Compile.State
 
 
 
 -------------------------------------------------------------------------------
 -- Compiler Monad
-
--- | Main compiler driver a monad.
-newtype Hkc a = Hkc { unHkc :: StateT HkcState (ReaderT HkcConfig (LoggingT (WithSeverity HkcMessage) (ChronicleT [HkcError] IO))) a }
+newtype Hkc a = Hkc { unHkc :: StateT HkcState (ReaderT HkcConfig (LoggingT (WithSeverity HkcMessage) (ChronicleT [HkcErr] IO))) a }
     deriving
      ( Functor, Applicative, Monad 
      , MonadState   HkcState
      , MonadReader  HkcConfig
      , MonadLog (WithSeverity HkcMessage)
-     , MonadChronicle [HkcError]
+     , MonadChronicle [HkcErr]
      , MonadBase IO
      , MonadIO
      , MonadThrow
      , MonadCatch
      )
 
--- | Run the compiler pipeline.
+
+
+
+-------------------------------------------------------------------------------
+-- Helper instances
 instance MonadChronicle c m => MonadChronicle c (LoggingT msg m) where
     dictate = lift . dictate
     confess = lift . confess
@@ -92,22 +85,12 @@ instance (Semigroup c, MonadBase b m) => MonadBase b (ChronicleT c m) where
     {-# INLINABLE liftBase #-}
 
 instance MonadBaseControl IO Hkc where
-    type StM Hkc a = These [HkcError] (a, HkcState)
+    type StM Hkc a = These [HkcErr] (a, HkcState)
     liftBaseWith f = Hkc $ liftBaseWith $ \q -> f (q . unHkc)
     restoreM = Hkc . restoreM
     {-# INLINABLE liftBaseWith #-}
     {-# INLINABLE restoreM #-}
 
-{-
-instance (MonadChronicle c m) => MonadChronicle c (LoggingT msg m) where
-    dictate = lift . dictate
-    confess = lift . confess
-    memento (LoggingT m) = LoggingT $ lift $ memento m
-    absolve x (LoggingT m) = LoggingT $ lift $ absolve x m
-    condemn (LoggingT m) = LoggingT $ condemn . m
-    retcon f (LoggingT m) = LoggingT $ retcon f . m
-    chronicle = lift . chronicle
--}
 
 {--
 runHkc

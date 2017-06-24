@@ -5,18 +5,13 @@
   #-}
 module Language.Hawk.Parse.Lexer.Layout where
 
-import Conduit
 import Control.Lens
-import Control.Monad (Monad, when, unless, void, (>=>))
-import Control.Monad.State.Strict (StateT)
-import Data.Maybe (isJust)
+import Control.Monad (when, unless, void)
+import Control.Monad.State.Strict (State, evalState)
 import Language.Hawk.Parse.Lexer.Token
-import Language.Hawk.Report.Region (Region, Position)
-import Safe (headDef)
+import Language.Hawk.Report.Region (Region)
 
-import qualified Control.Monad.State.Strict   as State
 import qualified Language.Hawk.Report.Region  as R
-import qualified Data.Text                    as Text
 
 
 -- -----------------------------------------------------------------------------
@@ -47,104 +42,108 @@ data LayoutState =
     , _layRegion :: Region
     , _layStack :: [Cell]
     , _blkTriggered :: Bool
+    , _layIn :: [Token]
+    , _layOut :: [Token]
     } deriving (Eq, Ord, Show)
 
 makeLenses ''LayoutState
 
-type Layout a = forall m. Monad m => StateT LayoutState m a
+type Layout = State LayoutState
 
-type LayoutConduit = forall m. Monad m => Conduit Token (StateT LayoutState m) Token
-
-defLayout :: LayoutState
-defLayout = LayoutState  "" mempty [defCell] False
+mkLayout :: [Token] -> LayoutState
+mkLayout input = LayoutState  "" mempty [defCell] False input []
 
 
 -- -----------------------------------------------------------------------------
--- Layout Driver  
-layout :: Monad m => Conduit Token m Token
-layout =
-    evalStateC defLayout $
-      awaitForever $ \t -> do
-        lift $ updateLocation t
-        handleTok t
+-- Layout Driver
 
-handleTok :: Token -> LayoutConduit
+
+-- This would be more performant with a foldM in the State monad
+-- Since this was originally implemented with conduit, using recursion in a state monad that
+-- maintains input/out lists was easier.
+layout :: [Token] -> [Token]
+layout =
+  evalState layoutDriver . mkLayout
+
+layoutDriver :: Layout [Token]
+layoutDriver = do
+  ts <- use layIn
+  case ts of
+    (t:ts') -> do layIn .= ts'
+                  updateLocation t
+                  handleTok t
+                  layoutDriver
+    [] -> reverse <$> use layOut
+
+handleTok :: Token -> Layout ()
 handleTok t@(Token tc _ _ _)
   | tc == TokenEof = closeStack
 
   | otherwise = do
       -- Blocks triggered on last token need to be handled
-      emitBlk <- lift $ use blkTriggered
+      emitBlk <- use blkTriggered
       when emitBlk $ do
-        lift $ blkTriggered .= False
+        blkTriggered .= False
         open Block
 
       closeInvalid
-      yield t
+      yieldTok t
 
       -- Colons trigger block emission for the next token
       when (tc == TokenRsvp ":")
-           (lift $ blkTriggered .= True)
+           (blkTriggered .= True)
 
 
 -- -----------------------------------------------------------------------------
 -- Driver Helpers
   
 
-closeStack :: LayoutConduit
+yieldTok :: Token -> Layout ()
+yieldTok t =
+  layOut %= (t:)
+
+closeStack :: Layout ()
 closeStack = do
-  cl <- lift peekCell
+  cl <- peekCell
   unless (cl == defCell)
          (close >> closeStack)
 
 
-closeInvalid :: LayoutConduit
+closeInvalid :: Layout ()
 closeInvalid = do
-  go =<< lift getCurrIndent
+  go =<< getCurrIndent
   fillBlock
   where
     go i = do
-      cl <- lift peekCell
+      cl <- peekCell
       unless (isValid i cl)
              (close >> go i)
 
 
-fillBlock :: LayoutConduit
+fillBlock :: Layout ()
 fillBlock = do
-  (Cell _ ct) <- lift peekCell
+  (Cell _ ct) <- peekCell
   when (ct == Block)
        (open LineFold)
   
       
-open :: CellType -> LayoutConduit
+open :: CellType -> Layout ()
 open ct = do
-  fp <- lift $ use layFilePath
-  r <- lift $ use layRegion
-  i <- lift getCurrIndent
+  fp <- use layFilePath
+  r <- use layRegion
+  i <- getCurrIndent
 
   let cl = Cell i ct
-  pushLayout cl
-  yield $ openTok fp r cl
+  pushCell cl
+  yieldTok $ openTok fp r cl
 
-close :: LayoutConduit
+close :: Layout ()
 close = do
-  l <- lift peekCell
-  fp <- lift $ use layFilePath
-  r <- lift $ use layRegion
-  yield $ closeTok fp r l
-  lift $ void popCell
-  
-  
-pushLayout :: Cell -> LayoutConduit
-pushLayout = lift . pushCell
-
-{-
-popLayout :: Pipe Token Token Layout Cell
-popLayout = lift . popLay
-
-peekLayout :: Pipe Token Token Layout Cell
-peekLayout = lift . peekLay
--}
+  l <- peekCell
+  fp <- use layFilePath
+  r <- use layRegion
+  yieldTok $ closeTok fp r l
+  void popCell
 
 
 -- -----------------------------------------------------------------------------

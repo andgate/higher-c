@@ -1,24 +1,18 @@
 {
 {-# LANGUAGE   OverloadedStrings
              , TupleSections
-             , RankNTypes
-             , NoMonomorphismRestriction
   #-}
 
 module Language.Hawk.Parse.Lexer where
 
-import Conduit
 import Control.Lens
 import Control.Monad
-import Control.Monad.State.Strict (StateT, evalStateT)
+import Control.Monad.State.Strict (State, evalState)
 import Data.Bits (shiftR, (.&.))
 import Data.Char (digitToInt, ord)
 import Data.Text (Text)
 import Data.Word (Word8)
-import Language.Hawk.Parse.Document
 import Language.Hawk.Parse.Lexer.State
-import Language.Hawk.Parse.Lexer.Layout (layout)
-import Language.Hawk.Parse.Lexer.Catalog (catalog)
 import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Report.Region
 import System.FilePath (FilePath)
@@ -70,7 +64,7 @@ hawk :-
 <0> {
   -- Skip whitespace everywhere
   $whiteNoNewline                 { skipBreak }
-  \n                              { \ _ _ -> lift nextLineBreak}
+  \n                              { \ _ _ -> nextLineBreak}
   "//".*                          { skipBreak }
   
   \"                              { beginString }
@@ -155,17 +149,14 @@ hawk :-
 <commentSC> {
   "/*"                            { beginComment }
   "*/"                            { endComment }
-  \n                              { \ _ _ -> lift nextLineContinue}
+  \n                              { \ _ _ -> nextLineContinue}
   [.]                             { skipContinue }
 }
 
 {
 
-type Lex a = forall m. Monad m => StateT LexState m a
-
-type TokenProducer = forall m. Monad m => Producer (StateT LexState m) Token
-
-type LexAction = forall m. Monad m => Text -> Int -> Producer (StateT LexState m) Token
+type Lex a = State LexState a
+type LexAction = Text -> Int -> Lex ()
 
 tag :: Text -> TokenClass -> Lex Token
 tag text tc = do
@@ -208,14 +199,18 @@ nextLineContinue =
 
 yieldTokAt :: TokenClass -> LexAction
 yieldTokAt c text len = do
-  lift $ moveRegion len
+  moveRegion len
   yieldTaggedTok c text
 
 
-yieldTaggedTok :: TokenClass -> Text -> TokenProducer
+yieldTaggedTok :: TokenClass -> Text -> Lex ()
 yieldTaggedTok c text = do
-  t <- lift $ tag text c
-  yield t
+  t <- tag text c
+  yieldTok t
+
+yieldTok :: Token -> Lex ()
+yieldTok t =
+  lexTokAcc %= (t:)
 
 
 rsvp :: LexAction
@@ -225,39 +220,39 @@ rsvp text =
 
 skipBreak :: LexAction
 skipBreak text len = do
-  lift $ moveRegion len
+  moveRegion len
 
 skipContinue :: LexAction
 skipContinue text len = do
-  lift $ growRegion len
+  growRegion len
 
 beginString :: LexAction
 beginString text len =
-  lift $ do
+  do
     moveRegion len
     lexStartcode .= stringSC
   
 endString :: LexAction
 endString text len = do
-  buf <- lift $ do
+  buf <- do
     growRegion len
     use lexStringBuf
 
   yieldTaggedTok (TokenString $ reverse buf) text
   
-  lift $ do
+  do
     lexStringBuf .= ""
     lexStartcode .= 0
   
 appendString :: LexAction
 appendString text len =
-  lift $ do
+  do
     growRegion len
     let c = T.head text
     lexStringBuf %= (c:)
 
 escapeString :: LexAction
-escapeString text len = lift $ do
+escapeString text len = do
   let c = T.head $ T.tail text
       unesc =
         case c of
@@ -284,7 +279,7 @@ handleChar text len = do
 
 beginComment :: LexAction
 beginComment text len =
-  lift $ do
+  do
     moveRegion len
     lexStartcode .= commentSC
     lexCommentDepth += 1
@@ -292,7 +287,7 @@ beginComment text len =
          
 endComment :: LexAction
 endComment _ len =
-  lift $ do
+  do
     growRegion len
     
     lexCommentDepth -= 1
@@ -372,36 +367,30 @@ alexInputPrevChar = prevChar
     `lexModl` keeps track of position and returns the remainder of the input if
     lexing fails.
 -}
-tokenize :: Monad m => FilePath -> Conduit Text m Token
-tokenize fp =
-    evalStateC (defState fp) $ awaitForever start
+lexer :: FilePath -> Text -> [Token]
+lexer fp text =
+    evalState (go (AlexInput '\n' [] text)) (defState fp)
 
   where
     start text = go (AlexInput '\n' [] text)
 
     go input = do
-      sc <- lift $ use lexStartcode
+      sc <- use lexStartcode
       case alexScan input sc of
         AlexEOF                        -> do
             yieldTaggedTok TokenEof ""
-            return ()
+            reverse <$> use lexTokAcc
 
         AlexError (AlexInput p cs text) ->
+            -- This is why we need ExceptT or ChronicleT
             error $ "Lexical Error: Cannot produce token.\n\tPrevious Char: \'" ++ [p] ++ "\'\n\tCurrent Chars: " ++ show cs ++ "\n\tRest of file: " ++ T.unpack text
         
         AlexSkip  input' len           -> do
+            -- This is another reason for ExceptT or ChronicleT
             error $ "Lexical Error: default Alex skip should never be invoked."
         
         AlexToken input' len act       -> do
             act (T.take (fromIntegral len) (currInput input)) (fromIntegral len)
             go input'
-
-lexer :: Monad m => Conduit TextDoc m TokenDoc
-lexer = awaitForever go
-  where
-    go d =
-      yield (d^.docData) .| tokenize (d^.docPath) .| layout .| catalog .| mapC (\toks -> const toks <$> d)
-
-
 
 }

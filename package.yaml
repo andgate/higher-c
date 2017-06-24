@@ -53,7 +53,6 @@ library:
     - base
     - binary
     - bytestring
-    - conduit-combinators
     - containers
     - data-default-class
     - directory
@@ -69,9 +68,6 @@ library:
     - monad-logger
     - mono-traversable
     - mtl
-    - persistent
-    - persistent-sqlite
-    - persistent-template
     - primitive
     - resourcet
     - safe
@@ -93,44 +89,31 @@ library:
     - Language.Hawk.Compile.Message
     - Language.Hawk.Compile.Monad
     - Language.Hawk.Compile.Options
-    - Language.Hawk.Compile.Package
     - Language.Hawk.Compile.PhaseStatus
-    - Language.Hawk.Compile.Source
     - Language.Hawk.Compile.State
 
     - Language.Hawk.Data.Bag
 
-    - Language.Hawk.Cache
-    - Language.Hawk.Cache.Item
-    - Language.Hawk.Cache.Janitor
-    - Language.Hawk.Cache.Model
-    - Language.Hawk.Cache.Module
-    - Language.Hawk.Cache.Package
-    - Language.Hawk.Cache.Types
-
     - Language.Hawk.DepExpansion
+
+    - Language.Hawk.Load
+    - Language.Hawk.Load.Message
+    - Language.Hawk.Load.Error
 
     - Language.Hawk.NameCheck.Message
     - Language.Hawk.Namespace
     
     - Language.Hawk.Parse
-    - Language.Hawk.Parse.Document
+    - Language.Hawk.Parse.Error
     - Language.Hawk.Parse.Grammar
     - Language.Hawk.Parse.Helpers
     - Language.Hawk.Parse.Lexer
-    - Language.Hawk.Parse.Lexer.Catalog
     - Language.Hawk.Parse.Lexer.Layout
     - Language.Hawk.Parse.Lexer.Token
     - Language.Hawk.Parse.Message
 
-    - Language.Hawk.Report.Error
-    - Language.Hawk.Report.Helpers
-    - Language.Hawk.Report.Info
     - Language.Hawk.Report.Region
-    - Language.Hawk.Report.Report
-    - Language.Hawk.Report.Result
     - Language.Hawk.Report.SrcLoc
-    - Language.Hawk.Report.Warning
 
     - Language.Hawk.Syntax
     - Language.Hawk.Syntax.Pass

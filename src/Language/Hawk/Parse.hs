@@ -11,39 +11,36 @@
 -- that filters the token stream and outputs layout tokens
 -- when necessary.
 --
-{-# LANGUAGE  RankNTypes #-}
+{-# LANGUAGE  FlexibleContexts #-}
 module Language.Hawk.Parse where
 
-import Conduit
 import Control.Lens
-import Language.Hawk.Parse.Document
-import Language.Hawk.Report.Result
+import Control.Monad.Chronicle
 import Text.Earley (Report (..), Prod)
 import Text.PrettyPrint.ANSI.Leijen (pretty)
 
+import Language.Hawk.Parse.Error
+import Language.Hawk.Parse.Lexer.Token (Token)
+import Language.Hawk.Syntax
+
 import qualified Data.Text as Text
-import qualified Language.Hawk.Parse.Lexer.Layout as LO
-import qualified Language.Hawk.Parse.Lexer.Token as Tok
+
 import qualified Language.Hawk.Parse.Grammar as G
-import qualified Language.Hawk.Report.Info as Info
-import qualified Language.Hawk.Report.Error as Err
 import qualified Text.Earley as E
 
 
 -- -----------------------------------------------------------------------------
 -- Parser
 
-itemParser :: MonadIO m => Conduit TokenDoc m (Result DocItem)
-itemParser = awaitForever go
-  where
-    go :: MonadIO m => TokenDoc -> Conduit TokenDoc m (Result DocItem)
-    go d = do
-      let (parses, r@(Report _ expected unconsumed)) =
-              E.fullParses (E.parser G.toplevel) (d^.docData)
-
-      yield $
+parse :: (MonadChronicle [e] m, AsParseErr e)
+      => [Token] -> m [ItemPs]
+parse toks =
+      let
+        (parses, r@(Report _ expected unconsumed)) =
+            E.fullParses (E.parser G.toplevel) toks
+      in
         case parses of
-            []  -> throw $ Err.Parse (head unconsumed)
-            [p] -> return $ const p <$> d
+            []  -> disclose [_ParseFail # (head unconsumed)]
+            [p] -> return p
             -- This will only happen is the grammar is wrong
-            ps  -> error $ "BUG FOUND: " ++ show (length ps) ++ " possible parses found.\n\n" ++ (show.pretty) ps
+            ps  -> disclose [_AmbiguousGrammar # ps]

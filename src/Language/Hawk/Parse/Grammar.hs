@@ -16,11 +16,14 @@ import Text.Earley.Mixfix
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-toplevel :: Grammar r (Prod r Token Token ItemPs)
+toplevel :: Grammar r (Prod r Token Token [ItemPs])
 toplevel = mdo
         
 -- -----------------------------------------------------------------------------
 -- Item Rules
+    items <- rule $
+      block item
+
     item <- rule $ linefold $
           (DepItem <$> depDecl)
       <|> (ForeignItem <$> forgn)
@@ -416,4 +419,4 @@ toplevel = mdo
         <*> (rsvp ":" *> block tySig')
 
 
-    return item
+    return items
