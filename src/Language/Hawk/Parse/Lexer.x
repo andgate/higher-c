@@ -10,6 +10,7 @@ import Control.Monad
 import Control.Monad.State.Strict (State, evalState)
 import Data.Bits (shiftR, (.&.))
 import Data.Char (digitToInt, ord)
+import Data.Default.Class
 import Data.Text (Text)
 import Data.Word (Word8)
 import Language.Hawk.Parse.Lexer.State
@@ -369,7 +370,7 @@ alexInputPrevChar = prevChar
 -}
 lexer :: FilePath -> Text -> [Token]
 lexer fp text =
-    evalState (go (AlexInput '\n' [] text)) (defState fp)
+    evalState (go (AlexInput '\n' [] text)) (def & lexFilePath .~ fp)
 
   where
     start text = go (AlexInput '\n' [] text)

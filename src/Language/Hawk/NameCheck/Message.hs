@@ -6,5 +6,6 @@ import Control.Lens
 data NameCheckMessage
   = NcSuccess
   | NcFailed
+  deriving(Show)
 
 makeClassyPrisms ''NameCheckMessage

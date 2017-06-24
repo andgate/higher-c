@@ -2,6 +2,7 @@
 module Language.Hawk.Parse.Lexer.State where
 
 import Control.Lens
+import Data.Default.Class
 import Language.Hawk.Report.Region
 import Language.Hawk.Parse.Lexer.Token (Token)
 
@@ -14,7 +15,16 @@ data LexState =
             , _lexFilePath :: FilePath
             } deriving Show
 
-defState :: FilePath -> LexState
-defState = LexState [] (R (P 0 0) (P 0 0)) 0 0 ""
-
 makeLenses ''LexState
+
+
+instance Default LexState where
+    def =
+      LexState
+        { _lexTokAcc = []
+        , _lexRegion = R (P 0 0) (P 0 0)
+        , _lexStartcode = 0
+        , _lexCommentDepth = 0
+        , _lexStringBuf = ""
+        , _lexFilePath = ""
+        }

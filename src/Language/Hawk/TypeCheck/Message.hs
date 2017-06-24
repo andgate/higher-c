@@ -6,5 +6,6 @@ import Control.Lens
 data TypeCheckMessage
   = TypeCheckFail
   | TypeCheckSuccess
+  deriving(Show)
 
 makeClassyPrisms ''TypeCheckMessage

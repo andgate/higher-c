@@ -3,7 +3,11 @@
            , FlexibleContexts
            , AllowAmbiguousTypes
   #-}
-module Language.Hawk.Compile where
+module Language.Hawk.Compile
+        ( hkc
+        , HkcConfig(..)
+        , HkcProduct(..)
+        ) where
 
 import Control.Lens
 import Control.Monad.Chronicle
@@ -28,8 +32,8 @@ import qualified Data.Vector                      as V
 import qualified Language.Hawk.Parse              as P
 
 
-hkc :: Hkc ()
-hkc = compile
+hkc :: HkcConfig -> IO ()
+hkc = runHkc compile
 
 compile
   :: ( MonadReader c m , HasHkcConfig c

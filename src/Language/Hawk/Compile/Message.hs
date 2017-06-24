@@ -18,6 +18,7 @@ data HkcMessage
   | HkcPsMsg ParseMessage
   | HkcNcMsg NameCheckMessage
   | HkcTcMsg TypeCheckMessage
+  deriving(Show)
 
 makeClassyPrisms ''HkcMessage
 

@@ -9,6 +9,7 @@ import Language.Hawk.Load.Error
 data LoadMsg
   = FileFound FilePath
   | LoadErrMsg LoadErr
+  deriving(Show)
 
 makeClassyPrisms ''LoadMsg
 

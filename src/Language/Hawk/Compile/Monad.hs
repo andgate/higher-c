@@ -21,10 +21,12 @@ import Control.Monad.Trans.Resource
 import Control.Monad.Trans.Control
 import Data.Semigroup
 import Data.These
+import Data.Default.Class
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.Error
 import Language.Hawk.Compile.Message
 import Language.Hawk.Compile.State
+import System.IO
 
 
 
@@ -42,6 +44,17 @@ newtype Hkc a = Hkc { unHkc :: StateT HkcState (ReaderT HkcConfig (LoggingT (Wit
      , MonadThrow
      , MonadCatch
      )
+
+
+runHkc :: Hkc a -> HkcConfig -> IO ()
+runHkc m conf =
+  void $
+    runChronicleT ( runLoggingT (runReaderT (runStateT (unHkc m) def) conf)
+                                (\msg -> liftIO $ print msg)     
+                  )
+          
+
+
 
 
 

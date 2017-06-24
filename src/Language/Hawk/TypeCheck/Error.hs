@@ -6,5 +6,6 @@ import Control.Lens
 data TypeCheckError
   = SomeTypeCheckError
   | TypeMismatchError
+  deriving(Show)
 
 makeClassyPrisms ''TypeCheckError

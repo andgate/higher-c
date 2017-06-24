@@ -130,6 +130,7 @@ tests:
     main: Spec.hs
     dependencies:
       - base
+      - data-default-class
       - hawk
       - tasty
       - tasty-hspec

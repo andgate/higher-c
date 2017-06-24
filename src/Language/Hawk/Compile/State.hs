@@ -8,6 +8,7 @@ module Language.Hawk.Compile.State
     ) where
 
 import Control.Lens
+import Data.Default.Class
 import Language.Hawk.NameCheck.State
 import Language.Hawk.TypeCheck.State
 
@@ -25,3 +26,7 @@ instance HasNameCheckState HkcState where
 
 instance HasTypeCheckState HkcState where
   typeCheckState = hkcTypeCheckState
+
+instance Default HkcState where
+    def =
+        HkcState def def

@@ -2,6 +2,7 @@
 module Language.Hawk.NameCheck.State where
 
 import Control.Lens
+import Data.Default.Class
 
 data NameCheckState
   = NameCheckState
@@ -9,3 +10,10 @@ data NameCheckState
     }
 
 makeClassy ''NameCheckState
+
+
+instance Default NameCheckState where
+    def =
+      NameCheckState
+        { _ncFoo = False
+        }

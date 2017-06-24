@@ -7,7 +7,9 @@ import qualified Test.Tasty
 -- writing tests. Its website has more info: <https://hspec.github.io>.
 import Test.Tasty.Hspec
 
-import qualified Language.Hawk.Compile as C
+import Data.Default.Class
+import Language.Hawk.Compile
+import Language.Hawk.Compile.Options
 
 main :: IO ()
 main = do
@@ -17,6 +19,13 @@ main = do
 spec :: Spec
 spec = parallel $
     it "Can compile" $ do
-        let pkg = C.Package "Example" "example"
-            cSt = C.defState {C.cPkgs = [pkg]}
-        C.compile cSt
+        let conf =
+              HkcConfig
+                { _hkcSrcFiles  = ["example/Fib.hk"]
+                , _hkcOutFile   = "example/example.out"
+                , _hkcProd      = Bin
+                , _hkcExAst     = [] -- List of serialized ast files (hkast)
+                , _hkcExLib     = [] -- List of library files (.dll or .so)
+                , _hkcOpts      = def
+                }
+        hkc conf

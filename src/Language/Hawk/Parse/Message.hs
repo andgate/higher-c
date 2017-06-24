@@ -6,5 +6,6 @@ import Control.Lens
 data ParseMessage
   = ParseSuccess
   | ParseFailed
+  deriving(Show)
 
 makeClassyPrisms ''ParseMessage
