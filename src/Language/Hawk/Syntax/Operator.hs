@@ -1,8 +1,8 @@
 module Language.Hawk.Syntax.Operator where
 
 import Data.Binary
-import Text.PrettyPrint.ANSI.Leijen ((<+>))
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
+import Data.Text.Lazy (pack)
+import qualified Text.PrettyPrint.Leijen.Text as PP
 
 -- -----------------------------------------------------------------------------
 -- | Types
@@ -67,15 +67,15 @@ data AssignOp
 
 instance PP.Pretty UnaryOp where
     pretty =
-      PP.text . show
+      PP.text . pack . show
 
 instance PP.Pretty BinaryOp where
     pretty =
-      PP.text . show
+      PP.text . pack . show
 
 instance PP.Pretty AssignOp where
     pretty =
-      PP.text . show
+      PP.text . pack . show
 
 
 -- Binary ---------------------------------------------------------------------

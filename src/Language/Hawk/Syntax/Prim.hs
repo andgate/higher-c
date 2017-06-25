@@ -1,8 +1,8 @@
 module Language.Hawk.Syntax.Prim where
 
 import Data.Binary
-import Text.PrettyPrint.ANSI.Leijen ((<+>))
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
+import Data.Text.Lazy (pack)
+import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
 -- -----------------------------------------------------------------------------
@@ -31,7 +31,7 @@ data PrimInstr
 
 instance PP.Pretty PrimInstr where
     pretty =
-      PP.text . show
+      PP.text . pack . show
 
 
 -- Binary ---------------------------------------------------------------------

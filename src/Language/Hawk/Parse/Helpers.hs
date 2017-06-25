@@ -21,7 +21,6 @@ import Language.Hawk.Report.Region (region)
 import Language.Hawk.Report.SrcLoc
 import Language.Hawk.Syntax
 import Language.Hawk.Syntax.Operator
-import Text.PrettyPrint.ANSI.Leijen (pretty, Pretty, putDoc)
 import Text.Earley
 import Text.Earley.Mixfix
 
@@ -84,7 +83,7 @@ typDollar _ = Ty.typeCon "_$_"
 -- Terminal Production Helpers
 match :: TokenClass -> Prod r e Token Token
 match c = satisfy p
-  where p (Token c' _ _ _) = c == c'
+  where p (Token c' _ _) = c == c'
 
 rsvp :: Text -> Prod r e Token Token
 rsvp =
@@ -140,9 +139,9 @@ prepend =
 varName :: Prod r e Token NamePs
 varName = fmap unsafeExtract (satisfy p)
   where
-    p (Token (TokenVarId _) _ _ _) = True
+    p (Token (TokenVarId _) _ _) = True
     p  _                         = False
-    unsafeExtract (Token (TokenVarId n) _ fp r) = Name n (SrcLoc fp r)
+    unsafeExtract (Token (TokenVarId n) _ loc) = Name n loc
 
 conName :: Prod r e Token NamePs
 conName = modName <|> conName'
@@ -150,25 +149,25 @@ conName = modName <|> conName'
 conName' :: Prod r e Token NamePs
 conName' = fmap unsafeExtract (satisfy p)
   where
-    p (Token (TokenConId _) _ _ _) = True
+    p (Token (TokenConId _) _ _) = True
     p  _                         = False
-    unsafeExtract (Token (TokenConId n) _ fp r) = Name n (SrcLoc fp r)
+    unsafeExtract (Token (TokenConId n) _ loc) = Name n loc
 
 
 modName :: Prod r e Token NamePs
 modName = fmap unsafeExtract (satisfy p)
   where
-    p (Token (TokenModId _) _ _ _) = True
+    p (Token (TokenModId _) _ _) = True
     p  _                         = False
-    unsafeExtract (Token (TokenModId n) _ fp r) = Name n (SrcLoc fp r)
+    unsafeExtract (Token (TokenModId n) _ loc) = Name n loc
 
 
 opName :: Prod r e Token NamePs
 opName = fmap unsafeExtract (satisfy p)
   where
-    p (Token (TokenOpId _) _ _ _) = True
+    p (Token (TokenOpId _) _ _) = True
     p  _                        = False
-    unsafeExtract (Token (TokenOpId n) _ fp r) = Name n (SrcLoc fp r)
+    unsafeExtract (Token (TokenOpId n) _ loc) = Name n loc
 
 
 -- -----------------------------------------------------------------------------
@@ -176,37 +175,37 @@ opName = fmap unsafeExtract (satisfy p)
 tInteger :: Prod r e Token Integer
 tInteger = fmap unsafeExtract (satisfy p)
   where
-    p (Token (TokenInteger _) _ _ _) = True
+    p (Token (TokenInteger _) _ _) = True
     p  _                             = False
-    unsafeExtract (Token (TokenInteger v) _ _ _) = v
+    unsafeExtract (Token (TokenInteger v) _ _) = v
 
 tReal :: Prod r e Token Double
 tReal = fmap unsafeExtract (satisfy p)
   where
-    p (Token (TokenDouble _) _ _ _) = True
+    p (Token (TokenDouble _) _ _) = True
     p  _                             = False
-    unsafeExtract (Token (TokenDouble v) _ _ _) = v
+    unsafeExtract (Token (TokenDouble v) _ _) = v
 
 tChar :: Prod r e Token Char
 tChar = fmap unsafeExtract (satisfy p)
   where
-    p (Token (TokenChar _) _ _ _) = True
+    p (Token (TokenChar _) _ _) = True
     p  _                             = False
-    unsafeExtract (Token (TokenChar v) _ _ _) = v
+    unsafeExtract (Token (TokenChar v) _ _) = v
 
 tString :: Prod r e Token String
 tString = fmap unsafeExtract (satisfy p)
   where
-    p (Token (TokenString _) _ _ _) = True
+    p (Token (TokenString _) _ _) = True
     p  _                             = False
-    unsafeExtract (Token (TokenString v) _ _ _) = v
+    unsafeExtract (Token (TokenString v) _ _) = v
 
 tBool :: Prod r e Token Bool
 tBool = fmap unsafeExtract (satisfy p)
   where
-    p (Token (TokenBool _) _ _ _) = True
+    p (Token (TokenBool _) _ _) = True
     p  _                             = False
-    unsafeExtract (Token (TokenBool v) _ _ _) = v
+    unsafeExtract (Token (TokenBool v) _ _) = v
 
 
 -- -----------------------------------------------------------------------------
@@ -249,22 +248,22 @@ mkUnitTyCon :: Token -> Token -> TypePs
 mkUnitTyCon t1 t2 =
     TyCon () $
       Name  "()"
-            (SrcLoc (t1^.tokFilepath) (t1^.region <> t2^.region))
+            (SrcLoc (t1^.tokLoc.srcPath) (t1^.region <> t2^.region))
 
 mkFunTyCon :: Token -> Token -> Token -> TypePs
 mkFunTyCon t1 t2 t3 =
     TyCon () $
       Name  "->"
-            (SrcLoc (t1^.tokFilepath) (t1^.region <> t3^.region))
+            (SrcLoc (t1^.tokLoc.srcPath) (t1^.region <> t3^.region))
 
 mkListTyCon :: Token -> Token -> TypePs
 mkListTyCon t1 t2 =
     TyCon () $
       Name  "[]"
-            (SrcLoc (t1^.tokFilepath) (t1^.region <> t2^.region))
+            (SrcLoc (t1^.tokLoc.srcPath) (t1^.region <> t2^.region))
 
 mkTupleTyCon :: Token -> [Token] -> Token -> TypePs
 mkTupleTyCon t1 t2s t3 =
     TyCon () $
       Name  (T.pack ("Tuple" ++ (show . length) t2s))
-            (SrcLoc (t1^.tokFilepath) (t1^.region <> t3^.region))
+            (SrcLoc (t1^.tokLoc.srcPath) (t1^.region <> t3^.region))

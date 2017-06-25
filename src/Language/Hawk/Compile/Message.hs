@@ -16,11 +16,12 @@ import Language.Hawk.Load.Message
 import Language.Hawk.Parse.Message
 import Language.Hawk.NameCheck.Message
 import Language.Hawk.TypeCheck.Message
+import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
 data HkcMsg
   = HkcErrMsg HkcErr
   | HkcLoadMsg LoadMsg
-  | HkcPsMsg ParseMessage
+  | HkcPsMsg ParseMsg
   | HkcNcMsg NameCheckMessage
   | HkcTcMsg TypeCheckMessage
   deriving(Show)
@@ -33,11 +34,19 @@ instance AsHkcErr HkcMsg where
 instance AsLoadMsg HkcMsg where
   _LoadMsg = _HkcLoadMsg
 
-instance AsParseMessage HkcMsg where
-  _ParseMessage = _HkcPsMsg
+instance AsParseMsg HkcMsg where
+  _ParseMsg = _HkcPsMsg
 
 instance AsNameCheckMessage HkcMsg where
   _NameCheckMessage = _HkcNcMsg
 
 instance AsTypeCheckMessage HkcMsg where
   _TypeCheckMessage = _HkcTcMsg
+
+
+instance Pretty HkcMsg where
+    pretty (HkcErrMsg msg) = pretty msg
+    pretty (HkcLoadMsg msg) = pretty msg
+    pretty (HkcPsMsg msg) = pretty msg
+    pretty (HkcNcMsg msg) = pretty msg
+    pretty (HkcTcMsg msg) = pretty msg

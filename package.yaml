@@ -48,7 +48,6 @@ executables:
 library:
   source-dirs: src
   dependencies:
-    - ansi-wl-pprint
     - array
     - base
     - binary
@@ -80,6 +79,7 @@ library:
     - transformers-base
     - utf8-string
     - vector
+    - wl-pprint-text
 
   exposed-modules:      
     - Language.Hawk.Compile

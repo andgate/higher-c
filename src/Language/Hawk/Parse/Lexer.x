@@ -15,6 +15,7 @@ import Data.Text (Text)
 import Data.Word (Word8)
 import Language.Hawk.Parse.Lexer.State
 import Language.Hawk.Parse.Lexer.Token
+import Language.Hawk.Report.SrcLoc
 import Language.Hawk.Report.Region
 import System.FilePath (FilePath)
 
@@ -163,7 +164,7 @@ tag :: Text -> TokenClass -> Lex Token
 tag text tc = do
   fp <- use lexFilePath
   r <- use lexRegion
-  return $ Token tc text fp r
+  return $ Token tc text (SrcLoc fp r)
 
 
 moveRegion :: Int -> Lex ()

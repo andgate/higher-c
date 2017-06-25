@@ -17,7 +17,7 @@ module Language.Hawk.Parse where
 import Control.Lens
 import Control.Monad.Chronicle
 import Text.Earley (Report (..), Prod)
-import Text.PrettyPrint.ANSI.Leijen (pretty)
+import Text.PrettyPrint.Leijen.Text (pretty)
 
 import Language.Hawk.Parse.Error
 import Language.Hawk.Parse.Lexer.Token (Token)
@@ -40,7 +40,7 @@ parse toks =
             E.fullParses (E.parser G.toplevel) toks
       in
         case parses of
-            []  -> disclose [_ParseFail # (head unconsumed)]
+            []  -> disclose [_UnexpectedToken # (head unconsumed)]
             [p] -> return p
             -- This will only happen is the grammar is wrong
             ps  -> disclose [_AmbiguousGrammar # ps]

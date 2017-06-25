@@ -6,8 +6,9 @@ module Language.Hawk.Report.Region where
 
 import Control.Lens
 import Data.Binary
-import Text.PrettyPrint.ANSI.Leijen ((<>))
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
+import Data.Text.Lazy (pack)
+import Text.PrettyPrint.Leijen.Text ((<>))
+import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
 data Region
@@ -49,21 +50,19 @@ class HasPosition a where
     toPosition :: a -> Position     
 
 instance HasPosition Position where
-    toPosition = id
+    toPosition = id 
 
 -- -----------------------------------------------------------------------------
 -- Pretty Instances   
 
 instance PP.Pretty Region where
-  pretty (R start end) =
-    PP.pretty start
-    <> PP.text "-"
-    <> PP.pretty end
+  pretty (R s e) =
+    PP.pretty s <> PP.text "-" <> PP.pretty e
 
 
 instance PP.Pretty Position where
-  pretty (P line column) =
-    PP.text $ show line ++ ":" ++ show column
+  pretty (P l c) =
+    PP.pretty l <> PP.text ":" <> PP.pretty c
 
 
 -- -----------------------------------------------------------------------------

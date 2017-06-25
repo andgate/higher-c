@@ -13,6 +13,7 @@ import Language.Hawk.Load.Error
 import Language.Hawk.Parse.Error
 import Language.Hawk.NameCheck.Error
 import Language.Hawk.TypeCheck.Error
+import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
 data HkcErr
   = HkcLoadErr LoadErr
@@ -34,3 +35,10 @@ instance AsNameCheckError HkcErr where
 
 instance AsTypeCheckError HkcErr where
   _TypeCheckError = _HkcTypeCheckError
+
+
+instance Pretty HkcErr where
+    pretty (HkcLoadErr err) = pretty err
+    pretty (HkcParseErr err) = pretty err
+    pretty (HkcNameCheckError err) = pretty err
+    pretty (HkcTypeCheckError err) = pretty err

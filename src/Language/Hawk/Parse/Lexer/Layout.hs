@@ -9,6 +9,7 @@ import Control.Lens
 import Control.Monad (when, unless, void)
 import Control.Monad.State.Strict (State, evalState)
 import Language.Hawk.Parse.Lexer.Token
+import Language.Hawk.Report.SrcLoc (SrcLoc(..))
 import Language.Hawk.Report.Region (Region)
 
 import qualified Language.Hawk.Report.Region  as R
@@ -76,8 +77,8 @@ layoutDriver = do
     [] -> reverse <$> use layOut
 
 handleTok :: Token -> Layout ()
-handleTok t@(Token tc _ _ _)
-  | tc == TokenEof = closeStack
+handleTok t
+  | t^.tokClass == TokenEof = closeStack
 
   | otherwise = do
       -- Blocks triggered on last token need to be handled
@@ -90,7 +91,7 @@ handleTok t@(Token tc _ _ _)
       yieldTok t
 
       -- Colons trigger block emission for the next token
-      when (tc == TokenRsvp ":")
+      when (t^.tokClass == TokenRsvp ":")
            (blkTriggered .= True)
 
 
@@ -135,14 +136,14 @@ open ct = do
 
   let cl = Cell i ct
   pushCell cl
-  yieldTok $ openTok fp r cl
+  yieldTok $ openTok (SrcLoc fp r) cl
 
 close :: Layout ()
 close = do
-  l <- peekCell
+  cl <- peekCell
   fp <- use layFilePath
   r <- use layRegion
-  yieldTok $ closeTok fp r l
+  yieldTok $ closeTok (SrcLoc fp r) cl
   void popCell
 
 
@@ -150,7 +151,7 @@ close = do
 -- Layout Helpers
 
 updateLocation :: Token -> Layout ()
-updateLocation (Token _ _ fp r) = do
+updateLocation (Token _ _ (SrcLoc fp r)) = do
     layFilePath .= fp
     layRegion .= r
 
@@ -182,18 +183,18 @@ peekCell =
   uses layStack head
 
     
-openTok :: FilePath -> Region -> Cell -> Token
-openTok fp r c =
-  case c ^. cellType of
-      Block -> Token TokenBlk "" fp r
-      LineFold -> Token TokenLn "" fp r
+openTok :: SrcLoc -> Cell -> Token
+openTok loc cl =
+  case cl ^. cellType of
+      Block -> Token TokenBlk "" loc
+      LineFold -> Token TokenLn "" loc
 
 
-closeTok :: FilePath -> Region -> Cell -> Token
-closeTok fp r c =
-  case c ^. cellType of
-      Block -> Token TokenBlk' "" fp r
-      LineFold -> Token TokenLn' "" fp r
+closeTok :: SrcLoc -> Cell -> Token
+closeTok loc cl =
+  case cl ^. cellType of
+      Block -> Token TokenBlk' "" loc
+      LineFold -> Token TokenLn' "" loc
   
   
 isValid :: Int -> Cell -> Bool

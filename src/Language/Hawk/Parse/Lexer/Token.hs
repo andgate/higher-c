@@ -5,11 +5,12 @@ module Language.Hawk.Parse.Lexer.Token where
 
 import Control.Lens
 import Data.Binary hiding (encode)
-import Data.Text (Text, unpack)
+import Data.Text (Text, pack)
+import Language.Hawk.Report.SrcLoc (SrcLoc(..), HasSrcLoc(..))
 import Language.Hawk.Report.Region (Region(..), HasRegion(..))
-import Text.PrettyPrint.ANSI.Leijen (pretty, (<+>))
+import Text.PrettyPrint.Leijen.Text (pretty, (<+>))
 
-import qualified Text.PrettyPrint.ANSI.Leijen     as PP
+import qualified Text.PrettyPrint.Leijen.Text     as PP
 
 -- -----------------------------------------------------------------------------
 -- Token Types
@@ -18,8 +19,7 @@ import qualified Text.PrettyPrint.ANSI.Leijen     as PP
 data Token = Token
     { _tokClass     :: TokenClass
     , _tokText      :: Text
-    , _tokFilepath  :: FilePath
-    , _tokRegion    :: Region
+    , _tokLoc       :: SrcLoc
     } deriving (Eq, Show, Ord)
 
 -- The token type:
@@ -57,22 +57,24 @@ data TokenClass
 makeLenses ''Token
 
 instance HasRegion Token where
-    region = tokRegion
+    region = tokLoc . region
+
+instance HasSrcLoc Token where
+    srcLoc = tokLoc
 
 -- -----------------------------------------------------------------------------
 -- Pretty Instances
 
 instance PP.Pretty Token where
-    pretty (Token tc txt fp reg) =
-      PP.text "Token"
-        <+> pretty tc
-        <+> PP.dquotes (PP.text $ unpack txt)
-        <+> PP.dquotes (PP.text fp)
-        <+> pretty reg
+    pretty t =
+      PP.textStrict "Token"
+        <+> pretty (t^.tokClass)
+        <+> PP.dquotes (PP.textStrict (t^.tokText))
+        <+> PP.dquotes (pretty (t^.tokLoc))
 
 instance PP.Pretty TokenClass where
     pretty tc =
-      PP.text (show tc)
+      PP.textStrict (pack . show $ tc)
 
 
 -- -----------------------------------------------------------------------------
@@ -80,10 +82,10 @@ instance PP.Pretty TokenClass where
 
 instance Binary Token where
   get =
-    Token <$> get <*> get <*> get <*> get
+    Token <$> get <*> get <*> get
       
-  put (Token c t p r) =
-    put c >> put t >> put p >> put r
+  put (Token c t loc) =
+    put c >> put t >> put loc
 
 
 instance Binary TokenClass where

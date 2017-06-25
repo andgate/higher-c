@@ -55,4 +55,4 @@ mkLoadErr fp ex
       _PermissionDenied # fp
 
   | otherwise              =
-      _UndefinedLoadErr # fp
+      _UnexpectedLoadErr # fp

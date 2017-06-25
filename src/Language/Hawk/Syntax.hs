@@ -22,10 +22,9 @@ import Language.Hawk.Report.SrcLoc
 import Language.Hawk.Syntax.Operator
 import Language.Hawk.Syntax.Pass
 import Language.Hawk.Syntax.Prim
-import Text.PrettyPrint.ANSI.Leijen ((<+>))
+import Text.PrettyPrint.Leijen.Text ((<+>))
 
-import qualified Data.Text                        as T
-import qualified Text.PrettyPrint.ANSI.Leijen     as PP
+import qualified Text.PrettyPrint.Leijen.Text     as PP
 
 
 type ForallX (c :: * -> Constraint) (x :: *)
@@ -663,83 +662,83 @@ instance PrettyX x => PP.Pretty (Item x) where
 -- Vested Item ---------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (NestedItem x) where
     pretty (NestedVar v) =
-      PP.text "Nested Variable:" <+> PP.pretty v
+      PP.textStrict "Nested Variable:" <+> PP.pretty v
 
     pretty (NestedVal v) =
-      PP.text "Nested Value:" <+> PP.pretty v
+      PP.textStrict "Nested Value:" <+> PP.pretty v
 
     pretty (NestedFun f) =
-      PP.text "Nested Function:" <+> PP.pretty f
+      PP.textStrict "Nested Function:" <+> PP.pretty f
     
     pretty (NestedVow v) =
-      PP.text "Nested Vow:" <+> PP.pretty v
+      PP.textStrict "Nested Vow:" <+> PP.pretty v
 
     pretty (NestedSig s) =
-      PP.text "Nested Type Sig:" <+> PP.pretty s
+      PP.textStrict "Nested Type Sig:" <+> PP.pretty s
 
 
 -- Dependency ------------------------------------------------------------------
 instance PP.Pretty Dependency where
     pretty (Dep ql p a) =
-      PP.text "Dependency:"
+      PP.textStrict "Dependency:"
       PP.<$>
       PP.indent 2
-        ( PP.text "Is Qualified:" PP.<+> PP.pretty ql
+        ( PP.textStrict "Is Qualified:" PP.<+> PP.pretty ql
           PP.<$>
-          PP.text "Path:" PP.<+> PP.pretty p
+          PP.textStrict "Path:" PP.<+> PP.pretty p
           PP.<$>
-          PP.text "Alias:" PP.<+> PP.text (show (T.unpack <$> a))
+          PP.textStrict "Alias:" PP.<+> PP.pretty a
         )
 
 
 -- Foreign ------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (Foreign x) where
     pretty (Foreign ft n fs) =
-      PP.text "Foreign:"
+      PP.textStrict "Foreign:"
       PP.<$>
       PP.indent 2
-        ( PP.text "Foreign Type:" PP.<+> PP.pretty ft
+        ( PP.textStrict "Foreign Type:" PP.<+> PP.pretty ft
           PP.<$>
-          PP.text "Foreign Name:" PP.<+> PP.pretty (T.unpack n)
+          PP.textStrict "Foreign Name:" PP.<+> PP.pretty n
           PP.<$>
-          PP.text "Foreign Sig:" PP.<+> PP.pretty fs
+          PP.textStrict "Foreign Sig:" PP.<+> PP.pretty fs
         )
 
 instance PP.Pretty ForeignType where
     pretty ForeignC =
-      PP.text "ForeignC"
+      PP.textStrict "ForeignC"
 
 
 -- Expose --------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (Expose x) where
     pretty (Expose n) =
-      PP.text "Expose:"
+      PP.textStrict "Expose:"
       PP.<$>
       PP.indent 2
-        ( PP.text "name:" PP.<+> PP.pretty n
+        ( PP.textStrict "name:" PP.<+> PP.pretty n
         )
 
 
 -- Dependency Path ------------------------------------------------------------
 instance PP.Pretty DepPath where
     pretty (DepPath n r) =
-      PP.text (T.unpack n) PP.<> PP.text "."  PP.<> PP.pretty r
+      PP.textStrict n PP.<> PP.textStrict "."  PP.<> PP.pretty r
         
     pretty (DepBase n) =
-      PP.text (T.unpack n)
+      PP.textStrict n
         
     pretty (DepSpecify False rs) =
-      PP.text "(" PP.<> PP.pretty rs PP.<> PP.text ")"
+      PP.textStrict "(" PP.<> PP.pretty rs PP.<> PP.textStrict ")"
 
     pretty (DepSpecify True rs) =
-      PP.text "(\\" PP.<> PP.pretty rs PP.<> PP.text ")"
+      PP.textStrict "(\\" PP.<> PP.pretty rs PP.<> PP.textStrict ")"
 
 
 -- Name ------------------------------------------------------------------------
 
 instance PrettyX x => PP.Pretty (Name x) where
     pretty (Name n ex) =
-      PP.text (T.unpack n)
+      PP.textStrict n
       PP.<$>
       PP.pretty ex
 
@@ -750,294 +749,294 @@ instance PrettyX x => PP.Pretty (Lit x) where
   pretty lit =
     case lit of
       IntLit x v ->
-        PP.string (show v)
+        PP.pretty v
         PP.<$>
-        PP.string "Ext:" <+> PP.pretty x
+        PP.textStrict "Ext:" <+> PP.pretty x
          
       DblLit x v ->
-        PP.string (show v)
+        PP.pretty v
         PP.<$>
-        PP.string "Ext:" <+> PP.pretty x
+        PP.textStrict "Ext:" <+> PP.pretty x
       
       ChrLit x v ->
-        PP.string (show v)
+        PP.pretty v
         PP.<$>
-        PP.string "Ext:" <+> PP.pretty x
+        PP.textStrict "Ext:" <+> PP.pretty x
       
       StrLit x v ->
-        PP.string (show v)
+        PP.pretty v
         PP.<$>
-        PP.string "Ext:" <+> PP.pretty x
+        PP.textStrict "Ext:" <+> PP.pretty x
       
       BoolLit x v ->
-        PP.string (show v)
+        PP.pretty v
         PP.<$>
-        PP.string "Ext:" <+> PP.pretty x
+        PP.textStrict "Ext:" <+> PP.pretty x
 
       Lit x ->
-        PP.string "Lit Con Ext:" <+> PP.pretty x
+        PP.textStrict "Lit Con Ext:" <+> PP.pretty x
 
 
 -- Type ------------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (Type x) where
     pretty (TyFun ext x y) =
-      PP.text "Type Function:"
+      PP.textStrict "Type Function:"
       PP.<$>
       PP.indent 2
-        ( PP.text "from:" <+> PP.pretty x
+        ( PP.textStrict "from:" <+> PP.pretty x
           PP.<$>
-          PP.text "to:" PP.<$> PP.pretty y
+          PP.textStrict "to:" PP.<$> PP.pretty y
           PP.<$>
-          PP.text "ext:" PP.<$> PP.pretty ext
+          PP.textStrict "ext:" PP.<$> PP.pretty ext
         )
 
     pretty (TyTuple ext mems) =
-      PP.text "Type Tuple:"
+      PP.textStrict "Type Tuple:"
       PP.<$>
       PP.indent 2
-        ( PP.text "members:" <+> PP.pretty mems
+        ( PP.textStrict "members:" <+> PP.pretty mems
           PP.<$>
-          PP.text "ext:" PP.<$> PP.pretty ext
+          PP.textStrict "ext:" PP.<$> PP.pretty ext
         )
         
 
     pretty (TyApp ext con args) =
-      PP.text "Type App:"
+      PP.textStrict "Type App:"
       PP.<$>
       PP.indent 2
-        ( PP.text "con:" <+> PP.pretty con
+        ( PP.textStrict "con:" <+> PP.pretty con
           PP.<$>
-          PP.text "args:" PP.<$> PP.pretty args
+          PP.textStrict "args:" PP.<$> PP.pretty args
           PP.<$>
-          PP.text "ext:" PP.<$> PP.pretty ext
+          PP.textStrict "ext:" PP.<$> PP.pretty ext
         )
       
     pretty (TyVar ext name) =
-      PP.text "Type Var" <+> PP.dquotes (PP.pretty name)
+      PP.textStrict "Type Var" <+> PP.dquotes (PP.pretty name)
       PP.<$>
-      PP.text "ext:" PP.<$> PP.pretty ext
+      PP.textStrict "ext:" PP.<$> PP.pretty ext
 
     pretty (TyCon ext name) =
-      PP.text "Type Con" <+> PP.dquotes (PP.pretty name)
+      PP.textStrict "Type Con" <+> PP.dquotes (PP.pretty name)
       PP.<$>
-      PP.text "ext:" PP.<$> PP.pretty ext
+      PP.textStrict "ext:" PP.<$> PP.pretty ext
 
     pretty (Type ext) =
-      PP.text "Type Ext:"
+      PP.textStrict "Type Ext:"
       PP.<$>
       PP.indent 2
-        ( PP.text "ext:" <+> PP.pretty ext
+        ( PP.textStrict "ext:" <+> PP.pretty ext
         )
 
 
 instance PrettyX x => PP.Pretty (QType x) where
     pretty (QType ctx tipe) =
-      PP.text "Qualified Type:"
+      PP.textStrict "Qualified Type:"
       PP.<$>
       PP.indent 2
-        ( PP.text "context:" <+> PP.pretty ctx
+        ( PP.textStrict "context:" <+> PP.pretty ctx
           PP.<$>
-          PP.text "type:" <+> PP.pretty tipe
+          PP.textStrict "type:" <+> PP.pretty tipe
         )
         
 
 instance PrettyX x => PP.Pretty (TyContext x) where
     pretty (TyContext assrts) =
-      PP.text "Context:"
+      PP.textStrict "Context:"
       PP.<$>
       PP.indent 2
-        ( PP.text "Assertions:" <+> PP.pretty assrts
+        ( PP.textStrict "Assertions:" <+> PP.pretty assrts
         )
 
 instance PrettyX x => PP.Pretty (TyAssert x) where
     pretty (TyAssert con tys) =
-      PP.text "Type Assertion:"
+      PP.textStrict "Type Assertion:"
       PP.<$>
       PP.indent 2
-        ( PP.text "Constructor:" <+> PP.pretty con
+        ( PP.textStrict "Constructor:" <+> PP.pretty con
           PP.<$>
-          PP.text "Arguments:" <+> PP.pretty tys
+          PP.textStrict "Arguments:" <+> PP.pretty tys
         )
 
 
 -- Expr -------------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (Exp x) where
     pretty (ELit ext lit) =
-      PP.text "Literal:" PP.<+> PP.pretty lit
+      PP.textStrict "Literal:" PP.<+> PP.pretty lit
       PP.<$>
-      PP.string "ext:" <+> PP.pretty ext
+      PP.textStrict "ext:" <+> PP.pretty ext
 
     pretty (EVar ext name) =
-      PP.text "Variable:" PP.<+> PP.pretty name
+      PP.textStrict "Variable:" PP.<+> PP.pretty name
       PP.<$>
-      PP.string "ext:" <+> PP.pretty ext
+      PP.textStrict "ext:" <+> PP.pretty ext
       
     pretty (ECon ext name) =
-      PP.text "Constructor:" PP.<+> PP.pretty name
+      PP.textStrict "Constructor:" PP.<+> PP.pretty name
       PP.<$>
-      PP.string "ext:" <+> PP.pretty ext
+      PP.textStrict "ext:" <+> PP.pretty ext
 
 
     pretty (EApp ext f as) =
-      PP.text "Application:"
+      PP.textStrict "Application:"
       PP.<$>
       PP.indent 2 
-        ( PP.string "expression:" <+> PP.pretty f
+        ( PP.textStrict "expression:" <+> PP.pretty f
           PP.<$>
-          PP.string "applied to:" <+> PP.pretty as
+          PP.textStrict "applied to:" <+> PP.pretty as
           PP.<$>
-          PP.string "ext:" <+> PP.pretty ext
+          PP.textStrict "ext:" <+> PP.pretty ext
         )
 
     pretty (EInfixApp ext l f r) =
-      PP.text "Infix Application:"
+      PP.textStrict "Infix Application:"
       PP.<$>
       PP.indent 2
-        ( PP.string "expression:" <+> PP.pretty f
+        ( PP.textStrict "expression:" <+> PP.pretty f
           PP.<$>
-          PP.string "lhs:" <+> PP.pretty l
+          PP.textStrict "lhs:" <+> PP.pretty l
           PP.<$>
-          PP.string "rhs:" <+> PP.pretty r
+          PP.textStrict "rhs:" <+> PP.pretty r
           PP.<$>
-          PP.string "ext:" <+> PP.pretty ext
+          PP.textStrict "ext:" <+> PP.pretty ext
         )
 
 
     pretty (ELam ext ps b) =
-      PP.text "Lambda:"
+      PP.textStrict "Lambda:"
       PP.<$>
       PP.indent 2
-        ( PP.string "params:" <+> PP.pretty ps
+        ( PP.textStrict "params:" <+> PP.pretty ps
           PP.<$>
-          PP.string "body:" <+> PP.pretty b
+          PP.textStrict "body:" <+> PP.pretty b
           PP.<$>
-          PP.string "ext:" <+> PP.pretty ext
+          PP.textStrict "ext:" <+> PP.pretty ext
         )
 
           
     pretty (EDo ext b) =
-      PP.text "Do:"
+      PP.textStrict "Do:"
       PP.<$>
       PP.indent 2
-        ( PP.string "body:" <+> PP.pretty b
+        ( PP.textStrict "body:" <+> PP.pretty b
           PP.<$>
-          PP.string "ext:" <+> PP.pretty ext
+          PP.textStrict "ext:" <+> PP.pretty ext
         )
 
     pretty (EReturn ext e) =
-      PP.text "Return:"
+      PP.textStrict "Return:"
       PP.<$>
       PP.indent 2
-        ( PP.string "expression:" <+> PP.pretty e
+        ( PP.textStrict "expression:" <+> PP.pretty e
           PP.<$>
-          PP.string "ext:" <+> PP.pretty ext
+          PP.textStrict "ext:" <+> PP.pretty ext
         )
 
     pretty (EIf ext predicate thenBranch elseBranch) =
-      PP.text "If:"
+      PP.textStrict "If:"
       PP.<$>
       PP.indent 2
-        ( PP.string "predicate:" <+> PP.pretty predicate
+        ( PP.textStrict "predicate:" <+> PP.pretty predicate
           PP.<$>
-          PP.string "then branch:" <+> PP.pretty thenBranch
+          PP.textStrict "then branch:" <+> PP.pretty thenBranch
           PP.<$>
-          PP.string "else branch:" <+> PP.pretty elseBranch
+          PP.textStrict "else branch:" <+> PP.pretty elseBranch
           PP.<$>
-          PP.string "ext:" <+> PP.pretty ext
+          PP.textStrict "ext:" <+> PP.pretty ext
         )
 
     pretty (EWhile ext cond body) =
-      PP.text "While:"
+      PP.textStrict "While:"
       PP.<$>
       PP.indent 2
-        ( PP.string "condition:" <+> PP.pretty cond
+        ( PP.textStrict "condition:" <+> PP.pretty cond
           PP.<$>
-          PP.string "body:" <+> PP.pretty body
+          PP.textStrict "body:" <+> PP.pretty body
           PP.<$>
-          PP.string "ext:" <+> PP.pretty ext
+          PP.textStrict "ext:" <+> PP.pretty ext
         )
 
     
     pretty (EPrim ext i a b) =
-      PP.text "Primitive Instruction:"
+      PP.textStrict "Primitive Instruction:"
       PP.<$>
       PP.indent 2 
-        ( PP.string "instruction:" <+> PP.pretty i
+        ( PP.textStrict "instruction:" <+> PP.pretty i
           PP.<$>
-          PP.string "arg1:" <+> PP.pretty a
+          PP.textStrict "arg1:" <+> PP.pretty a
           PP.<$>
-          PP.string "arg2:" <+> PP.pretty b
+          PP.textStrict "arg2:" <+> PP.pretty b
           PP.<$>
-          PP.string "ext:" <+> PP.pretty ext
+          PP.textStrict "ext:" <+> PP.pretty ext
         )
 
     pretty (EBinary ext l o r) =
-      PP.text "Binary Operator:"
+      PP.textStrict "Binary Operator:"
       PP.<$>
       PP.indent 2 
-        ( PP.string "op:" <+> PP.pretty o
+        ( PP.textStrict "op:" <+> PP.pretty o
           PP.<$>
-          PP.string "lhs:" <+> PP.pretty l
+          PP.textStrict "lhs:" <+> PP.pretty l
           PP.<$>
-          PP.string "rhs:" <+> PP.pretty r
+          PP.textStrict "rhs:" <+> PP.pretty r
           PP.<$>
-          PP.string "ext:" <+> PP.pretty ext
+          PP.textStrict "ext:" <+> PP.pretty ext
         )
 
     pretty (EUnary ext o e) =
-      PP.text "Unary Operator:"
+      PP.textStrict "Unary Operator:"
       PP.<$>
       PP.indent 2 
-        ( PP.string "op:" <+> PP.pretty o
+        ( PP.textStrict "op:" <+> PP.pretty o
           PP.<$>
-          PP.string "expression:" <+> PP.pretty e
+          PP.textStrict "expression:" <+> PP.pretty e
           PP.<$>
-          PP.string "ext:" <+> PP.pretty ext
+          PP.textStrict "ext:" <+> PP.pretty ext
         )
 
     pretty (EAssign ext l o r) =
-      PP.text "Assignment:"
+      PP.textStrict "Assignment:"
       PP.<$>
       PP.indent 2 
-        ( PP.string "op:" <+> PP.pretty o
+        ( PP.textStrict "op:" <+> PP.pretty o
           PP.<$>
-          PP.string "lhs:" <+> PP.pretty l
+          PP.textStrict "lhs:" <+> PP.pretty l
           PP.<$>
-          PP.string "rhs:" <+> PP.pretty r
+          PP.textStrict "rhs:" <+> PP.pretty r
           PP.<$>
-          PP.string "ext:" <+> PP.pretty ext
+          PP.textStrict "ext:" <+> PP.pretty ext
         )
 
         
     pretty (ETypeHint ext e t) =
-      PP.text "Type Hint:"
+      PP.textStrict "Type Hint:"
       PP.<$>
       PP.indent 2
-        ( PP.string "expression:" <+> PP.pretty e
+        ( PP.textStrict "expression:" <+> PP.pretty e
           PP.<$>
-          PP.string "hint:" <+> PP.pretty t
+          PP.textStrict "hint:" <+> PP.pretty t
           PP.<$>
-          PP.string "ext:" <+> PP.pretty ext
+          PP.textStrict "ext:" <+> PP.pretty ext
         )
 
     pretty (EBottom ext) =
-      PP.text "Bottom"
+      PP.textStrict "Bottom"
       PP.<$>
-      PP.string "ext:" <+> PP.pretty ext
+      PP.textStrict "ext:" <+> PP.pretty ext
 
     pretty (Exp ext) =
-      PP.string "ext:" <+> PP.pretty ext
+      PP.textStrict "ext:" <+> PP.pretty ext
 
 
 -- Statement -------------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (Stmt x) where
     pretty (StmtExpr expr) =
-      PP.text "Statement Expression:"
+      PP.textStrict "Statement Expression:"
       PP.<$>
       PP.indent 2 ( PP.pretty expr )
       
     pretty (StmtDecl i) =
-      PP.text "Statement Declaration:"
+      PP.textStrict "Statement Declaration:"
       PP.<$>
       PP.indent 2 ( PP.pretty i )
 
@@ -1045,155 +1044,155 @@ instance PrettyX x => PP.Pretty (Stmt x) where
 -- Body -------------------------------------------------------------------------  
 instance PrettyX x => PP.Pretty (Body x) where
     pretty (BodyBlock blk) =
-      PP.text "Body Block:" <+> PP.pretty blk
+      PP.textStrict "Body Block:" <+> PP.pretty blk
 
     pretty (BodyExpr expr) =
-      PP.text "Body Expression:" <+> PP.pretty expr
+      PP.textStrict "Body Expression:" <+> PP.pretty expr
 
 
 -- Type Signature ---------------------------------------------------------------
 instance PrettyX x => PP.Pretty (TypeSig x) where
     pretty (TypeSig name body) =
-      PP.text "Type Signature:"
+      PP.textStrict "Type Signature:"
       PP.<$>
       PP.indent 2
-        ( PP.text "name:" <+> PP.pretty name
+        ( PP.textStrict "name:" <+> PP.pretty name
           PP.<$>
-          PP.text "body:" <+> PP.pretty body
+          PP.textStrict "body:" <+> PP.pretty body
         )
 
 
 -- Vow --------------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (Vow x) where
   pretty (Vow name vows) =
-    PP.text "Vow Item:"
+    PP.textStrict "Vow Item:"
     PP.<$>
     PP.indent 2
-      ( PP.text "name:" <+> PP.pretty name
+      ( PP.textStrict "name:" <+> PP.pretty name
         PP.<$>
-        PP.text "vows:" <+> PP.pretty vows
+        PP.textStrict "vows:" <+> PP.pretty vows
       )
 
 instance PP.Pretty VowType where
   pretty VowVar =
-    PP.text "Var"
+    PP.textStrict "Var"
 
   pretty VowVal =
-    PP.text "Var"
+    PP.textStrict "Var"
 
   pretty VowRef =
-    PP.text "Var"
+    PP.textStrict "Var"
 
 
 -- Variable ----------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (Var x) where
   pretty (Var name body) =
-    PP.text "Variable Item:"
+    PP.textStrict "Variable Item:"
     PP.<$>
     PP.indent 2
-      ( PP.text "name:" <+> PP.pretty name
+      ( PP.textStrict "name:" <+> PP.pretty name
         PP.<$>
-        PP.text "body:" <+> PP.pretty body
+        PP.textStrict "body:" <+> PP.pretty body
       )
 
 
 -- Value -------------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (Val x) where
   pretty (Val name body) =
-    PP.text "Value Item:"
+    PP.textStrict "Value Item:"
     PP.<$>
     PP.indent 2
-      ( PP.text "name:" <+> PP.pretty name
+      ( PP.textStrict "name:" <+> PP.pretty name
         PP.<$>
-        PP.text "body:" <+> PP.pretty body
+        PP.textStrict "body:" <+> PP.pretty body
       )
 
 
 -- Function ---------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (Fun x) where
   pretty (Fun name params body) =
-    PP.text "Function Item:"
+    PP.textStrict "Function Item:"
     PP.<$>
     PP.indent 2
-      ( PP.text "name:" <+> PP.pretty name
+      ( PP.textStrict "name:" <+> PP.pretty name
         PP.<$>
-        PP.text "params:" <+> PP.pretty params
+        PP.textStrict "params:" <+> PP.pretty params
         PP.<$>
-        PP.text "body:" <+> PP.pretty body
+        PP.textStrict "body:" <+> PP.pretty body
       )
 
 
 -- New Type ----------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (NewType x) where
     pretty (NewType name tyvars body) =
-      PP.text "New Type:"
+      PP.textStrict "New Type:"
       PP.<$>
       PP.indent 2
         ( 
-          PP.text "name:" <+> PP.pretty name
+          PP.textStrict "name:" <+> PP.pretty name
           PP.<$>
-          PP.text "tyvars:" <+> PP.pretty tyvars
+          PP.textStrict "tyvars:" <+> PP.pretty tyvars
           PP.<$>
-          PP.text "body:" <+> PP.pretty body
+          PP.textStrict "body:" <+> PP.pretty body
         )
 
 -- Type Alias ---------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (TypeAlias x) where
     pretty (TypeAlias name tyvars body) =
-      PP.text "Type Alias:"
+      PP.textStrict "Type Alias:"
       PP.<$>
       PP.indent 2
-        ( PP.text "name:" <+> PP.pretty name
+        ( PP.textStrict "name:" <+> PP.pretty name
           PP.<$>
-          PP.text "tyvars:" <+> PP.pretty tyvars
+          PP.textStrict "tyvars:" <+> PP.pretty tyvars
           PP.<$>
-          PP.text "body:" <+> PP.pretty body
+          PP.textStrict "body:" <+> PP.pretty body
         )
 
 
 -- Type Class ---------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (TypeClass x) where
     pretty (TypeClass ctx name tyvars body) =
-      PP.text "Type Class"
+      PP.textStrict "Type Class"
       PP.<$>
       PP.indent 2
-        ( PP.text "context:" <+> PP.pretty ctx
+        ( PP.textStrict "context:" <+> PP.pretty ctx
           PP.<$>
-          PP.text "name:" <+> PP.pretty name
+          PP.textStrict "name:" <+> PP.pretty name
           PP.<$>
-          PP.text "type vars:" <+> PP.pretty tyvars
+          PP.textStrict "type vars:" <+> PP.pretty tyvars
           PP.<$>
-          PP.text "body:" <+> PP.pretty body
+          PP.textStrict "body:" <+> PP.pretty body
         )
 
 
 -- Type Class Instance --------------------------------------------------------------
 instance PrettyX x => PP.Pretty (TypeClassInst x) where
     pretty (TypeClassInst ctx name args body) =
-      PP.text "Type Class Instance:"
+      PP.textStrict "Type Class Instance:"
       PP.<$>
       PP.indent 2
-        ( PP.text "context:" <+> PP.pretty ctx
+        ( PP.textStrict "context:" <+> PP.pretty ctx
           PP.<$>
-          PP.text "name:" <+> PP.pretty name
+          PP.textStrict "name:" <+> PP.pretty name
           PP.<$>
-          PP.text "args:" <+> PP.pretty args
+          PP.textStrict "args:" <+> PP.pretty args
           PP.<$>
-          PP.text "body:" <+> PP.pretty body
+          PP.textStrict "body:" <+> PP.pretty body
         )
 
 
 -- Data Type -----------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (DataType x) where
     pretty (DataType name tyvars body) =
-      PP.text "Data Type:"
+      PP.textStrict "Data Type:"
       PP.<$>
       PP.indent 2
-        ( PP.text "name:" <+> PP.pretty name
+        ( PP.textStrict "name:" <+> PP.pretty name
           PP.<$>
-          PP.text "tyvars:" <+> PP.pretty tyvars
+          PP.textStrict "tyvars:" <+> PP.pretty tyvars
           PP.<$>
-          PP.text "body:" <+> PP.pretty body
+          PP.textStrict "body:" <+> PP.pretty body
         )
 
 

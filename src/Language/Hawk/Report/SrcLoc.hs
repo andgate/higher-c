@@ -1,12 +1,15 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE  OverloadedStrings
+            , TemplateHaskell
+  #-}
 module Language.Hawk.Report.SrcLoc where
 
 import Control.Lens
 import Data.Binary
+import Data.Text.Lazy (pack)
 import Language.Hawk.Report.Region
-import Text.PrettyPrint.ANSI.Leijen ((<>))
+import Text.PrettyPrint.Leijen.Text ((<>))
 
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
+import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
 data SrcLoc
@@ -16,15 +19,15 @@ data SrcLoc
     }
     deriving (Eq, Ord, Show)
 
-makeLenses ''SrcLoc
+makeClassy ''SrcLoc
 
 instance HasRegion SrcLoc where
-    region = srcReg
+    region = srcReg . region
 
 
 instance PP.Pretty SrcLoc where
     pretty loc =
-       PP.text (loc^.srcPath) <> PP.text ":" <> PP.pretty (loc^.srcReg)
+       PP.text (pack $ loc^.srcPath) <> PP.text ":" <> PP.pretty (loc^.srcReg)
 
 
 instance Binary SrcLoc where
