@@ -19,6 +19,7 @@ data HkcErr
   | HkcParseErr ParseErr
   | HkcNameCheckError NameCheckError
   | HkcTypeCheckError TypeCheckError
+  deriving (Show)
 
 makeClassyPrisms ''HkcErr
 

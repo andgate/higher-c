@@ -6,7 +6,9 @@ import System.FilePath
 
 data LoadErr
   = FileNotFound FilePath
+  | FileInUse FilePath
   | PermissionDenied FilePath
+  | UndefinedLoadErr FilePath
   deriving(Show)
 
 makeClassyPrisms ''LoadErr

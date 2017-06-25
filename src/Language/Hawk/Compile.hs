@@ -39,8 +39,8 @@ compile
   :: ( MonadReader c m , HasHkcConfig c
      , MonadState s m
      , HasHkcState s, HasNameCheckState s, HasTypeCheckState s
-     , MonadLog (WithSeverity msg) m, AsLoadMsg msg
-     , MonadChronicle [e] m
+     , MonadLog (WithSeverity (WithTimestamp msg)) m, AsHkcMsg msg, AsLoadMsg msg
+     , MonadChronicle [WithTimestamp e] m
      , AsHkcErr e, AsLoadErr e, AsParseErr e, AsNameCheckError e, AsTypeCheckError e
      , MonadIO m
      )

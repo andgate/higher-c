@@ -10,5 +10,6 @@ data ParseErr
   = UnexcpectedToken Token
   | ParseFail Token
   | AmbiguousGrammar [[ItemPs]]
+  deriving(Show)
 
 makeClassyPrisms ''ParseErr

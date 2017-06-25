@@ -21,7 +21,7 @@ spec = parallel $
     it "Can compile" $ do
         let conf =
               HkcConfig
-                { _hkcSrcFiles  = ["example/Fib.hk"]
+                { _hkcSrcFiles  = ["example/Fake1.hk", "example/Fib.hk", "example/Example.hk", "example/Fake2.hk"]
                 , _hkcOutFile   = "example/example.out"
                 , _hkcProd      = Bin
                 , _hkcExAst     = [] -- List of serialized ast files (hkast)

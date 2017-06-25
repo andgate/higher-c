@@ -6,5 +6,6 @@ import Control.Lens
 data NameCheckError
   = SomeNameCheckError
   | UndeclaredVariable
+  deriving(Show)
 
 makeClassyPrisms ''NameCheckError

@@ -9,13 +9,15 @@ module Language.Hawk.Compile.State
 
 import Control.Lens
 import Data.Default.Class
+import Data.Text
 import Language.Hawk.NameCheck.State
 import Language.Hawk.TypeCheck.State
 
 
 data HkcState = 
   HkcState
-    { _hkcNameCheckState :: NameCheckState
+    { _hkcSrcs :: [Text]
+    , _hkcNameCheckState :: NameCheckState
     , _hkcTypeCheckState :: TypeCheckState
     }
 
@@ -29,4 +31,8 @@ instance HasTypeCheckState HkcState where
 
 instance Default HkcState where
     def =
-        HkcState def def
+        HkcState
+        { _hkcSrcs = []
+        , _hkcNameCheckState = def
+        , _hkcTypeCheckState = def
+        }

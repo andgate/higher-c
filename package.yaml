@@ -123,6 +123,7 @@ library:
     - Language.Hawk.TypeCheck.Context
     - Language.Hawk.TypeCheck.NameGen
 
+    - Control.Monad.Chronicle.Extra
 
 tests:
   spec:
