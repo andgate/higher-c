@@ -1,6 +1,8 @@
-module Language.Hawk.Data.Bag where
+module Data.Bag where
 
 import Prelude hiding (map)
+
+import Data.Semigroup
 
 data Bag a 
   = Empty
@@ -17,6 +19,8 @@ instance Monoid (Bag a) where
         (other, Empty) -> other
         
         (_, _) -> Two l r
+
+instance Semigroup (Bag a)
 
 instance Functor Bag where
     fmap f b =

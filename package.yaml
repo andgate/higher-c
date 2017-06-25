@@ -54,6 +54,7 @@ library:
     - bytestring
     - containers
     - data-default-class
+    - data-default-instances-text
     - directory
     - Earley
     - edit-distance
@@ -92,8 +93,6 @@ library:
     - Language.Hawk.Compile.PhaseStatus
     - Language.Hawk.Compile.State
 
-    - Language.Hawk.Data.Bag
-
     - Language.Hawk.DepExpansion
 
     - Language.Hawk.Load
@@ -123,6 +122,8 @@ library:
     - Language.Hawk.TypeCheck.Context
     - Language.Hawk.TypeCheck.NameGen
 
+    ## Extra, possibly seperate packages
+    - Data.Bag
     - Control.Monad.Chronicle.Extra
 
 tests:

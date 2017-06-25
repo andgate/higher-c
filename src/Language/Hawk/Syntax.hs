@@ -15,6 +15,7 @@
 module Language.Hawk.Syntax where
 
 import Data.Binary
+import Data.Default.Class
 import Data.Text (Text)
 import Control.Lens
 import GHC.Types (Constraint)
@@ -71,9 +72,13 @@ data Item x
   | TyInstItem (TypeClassInst x)
   
   | DataItem (DataType x)
+  | EmptyItem
 
 deriving instance ShowX x => Show (Item x)
 deriving instance EqX x => Eq (Item x)
+
+instance Default (Item x) where
+    def = EmptyItem
 
 type ItemPs = Item HkcPs
 

@@ -3,3 +3,4 @@ packages:
 - '.'
 extra-deps:
 - llvm-hs-4.2.0
+- data-default-instances-text-0.0.1

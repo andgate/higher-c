@@ -13,6 +13,8 @@ import Control.Monad.Chronicle.Extra
 import Control.Monad.Log
 import Control.Monad.State
 import Control.Monad.Reader
+import Data.Text (Text)
+import Data.Default.Instances.Text ()
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.State
 import Language.Hawk.Load.Error
@@ -29,18 +31,28 @@ load
      , MonadIO m
      )
   => m ()
-load = condemn $
-  do
+load =
+  condemn $ do
     fps <- view hkcSrcFiles
-    forM_ fps $ \fp -> do
-      srcOrExc <- liftIO . try . T.readFile $ fp
-      case srcOrExc of
-          Left ex ->
-            discloseNow $ mkLoadErr fp ex
-            
-          Right src -> do
-            logInfo =<< timestamp (_FileFound # fp)
-            hkcSrcs %= (src:)
+    srcs <- mapM loadFile fps
+    hkcSrcs .= srcs
+
+loadFile
+    ::  ( MonadReader c m, HasHkcConfig c
+        , MonadLog (WithSeverity (WithTimestamp msg)) m, AsLoadMsg msg
+        , MonadChronicle [WithTimestamp e] m, AsLoadErr e
+        , MonadIO m
+        )
+  => FilePath -> m Text
+loadFile fp = do
+  srcOrExc <- liftIO . try . T.readFile $ fp
+  case srcOrExc of
+      Left ex ->
+        discloseNow $ mkLoadErr fp ex
+        
+      Right src -> do
+        logInfo =<< timestamp (_FileFound # fp)
+        return src
 
 
 mkLoadErr :: (AsLoadErr e) => FilePath -> IOException -> e

@@ -15,10 +15,13 @@
 module Language.Hawk.Parse where
 
 import Control.Lens
+import Control.Monad.Log
 import Control.Monad.Chronicle
+import Control.Monad.Chronicle.Extra
 import Text.Earley (Report (..), Prod)
 import Text.PrettyPrint.Leijen.Text (pretty)
 
+import Language.Hawk.Parse.Message
 import Language.Hawk.Parse.Error
 import Language.Hawk.Parse.Lexer.Token (Token)
 import Language.Hawk.Syntax
@@ -32,15 +35,20 @@ import qualified Text.Earley as E
 -- -----------------------------------------------------------------------------
 -- Parser
 
-parse :: (MonadChronicle [e] m, AsParseErr e)
-      => [Token] -> m [ItemPs]
-parse toks =
+parseItems :: ( MonadChronicle [WithTimestamp e] m, AsParseErr e
+              , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
+              , MonadIO m
+              )
+      => [[Token]] -> m [ItemPs]
+parseItems itoks =
       let
-        (parses, r@(Report _ expected unconsumed)) =
-            E.fullParses (E.parser G.toplevel) toks
+         parseResults = map (E.fullParses (E.parser G.toplevel)) itoks
       in
-        case parses of
-            []  -> disclose [_UnexpectedToken # (head unconsumed)]
-            [p] -> return p
-            -- This will only happen is the grammar is wrong
-            ps  -> disclose [_AmbiguousGrammar # ps]
+        forM parseResults $ \(parses, r@(Report _ expected unconsumed)) ->
+          case parses of
+            []  -> discloseNow (_UnexpectedToken # (head unconsumed))
+            [p] -> do
+              logInfo =<< timestamp (_ParseSuccess # "") -- Need fill path for this message
+              return p
+            -- This will only happen if the grammar is wrong
+            ps  -> discloseNow (_AmbiguousGrammar # ps)

@@ -14,7 +14,7 @@ import qualified Text.PrettyPrint.Leijen.Text as P
 
 data ParseErr
   = UnexpectedToken Token
-  | AmbiguousGrammar [[ItemPs]]
+  | AmbiguousGrammar [ItemPs]
   deriving(Show)
 
 makeClassyPrisms ''ParseErr
@@ -28,4 +28,4 @@ instance Pretty ParseErr where
               <+> P.textStrict "at" <+> P.pretty (t^.tokLoc)
     
         AmbiguousGrammar ps ->
-            P.textStrict "Ambigiuos grammar detected:" P.<$> P.textStrict (pack $ show ps)
+            P.textStrict "Ambigiuos grammar detected:" P.<$> P.pretty ps
