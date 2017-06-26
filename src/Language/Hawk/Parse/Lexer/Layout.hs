@@ -9,10 +9,9 @@ import Control.Lens
 import Control.Monad (when, unless, void)
 import Control.Monad.State.Strict (State, evalState)
 import Language.Hawk.Parse.Lexer.Token
-import Language.Hawk.Report.SrcLoc (SrcLoc(..))
-import Language.Hawk.Report.Region (Region)
+import Language.Hawk.Syntax.Location (Location(..), Region)
 
-import qualified Language.Hawk.Report.Region  as R
+import qualified Language.Hawk.Syntax.Location  as L
 
 
 -- -----------------------------------------------------------------------------
@@ -136,14 +135,14 @@ open ct = do
 
   let cl = Cell i ct
   pushCell cl
-  yieldTok $ openTok (SrcLoc fp r) cl
+  yieldTok $ openTok (Loc fp r) cl
 
 close :: Layout ()
 close = do
   cl <- peekCell
   fp <- use layFilePath
   r <- use layRegion
-  yieldTok $ closeTok (SrcLoc fp r) cl
+  yieldTok $ closeTok (Loc fp r) cl
   void popCell
 
 
@@ -151,7 +150,7 @@ close = do
 -- Layout Helpers
 
 updateLocation :: Token -> Layout ()
-updateLocation (Token _ _ (SrcLoc fp r)) = do
+updateLocation (Token _ _ (Loc fp r)) = do
     layFilePath .= fp
     layRegion .= r
 
@@ -161,7 +160,7 @@ getCellIndent =
 
 getCurrIndent :: Layout Int
 getCurrIndent =
-  use $ layRegion . R.regStart . R.posColumn
+  use $ layRegion . L.regStart . L.posColumn
     
 setIndent :: Int -> Layout ()
 setIndent i =
@@ -183,14 +182,14 @@ peekCell =
   uses layStack head
 
     
-openTok :: SrcLoc -> Cell -> Token
+openTok :: Location -> Cell -> Token
 openTok loc cl =
   case cl ^. cellType of
       Block -> Token TokenBlk "" loc
       LineFold -> Token TokenLn "" loc
 
 
-closeTok :: SrcLoc -> Cell -> Token
+closeTok :: Location -> Cell -> Token
 closeTok loc cl =
   case cl ^. cellType of
       Block -> Token TokenBlk' "" loc

@@ -6,11 +6,12 @@
   #-}
 module Control.Monad.Chronicle.Extra where
 
+import Control.Monad.Base
 import Control.Monad.Chronicle
 import Control.Monad.Catch
 import Control.Monad.Log
-import Control.Monad.Base
 import Control.Monad.Trans.Control
+import Data.Bag
 import Data.Default.Class
 import Data.Semigroup
 import Data.These
@@ -19,12 +20,12 @@ import Data.These
 -------------------------------------------------------------------------------
 -- Helpers
 
-discloseNow :: (MonadChronicle [WithTimestamp c] m  -- Is there a better way to handle semigroup?
+discloseNow :: (MonadChronicle (Bag (WithTimestamp c)) m  -- Is there a better way to handle semigroup?
                , MonadIO m, Default a
                ) => c -> m a
 discloseNow c = do
     c' <- timestamp c
-    disclose [c']
+    disclose (One c')
 
 
 -------------------------------------------------------------------------------

@@ -14,7 +14,8 @@ import Control.Monad.Chronicle
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Log
 import Control.Monad.Reader
-import Control.Monad.State
+import Control.Monad.Trans.Control
+import Data.Bag
 
 import Language.Hawk.Load
 import Language.Hawk.Parse
@@ -37,16 +38,15 @@ hkc = runHkc compile
 
 compile
   :: ( MonadReader c m , HasHkcConfig c
-     , MonadState s m
-     , HasHkcState s, HasNameCheckState s, HasTypeCheckState s
      , MonadLog (WithSeverity (WithTimestamp msg)) m, AsHkcMsg msg, AsLoadMsg msg
-     , MonadChronicle [WithTimestamp e] m
+     , MonadChronicle (Bag (WithTimestamp e)) m
      , AsHkcErr e, AsLoadErr e, AsParseErr e, AsNameCheckError e, AsTypeCheckError e
-     , MonadIO m
+     , MonadIO m, MonadBaseControl IO m
      )
   => m ()
 compile = do
   load
+  
   --parseFiles
   --namecheck
   --typecheck

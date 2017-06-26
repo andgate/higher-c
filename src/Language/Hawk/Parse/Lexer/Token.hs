@@ -6,8 +6,7 @@ module Language.Hawk.Parse.Lexer.Token where
 import Control.Lens
 import Data.Binary hiding (encode)
 import Data.Text (Text, pack)
-import Language.Hawk.Report.SrcLoc (SrcLoc(..), HasSrcLoc(..))
-import Language.Hawk.Report.Region (Region(..), HasRegion(..))
+import Language.Hawk.Syntax.Location (Location(..), HasLocation(..), HasRegion(..))
 import Text.PrettyPrint.Leijen.Text (pretty, (<+>))
 
 import qualified Text.PrettyPrint.Leijen.Text     as PP
@@ -19,7 +18,7 @@ import qualified Text.PrettyPrint.Leijen.Text     as PP
 data Token = Token
     { _tokClass     :: TokenClass
     , _tokText      :: Text
-    , _tokLoc       :: SrcLoc
+    , _tokLoc       :: Location
     } deriving (Eq, Show, Ord)
 
 -- The token type:
@@ -56,11 +55,11 @@ data TokenClass
 
 makeLenses ''Token
 
-instance HasRegion Token where
-    region = tokLoc . region
+instance HasLocation Token where
+    location = tokLoc
 
-instance HasSrcLoc Token where
-    srcLoc = tokLoc
+instance HasRegion Token where
+    region = region
 
 -- -----------------------------------------------------------------------------
 -- Pretty Instances

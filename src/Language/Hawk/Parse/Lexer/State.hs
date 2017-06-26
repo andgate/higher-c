@@ -3,7 +3,7 @@ module Language.Hawk.Parse.Lexer.State where
 
 import Control.Lens
 import Data.Default.Class
-import Language.Hawk.Report.Region
+import Language.Hawk.Syntax.Location
 import Language.Hawk.Parse.Lexer.Token (Token)
 
 data LexState =

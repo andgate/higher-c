@@ -18,7 +18,7 @@ import Control.Lens
 import Control.Monad.Log
 import Control.Monad.Chronicle
 import Control.Monad.Chronicle.Extra
-import Text.Earley (Report (..), Prod)
+import Data.Bag
 import Text.PrettyPrint.Leijen.Text (pretty)
 
 import Language.Hawk.Parse.Message
@@ -28,27 +28,30 @@ import Language.Hawk.Syntax
 
 import qualified Data.Text as Text
 
-import qualified Language.Hawk.Parse.Grammar as G
-import qualified Text.Earley as E
 
 
 -- -----------------------------------------------------------------------------
 -- Parser
 
-parseItems :: ( MonadChronicle [WithTimestamp e] m, AsParseErr e
-              , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
-              , MonadIO m
-              )
-      => [[Token]] -> m [ItemPs]
-parseItems itoks =
+{-
+import qualified Text.Earley as E
+import Text.Earley (Report (..), Prod)
+import qualified Language.Hawk.Parse.Grammar as G
+
+parseItem :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
+             , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
+             , MonadIO m
+             )
+          => [Token] -> m ItemPs
+parseItem tks =
       let
-         parseResults = map (E.fullParses (E.parser G.toplevel)) itoks
+         (parses, r@(Report _ expected unconsumed)) = E.fullParses (E.parser G.toplevel) tks
       in
-        forM parseResults $ \(parses, r@(Report _ expected unconsumed)) ->
-          case parses of
-            []  -> discloseNow (_UnexpectedToken # (head unconsumed))
-            [p] -> do
-              logInfo =<< timestamp (_ParseSuccess # "") -- Need fill path for this message
-              return p
-            -- This will only happen if the grammar is wrong
-            ps  -> discloseNow (_AmbiguousGrammar # ps)
+        case parses of
+          []  -> discloseNow (_UnexpectedToken # (head unconsumed))
+          [p] -> do
+            logInfo =<< timestamp (_ParseSuccess # "") -- Need fill path for this message
+            return p
+          -- This will only happen if the grammar is wrong
+          ps  -> discloseNow (_AmbiguousGrammar # ps)
+-}

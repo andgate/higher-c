@@ -13,6 +13,8 @@ import Control.Monad.Chronicle.Extra
 import Control.Monad.Log
 import Control.Monad.State
 import Control.Monad.Reader
+import Control.Monad.Trans.Control
+import Data.Bag
 import Data.Text (Text)
 import Data.Default.Instances.Text ()
 import Language.Hawk.Compile.Config
@@ -24,23 +26,22 @@ import System.IO.Error
 import qualified Data.Text.IO as T
 
 load
-  :: ( MonadState s m, HasHkcState s
-     , MonadReader c m, HasHkcConfig c
+  :: ( MonadReader c m, HasHkcConfig c
      , MonadLog (WithSeverity (WithTimestamp msg)) m, AsLoadMsg msg
-     , MonadChronicle [WithTimestamp e] m, AsLoadErr e
-     , MonadIO m
+     , MonadChronicle (Bag (WithTimestamp e)) m, AsLoadErr e
+     , MonadIO m, MonadBaseControl IO m
      )
-  => m ()
+  => m [Text]
 load =
   condemn $ do
     fps <- view hkcSrcFiles
-    srcs <- mapM loadFile fps
-    hkcSrcs .= srcs
+    mapM loadFile fps
+
 
 loadFile
     ::  ( MonadReader c m, HasHkcConfig c
         , MonadLog (WithSeverity (WithTimestamp msg)) m, AsLoadMsg msg
-        , MonadChronicle [WithTimestamp e] m, AsLoadErr e
+        , MonadChronicle (Bag (WithTimestamp e)) m, AsLoadErr e
         , MonadIO m
         )
   => FilePath -> m Text

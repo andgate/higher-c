@@ -19,7 +19,7 @@ import Data.Default.Class
 import Data.Text (Text)
 import Control.Lens
 import GHC.Types (Constraint)
-import Language.Hawk.Report.SrcLoc
+import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Operator
 import Language.Hawk.Syntax.Pass
 import Language.Hawk.Syntax.Prim
@@ -158,7 +158,7 @@ data Name x
 
 type family XName x
 
-type instance XName HkcPs = SrcLoc
+type instance XName HkcPs = Location
 type instance XName HkcRn = ()
 type instance XName HkcTc = ()
 

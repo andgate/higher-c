@@ -37,6 +37,14 @@ instance Functor Bag where
         Many xs ->
           Many $ fmap f xs
 
+
+instance Foldable Bag where
+   -- foldr :: (a -> b -> b) -> b -> t a -> b
+   foldr _ z Empty = z
+   foldr f z (One x) = f x z
+   foldr f z (Two x y) = foldr f (foldr f z y) x
+   foldr f z (Many xs) = foldr f z xs
+
 singleton :: a -> Bag a
 singleton =
   One

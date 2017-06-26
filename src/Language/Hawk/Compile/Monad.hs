@@ -18,6 +18,7 @@ import Control.Monad.Reader
 import Control.Monad.State.Lazy
 import Control.Monad.Base
 import Control.Monad.Trans.Control
+import Data.Bag
 import Data.Time.Format
 import Data.These
 import Data.Default.Class
@@ -31,13 +32,12 @@ import System.IO
 
 -------------------------------------------------------------------------------
 -- Compiler Monad
-newtype Hkc a = Hkc { unHkc :: StateT HkcState (ReaderT HkcConfig (ChronicleT [WithTimestamp HkcErr] (LoggingT (WithSeverity (WithTimestamp HkcMsg)) IO))) a }
+newtype Hkc a = Hkc { unHkc :: ReaderT HkcConfig (ChronicleT (Bag (WithTimestamp HkcErr)) (LoggingT (WithSeverity (WithTimestamp HkcMsg)) IO)) a }
     deriving
-     ( Functor, Applicative, Monad 
-     , MonadState   HkcState
+     ( Functor, Applicative, Monad
      , MonadReader  HkcConfig
      , MonadLog (WithSeverity (WithTimestamp HkcMsg))
-     , MonadChronicle [WithTimestamp HkcErr]
+     , MonadChronicle (Bag (WithTimestamp HkcErr))
      , MonadBase IO
      , MonadIO
      , MonadThrow
@@ -50,7 +50,7 @@ runHkc m conf =
   void $
     withFDHandler defaultBatchingOptions stderr 0.4 80 $ \stderrHandler ->
     withFDHandler defaultBatchingOptions stdout 0.4 80 $ \stdoutHandler ->
-    runLoggingT (logErrors =<< runChronicleT (runReaderT (runStateT (unHkc m) def) conf))
+    runLoggingT (logErrors =<< runChronicleT (runReaderT (unHkc m) conf))
                 (\msg ->
                     case msgSeverity msg of
                       Error -> stderrHandler $ renderWithTimestamp (formatTime defaultTimeLocale rfc822DateFormat)
@@ -66,7 +66,7 @@ runHkc m conf =
           
 
 logErrors :: (MonadLog (WithSeverity (WithTimestamp HkcMsg)) m)
-          => These [WithTimestamp HkcErr] a -> m ()
+          => These (Bag (WithTimestamp HkcErr)) a -> m ()
 logErrors = 
   these (\errs -> mapM_ logErr errs)
         (\_ -> return ())
@@ -81,7 +81,7 @@ logErrors =
 -- Helper instances
 
 instance MonadBaseControl IO Hkc where
-    type StM Hkc a = These [WithTimestamp HkcErr] (a, HkcState)
+    type StM Hkc a = These (Bag (WithTimestamp HkcErr)) a
     liftBaseWith f = Hkc $ liftBaseWith $ \q -> f (q . unHkc)
     restoreM = Hkc . restoreM
     {-# INLINABLE liftBaseWith #-}

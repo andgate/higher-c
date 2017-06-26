@@ -56,18 +56,20 @@ library:
     - data-default-class
     - data-default-instances-text
     - directory
-    - Earley
     - edit-distance
     - exceptions
     - filepath
     - ghc-prim
     - lens
+    - lifted-base
+    - lifted-async
     - logging-effect
     - mmorph
     - monad-control
     - monad-logger
     - mono-traversable
     - mtl
+    - parsec
     - primitive
     - resourcet
     - safe
@@ -104,25 +106,23 @@ library:
     
     - Language.Hawk.Parse
     - Language.Hawk.Parse.Error
-    - Language.Hawk.Parse.Grammar
     - Language.Hawk.Parse.Helpers
     - Language.Hawk.Parse.Lexer
     - Language.Hawk.Parse.Lexer.Layout
     - Language.Hawk.Parse.Lexer.Token
     - Language.Hawk.Parse.Message
-
-    - Language.Hawk.Report.Region
-    - Language.Hawk.Report.SrcLoc
+    - Language.Hawk.Parse.Module
 
     - Language.Hawk.Syntax
     - Language.Hawk.Syntax.Pass
     - Language.Hawk.Syntax.Prim
+    - Language.Hawk.Syntax.Location
 
     - Language.Hawk.TypeCheck
     - Language.Hawk.TypeCheck.Context
     - Language.Hawk.TypeCheck.NameGen
 
-    ## Extra, possibly seperate packages
+    ## Extra, possibly seperate packages or upstream merges
     - Data.Bag
     - Control.Monad.Chronicle.Extra
 
@@ -153,16 +153,16 @@ tests:
 #      - -threaded
 #      - -with-rtsopts=-N
 
-  hlint:
-    source-dirs: test-suite
-    main: HLint.hs
-    dependencies:
-      - base
-      - hlint
-    ghc-options:
-      - -rtsopts
-      - -threaded
-      - -with-rtsopts=-N
+#  hlint:
+#    source-dirs: test-suite
+#    main: HLint.hs
+#    dependencies:
+#      - base
+#      - hlint
+#    ghc-options:
+#      - -rtsopts
+#      - -threaded
+#      - -with-rtsopts=-N
     
 
 benchmarks:
