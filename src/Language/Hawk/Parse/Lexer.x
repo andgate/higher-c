@@ -100,6 +100,8 @@ hawk :-
   "infixl"                        { rsvp }
   "infixr"                        { rsvp }
 
+  "mod"                           { rsvp }
+
   "vow"                           { rsvp }
   "var"                           { rsvp }
   "val"                           { rsvp }

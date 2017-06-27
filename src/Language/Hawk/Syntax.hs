@@ -16,9 +16,11 @@ module Language.Hawk.Syntax where
 
 import Data.Binary
 import Data.Default.Class
-import Data.Text (Text)
+import Data.Map.Strict (Map)
+import Data.Text (Text, pack)
 import Control.Lens
 import GHC.Types (Constraint)
+import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Operator
 import Language.Hawk.Syntax.Pass
@@ -26,6 +28,7 @@ import Language.Hawk.Syntax.Prim
 import Text.PrettyPrint.Leijen.Text ((<+>))
 
 import qualified Text.PrettyPrint.Leijen.Text     as PP
+import qualified Data.Map.Strict as Map
 
 
 type ForallX (c :: * -> Constraint) (x :: *)
@@ -33,6 +36,7 @@ type ForallX (c :: * -> Constraint) (x :: *)
     , ForallExp c x
     , ForallType c x
     , c (XName x)
+    , c (XMScope x)
     )
 
 type ShowX (x :: *)
@@ -49,6 +53,42 @@ type PrettyX (x :: *)
 
 type BinaryX (x :: *)
   = ForallX Binary x
+
+
+-- -----------------------------------------------------------------------------
+-- | Module
+
+data Mod x =
+  Mod
+    { _modName :: Text
+    , _modSubs :: Map Text (Mod x)
+    , _modScopes :: Map Text (MScope x)
+    }
+
+deriving instance ShowX x => Show (Mod x)
+deriving instance EqX x => Eq (Mod x)
+
+type ModPs = Mod HkcPs
+
+
+-- -----------------------------------------------------------------------------
+-- | Module Scope
+
+data MScope x =
+  MScope
+   { _mscopePath  :: FilePath
+   , _mscopeItems :: [Item x]
+   , _mscopeX     :: XMScope x
+   }
+
+type family XMScope x
+
+type instance XMScope HkcPs = [Token]
+type instance XMScope HkcRn = ()
+type instance XMScope HkcTc = ()
+
+deriving instance ShowX x => Show (MScope x)
+deriving instance EqX x => Eq (MScope x)
 
 -- -----------------------------------------------------------------------------
 -- | Item
@@ -610,6 +650,14 @@ data DataType x
 deriving instance ShowX x => Show (DataType x)
 deriving instance EqX x => Eq (DataType x)
 
+
+-- -----------------------------------------------------------------------------
+-- | Lens Instances
+
+makeLenses ''Name
+makeLenses ''Fun
+makeLenses ''Mod
+makeLenses ''MScope
 
 -- -----------------------------------------------------------------------------
 -- | Pretty Printing Instances
@@ -1591,24 +1639,77 @@ instance BinaryX x => Binary (DataType x) where
 -- -----------------------------------------------------------------------------
 -- | Helpers
 
--- Possibly useless
-{-
-class ToString a where
-  toString :: a -> String
--}
 
--- Literal ---------------------------------------------------------------------
--- Is this actually used? Why not show?
-{-
-instance ToString Literal where 
-  toString literal =
-    case literal of
-      IntNum n -> show n
-      FloatNum n -> show n
-      Chr c -> show c
-      Str s -> s
-      Boolean bool -> show bool
--}  
+-- Module ---------------------------------------------------------------------
+
+
+-- Construction function for parse
+mkModPs :: [Text] -> FilePath -> [Token] -> ModPs
+mkModPs [n] fp ts
+  = Mod { _modName = n
+        , _modSubs = mempty
+        , _modScopes = Map.singleton (pack fp) ms
+        }
+    where
+      ms = MScope { _mscopePath  = fp
+                  , _mscopeItems = mempty
+                  , _mscopeX     = ts
+                  }
+
+mkModPs (n:ns) fp ts
+  = Mod { _modName = n
+        , _modSubs = Map.singleton (head ns) (mkModPs ns fp ts)
+        , _modScopes = mempty
+        }
+
+
+
+instance Monoid (XMScope x) => Monoid (Mod x) where
+    mempty
+      = Mod { _modName = mempty
+            , _modSubs = mempty
+            , _modScopes = mempty
+            }
+
+    mappend m1 m2
+      | m1^.modName == m2^.modName
+        = Mod { _modName = m1^.modName
+              , _modSubs = Map.insertWith mappend (m2^.modName) m2 (m1^.modSubs)
+              , _modScopes = m1^.modScopes
+              }
+      
+      | m2^.modName == "root"
+        = Mod { _modName = m2^.modName
+              , _modSubs = Map.insertWith mappend (m1^.modName) m1 (m2^.modSubs)
+              , _modScopes = m2^.modScopes
+              }
+
+      | otherwise
+        = let
+            subs = Map.fromList [(m1^.modName, m1), (m2^.modName, m2)]
+          in
+            Mod { _modName = "root"
+                , _modSubs = subs 
+                , _modScopes = mempty
+                }
+
+
+instance Monoid (XMScope x) => Monoid (MScope x) where
+    mempty
+      = MScope { _mscopePath  = mempty
+               , _mscopeItems = mempty
+               , _mscopeX     = mempty
+               }
+    
+    mappend ms1 ms2
+      | ms1^.mscopePath /= ms2^.mscopePath
+          -- If this ever happens, something went terribly wrong.
+          = error "HKC BUG: Can't combined different module scopes"
+      | otherwise
+          = MScope { _mscopePath  = ms1^.mscopePath
+                   , _mscopeItems = mappend (ms1^.mscopeItems) (ms2^.mscopeItems)
+                   , _mscopeX     = mappend (ms1^.mscopeX) (ms2^.mscopeX)
+                   }
 
 -- Name ------------------------------------------------------------------------
 
@@ -1686,7 +1787,3 @@ tyListConName = builtin "_#_List_#_"
 tyTupleConName :: HasBuiltin n => Int -> n
 tyTupleConName n = builtin $ T.pack ("_#_" ++ show n ++ "_Tuple_#_")
 -}
-
-
-makeLenses ''Name
-makeLenses ''Fun
