@@ -106,6 +106,12 @@ tokUpdatePos
   -> P.SourcePos         -- ^ Last position
   -> Token               -- ^ Current token
   -> (P.SourcePos, P.SourcePos) -- ^ Last position and Current position
-tokUpdatePos _ p _
-  = (p, p) -- Don't use megaparsec's position tracking
+tokUpdatePos _ apos@(P.SourcePos fp _ _) t
+  = (apos, npos) -- Don't use megaparsec's position tracking
+  where
+  npos = p2ps . _regStart . _locReg . _tokLoc $ t
+  {-# INLINE p2ps #-}
+  p2ps (P l c) = P.SourcePos fp
+                             (P.unsafePos . fromIntegral $ l + 1)
+                             (P.unsafePos . fromIntegral $ c + 1)
 {-# INLINE tokUpdatePos #-}
