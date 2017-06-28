@@ -16,9 +16,11 @@ import Control.Monad.Log
 import Control.Monad.Reader
 import Control.Monad.Trans.Control
 import Data.Bag
+import Data.Foldable
 
 import Language.Hawk.Load
 import Language.Hawk.Parse
+import Language.Hawk.Parse.Lexer
 
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.Error
@@ -26,6 +28,7 @@ import Language.Hawk.Compile.Message
 import Language.Hawk.Compile.Monad
 import Language.Hawk.Compile.State
 import Language.Hawk.Compile.Options
+import Text.PrettyPrint.Leijen.Text (pretty)
 
 
 import qualified Data.Text                        as T
@@ -38,7 +41,7 @@ hkc = runHkc compile
 
 compile
   :: ( MonadReader c m , HasHkcConfig c
-     , MonadLog (WithSeverity (WithTimestamp msg)) m, AsHkcMsg msg, AsLoadMsg msg
+     , MonadLog (WithSeverity (WithTimestamp msg)) m, AsHkcMsg msg, AsLoadMsg msg, AsParseMsg msg
      , MonadChronicle (Bag (WithTimestamp e)) m
      , AsHkcErr e, AsLoadErr e, AsParseErr e, AsNameCheckError e, AsTypeCheckError e
      , MonadIO m, MonadBaseControl IO m
@@ -46,6 +49,10 @@ compile
   => m ()
 compile = do
   load
+    >>= mapM (return . lexer)
+    >>= condemn . mapM parseMod
+    -- >>= return . fold
+    >>= liftIO . print -- . pretty
   
   --parseFiles
   --namecheck

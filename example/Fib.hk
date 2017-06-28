@@ -1,5 +1,6 @@
 // Simple program that computes a fibbonacci number
 // and prints it
+mod Fib
 
 // Link to printd from c
 foreign ccall "printd" printd ? Double -> ()

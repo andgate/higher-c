@@ -1,15 +1,21 @@
 {-# LANGUAGE OverloadedStrings
            , TemplateHaskell
+           , DeriveGeneric
+           , TypeFamilies
+           , FlexibleInstances
   #-}
 module Language.Hawk.Parse.Lexer.Token where
 
 import Control.Lens
 import Data.Binary hiding (encode)
 import Data.Text (Text, pack)
-import Language.Hawk.Syntax.Location (Location(..), HasLocation(..), HasRegion(..))
+import GHC.Generics (Generic)
+import Language.Hawk.Syntax.Location
 import Text.PrettyPrint.Leijen.Text (pretty, (<+>))
 
-import qualified Text.PrettyPrint.Leijen.Text     as PP
+import qualified Text.Megaparsec.Prim           as P
+import qualified Text.Megaparsec.Pos            as P
+import qualified Text.PrettyPrint.Leijen.Text   as PP
 
 -- -----------------------------------------------------------------------------
 -- Token Types
@@ -19,7 +25,7 @@ data Token = Token
     { _tokClass     :: TokenClass
     , _tokText      :: Text
     , _tokLoc       :: Location
-    } deriving (Eq, Show, Ord)
+    } deriving (Eq, Show, Ord, Generic)
 
 -- The token type:
 data TokenClass
@@ -43,14 +49,13 @@ data TokenClass
   | TokenString String
   | TokenBool Bool
   
-  | TokenTop
   | TokenBlk
   | TokenBlk'
   | TokenLn
   | TokenLn'
   
   | TokenEof
-  deriving (Eq, Show, Ord)
+  deriving (Eq, Show, Ord, Generic)
 
 
 makeLenses ''Token
@@ -79,50 +84,28 @@ instance PP.Pretty TokenClass where
 -- -----------------------------------------------------------------------------
 -- Binary Instances
 
-instance Binary Token where
-  get =
-    Token <$> get <*> get <*> get
-      
-  put (Token c t loc) =
-    put c >> put t >> put loc
+instance Binary Token
+instance Binary TokenClass
 
 
-instance Binary TokenClass where
-  get = do
-    n <- getWord8
-    case n of
-      2 -> TokenVarId <$> get
-      3 -> TokenConId <$> get
-      4 -> TokenOpId <$> get 
+-- -----------------------------------------------------------------------------
+-- Megaparsec Stream Instance
+type HkToken = Token
 
-      7 -> TokenInteger <$> get
-      8 -> TokenDouble <$> get
-      9 -> TokenChar <$> get
-      10 -> TokenString <$> get
-      11 -> TokenBool <$> get
-      12 -> pure TokenTop
-      13 -> pure TokenBlk
-      14 -> pure TokenBlk'
-      15 -> pure TokenLn
-      16 -> pure TokenLn'
-      17 -> pure TokenEof
-      _  -> error "data corrupted"
-      
-  put e =
-    case e of
-      TokenVarId t      -> putWord8 2 >> put t
-      TokenConId t      -> putWord8 3 >> put t
-      TokenOpId t       -> putWord8 4 >> put t
-      TokenInteger i    -> putWord8 7 >> put i
-      TokenDouble d     -> putWord8 8 >> put d
-      TokenChar c       -> putWord8 9 >> put c
-      TokenString s     -> putWord8 10 >> put s
-      TokenBool b       -> putWord8 11 >> put b
-      TokenTop          -> putWord8 12
-      TokenBlk          -> putWord8 13
-      TokenBlk'         -> putWord8 14
-      TokenLn           -> putWord8 15
-      TokenLn'          -> putWord8 16 
-      TokenEof          -> putWord8 17
+instance P.Stream [HkToken] where
+    type Token [HkToken] = HkToken
+    uncons [] = Nothing
+    uncons (t:ts) = Just (t, ts)
+    {-# INLINE uncons #-}
+    updatePos = const tokUpdatePos
+    {-# INLINE updatePos #-}
+    
 
-
+tokUpdatePos
+  :: P.Pos               -- ^ Tab width
+  -> P.SourcePos         -- ^ Last position
+  -> Token               -- ^ Current token
+  -> (P.SourcePos, P.SourcePos) -- ^ Last position and Current position
+tokUpdatePos _ p _
+  = (p, p) -- Don't use megaparsec's position tracking
+{-# INLINE tokUpdatePos #-}

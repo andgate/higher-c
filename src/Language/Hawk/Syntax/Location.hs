@@ -17,7 +17,7 @@ import qualified Text.PrettyPrint.Leijen.Text as P
 
 data Location
   = Loc
-    { _locPath  :: {-# UNPACK #-} !FilePath
+    { _locPath  :: !FilePath
     , _locReg   :: {-# UNPACK #-} !Region 
     }
     deriving (Eq, Ord, Show, Generic)
@@ -75,11 +75,14 @@ instance Monoid Region where
 
 instance P.Pretty Location where
     pretty loc =
-       P.textStrict (pack $ loc^.locPath) <> P.textStrict ":" <> P.pretty (loc^.locPath)
+       P.textStrict (pack $ loc^.locPath) <> P.textStrict ":" <> P.pretty (loc^.locReg)
 
 instance P.Pretty Region where
-  pretty (R s e) =
-    P.pretty s <> P.textStrict "-" <> P.pretty e
+  pretty (R s e)
+    | s == e
+      = P.pretty s
+    | otherwise
+      = P.pretty s <> P.textStrict "-" <> P.pretty e
 
 
 instance P.Pretty Position where

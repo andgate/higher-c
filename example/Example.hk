@@ -2,6 +2,8 @@
    Hawk is similar in syntax to Haskell,
    but technically closer to C.
 */
+mod Example
+
 
 // Import items, place them under a "C" namespace
 -> Core.(IO.(printLn readLn Stdout Stdin)

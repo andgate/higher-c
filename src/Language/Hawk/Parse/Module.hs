@@ -1,7 +1,11 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE  OverloadedStrings
+            , FlexibleContexts
+            , ConstraintKinds
+            , TypeFamilies
+  #-}
 module Language.Hawk.Parse.Module where
 
-
+import Control.Applicative
 import Control.Lens
 import Data.Text (Text)
 import Language.Hawk.Parse.Helpers
@@ -9,19 +13,28 @@ import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Syntax
 
 
-import qualified Text.Parsec.Prim       as P
-import qualified Text.Parsec.Combinator as P
-import qualified Text.Parsec.Pos        as P
+import qualified Text.Megaparsec.Prim       as P
+import qualified Text.Megaparsec.Combinator as P
 
 
 
-moduleP :: FilePath -> ParserT () Identity ModPs
-moduleP fp = do
-  rsvp "mod"
-  ns <- modPathP
-  ts <- P.many anyTok
-  return $ mkModPs ns fp ts
+moduleP :: MonadParser m => FilePath -> m [Token]
+moduleP fp =
+    many anyT
+    --mkModPs fp <$> modHeader <*> modBody
 
 
-modPathP :: ParserT () Identity [Text]
-modPathP = undefined
+modHeader :: MonadParser m => m [Text]
+modHeader =
+  linefold $ rsvp "mod" >> modPathP
+
+
+
+
+
+modPathP :: MonadParser m => m [Text]
+modPathP = return ["Example"]
+
+
+modBody :: MonadParser m => m [[Token]]
+modBody = return []

@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeFamilies
            , GADTs
+           , DeriveGeneric
            , DataKinds
            , ConstraintKinds
            , EmptyCase
@@ -20,6 +21,7 @@ import Data.Map.Strict (Map)
 import Data.Text (Text, pack)
 import Control.Lens
 import GHC.Types (Constraint)
+import GHC.Generics (Generic)
 import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Operator
@@ -27,8 +29,8 @@ import Language.Hawk.Syntax.Pass
 import Language.Hawk.Syntax.Prim
 import Text.PrettyPrint.Leijen.Text ((<+>))
 
-import qualified Text.PrettyPrint.Leijen.Text     as PP
-import qualified Data.Map.Strict as Map
+import qualified Text.PrettyPrint.Leijen.Text as PP
+import qualified Data.Map.Strict              as Map
 
 
 type ForallX (c :: * -> Constraint) (x :: *)
@@ -38,6 +40,9 @@ type ForallX (c :: * -> Constraint) (x :: *)
     , c (XName x)
     , c (XMScope x)
     )
+
+type GenericX (x :: *)
+  = ForallX Generic x
 
 type ShowX (x :: *)
   = ForallX Show x
@@ -52,7 +57,7 @@ type PrettyX (x :: *)
   = ForallX PP.Pretty x
 
 type BinaryX (x :: *)
-  = ForallX Binary x
+  = (ForallX Binary x, GenericX x)
 
 
 -- -----------------------------------------------------------------------------
@@ -67,6 +72,7 @@ data Mod x =
 
 deriving instance ShowX x => Show (Mod x)
 deriving instance EqX x => Eq (Mod x)
+deriving instance GenericX x => Generic (Mod x)
 
 type ModPs = Mod HkcPs
 
@@ -83,12 +89,13 @@ data MScope x =
 
 type family XMScope x
 
-type instance XMScope HkcPs = [Token]
+type instance XMScope HkcPs = [[Token]]
 type instance XMScope HkcRn = ()
 type instance XMScope HkcTc = ()
 
 deriving instance ShowX x => Show (MScope x)
 deriving instance EqX x => Eq (MScope x)
+deriving instance GenericX x => Generic (MScope x)
 
 -- -----------------------------------------------------------------------------
 -- | Item
@@ -116,6 +123,7 @@ data Item x
 
 deriving instance ShowX x => Show (Item x)
 deriving instance EqX x => Eq (Item x)
+deriving instance GenericX x => Generic (Item x)
 
 instance Default (Item x) where
     def = EmptyItem
@@ -131,7 +139,7 @@ data Dependency =
     { _depIsQual  :: Bool
     , _depPath    :: DepPath
     , _depAlias   :: Maybe Text
-    } deriving (Eq, Show)
+    } deriving (Eq, Show, Generic)
 
 
 -- -----------------------------------------------------------------------------
@@ -144,7 +152,7 @@ data DepPath =
     { _depSpecIsHidden  :: Bool
     , _depSpecfiers     :: [DepPath]
     }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 
 -- -----------------------------------------------------------------------------
@@ -159,6 +167,7 @@ data NestedItem x
 
 deriving instance ShowX x => Show (NestedItem x)
 deriving instance EqX x => Eq (NestedItem x)
+deriving instance GenericX x => Generic (NestedItem x)
 
 
 -- -----------------------------------------------------------------------------
@@ -169,11 +178,12 @@ data Foreign x =
 
 deriving instance ShowX x => Show (Foreign x)
 deriving instance EqX x => Eq (Foreign x)
+deriving instance GenericX x => Generic (Foreign x)
 
 
 data ForeignType =
   ForeignC
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 
 -- -----------------------------------------------------------------------------
@@ -185,6 +195,7 @@ data Expose x =
 
 deriving instance ShowX x => Show (Expose x)
 deriving instance EqX x => Eq (Expose x)
+deriving instance GenericX x => Generic (Expose x)
 
 
 -- -----------------------------------------------------------------------------
@@ -204,6 +215,7 @@ type instance XName HkcTc = ()
 
 deriving instance ShowX x => Show (Name x)
 deriving instance EqX x => Eq (Name x)
+deriving instance GenericX x => Generic (Name x)
 
 type NamePs = Name HkcPs
 
@@ -238,6 +250,7 @@ type ForallLit (c :: * -> Constraint) (x :: *) =
 
 deriving instance ShowX x => Show (Lit x)
 deriving instance EqX x => Eq (Lit x)
+deriving instance GenericX x => Generic (Lit x)
 
 
 type instance XIntLit      HkcPs = ()
@@ -294,6 +307,7 @@ type ForallType (c :: * -> Constraint) (x :: *) =
 
 deriving instance ShowX x => Show (Type x)
 deriving instance EqX x => Eq (Type x)
+deriving instance GenericX x => Generic (Type x)
 
 type instance XTyFun    HkcPs = ()
 type instance XTyTuple  HkcPs = ()
@@ -326,6 +340,7 @@ data QType x
 
 deriving instance ShowX x => Show (QType x)
 deriving instance EqX x => Eq (QType x)
+deriving instance GenericX x => Generic (QType x)
 
 
 -- -----------------------------------------------------------------------------
@@ -336,12 +351,15 @@ data TyContext x
 
 deriving instance ShowX x => Show (TyContext x)
 deriving instance EqX x => Eq (TyContext x)
+deriving instance GenericX x => Generic (TyContext x)
 
 data TyAssert x
   = TyAssert (Name x) [Type x]
 
 deriving instance ShowX x => Show (TyAssert x)
 deriving instance EqX x => Eq (TyAssert x)
+deriving instance GenericX x => Generic (TyAssert x)
+
 
 
 -- -----------------------------------------------------------------------------
@@ -431,6 +449,7 @@ type ForallExp (c :: * -> Constraint) (x :: *) =
 
 deriving instance ShowX x => Show (Exp x)
 deriving instance EqX x => Eq (Exp x)
+deriving instance GenericX x => Generic (Exp x)
 
 type instance XELit         HkcPs = ()
 type instance XEVar         HkcPs = ()
@@ -498,6 +517,7 @@ data Stmt x
 
 deriving instance ShowX x => Show (Stmt x)
 deriving instance EqX x => Eq (Stmt x)
+deriving instance GenericX x => Generic (Stmt x)
 
 
 -- -----------------------------------------------------------------------------
@@ -509,6 +529,7 @@ data Body x
 
 deriving instance ShowX x => Show (Body x)
 deriving instance EqX x => Eq (Body x)
+deriving instance GenericX x => Generic (Body x)
 
 -- -----------------------------------------------------------------------------
 -- | Type Signature
@@ -521,6 +542,7 @@ data TypeSig x
 
 deriving instance ShowX x => Show (TypeSig x)
 deriving instance EqX x => Eq (TypeSig x)
+deriving instance GenericX x => Generic (TypeSig x)
 
 
 -- -----------------------------------------------------------------------------
@@ -534,12 +556,13 @@ data Vow x
 
 deriving instance ShowX x => Show (Vow x)
 deriving instance EqX x => Eq (Vow x)
+deriving instance GenericX x => Generic (Vow x)
 
 data VowType =
   VowVar
   | VowVal
   | VowRef
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 
 -- -----------------------------------------------------------------------------
@@ -553,6 +576,7 @@ data Var x
 
 deriving instance ShowX x => Show (Var x)
 deriving instance EqX x => Eq (Var x)
+deriving instance GenericX x => Generic (Var x)
 
 
 -- -----------------------------------------------------------------------------
@@ -566,6 +590,7 @@ data Val x
 
 deriving instance ShowX x => Show (Val x)
 deriving instance EqX x => Eq (Val x)
+deriving instance GenericX x => Generic (Val x)
 
 
 -- -----------------------------------------------------------------------------
@@ -580,6 +605,7 @@ data Fun x
 
 deriving instance ShowX x => Show (Fun x)
 deriving instance EqX x => Eq (Fun x)
+deriving instance GenericX x => Generic (Fun x)
 
 -- -----------------------------------------------------------------------------
 -- | New Type
@@ -593,6 +619,7 @@ data NewType x
 
 deriving instance ShowX x => Show (NewType x)
 deriving instance EqX x => Eq (NewType x)
+deriving instance GenericX x => Generic (NewType x)
 
 -- -----------------------------------------------------------------------------
 -- | Type Alias
@@ -606,6 +633,7 @@ data TypeAlias x
 
 deriving instance ShowX x => Show (TypeAlias x)
 deriving instance EqX x => Eq (TypeAlias x)
+deriving instance GenericX x => Generic (TypeAlias x)
 
 
 -- -----------------------------------------------------------------------------
@@ -621,6 +649,7 @@ data TypeClass x
 
 deriving instance ShowX x => Show (TypeClass x)
 deriving instance EqX x => Eq (TypeClass x)
+deriving instance GenericX x => Generic (TypeClass x)
 
 
 -- -----------------------------------------------------------------------------
@@ -636,6 +665,7 @@ data TypeClassInst x
 
 deriving instance ShowX x => Show (TypeClassInst x)
 deriving instance EqX x => Eq (TypeClassInst x)
+deriving instance GenericX x => Generic (TypeClassInst x)
 
 -- -----------------------------------------------------------------------------
 -- | Data Type
@@ -649,6 +679,7 @@ data DataType x
 
 deriving instance ShowX x => Show (DataType x)
 deriving instance EqX x => Eq (DataType x)
+deriving instance GenericX x => Generic (DataType x)
 
 
 -- -----------------------------------------------------------------------------
@@ -1253,387 +1284,106 @@ instance PrettyX x => PP.Pretty (DataType x) where
 -- | Binary Instances
 
 -- Nested Item -----------------------------------------------------------------
-instance BinaryX x => Binary (Item x) where
-  get = do
-    n <- getWord8
-    case n of
-      1  -> DepItem <$> get
-      2  -> ForeignItem <$> get
-      3  -> ExposeItem <$> get
-      4  -> VowItem <$> get
-      5  -> SigItem <$> get
-      6  -> VarItem <$> get
-      7  -> ValItem <$> get
-      8  -> FunItem <$> get
-      9  -> NewTyItem <$> get
-      10 -> TyAliasItem <$> get
-      11 -> TyClassItem <$> get
-      12 -> TyInstItem <$> get
-      13 -> DataItem <$> get
-      _ -> undefined
-
-  put e =
-    case e of
-      DepItem i       -> putWord8 1 >> put i
-      ForeignItem i   -> putWord8 2 >> put i
-      ExposeItem i    -> putWord8 3 >> put i
-      VowItem i       -> putWord8 4 >> put i
-      SigItem i       -> putWord8 5 >> put i
-      VarItem i       -> putWord8 6 >> put i
-      ValItem i       -> putWord8 7 >> put i
-      FunItem i       -> putWord8 8 >> put i
-      NewTyItem i     -> putWord8 9 >> put i
-      TyAliasItem i   -> putWord8 10 >> put i
-      TyClassItem i   -> putWord8 11 >> put i
-      TyInstItem i    -> putWord8 12 >> put i
-      DataItem i      -> putWord8 13 >> put i
+instance BinaryX x => Binary (Item x)
 
 
 -- Nested Item -----------------------------------------------------------------
-instance BinaryX x => Binary (NestedItem x) where
-  get = do
-    n <- getWord8
-    case n of
-      1 -> NestedVar <$> get
-      2 -> NestedVal <$> get
-      3 -> NestedFun <$> get
-      4 -> NestedVow <$> get
-      5 -> NestedSig <$> get
-      _ -> undefined
-
-  put e =
-    case e of
-      NestedVar v   -> putWord8 1 >> put v
-      NestedVal v   -> putWord8 2 >> put v
-      NestedFun f   -> putWord8 3 >> put f
-      NestedVow v   -> putWord8 4 >> put v
-      NestedSig s   -> putWord8 5 >> put s
+instance BinaryX x => Binary (NestedItem x)
 
 
 -- Dependency ---------------------------------------------------------------
-instance Binary Dependency where
-  get =
-    Dep <$> get <*> get <*> get
-      
-  put (Dep qual path alias) =
-    put qual >> put path >> put alias
+instance Binary Dependency
 
 
 -- Dependency Path -------------------------------------------------------------
-instance Binary DepPath where
-  get = do
-    n <- getWord8
-    case n of
-      1 -> DepPath    <$> get <*> get
-      2 -> DepBase    <$> get
-      3 -> DepSpecify <$> get <*> get
-      _ -> undefined
-      
-  put d =
-    case d of
-      DepPath n p       -> putWord8 1 >> put n >> put p
-      DepBase n         -> putWord8 2 >> put n
-      DepSpecify hq ns  -> putWord8 3 >> put hq >> put ns
+instance Binary DepPath
 
 
 -- Foreign ------------------------------------------------------------------
-instance BinaryX x => Binary (Foreign x) where
-  get =
-    Foreign <$> get <*> get <*> get
-      
-  put (Foreign ft n fs) =
-    put ft >> put n >> put fs
+instance BinaryX x => Binary (Foreign x)
 
 
-instance Binary ForeignType where
-  get = do
-    n <- getWord8
-    case n of
-      1 -> pure ForeignC
-      _ -> undefined
-      
-  put f =
-    case f of
-      ForeignC  -> putWord8 1
+instance Binary ForeignType
 
 -- Expose ---------------------------------------------------------------------
-instance BinaryX x => Binary (Expose x) where
-  get =
-    Expose <$> get
-      
-  put (Expose n) =
-    put n
+instance BinaryX x => Binary (Expose x)
 
 
 -- Name ------------------------------------------------------------------------
 
-instance BinaryX x => Binary (Name x) where
-    put (Name n ex) =
-      put n >> put ex
-          
-    get =
-      Name <$> get <*> get
+instance BinaryX x => Binary (Name x)
 
 
 -- Literal ---------------------------------------------------------------------
-instance BinaryX x => Binary (Lit x) where
-  get = do
-    n <- getWord8
-    case n of
-      1 -> IntLit <$> get <*> get
-      2 -> DblLit <$> get <*> get
-      3 -> ChrLit <$> get <*> get
-      4 -> StrLit <$> get <*> get
-      5 -> BoolLit <$> get <*> get
-      6 -> Lit <$> get
-      _ -> error "unexpected input"
-
-  put literal =
-    case literal of
-      IntLit x v    -> putWord8 1 >> put x >> put v
-      DblLit x v    -> putWord8 2 >> put x >> put v
-      ChrLit x v    -> putWord8 3 >> put x >> put v
-      StrLit x v    -> putWord8 4 >> put x >> put v
-      BoolLit x v   -> putWord8 5 >> put x >> put v
-      Lit x         -> putWord8 6 >> put x
+instance BinaryX x => Binary (Lit x)
 
 
 
 -- Type ------------------------------------------------------------------------
-instance BinaryX x => Binary (Type x) where
-  put tipe =
-    case tipe of
-      TyFun ex t1 t2      -> putWord8 1 >> put ex >> put t1 >> put t2
-      TyTuple ex ts       -> putWord8 2 >> put ex >> put ts
-      TyApp ex tc ta      -> putWord8 3 >> put ex >> put tc >> put ta
-      TyVar ex n          -> putWord8 4 >> put ex >> put n
-      TyCon ex n          -> putWord8 5 >> put ex >> put n
-      Type ex             -> putWord8 6 >> put ex
-        
-  get =
-    do  n <- getWord8
-        case n of
-          1 -> TyFun <$> get <*> get <*> get
-          2 -> TyTuple <$> get <*> get
-          3 -> TyApp <$> get <*> get <*> get
-          4 -> TyVar <$> get <*> get
-          5 -> TyCon <$> get <*> get
-          6 -> Type <$> get
-          _ -> undefined
+instance BinaryX x => Binary (Type x)
 
 
-instance BinaryX x => Binary (QType x) where
-  get =
-    QType <$> get <*> get
-
-  put (QType ctx tipe) =
-    put ctx >> put tipe
+instance BinaryX x => Binary (QType x)
 
 
 -- Type Context --------------------------------------------------------------------
 
-instance BinaryX x => Binary (TyContext x) where
-  get =
-    TyContext <$> get
+instance BinaryX x => Binary (TyContext x)
 
-  put (TyContext assrts) =
-    put assrts
-
-instance BinaryX x => Binary (TyAssert x) where
-  get =
-    TyAssert <$> get <*> get
-
-  put (TyAssert con args) =
-    put con >> put args
+instance BinaryX x => Binary (TyAssert x)
 
           
 -- Expr -------------------------------------------------------------------------
-instance BinaryX x => Binary (Exp x) where
-  get = do
-    n <- getWord8
-    case n of
-      1 -> ELit <$> get <*> get
-      2 -> EVar <$> get <*> get
-      3 -> ECon <$> get <*> get
-
-      4 -> EApp <$> get <*> get <*> get
-      5 -> EInfixApp <$> get <*> get <*> get <*> get
-      
-      6 -> ELam <$> get <*> get <*> get
-      
-      7 -> EDo <$> get <*> get
-      8 -> EReturn <$> get <*> get
-      9 -> EIf <$> get <*> get <*> get <*> get
-      10 -> EWhile <$> get <*> get <*> get
-
-      11 -> EPrim <$> get <*> get <*> get <*> get
-      12 -> EBinary <$> get <*> get <*> get <*> get
-      13 -> EUnary <$> get <*> get <*> get
-      14 -> EAssign <$> get <*> get <*> get <*> get
-      
-      15 -> ETypeHint <$> get <*> get <*> get
-      16 -> EBottom <$> get
-      17 -> Exp <$> get
-      _ -> undefined
-      
-  put e =
-    case e of
-      ELit ex l           -> putWord8 1 >> put ex >> put l
-      EVar ex n           -> putWord8 2 >> put ex >> put n
-      ECon ex n           -> putWord8 3 >> put ex >> put n
-
-      EApp ex f as        -> putWord8 4 >> put ex >> put f >> put as
-      EInfixApp ex l f r  -> putWord8 5 >> put ex >> put l >> put f >> put r
-      
-      ELam ex p e         -> putWord8 6 >> put ex >> put p >> put e
-
-      EDo ex e            -> putWord8 7 >> put ex >> put e 
-      EReturn ex e        -> putWord8 8 >> put ex >> put e
-      EIf ex p a b        -> putWord8 9 >> put ex >> put p >> put a >> put b
-      EWhile ex c a       -> putWord8 10 >> put ex >> put c >> put a
-
-      EPrim ex i a b      -> putWord8 11 >> put ex >> put i >> put a >> put b
-      EBinary ex l o r    -> putWord8 12 >> put ex >> put l >> put o >> put r
-      EUnary ex o a       -> putWord8 13 >> put ex >> put o >> put a
-      EAssign ex l o r    -> putWord8 14 >> put ex >> put l >> put o >> put r
-
-      ETypeHint ex e t    -> putWord8 15 >> put ex >> put e >> put t
-      EBottom ex          -> putWord8 16 >> put ex
-      Exp ex              -> putWord8 17 >> put ex
+instance BinaryX x => Binary (Exp x)
 
 -- Body ----------------------------------------------------------------------------
-instance BinaryX x => Binary (Body x) where
-  get = do
-    n <- getWord8
-    case n of
-      1 -> BodyBlock <$> get
-      2 -> BodyExpr <$> get
-      _ -> undefined
-
-  put e =
-    case e of
-      BodyBlock e   -> putWord8 1 >> put e
-      BodyExpr b    -> putWord8 2 >> put b
+instance BinaryX x => Binary (Body x)
 
 -- Statement -------------------------------------------------------------------------
-instance BinaryX x => Binary (Stmt x) where
-  get = do
-    n <- getWord8
-    case n of
-      1 -> StmtExpr <$> get
-      2 -> StmtDecl <$> get
-      _ -> undefined
-      
-  put e =
-    case e of
-      StmtExpr e     -> putWord8 1 >> put e
-      StmtDecl i     -> putWord8 2 >> put i
+instance BinaryX x => Binary (Stmt x)
 
 
 -- Type Signature ---------------------------------------------------------------
-instance BinaryX x => Binary (TypeSig x) where
-  get =
-    TypeSig <$> get <*> get
-
-  put (TypeSig name body) =
-    put name >> put body
+instance BinaryX x => Binary (TypeSig x)
 
 
 -- Vow -------------------------------------------------------------------------
-instance BinaryX x => Binary (Vow x) where
-  get =
-      Vow <$> get <*> get
-      
-  put (Vow name vs) =
-      put name >> put vs
+instance BinaryX x => Binary (Vow x)
 
 
-instance Binary VowType where
-  get =
-    do  n <- getWord8
-        case n of
-          1 -> pure VowVar
-          2 -> pure VowVal
-          3 -> pure VowRef
-          _ -> undefined
-      
-  put v =
-    case v of
-      VowVar -> putWord8 1
-      VowVal -> putWord8 2
-      VowRef -> putWord8 3
+instance Binary VowType
 
 
 -- Variable ----------------------------------------------------------------------
-instance BinaryX x => Binary (Var x) where
-  get =
-      Var <$> get <*> get
-      
-  put (Var name body) =
-      put name >> put body
+instance BinaryX x => Binary (Var x)
 
 
 -- Value -------------------------------------------------------------------------
-instance BinaryX x => Binary (Val x) where
-  get =
-      Val <$> get <*> get
-      
-  put (Val name body) =
-      put name >> put body
+instance BinaryX x => Binary (Val x)
 
 
 -- Function ----------------------------------------------------------------------
-instance BinaryX x => Binary (Fun x) where
-  get =
-      Fun <$> get <*> get <*> get
-      
-  put (Fun name params body) =
-      put name >> put params >> put body
+instance BinaryX x => Binary (Fun x)
 
 
 -- New Type ----------------------------------------------------------------------
-instance BinaryX x => Binary (NewType x) where
-  get =
-    NewType <$> get <*> get <*> get
-
-  put (NewType name tyvars body) =
-    put name >> put tyvars >> put body
+instance BinaryX x => Binary (NewType x)
 
 
 -- Type Alias ---------------------------------------------------------------------
-instance BinaryX x => Binary (TypeAlias x) where
-  get =
-    TypeAlias <$> get <*> get <*> get
-
-  put (TypeAlias name tyvars body) =
-    put name >> put tyvars >> put body
+instance BinaryX x => Binary (TypeAlias x)
 
 
 -- Type Class ---------------------------------------------------------------------
-instance BinaryX x => Binary (TypeClass x) where
-  get =
-    TypeClass <$> get <*> get <*> get <*> get
-
-  put (TypeClass ctx name tyvars body) =
-    put ctx >> put name >> put tyvars >> put body
+instance BinaryX x => Binary (TypeClass x)
 
 
 -- Type Class Instance --------------------------------------------------------------
-instance BinaryX x => Binary (TypeClassInst x) where
-  get =
-    TypeClassInst <$> get <*> get <*> get <*> get
-
-  put (TypeClassInst ctx name args body) =
-    put ctx >> put name >> put args >> put body
+instance BinaryX x => Binary (TypeClassInst x)
 
 
 -- Data Type -----------------------------------------------------------------------
-instance BinaryX x => Binary (DataType x) where
-  get =
-    DataType <$> get <*> get <*> get
-
-  put (DataType name tyvars body) =
-    put name >> put tyvars >> put body
+instance BinaryX x => Binary (DataType x)
 
 
 -- -----------------------------------------------------------------------------
@@ -1644,8 +1394,9 @@ instance BinaryX x => Binary (DataType x) where
 
 
 -- Construction function for parse
-mkModPs :: [Text] -> FilePath -> [Token] -> ModPs
-mkModPs [n] fp ts
+mkModPs :: FilePath -> [Text] -> [[Token]] -> ModPs
+mkModPs fp [] ts = error "Cannot make empty module"
+mkModPs fp [n] ts
   = Mod { _modName = n
         , _modSubs = mempty
         , _modScopes = Map.singleton (pack fp) ms
@@ -1656,42 +1407,51 @@ mkModPs [n] fp ts
                   , _mscopeX     = ts
                   }
 
-mkModPs (n:ns) fp ts
+mkModPs fp (n:ns) ts
   = Mod { _modName = n
-        , _modSubs = Map.singleton (head ns) (mkModPs ns fp ts)
+        , _modSubs = Map.singleton (head ns) (mkModPs fp ns ts)
         , _modScopes = mempty
         }
 
 
+insertModWith :: (Mod x -> Mod x -> Mod x) -> Mod x -> Mod x -> Mod x
+insertModWith f child parent
+  = Mod { _modName = parent^.modName
+        , _modSubs = Map.insertWith f (child^.modName) child (parent^.modSubs)
+        , _modScopes = parent^.modScopes
+        }
 
-instance Monoid (XMScope x) => Monoid (Mod x) where
-    mempty
-      = Mod { _modName = mempty
-            , _modSubs = mempty
-            , _modScopes = mempty
+unionModWith :: (Mod x -> Mod x -> Mod x) -> (MScope x -> MScope x -> MScope x) -> Mod x -> Mod x -> Mod x
+unionModWith f g m1 m2
+  = Mod { _modName = m1^.modName
+        , _modSubs = Map.unionWith f (m1^.modSubs) (m2^.modSubs)
+        , _modScopes = Map.unionWith g (m1^.modScopes) (m2^.modScopes)
+        }
+
+
+instance Default (Mod x) where
+    def
+      = Mod { _modName = "root"
+            , _modSubs = Map.empty
+            , _modScopes = Map.empty
             }
 
+
+instance Monoid (XMScope x) => Monoid (Mod x) where
+    mempty = def
+
     mappend m1 m2
-      | m1^.modName == m2^.modName
-        = Mod { _modName = m1^.modName
-              , _modSubs = Map.insertWith mappend (m2^.modName) m2 (m1^.modSubs)
-              , _modScopes = m1^.modScopes
-              }
-      
-      | m2^.modName == "root"
-        = Mod { _modName = m2^.modName
-              , _modSubs = Map.insertWith mappend (m1^.modName) m1 (m2^.modSubs)
-              , _modScopes = m2^.modScopes
-              }
+      | m1^.modName == "root" && m2^.modName /= "root"
+        = insertModWith mappend m2 m1
+
+      | m1^.modName /= "root" && m2^.modName == "root"
+        = insertModWith mappend m1 m2
+
+      | m1^.modName == "root" && m2^.modName == "root"
+        = unionModWith mappend mappend m1 m2
 
       | otherwise
-        = let
-            subs = Map.fromList [(m1^.modName, m1), (m2^.modName, m2)]
-          in
-            Mod { _modName = "root"
-                , _modSubs = subs 
-                , _modScopes = mempty
-                }
+        = mappend m2 . mappend m1 $ mempty
 
 
 instance Monoid (XMScope x) => Monoid (MScope x) where
@@ -1710,6 +1470,8 @@ instance Monoid (XMScope x) => Monoid (MScope x) where
                    , _mscopeItems = mappend (ms1^.mscopeItems) (ms2^.mscopeItems)
                    , _mscopeX     = mappend (ms1^.mscopeX) (ms2^.mscopeX)
                    }
+
+
 
 -- Name ------------------------------------------------------------------------
 

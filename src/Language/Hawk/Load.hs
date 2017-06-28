@@ -31,7 +31,7 @@ load
      , MonadChronicle (Bag (WithTimestamp e)) m, AsLoadErr e
      , MonadIO m, MonadBaseControl IO m
      )
-  => m [Text]
+  => m [(FilePath, Text)]
 load =
   condemn $ do
     fps <- view hkcSrcFiles
@@ -44,7 +44,7 @@ loadFile
         , MonadChronicle (Bag (WithTimestamp e)) m, AsLoadErr e
         , MonadIO m
         )
-  => FilePath -> m Text
+  => FilePath -> m (FilePath, Text)
 loadFile fp = do
   srcOrExc <- liftIO . try . T.readFile $ fp
   case srcOrExc of
@@ -53,7 +53,7 @@ loadFile fp = do
         
       Right src -> do
         logInfo =<< timestamp (_FileFound # fp)
-        return src
+        return (fp, src)
 
 
 mkLoadErr :: (AsLoadErr e) => FilePath -> IOException -> e

@@ -64,12 +64,12 @@ library:
     - lifted-base
     - lifted-async
     - logging-effect
+    - megaparsec
     - mmorph
     - monad-control
     - monad-logger
     - mono-traversable
     - mtl
-    - parsec
     - primitive
     - resourcet
     - safe

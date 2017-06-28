@@ -1,78 +1,100 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE  OverloadedStrings
+            , ConstraintKinds
+            , FlexibleContexts
+            , FlexibleInstances
+            , TypeFamilies
+            , BangPatterns
+  #-}
 module Language.Hawk.Parse.Helpers where
 
+import Control.Applicative
 import Control.Lens
-import Data.Text (Text, unpack)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Text (Text)
 import Language.Hawk.Parse.Lexer.Token
-import Language.Hawk.Syntax.Location
 
-import qualified Text.Parsec.Prim       as P
-import qualified Text.Parsec.Combinator as P
-import qualified Text.Parsec.Pos        as P
+import Text.Megaparsec.Prim (MonadParsec(..))
 
+import qualified Data.Set                   as Set
+import qualified Text.Megaparsec.Prim       as P
+import qualified Text.Megaparsec.Combinator as P
+import qualified Text.Megaparsec.Error      as P
 
-type ParserT u m a = P.ParsecT [Token] u m a
+-- -----------------------------------------------------------------------------
+-- Parser Monad Class
 
-
-toSrcPos :: (HasLocation l, HasRegion l) => l -> P.SourcePos
-toSrcPos l =
-    P.newPos  (l^.locPath)
-              (l^.regStart^.posLine)
-              (l^.regStart^.posColumn)
-
-
-tokP :: Monad m => TokenClass -> ParserT u m Token
-tokP x
-   = P.tokenPrim showTok nextPos testTok
-   where
-     showTok t        = "'" ++ (unpack $ t^.tokText) ++ "'"
-     nextPos p1 t ts  = toSrcPos (head ts)
-     testTok t        = if x == t^.tokClass then Just t else Nothing
-
-
-anyTok :: Monad m => ParserT u m Token
-anyTok
-   = P.tokenPrim showTok nextPos testTok
-   where
-     showTok t        = "'" ++ (unpack $ t^.tokText) ++ "'"
-     nextPos p1 t ts  = toSrcPos (head ts)
-     testTok t        = Just t
+type MonadParser m = (Functor m, Applicative m, Monad m, MonadParsec P.Dec [Token] m)
 
 
 -- -----------------------------------------------------------------------------
--- Terminal Production Helpers
+-- Token Parser Helpers
 
-rsvp :: Monad m => Text -> ParserT u m Token
+{-# INLINE satisfyT #-}
+satisfyT :: MonadParser m => (Token -> Bool) -> m Token
+satisfyT f
+  = P.token testTok Nothing
+  where
+    {-# INLINE testTok #-}
+    testTok t =
+      if f t
+        then Right t
+        else Left (Set.singleton (P.Tokens (t:|[])), Set.empty, Set.empty)
+
+
+
+matchT :: MonadParser m => TokenClass -> m Token
+matchT tc
+  = satisfyT q
+  where
+    q t = 
+      tc == t^.tokClass
+
+
+anyT :: MonadParser m => m Token
+anyT = satisfyT $ const True
+
+
+exceptT :: MonadParser m => TokenClass -> m Token
+exceptT tc
+   = satisfyT q
+   where
+     q t = 
+      tc /= t^.tokClass
+
+-- -----------------------------------------------------------------------------
+-- Terminal Helpers
+
+rsvp :: MonadParser m => Text -> m Token
 rsvp
-  = tokP . TokenRsvp 
+  = matchT . TokenRsvp 
 
 
-prim :: Monad m => Text -> ParserT u m Token
+prim :: MonadParser m => Text -> m Token
 prim
-  = tokP . TokenPrim 
+  = matchT . TokenPrim 
 
 
-op :: Monad m => Text -> ParserT u m Token
+op :: MonadParser m => Text -> m Token
 op
-  = tokP . TokenPrim
+  = matchT . TokenOpId
 
 
 -- -----------------------------------------------------------------------------
 -- Combinator Helpers
 
-parens :: Monad m => ParserT u m a -> ParserT u m a
+parens :: MonadParser m => m a -> m a
 parens p
   = rsvp "(" *> p <* rsvp ")"
 
-sqrBrackets :: Monad m => ParserT u m a -> ParserT u m a
+sqrBrackets :: MonadParser m => m a -> m a
 sqrBrackets p
   = rsvp "[" *> p <* rsvp "]"
 
-curlyBrackets :: Monad m => ParserT u m a -> ParserT u m a
+curlyBrackets :: MonadParser m => m a -> m a
 curlyBrackets p
   = rsvp "{" *> p <* rsvp "}"
 
-angleBrackets :: Monad m => ParserT u m a -> ParserT u m a
+angleBrackets :: MonadParser m => m a -> m a
 angleBrackets p
   = rsvp "<" *> p <* rsvp ">"
 
@@ -80,32 +102,58 @@ angleBrackets p
 -- -----------------------------------------------------------------------------
 -- Layout Helpers
 
-block :: Monad m => ParserT u m a -> ParserT u m [a]
+block :: MonadParser m => m a -> m [a]
 block p = blk *> linefolds p <* blk'
 
-linefolds0 :: Monad m => ParserT u m a -> ParserT u m [a]
-linefolds0 p = P.many $ linefold p
+linefolds0 :: MonadParser m => m a -> m [a]
+linefolds0 p = many $ linefold p
 
-linefolds :: Monad m => ParserT u m a -> ParserT u m [a]
-linefolds p = P.many1 $ linefold p
+linefolds :: MonadParser m => m a -> m [a]
+linefolds p = some $ linefold p
 
-linefold :: Monad m => ParserT u m a -> ParserT u m a
+linefold :: MonadParser m => m a -> m a
 linefold p = ln *> p <* ln'
 
 
-blk :: Monad m => ParserT u m Token
-blk = tokP TokenBlk
+blk :: MonadParser m => m Token
+blk = matchT TokenBlk
 
-blk' :: Monad m => ParserT u m Token
-blk' = tokP TokenBlk'
-
-
-ln :: Monad m => ParserT u m Token
-ln = tokP TokenLn
-
-ln' :: Monad m => ParserT u m Token
-ln' = tokP TokenLn'
+blk' :: MonadParser m => m Token
+blk' = matchT TokenBlk'
 
 
-eof :: Monad m => ParserT u m Token
-eof = tokP  TokenEof
+ln :: MonadParser m => m Token
+ln = matchT TokenLn P.<?> "linefold open"
+
+ln' :: MonadParser m => m Token
+ln' = matchT TokenLn' P.<?> "linefold close"
+
+
+eof :: MonadParser m => m Token
+eof = matchT TokenEof
+
+
+-- -----------------------------------------------------------------------------
+-- Token Grouping Helpers
+
+notBlk :: MonadParser m => m Token
+notBlk = exceptT TokenBlk
+
+notLn :: MonadParser m => m Token
+notLn = exceptT TokenLn
+
+
+anyLn :: MonadParser m => m [Token]
+anyLn = do
+  l1 <- ln
+  ts <- many notLn
+  l2 <- ln'
+  return $ (l1:(ts ++ [l2]))
+
+
+anyBlk :: MonadParser m => m [Token]
+anyBlk = do
+  b1 <- blk
+  ls <- concat <$> many anyLn
+  b2 <- blk'
+  return (b1:(ls ++ [b2]))

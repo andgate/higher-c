@@ -19,8 +19,8 @@ makeClassyPrisms ''ParseMsg
 
 
 instance Pretty ParseMsg where
-    pretty err =
-      case err of
+    pretty msg =
+      case msg of
         ParseSuccess fp ->
             P.textStrict "Parsed" <+> P.textStrict (pack fp)
     

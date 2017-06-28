@@ -370,11 +370,12 @@ alexInputPrevChar = prevChar
     `lexModl` keeps track of position and returns the remainder of the input if
     lexing fails.
 -}
-lexer :: FilePath -> Text -> [Token]
-lexer fp text =
-    evalState (go (AlexInput '\n' [] text)) (def & lexFilePath .~ fp)
-
+lexer :: (FilePath, Text) -> (FilePath, [Token])
+lexer (fp, text)
+  = (fp, LO.layout ts)
   where
+    ts = evalState (go (AlexInput '\n' [] text)) (def & lexFilePath .~ fp)
+
     start text = go (AlexInput '\n' [] text)
 
     go input = do

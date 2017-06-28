@@ -11,7 +11,8 @@
 -- that filters the token stream and outputs layout tokens
 -- when necessary.
 --
-{-# LANGUAGE  FlexibleContexts #-}
+{-# LANGUAGE  FlexibleContexts 
+            , TypeFamilies #-}
 module Language.Hawk.Parse where
 
 import Control.Lens
@@ -19,19 +20,55 @@ import Control.Monad.Log
 import Control.Monad.Chronicle
 import Control.Monad.Chronicle.Extra
 import Data.Bag
+import Data.Default.Class
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Set (Set)
+import Data.Text (Text, pack)
 import Text.PrettyPrint.Leijen.Text (pretty)
 
-import Language.Hawk.Parse.Message
+import Language.Hawk.Parse.Helpers()
 import Language.Hawk.Parse.Error
+import Language.Hawk.Parse.Module
+import Language.Hawk.Parse.Message
 import Language.Hawk.Parse.Lexer.Token (Token)
 import Language.Hawk.Syntax
 
-import qualified Data.Text as Text
-
+import qualified Data.List.NonEmpty     as NE
+import qualified Data.Set               as Set
+import qualified Data.Text              as Text
+import qualified Text.Megaparsec.Prim   as P
+import qualified Text.Megaparsec.Error  as P
 
 
 -- -----------------------------------------------------------------------------
 -- Parser
+
+parseMod :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
+             , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
+             , MonadIO m
+             )
+         => (FilePath, [Token]) -> m [Token]
+parseMod (fp, ts)
+  = either (handleParseError fp) handleSuccess result
+  where
+    result = P.runParser (moduleP fp) fp ts
+    
+    handleSuccess m
+      = do
+          logInfo =<< timestamp (_ParseSuccess # fp)
+          return m
+
+
+handleParseError :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
+                    , MonadIO m, Default a
+                    )
+            => FilePath -> P.ParseError Token P.Dec -> m a
+handleParseError fp (P.ParseError _ unexpected _ _)
+  = case Set.toList unexpected of
+      ((P.Tokens (t:|_)):_)
+        -> discloseNow (_UnexpectedToken # t)
+
+      _ -> discloseNow (_UnexpectedParseErr # fp)
 
 {-
 import qualified Text.Earley as E
