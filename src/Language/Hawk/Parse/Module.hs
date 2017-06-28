@@ -18,10 +18,9 @@ import qualified Text.Megaparsec.Combinator as P
 
 
 
-moduleP :: MonadParser m => FilePath -> m [Token]
+moduleP :: MonadParser m => FilePath -> m ModPs
 moduleP fp =
-    many anyT
-    --mkModPs fp <$> modHeader <*> modBody
+    mkModPs fp <$> modHeader <*> modBody
 
 
 modHeader :: MonadParser m => m [Text]

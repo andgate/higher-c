@@ -47,7 +47,7 @@ parseMod :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
              , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
              , MonadIO m
              )
-         => (FilePath, [Token]) -> m [Token]
+         => (FilePath, [Token]) -> m ModPs
 parseMod (fp, ts)
   = either (handleParseError fp) handleSuccess result
   where
