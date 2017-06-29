@@ -3,6 +3,7 @@
            , DeriveGeneric
            , TypeFamilies
            , FlexibleInstances
+           , BangPatterns
   #-}
 module Language.Hawk.Parse.Lexer.Token where
 
@@ -22,9 +23,9 @@ import qualified Text.PrettyPrint.Leijen.Text   as PP
 
 -- | A `Token` augmented with `Region` information
 data Token = Token
-    { _tokClass     :: TokenClass
-    , _tokText      :: Text
-    , _tokLoc       :: Location
+    { _tokClass     :: !TokenClass
+    , _tokText      :: !Text
+    , _tokLoc       :: !Location
     } deriving (Eq, Show, Ord, Generic)
 
 -- The token type:
@@ -64,7 +65,7 @@ instance HasLocation Token where
     location = tokLoc
 
 instance HasRegion Token where
-    region = region
+    region = tokLoc . region
 
 -- -----------------------------------------------------------------------------
 -- Pretty Instances
@@ -109,7 +110,7 @@ tokUpdatePos
 tokUpdatePos _ apos@(P.SourcePos fp _ _) t
   = (apos, npos) -- Don't use megaparsec's position tracking
   where
-  npos = p2ps . _regStart . _locReg . _tokLoc $ t
+  npos = p2ps $ t ^. regStart
   {-# INLINE p2ps #-}
   p2ps (P l c) = P.SourcePos fp
                              (P.unsafePos . fromIntegral $ l + 1)

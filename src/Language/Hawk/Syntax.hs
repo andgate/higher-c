@@ -17,6 +17,7 @@ module Language.Hawk.Syntax where
 
 import Data.Binary
 import Data.Default.Class
+import Data.Either
 import Data.Map.Strict (Map)
 import Data.Text (Text, pack)
 import Control.Lens
@@ -699,6 +700,51 @@ instance (PP.Pretty l, PP.Pretty r) => PP.Pretty (Either l r) where
 
     pretty (Right r) =
       PP.pretty r 
+
+
+
+-- Module ------------------------------------------------------------------------
+instance PrettyX x => PP.Pretty (Mod x) where
+    pretty m =
+      PP.textStrict "Module:" PP.<+> PP.textStrict (m^.modName)
+      PP.<$>
+      PP.indent 2
+        ( PP.textStrict "Sub Modules:"
+          PP.<$>
+          PP.indent 2
+            (
+              PP.pretty (Map.elems $ (m^.modSubs))
+            )
+          PP.<$>
+          PP.textStrict "Module Scopes:"
+          PP.<$>
+          PP.indent 2
+            (
+              PP.pretty (Map.elems $ (m^.modScopes))
+            )
+        )
+
+
+-- ModuleScope ------------------------------------------------------------------------
+instance PrettyX x => PP.Pretty (MScope x) where
+    pretty m =
+      PP.textStrict "Module Scope:" PP.<+> PP.textStrict (pack (m^.mscopePath))
+      PP.<$>
+      PP.indent 2
+        ( PP.textStrict "Items:"
+          PP.<$>
+          PP.indent 2
+            (
+              PP.pretty (m^.mscopeItems)
+            )
+          PP.<$>
+          PP.textStrict "Extension:"
+          PP.<$>
+          PP.indent 2
+            (
+              PP.pretty (m^.mscopeX)
+            )
+        )
 
 
 -- Item ------------------------------------------------------------------------
@@ -1394,32 +1440,40 @@ instance BinaryX x => Binary (DataType x)
 
 
 -- Construction function for parse
-mkModPs :: FilePath -> [Text] -> [[Token]] -> ModPs
-mkModPs fp [] ts = error "Cannot make empty module"
-mkModPs fp [n] ts
-  = Mod { _modName = n
-        , _modSubs = mempty
-        , _modScopes = Map.singleton (pack fp) ms
-        }
-    where
-      ms = MScope { _mscopePath  = fp
-                  , _mscopeItems = mempty
-                  , _mscopeX     = ts
-                  }
+mkModPs :: FilePath -> [Text] -> [Either ModPs [Token]] -> ModPs
+mkModPs fp [] _ = error "Cannot make empty module"
+mkModPs fp [n] xs
+  = insertModsWith mappend subs m
+  where
+    subs = lefts xs
+    items = rights xs
 
-mkModPs fp (n:ns) ts
+    m = Mod { _modName = n
+            , _modSubs = mempty
+            , _modScopes = Map.singleton (pack fp) ms
+            }
+
+    ms = MScope { _mscopePath  = fp
+                , _mscopeItems = mempty
+                , _mscopeX     = items
+                }
+mkModPs fp (n:ns) xs
   = Mod { _modName = n
-        , _modSubs = Map.singleton (head ns) (mkModPs fp ns ts)
+        , _modSubs = Map.singleton (head ns) (mkModPs fp ns xs)
         , _modScopes = mempty
         }
 
 
 insertModWith :: (Mod x -> Mod x -> Mod x) -> Mod x -> Mod x -> Mod x
 insertModWith f child parent
-  = Mod { _modName = parent^.modName
-        , _modSubs = Map.insertWith f (child^.modName) child (parent^.modSubs)
-        , _modScopes = parent^.modScopes
-        }
+  = parent & modSubs .~ Map.insertWith f (child^.modName) child (parent^.modSubs)
+
+
+insertModsWith :: (Mod x -> Mod x -> Mod x) -> [Mod x] -> Mod x -> Mod x
+insertModsWith _ [] m = m
+insertModsWith f children parent
+  = foldr (insertModWith f) parent children
+
 
 unionModWith :: (Mod x -> Mod x -> Mod x) -> (MScope x -> MScope x -> MScope x) -> Mod x -> Mod x -> Mod x
 unionModWith f g m1 m2

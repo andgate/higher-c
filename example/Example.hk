@@ -54,66 +54,67 @@ type Inch = I32
 // New types are not treated as interchangable.
 newtype Size = I32
 
-// Introduce data structures, consisting of only variables
-data MyColor:
-  r ? F32
-  g ? F32
-  b ? F32
+
+mod Color:
+  // Introduce data structures, consisting of only variables
+  data MyColor:
+    r ? F32
+    g ? F32
+    b ? F32
+
+  data OtherColor:
+    red ? F32
+    green ? F32
+    blue ? F32
+    alpha ? F32
+
+  // Type classes define interfaces
+  class HasRGB a:
+    max ? a -> F32
+
+    getR ? a -> F32
+    getG ? a -> F32
+    getB ? a -> F32
+
+    setR ? a -> F32 -> ()
+    setG ? a -> F32 -> ()
+    setB ? a -> F32 -> ()
+
+  // Type classes are then instanced for a specific datatype
+  inst HasRGB MyColor:
+    max c = 255
+
+    getR c = c.r
+    getG c = c.g
+    getB c = c.b
+
+    setR c r = c.r = r
+    setG c g = c.g = g
+    setB c b = c.b = b
 
 
-data OtherColor:
-  red ? F32
-  green ? F32
-  blue ? F32
-  alpha ? F32
+  // Type classes are then instanced for a specific datatype
+  inst HasRGB OtherColor:
+    max c = 1.0
 
-// Type classes define interfaces
-class HasRGB a:
-  max ? a -> F32
+    getR c = c.red
+    getG c = c.green
+    getB c = c.blue
 
-  getR ? a -> F32
-  getG ? a -> F32
-  getB ? a -> F32
-
-  setR ? a -> F32 -> ()
-  setG ? a -> F32 -> ()
-  setB ? a -> F32 -> ()
-
-// Type classes are then instanced for a specific datatype
-inst HasRGB MyColor:
-  max c = 255
-
-  getR c = c.r
-  getG c = c.g
-  getB c = c.b
-
-  setR c r = c.r = r
-  setG c g = c.g = g
-  setB c b = c.b = b
+    getR c r = c.red = r
+    getG c g = c.green = g
+    getB c b = c.blue = b
 
 
-// Type classes are then instanced for a specific datatype
-inst HasRGB OtherColor:
-  max c = 1.0
+  // Then we can define a function that works over ANY data with rgb
+  sig invertRgb ? HasRGB a => a -> ()
+  fun invertRgb c:
+    c.setR (c.max - c.getR)
+    c.setG (c.max - c.getG)
+    c.setB (c.max - c.getB)
+    // No return automatically returns '()', or unit.
 
-  getR c = c.red
-  getG c = c.green
-  getB c = c.blue
-
-  getR c r = c.red = r
-  getG c g = c.green = g
-  getB c b = c.blue = b
-
-
-// Then we can define a function that works over ANY data with rgb
-sig invertRgb ? HasRGB a => a -> ()
-fun invertRgb c:
-  c.setR (c.max - c.getR)
-  c.setG (c.max - c.getG)
-  c.setB (c.max - c.getB)
-  // No return automatically returns '()', or unit.
-
-// So, if there were multiple competing Color types from different libraries,
-// it's trivial to write a function that applies to all of them.
-// I didn't get into it, but the numeric values can be classified as well,
-// so floats of different sizes could be supported as well.
+  // So, if there were multiple competing Color types from different libraries,
+  // it's trivial to write a function that applies to all of them.
+  // I didn't get into it, but the numeric values can be classified as well,
+  // so floats of different sizes could be supported as well.

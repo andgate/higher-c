@@ -61,6 +61,7 @@ exceptT tc
      q t = 
       tc /= t^.tokClass
 
+
 -- -----------------------------------------------------------------------------
 -- Terminal Helpers
 
@@ -100,6 +101,57 @@ angleBrackets p
 
 
 -- -----------------------------------------------------------------------------
+-- Id Helpers
+
+-- Id Text
+varId :: MonadParser m => m Text
+varId = (^.tokText) <$> varT
+
+conId :: MonadParser m => m Text
+conId = modId <|> conId'
+
+conId' :: MonadParser m => m Text
+conId' = (^.tokText) <$> conT
+
+modId :: MonadParser m => m Text
+modId = (^.tokText) <$> modT
+
+opId :: MonadParser m => m Text
+opId = (^.tokText) <$> opT
+
+
+
+-- Id tokens
+varT :: MonadParser m => m Token
+varT
+  = satisfyT $ \t ->
+      case t^.tokClass of
+        TokenVarId _  -> True
+        _             -> False
+
+conT :: MonadParser m => m Token
+conT
+  = satisfyT $ \t ->
+      case t^.tokClass of
+        TokenConId _  -> True
+        _             -> False
+
+modT :: MonadParser m => m Token
+modT
+  = satisfyT $ \t ->
+      case t^.tokClass of
+        TokenModId _  -> True
+        _             -> False
+
+
+opT :: MonadParser m => m Token
+opT
+  = satisfyT $ \t ->
+      case t^.tokClass of
+        TokenOpId _  -> True
+        _             -> False
+
+-- -----------------------------------------------------------------------------
 -- Layout Helpers
 
 block :: MonadParser m => m a -> m [a]
@@ -136,24 +188,35 @@ eof = matchT TokenEof
 -- -----------------------------------------------------------------------------
 -- Token Grouping Helpers
 
-notBlk :: MonadParser m => m Token
-notBlk = exceptT TokenBlk
-
-notLn :: MonadParser m => m Token
-notLn = exceptT TokenLn
-
-
-anyLn :: MonadParser m => m [Token]
-anyLn = do
-  l1 <- ln
-  ts <- many notLn
-  l2 <- ln'
-  return $ (l1:(ts ++ [l2]))
+{-# INLINE exceptLayout #-}
+exceptLayout :: MonadParser m => m Token
+exceptLayout
+  = satisfyT $ \t ->
+      t^.tokClass `notElem` [TokenLn, TokenLn', TokenBlk, TokenBlk']
 
 
-anyBlk :: MonadParser m => m [Token]
-anyBlk = do
-  b1 <- blk
-  ls <- concat <$> many anyLn
-  b2 <- blk'
-  return (b1:(ls ++ [b2]))
+{-# INLINE anyLayout #-}
+anyLayout :: MonadParser m => m [Token]
+anyLayout = concat <$> some anyLayout'
+
+{-# INLINE anyLayout' #-}
+anyLayout' :: MonadParser m => m [Token]
+anyLayout' = try (some exceptLayout) <|> try anyLine <|> anyBlock
+
+
+{-# INLINE anyLine #-}
+anyLine :: MonadParser m => m [Token]
+anyLine = do
+  t1 <- ln
+  ts <- anyLayout
+  t2 <- ln'
+  return $ t1:(ts ++ [t2])
+
+
+{-# INLINE anyBlock #-}
+anyBlock :: MonadParser m => m [Token]
+anyBlock = do
+  t1 <- blk
+  ts <- anyLayout
+  t2 <- blk'
+  return $ t1:(ts ++ [t2])

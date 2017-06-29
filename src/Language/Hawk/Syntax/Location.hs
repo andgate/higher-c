@@ -87,7 +87,7 @@ instance P.Pretty Region where
 
 instance P.Pretty Position where
   pretty (P l c) =
-    P.pretty l <> P.textStrict ":" <> P.pretty c
+    P.pretty (l+1) <> P.textStrict ":" <> P.pretty (c+1)
 
 
 -- -----------------------------------------------------------------------------

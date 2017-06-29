@@ -18,22 +18,44 @@ import qualified Text.Megaparsec.Combinator as P
 
 
 
-moduleP :: MonadParser m => FilePath -> m ModPs
-moduleP fp =
-    mkModPs fp <$> modHeader <*> modBody
+modP :: MonadParser m => FilePath -> m ModPs
+modP fp =
+  mkModPs fp <$> linefold modHeader
+              <*> linefolds (modItem fp)
 
+
+subModP :: MonadParser m
+        => FilePath -> m ModPs
+subModP fp =
+    mkModPs fp <$> modHeader
+               <*> subModBody fp
 
 modHeader :: MonadParser m => m [Text]
 modHeader =
-  linefold $ rsvp "mod" >> modPathP
+  rsvp "mod" >> modPath
 
 
+subModBody :: MonadParser m
+           => FilePath -> m [Either ModPs [Token]]
+subModBody fp =
+  rsvp ":" *> (block $ modItem fp)
 
 
+modItem :: MonadParser m
+        => FilePath -> m (Either ModPs [Token])
+modItem fp =
+       P.try (Left <$> subModP fp)
+  <|> (Right <$> anyLayout)
 
-modPathP :: MonadParser m => m [Text]
-modPathP = return ["Example"]
 
+modPath :: MonadParser m => m [Text]
+modPath =
+  modPath' <|> (pure <$> modId)
 
-modBody :: MonadParser m => m [[Token]]
-modBody = return []
+modPath' :: MonadParser m => m [Text]
+modPath' =
+  (:) <$> modId <*> modPathNext
+
+modPathNext :: MonadParser m => m [Text]
+modPathNext =
+  (rsvp "." *> modPath') <|> return []

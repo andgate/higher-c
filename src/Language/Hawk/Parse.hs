@@ -51,7 +51,7 @@ parseMod :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
 parseMod (fp, ts)
   = either (handleParseError fp) handleSuccess result
   where
-    result = P.runParser (moduleP fp) fp ts
+    result = P.runParser (modP fp) fp ts
     
     handleSuccess m
       = do

@@ -51,8 +51,7 @@ compile = do
   load
     >>= mapM (return . lexer)
     >>= condemn . mapM parseMod
-    -- >>= return . fold
-    >>= liftIO . print -- . pretty
+    >>= liftIO . print . pretty . fold
   
   --parseFiles
   --namecheck
