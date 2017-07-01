@@ -10,7 +10,7 @@ deriving instance Show (HkcPass c)
 deriving instance Eq (HkcPass c)
 deriving instance Ord (HkcPass c)
 
-data Pass = Parsed | Renamed | Typechecked
+data Pass = Parsed | Renamed | Typechecked | Core
 deriving instance Show Pass
 deriving instance Eq Pass
 deriving instance Ord Pass
@@ -18,4 +18,5 @@ deriving instance Ord Pass
 type HkcPs = HkcPass 'Parsed
 type HkcRn = HkcPass 'Renamed
 type HkcTc = HkcPass 'Typechecked
+type HkcCore = HkcPass 'Core
 

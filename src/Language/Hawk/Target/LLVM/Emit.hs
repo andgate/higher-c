@@ -1,31 +1,40 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE  MultiParamTypeClasses
+            , FlexibleInstances
+            , FunctionalDependencies
+  #-}
 module Language.Hawk.Target.LLVM.Emit where
 
 import Control.Applicative
-import qualified Control.Lens as L
+import Control.Lens
 import Control.Lens.Operators
-import Control.Monad.Except
-
-import Data.Convertible.Base
+import Control.Monad.State (MonadState)
+import Data.Binary
+import Data.ByteString.Short (ShortByteString)
 import Data.Int
-import qualified Data.Map as Map
+import Data.Text (Text)
 import Data.Word
+import System.IO.Unsafe (unsafePerformIO)
 
-import Language.Hawk.Data.Emittable
+import qualified Data.ByteString.Short  as BS
+import qualified Data.Map.Strict        as Map
+import qualified Data.Text.Encoding     as T
+import qualified Foreign                as F
+
+import Language.Hawk.Target.LLVM.Types
 import Language.Hawk.Target.LLVM.Codegen
 
-import qualified Language.Hawk.Core.AST as Core
+import qualified Language.Hawk.Syntax           as Syn
+import qualified Language.Hawk.Syntax.Location  as Syn
+import qualified Language.Hawk.Syntax.Operator  as Syn
+import qualified Language.Hawk.Syntax.Prim      as Syn
+
+import qualified LLVM.AST as AST
+import qualified LLVM.AST.Constant as C
+import qualified LLVM.AST.Float as F
+import qualified LLVM.AST.FloatingPointPredicate as FP
+import qualified LLVM.AST.Type as Ty
 
 
-import LLVM.General.Context
-import LLVM.General.Module
-
-import qualified LLVM.General.AST as AST
-import qualified LLVM.General.AST.Constant as C
-import qualified LLVM.General.AST.Float as F
-import qualified LLVM.General.AST.FloatingPointPredicate as FP
-import qualified LLVM.General.AST.Type as Ty
 
 
 {-
@@ -64,86 +73,103 @@ llvmCodegen exp = do
 
 -}
 
-instance Emittable Core.Mod (LLVM ()) where
-  emit (Core.Mod name items) = do
+-- I'll work out top-level generation for later
+{- 
+instance (MonadState s m, HasLLVMState s) => Emittable Syn.CoreMod (m ()) where
+  emit (Syn.Mod name items) = do
     llmod . _moduleName .= name
     mapM_ emit items
     
-instance Emittable Core.Item (LLVM ()) where
-  emit (Core.ItemFn (Core.FnDecl vis name retty params) body) = do
+instance (MonadState s m, HasLLVMState s) => Emittable Syn.CoreItem (m ()) where
+  emit (Syn.FunItem (Core.FnDecl vis name retty params) body) = do
     bls <- genBlocks params' body
     define retty' name params' bls
     where
       retty' = emit retty
       params' = map emit params
+-}
 
-genBlocks :: [AST.Parameter] -> Core.Expr -> LLVM [AST.BasicBlock]
-genBlocks params body = do
+
+emitFun :: (MonadState s m, HasLLVMState s)
+        => Syn.CoreFun -> m ()
+emitFun (Syn.Fun (Syn.Name name _) params body retty) = do
+  bls <- emitBody body
+  define retty' (t2sbs name) params' bls
+  where
+    retty' = emitTypeLit retty
+    params' = map emit params
+
+
+emitBody :: (MonadState s m, HasLLVMState s)
+         => Syn.CoreBody -> m [AST.BasicBlock]
+emitBody body = do
   startBlocks
-  -- allocate parameters
-  mapM genParam params
+  -- allocate parameters (probably uneccessary)
+  -- mapM genParam params
   emit body
   endBlocks
-  
-genParam :: AST.Parameter -> LLVM ()
+
+{-  
+genParam :: (MonadState s m, HasLLVMState s)
+         => AST.Parameter -> m ()
 genParam (AST.Parameter ty pname _) = do
   var <- alloca ty
   store var (local pname)
-  assign pname var
+  assignVar pname var
+-}
 
-instance Emittable Core.Param AST.Parameter where
-  emit (Core.Param ty name) = AST.Parameter ty' name' []
+emitFunParam :: Syn.CoreFunParam -> AST.Parameter
+emitFunParam (Syn.FunParam name ty)
+    = AST.Parameter ty' name' []
     where ty' = emit ty
-          name' = AST.Name name
+          name' = AST.Name (t2sbs name)
 
-instance Emittable Core.Expr (LLVM ()) where
-  emit (Core.Var x)
-    = getvar x >>= load >>= setVal
-    
-  emit (Core.Const c)
-    = setVal $ cons $ emit c
-    
-  emit _ = error "Codegen Error: Expression emission not implemented."
+emitExp :: (MonadState s m, HasLLVMState s)
+        => Syn.CoreExp -> m ()
+emitExp (Syn.EVar x (Syn.Name n _))
+  = getvar (t2sbs n) >>= load >>= setVal
+  
+emitExp (Syn.ELit _ c)
+  = setVal $ constOp $ emit c
+  
+emit _ = error "Codegen Error: Expression emission not implemented."
 
 
-instance Emittable Core.Constant C.Constant where
-  emit Core.ConstVoid = C.Null $ Ty.void 
-  emit (Core.ConstBool v)  = error "Codegen Error: String Constant is not implemented."
-  emit (Core.ConstW8   i)  = error "Codegen Error: String Constant is not implemented."
-  emit (Core.ConstW16  i)  = error "Codegen Error: String Constant is not implemented."
-  emit (Core.ConstW32  i)  = error "Codegen Error: String Constant is not implemented."
-  emit (Core.ConstW64  i)  = error "Codegen Error: String Constant is not implemented."
-  emit (Core.ConstI8   i)  = error "Codegen Error: String Constant is not implemented."
-  emit (Core.ConstI16  i)  = error "Codegen Error: String Constant is not implemented."
-  emit (Core.ConstI32  i)  = error "Codegen Error: String Constant is not implemented."
-  emit (Core.ConstI64  i)  = error "Codegen Error: String Constant is not implemented."
-  emit (Core.ConstF32  f)  = error "Codegen Error: String Constant is not implemented."
-  emit (Core.ConstF64  f)  = error "Codegen Error: String Constant is not implemented."
-  emit (Core.ConstChar c)  = error "Codegen Error: String Constant is not implemented."
-  emit (Core.ConstString s) = error "Codegen Error: String Constant is not implemented."
+emitLit :: Syn.CoreLit -> C.Constant
+emitLit (Syn.IntLit Syn.TyLitInt8 v)   = C.Int 8 v
+emitLit (Syn.IntLit Syn.TyLitInt16 v)  = C.Int 16 v
+emitLit (Syn.IntLit Syn.TyLitInt32 v)  = C.Int 32 v
+emitLit (Syn.IntLit Syn.TyLitInt64 v)  = C.Int 64 v
+
+emitLit (Syn.FloatLit Syn.TyLitFloat16 v)  = C.Float $ F.Half $ fromFloat v
+emitLit (Syn.FloatLit Syn.TyLitFloat32 v)  = C.Float $ F.Single $ realToFrac v
+emitLit (Syn.FloatLit Syn.TyLitFloat64 v)  = C.Float $ F.Double v
+-- emit (Syn.FloatLit Syn.TyLitFloat128 v)  = C.Float $ F.Quadruple v
+
+emitLit (Syn.ArrayLit t v)   = C.Array (emit t) (emit <$> v)
+
+emitLit (Syn.BoolLit _ False)  = C.Int 1 0
+emitLit (Syn.BoolLit _ True)  = C.Int 1 1
+
+emitLit (Syn.Lit _)        = error "Codegen Error: Cannot emit lit extension"
 
 -------------------------------------------------------------------------------
 -- Type Emission
 -------------------------------------------------------------------------------
 
-instance Emittable Core.Type Ty.Type where
-  emit (Core.PrimTy p) = emit p
-  
-instance Emittable Core.PrimType Ty.Type where
-  emit Core.UnitTy = Ty.void
-  emit Core.BoolTy = Ty.i1
-  emit Core.W8Ty = Ty.i8
-  emit Core.W16Ty = Ty.i16
-  emit Core.W32Ty = Ty.i32
-  emit Core.W64Ty = Ty.i64
-  emit Core.I8Ty = Ty.i8
-  emit Core.I16Ty = Ty.i16
-  emit Core.I32Ty = Ty.i32
-  emit Core.I64Ty = Ty.i64
-  emit Core.F32Ty = Ty.float
-  emit Core.F64Ty = Ty.double
-  emit Core.CharTy = Ty.i8
-  emit Core.StringTy = error "Strings are not supported."
+emitTypeLit :: Syn.TypeLit -> Ty.Type
+emitTypeLit (Syn.TyLitInt Syn.TyLitInt8) = Ty.i8
+emitTypeLit (Syn.TyLitInt Syn.TyLitInt16) = Ty.i16
+emitTypeLit (Syn.TyLitInt Syn.TyLitInt32) = Ty.i32
+emitTypeLit (Syn.TyLitInt Syn.TyLitInt64) = Ty.i64
+emitTypeLit (Syn.TyLitInt Syn.TyLitInt128) = Ty.i128
+
+emitTypeLit (Syn.TyLitFloat Syn.TyLitFloat16) = Ty.half
+emitTypeLit (Syn.TyLitFloat Syn.TyLitFloat32) = Ty.float
+emitTypeLit (Syn.TyLitFloat Syn.TyLitFloat64) = Ty.double
+
+emitTypeLit (Syn.TyLitArray n ty) = Ty.ArrayType (fromIntegral n) (emitTypeLit ty)
+emitTypeLit (Syn.TyLitBool) = Ty.i1
   
 -------------------------------------------------------------------------------
 -- Operations
@@ -223,7 +249,9 @@ cgen expr = error $ "No codegeneration for " ++ show expr
 -- Compilation
 -------------------------------------------------------------------------------
 
+-- Defunct compilation routines, kept for reference
 
+{-
 liftError :: ExceptT String IO a -> IO a
 liftError = runExceptT >=> either fail return
 
@@ -257,3 +285,12 @@ to_ir_string ast =
   where
     modn    = emit ast
     newast  = (runLLVM emptyCodegen modn) ^. llmod
+-}
+
+t2sbs :: Text -> ShortByteString
+t2sbs =  BS.toShort . T.encodeUtf8
+
+fromFloat :: (F.Storable word, F.Storable float) => float -> word
+fromFloat float = unsafePerformIO $ F.alloca $ \buf -> do
+	F.poke (F.castPtr buf) float
+	F.peek buf

@@ -64,6 +64,7 @@ library:
     - lifted-base
     - lifted-async
     - logging-effect
+    - llvm-hs-pure
     - megaparsec
     - mmorph
     - monad-control
@@ -117,6 +118,10 @@ library:
     - Language.Hawk.Syntax.Pass
     - Language.Hawk.Syntax.Prim
     - Language.Hawk.Syntax.Location
+
+    - Language.Hawk.Target.LLVM.Codegen
+    - Language.Hawk.Target.LLVM.Emit
+    - Language.Hawk.Target.LLVM.Types
 
     - Language.Hawk.TypeCheck
     - Language.Hawk.TypeCheck.Context

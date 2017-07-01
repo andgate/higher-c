@@ -40,6 +40,8 @@ type ForallX (c :: * -> Constraint) (x :: *)
     , ForallType c x
     , c (XName x)
     , c (XMScope x)
+    , c (XFun x)
+    , c (XFunParam x)
     )
 
 type GenericX (x :: *)
@@ -76,7 +78,7 @@ deriving instance EqX x => Eq (Mod x)
 deriving instance GenericX x => Generic (Mod x)
 
 type ModPs = Mod HkcPs
-
+type CoreMod = Mod HkcCore
 
 -- -----------------------------------------------------------------------------
 -- | Module Scope
@@ -93,10 +95,14 @@ type family XMScope x
 type instance XMScope HkcPs = [[Token]]
 type instance XMScope HkcRn = ()
 type instance XMScope HkcTc = ()
+type instance XMScope HkcCore = ()
 
 deriving instance ShowX x => Show (MScope x)
 deriving instance EqX x => Eq (MScope x)
 deriving instance GenericX x => Generic (MScope x)
+
+type CoreMScope = MScope HkcCore
+
 
 -- -----------------------------------------------------------------------------
 -- | Item
@@ -130,6 +136,7 @@ instance Default (Item x) where
     def = EmptyItem
 
 type ItemPs = Item HkcPs
+type CoreItem = Item HkcCore
 
 
 -- -----------------------------------------------------------------------------
@@ -226,24 +233,21 @@ type NamePs = Name HkcPs
 
 data Lit x
   = IntLit (XIntLit x) Integer
-  | DblLit (XDblLit x) Double
-  | ChrLit (XChrLit x) Char
-  | StrLit (XStrLit x) String
+  | FloatLit (XFloatLit x) Double
+  | ArrayLit (XArrayLit x) [Lit x]
   | BoolLit (XBoolLit x) Bool
   | Lit (XLit x)
 
 type family XIntLit x
-type family XDblLit x
-type family XChrLit x
-type family XStrLit x
+type family XFloatLit x
+type family XArrayLit x
 type family XBoolLit x
 type family XLit x
 
 type ForallLit (c :: * -> Constraint) (x :: *) =
   ( c (XIntLit x)
-  , c (XDblLit x)
-  , c (XChrLit x)
-  , c (XStrLit x)
+  , c (XFloatLit x)
+  , c (XArrayLit x)
   , c (XBoolLit x)
   , c (XLit x)
   )
@@ -254,29 +258,65 @@ deriving instance EqX x => Eq (Lit x)
 deriving instance GenericX x => Generic (Lit x)
 
 
-type instance XIntLit      HkcPs = ()
-type instance XDblLit    HkcPs = ()
-type instance XChrLit     HkcPs = ()
-type instance XStrLit   HkcPs = ()
-type instance XBoolLit  HkcPs = ()
-type instance XLit      HkcPs = ()
+type instance XIntLit     HkcPs = ()
+type instance XFloatLit   HkcPs = ()
+type instance XArrayLit   HkcPs = ()
+type instance XBoolLit    HkcPs = ()
+type instance XLit        HkcPs = ()
 
 
-type instance XIntLit      HkcRn = ()
-type instance XDblLit    HkcRn = ()
-type instance XChrLit     HkcRn = ()
-type instance XStrLit   HkcRn = ()
-type instance XBoolLit  HkcRn = ()
-type instance XLit      HkcRn = ()
+type instance XIntLit     HkcRn = ()
+type instance XFloatLit   HkcRn = ()
+type instance XArrayLit   HkcRn = ()
+type instance XBoolLit    HkcRn = ()
+type instance XLit        HkcRn = ()
 
 
-type instance XIntLit      HkcTc = ()
-type instance XDblLit    HkcTc = ()
-type instance XChrLit     HkcTc = ()
-type instance XStrLit   HkcTc = ()
-type instance XBoolLit  HkcTc = ()
-type instance XLit      HkcTc = ()
+type instance XIntLit     HkcTc = ()
+type instance XFloatLit   HkcTc = ()
+type instance XArrayLit   HkcTc = ()
+type instance XBoolLit    HkcTc = ()
+type instance XLit        HkcTc = ()
 
+
+type instance XIntLit     HkcCore = TyLitIntPrim
+type instance XFloatLit   HkcCore = TyLitFloatPrim
+type instance XArrayLit   HkcCore = TypeLit
+type instance XBoolLit    HkcCore = ()
+type instance XLit        HkcCore = ()
+
+
+type CoreLit = Lit HkcCore
+
+
+-- -----------------------------------------------------------------------------
+-- | Type Literal
+
+data TypeLit
+  = TyLitInt TyLitIntPrim
+  | TyLitFloat TyLitFloatPrim
+  | TyLitArray Integer TypeLit
+  | TyLitBool
+  deriving (Eq, Show, Generic)
+
+data TyLitIntPrim
+  = TyLitInt8
+  | TyLitInt16
+  | TyLitInt32
+  | TyLitInt64
+  | TyLitInt128
+  | TyLitUInt8
+  | TyLitUInt16
+  | TyLitUInt32
+  | TyLitUInt64
+  | TyLitUInt128
+  deriving (Eq, Show, Generic)
+
+data TyLitFloatPrim
+  = TyLitFloat16
+  | TyLitFloat32
+  | TyLitFloat64
+  deriving (Eq, Show, Generic)
 
 -- -----------------------------------------------------------------------------
 -- | Type
@@ -332,7 +372,17 @@ type instance XTyCon    HkcTc = ()
 type instance XType     HkcTc = ()
 
 
+type instance XTyFun    HkcCore = ()
+type instance XTyTuple  HkcCore = ()
+type instance XTyApp    HkcCore = ()
+type instance XTyVar    HkcCore = ()
+type instance XTyCon    HkcCore = ()
+type instance XType     HkcCore = ()
+
+
 type TypePs = Type HkcPs
+
+type CoreType = Type HkcCore
 
 -- -----------------------------------------------------------------------------
 -- | Qualified Type
@@ -508,6 +558,7 @@ type instance XExp          HkcRn = ()
 
 
 type ExpPs = Exp HkcPs
+type CoreExp = Exp HkcCore
 
 -- -----------------------------------------------------------------------------
 -- | Statement
@@ -531,6 +582,8 @@ data Body x
 deriving instance ShowX x => Show (Body x)
 deriving instance EqX x => Eq (Body x)
 deriving instance GenericX x => Generic (Body x)
+
+type CoreBody = Body HkcCore
 
 -- -----------------------------------------------------------------------------
 -- | Type Signature
@@ -600,13 +653,43 @@ deriving instance GenericX x => Generic (Val x)
 data Fun x
   = Fun
     { _funName   :: Name x
-    , _funParams :: [Name x]
+    , _funParams :: [FunParam x]
     , _funBody   :: Body x
+    , _funX      :: XFun x
     }
 
 deriving instance ShowX x => Show (Fun x)
 deriving instance EqX x => Eq (Fun x)
 deriving instance GenericX x => Generic (Fun x)
+
+type family XFun x
+
+type instance XFun HkcPs = ()
+type instance XFun HkcCore = TypeLit
+
+
+type CoreFun = Fun HkcCore
+
+
+-- -----------------------------------------------------------------------------
+-- | Function Param
+
+data FunParam x
+  = FunParam
+    { _fparamName :: Text
+    , _fparamX :: XFunParam x
+    }
+
+deriving instance ShowX x => Show (FunParam x)
+deriving instance EqX x => Eq (FunParam x)
+deriving instance GenericX x => Generic (FunParam x)
+
+type family XFunParam x
+
+type instance XFunParam HkcPs = ()
+type instance XFunParam HkcCore = TypeLit
+
+type CoreFunParam = FunParam HkcCore
 
 -- -----------------------------------------------------------------------------
 -- | New Type
@@ -883,18 +966,13 @@ instance PrettyX x => PP.Pretty (Lit x) where
         PP.<$>
         PP.textStrict "Ext:" <+> PP.pretty x
          
-      DblLit x v ->
+      FloatLit x v ->
         PP.pretty v
         PP.<$>
         PP.textStrict "Ext:" <+> PP.pretty x
       
-      ChrLit x v ->
-        PP.pretty v
-        PP.<$>
-        PP.textStrict "Ext:" <+> PP.pretty x
-      
-      StrLit x v ->
-        PP.pretty v
+      ArrayLit x vs ->
+        PP.pretty vs
         PP.<$>
         PP.textStrict "Ext:" <+> PP.pretty x
       
@@ -1240,7 +1318,7 @@ instance PrettyX x => PP.Pretty (Val x) where
 
 -- Function ---------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (Fun x) where
-  pretty (Fun name params body) =
+  pretty (Fun name params body x) =
     PP.textStrict "Function Item:"
     PP.<$>
     PP.indent 2
@@ -1249,6 +1327,20 @@ instance PrettyX x => PP.Pretty (Fun x) where
         PP.textStrict "params:" <+> PP.pretty params
         PP.<$>
         PP.textStrict "body:" <+> PP.pretty body
+        PP.<$>
+        PP.textStrict "ext:" <+> PP.pretty x
+      )
+
+
+-- Function Params ----------------------------------------------------------------
+instance PrettyX x => PP.Pretty (FunParam x) where
+  pretty (FunParam name x) =
+    PP.textStrict "Function Param:"
+    PP.<$>
+    PP.indent 2
+      ( PP.textStrict "name:" <+> PP.pretty name
+        PP.<$>
+        PP.textStrict "ext:" <+> PP.pretty x
       )
 
 
@@ -1410,6 +1502,9 @@ instance BinaryX x => Binary (Val x)
 
 -- Function ----------------------------------------------------------------------
 instance BinaryX x => Binary (Fun x)
+
+-- Function Param ----------------------------------------------------------------
+instance BinaryX x => Binary (FunParam x)
 
 
 -- New Type ----------------------------------------------------------------------

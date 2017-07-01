@@ -2,5 +2,5 @@ resolver: lts-8.20
 packages:
 - '.'
 extra-deps:
-- llvm-hs-4.2.0
+- llvm-hs-pure-4.1.0.0
 - data-default-instances-text-0.0.1
