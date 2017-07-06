@@ -3,6 +3,7 @@
            , DeriveGeneric
            , DataKinds
            , ConstraintKinds
+           , KindSignatures
            , EmptyCase
            , StandaloneDeriving
            , TypeOperators
@@ -12,6 +13,7 @@
            , OverloadedStrings
            , UndecidableInstances
            , TemplateHaskell
+           , LambdaCase
   #-}
 module Language.Hawk.Syntax where
 
@@ -19,10 +21,11 @@ import Data.Binary
 import Data.Default.Class
 import Data.Either
 import Data.Map.Strict (Map)
+import Data.Set (Set)
 import Data.Text (Text, pack)
 import Control.Lens
 import GHC.Types (Constraint)
-import GHC.Generics (Generic)
+import GHC.Generics (Generic, Rec0, (:+:), (:*:))
 import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Operator
@@ -30,15 +33,14 @@ import Language.Hawk.Syntax.Pass
 import Language.Hawk.Syntax.Prim
 import Text.PrettyPrint.Leijen.Text ((<+>))
 
+
 import qualified Text.PrettyPrint.Leijen.Text as PP
 import qualified Data.Map.Strict              as Map
+import qualified Data.Set                     as S
 
 
 type ForallX (c :: * -> Constraint) (x :: *)
-  = ( ForallLit c x
-    , ForallExp c x
-    , ForallType c x
-    , c (XName x)
+  = ( ForallExp c x
     , c (XMScope x)
     , c (XFun x)
     , c (XFunParam x)
@@ -61,6 +63,9 @@ type PrettyX (x :: *)
 
 type BinaryX (x :: *)
   = (ForallX Binary x, GenericX x)
+
+type DefaultX (x :: *)
+  = (ForallX Default x)
 
 
 -- -----------------------------------------------------------------------------
@@ -110,22 +115,16 @@ type CoreMScope = MScope HkcCore
 data Item x
   = DepItem Dependency
 
-  | ForeignItem (Foreign x)
-  | ExposeItem (Expose x)
+  | ForeignItem Foreign
+  | ExposeItem Expose
 
-  | VowItem (Vow x)
-  | SigItem (TypeSig x)
-  | VarItem (Var x)
-  | ValItem (Val x)
+  | SigItem TypeSig
   | FunItem (Fun x)
   
-  | NewTyItem (NewType x)
-  | TyAliasItem (TypeAlias x)
+  | NewTyItem NewType
+  | TyAliasItem TypeAlias
   
-  | TyClassItem (TypeClass x)
-  | TyInstItem (TypeClassInst x)
-  
-  | DataItem (DataType x)
+  | DataItem DataType
   | EmptyItem
 
 deriving instance ShowX x => Show (Item x)
@@ -164,29 +163,11 @@ data DepPath =
 
 
 -- -----------------------------------------------------------------------------
--- | Nested Items
-
-data NestedItem x
-  = NestedVar (Var x)
-  | NestedVal (Val x)
-  | NestedFun (Fun x)
-  | NestedVow (Vow x)
-  | NestedSig (TypeSig x)
-
-deriving instance ShowX x => Show (NestedItem x)
-deriving instance EqX x => Eq (NestedItem x)
-deriving instance GenericX x => Generic (NestedItem x)
-
-
--- -----------------------------------------------------------------------------
 -- | Foreign
 
-data Foreign x =
-  Foreign ForeignType Text (TypeSig x)
-
-deriving instance ShowX x => Show (Foreign x)
-deriving instance EqX x => Eq (Foreign x)
-deriving instance GenericX x => Generic (Foreign x)
+data Foreign =
+  Foreign ForeignType Text TypeSig
+  deriving (Show, Eq, Generic)
 
 
 data ForeignType =
@@ -197,284 +178,91 @@ data ForeignType =
 -- -----------------------------------------------------------------------------
 -- | Expose
 
-data Expose x =
-  Expose (Name x)
-
-
-deriving instance ShowX x => Show (Expose x)
-deriving instance EqX x => Eq (Expose x)
-deriving instance GenericX x => Generic (Expose x)
+data Expose =
+  Expose Name
+  deriving(Show, Eq, Generic)
 
 
 -- -----------------------------------------------------------------------------
 -- | Name
 
-data Name x
+data Name
   = Name 
     { _nameText :: Text
-    , _nameExt  :: XName x
-    }
+    } deriving (Show, Eq, Generic)
 
-type family XName x
-
-type instance XName HkcPs = Location
-type instance XName HkcRn = ()
-type instance XName HkcTc = ()
-
-deriving instance ShowX x => Show (Name x)
-deriving instance EqX x => Eq (Name x)
-deriving instance GenericX x => Generic (Name x)
-
-type NamePs = Name HkcPs
 
 
 -- -----------------------------------------------------------------------------
 -- | Literal
 
-data Lit x
-  = IntLit (XIntLit x) Integer
-  | FloatLit (XFloatLit x) Double
-  | ArrayLit (XArrayLit x) [Lit x]
-  | BoolLit (XBoolLit x) Bool
-  | Lit (XLit x)
-
-type family XIntLit x
-type family XFloatLit x
-type family XArrayLit x
-type family XBoolLit x
-type family XLit x
-
-type ForallLit (c :: * -> Constraint) (x :: *) =
-  ( c (XIntLit x)
-  , c (XFloatLit x)
-  , c (XArrayLit x)
-  , c (XBoolLit x)
-  , c (XLit x)
-  )
-
-
-deriving instance ShowX x => Show (Lit x)
-deriving instance EqX x => Eq (Lit x)
-deriving instance GenericX x => Generic (Lit x)
-
-
-type instance XIntLit     HkcPs = ()
-type instance XFloatLit   HkcPs = ()
-type instance XArrayLit   HkcPs = ()
-type instance XBoolLit    HkcPs = ()
-type instance XLit        HkcPs = ()
-
-
-type instance XIntLit     HkcRn = ()
-type instance XFloatLit   HkcRn = ()
-type instance XArrayLit   HkcRn = ()
-type instance XBoolLit    HkcRn = ()
-type instance XLit        HkcRn = ()
-
-
-type instance XIntLit     HkcTc = ()
-type instance XFloatLit   HkcTc = ()
-type instance XArrayLit   HkcTc = ()
-type instance XBoolLit    HkcTc = ()
-type instance XLit        HkcTc = ()
-
-
-type instance XIntLit     HkcCore = TyLitIntPrim
-type instance XFloatLit   HkcCore = TyLitFloatPrim
-type instance XArrayLit   HkcCore = TypeLit
-type instance XBoolLit    HkcCore = ()
-type instance XLit        HkcCore = ()
-
-
-type CoreLit = Lit HkcCore
+data Lit
+  = IntLit Integer
+  | FloatLit Double
+  | CharLit Char
+  | BoolLit Bool
+  deriving (Show, Eq, Generic)
 
 
 -- -----------------------------------------------------------------------------
 -- | Type Literal
 
-data TypeLit
-  = TyLitInt TyLitIntPrim
-  | TyLitFloat TyLitFloatPrim
-  | TyLitArray Integer TypeLit
-  | TyLitBool
-  deriving (Eq, Show, Generic)
+data TLit
+  = TLitInt
+  | TLitFloat
+  | TLitChar
+  | TLitBool
+  | TLitData Name
+  | TLitFun [TLit] TLit
+  deriving (Show, Eq, Generic)
 
-data TyLitIntPrim
-  = TyLitInt8
-  | TyLitInt16
-  | TyLitInt32
-  | TyLitInt64
-  | TyLitInt128
-  | TyLitUInt8
-  | TyLitUInt16
-  | TyLitUInt32
-  | TyLitUInt64
-  | TyLitUInt128
-  deriving (Eq, Show, Generic)
-
-data TyLitFloatPrim
-  = TyLitFloat16
-  | TyLitFloat32
-  | TyLitFloat64
-  deriving (Eq, Show, Generic)
 
 -- -----------------------------------------------------------------------------
 -- | Type
 
-data Type x
-  = TyFun   (XTyFun x)    (Type x) (Type x)
-  | TyTuple (XTyTuple x)  [Type x]
-  | TyApp   (XTyApp x)    (Type x) [Type x]
-  | TyVar   (XTyVar x)    (Name x)
-  | TyCon   (XTyCon x)    (Name x)
-  | Type    (XType x)
+data TVar = TypeVar Text deriving (Eq, Ord, Show, Generic)
 
-type family XTyFun x
-type family XTyTuple x
-type family XTyApp x
-type family XTyVar x
-type family XTyCon x
-type family XType x
-
-
-type ForallType (c :: * -> Constraint) (x :: *) =
-  ( c (XTyFun x)
-  , c (XTyTuple x)
-  , c (XTyApp x)
-  , c (XTyVar x)
-  , c (XTyCon x)
-  , c (XType x)
-  )
-
-deriving instance ShowX x => Show (Type x)
-deriving instance EqX x => Eq (Type x)
-deriving instance GenericX x => Generic (Type x)
-
-type instance XTyFun    HkcPs = ()
-type instance XTyTuple  HkcPs = ()
-type instance XTyApp    HkcPs = ()
-type instance XTyVar    HkcPs = ()
-type instance XTyCon    HkcPs = ()
-type instance XType     HkcPs = ()
-
-type instance XTyFun    HkcRn = ()
-type instance XTyTuple  HkcRn = ()
-type instance XTyApp    HkcRn = ()
-type instance XTyVar    HkcRn = ()
-type instance XTyCon    HkcRn = ()
-type instance XType     HkcRn = ()
-
-type instance XTyFun    HkcTc = ()
-type instance XTyTuple  HkcTc = ()
-type instance XTyApp    HkcTc = ()
-type instance XTyVar    HkcTc = ()
-type instance XTyCon    HkcTc = ()
-type instance XType     HkcTc = ()
-
-
-type instance XTyFun    HkcCore = ()
-type instance XTyTuple  HkcCore = ()
-type instance XTyApp    HkcCore = ()
-type instance XTyVar    HkcCore = ()
-type instance XTyCon    HkcCore = ()
-type instance XType     HkcCore = ()
-
-
-type TypePs = Type HkcPs
-
-type CoreType = Type HkcCore
-
--- -----------------------------------------------------------------------------
--- | Qualified Type
-data QType x
-  = QType (TyContext x) (Type x)
-
-deriving instance ShowX x => Show (QType x)
-deriving instance EqX x => Eq (QType x)
-deriving instance GenericX x => Generic (QType x)
-
-
--- -----------------------------------------------------------------------------
--- | Type Context
-
-data TyContext x
-  = TyContext [TyAssert x]
-
-deriving instance ShowX x => Show (TyContext x)
-deriving instance EqX x => Eq (TyContext x)
-deriving instance GenericX x => Generic (TyContext x)
-
-data TyAssert x
-  = TyAssert (Name x) [Type x]
-
-deriving instance ShowX x => Show (TyAssert x)
-deriving instance EqX x => Eq (TyAssert x)
-deriving instance GenericX x => Generic (TyAssert x)
-
+data Type
+  = TCon Name
+  | TVar TVar
+  | TFun Type Type
+  deriving (Show, Eq, Generic)
 
 
 -- -----------------------------------------------------------------------------
 -- | Expression
 
+data Var = Var Text
+  deriving (Eq, Ord, Show, Generic)
+
 data Exp x
-  = ELit (XELit x) (Lit x)
-  | EVar (XEVar x) (Name x)
-  | ECon (XECon x) (Name x)
+  = ELit (XELit x) Lit
+  | EVar (XEVar x) Var
+  | ECon (XECon x) Var
+  | EPrim (XEPrim x) PrimInstr
+  | EApp (XEApp x) (Exp x) (Exp x)
+  | ELam (XELam x) Var (Exp x)
+  | EIf (XEIf x) (Exp x) (Exp x) (Exp x)
+  | ELet (XELet x) Var (Exp x) (Exp x)
+  | EDup (XEDup x) (Exp x)
+  | EDrop (XEDrop x) Var (Exp x)
 
-  | EApp (XEApp x) (Exp x) [Exp x] -- Function application, which is left associative
-  | EInfixApp (XEInfixApp x) (Exp x) -- rhs
-                         (Exp x) -- applied exp
-                         (Exp x) -- lhs
-
-  | ELam (XELam x) [Name x] (Exp x)
-
-  -- Control Flow
-  | EDo (XEDo x) [Stmt x]
-  | EReturn (XEReturn x) (Exp x)
-  
-  | EIf (XEIf x) (Exp x) -- conditional
-                   (Exp x) -- then expr
-                   (Maybe (Exp x)) -- else exp
-  
-  | EWhile (XEWhile x) (Exp x) -- Loop condition
-                      (Exp x) -- Loop body
-
--- Too complex for now 
---  | EFor (Exp ex) -- Iterator
---         (Exp ex) -- List
---         [Stmt n] -- Loop body
-
---  | ECase (Exp ex)
---          (ECaseEntry n)
-
-
-  -- Operators
-  | EPrim (XEPrim x) PrimInstr (Exp x) (Exp x)
-  | EBinary (XEBinary x) (Exp x) BinaryOp (Exp x)
-  | EUnary (XEUnary x) UnaryOp (Exp x)
-  | EAssign (XEAssign x) (Exp x) AssignOp (Exp x)
 
   -- Type hints and bottom
-  | ETypeHint (XETypeHint x) (Exp x) (QType x)
-  | EBottom (XEBottom x)
+  | ETypeHint (XETypeHint x) (Exp x) Type
   | Exp (XExp x)
 
 type family XELit x
 type family XEVar x
 type family XECon x
 type family XEApp x
-type family XEInfixApp x
 type family XELam x
-type family XEDo x
-type family XEReturn x
-type family XEIf x
-type family XEWhile x
+type family XELet x
+type family XEDup x
+type family XEDrop x
 type family XEPrim x
-type family XEBinary x
-type family XEUnary x
-type family XEAssign x
+type family XEIf x
 type family XETypeHint x
-type family XEBottom x
 type family XExp x
 
 
@@ -482,19 +270,14 @@ type ForallExp (c :: * -> Constraint) (x :: *) =
   ( c (XELit x)
   , c (XEVar x)
   , c (XECon x)
-  , c (XEApp x)
-  , c (XEInfixApp x)
-  , c (XELam x)
-  , c (XEDo x)
-  , c (XEReturn x)
   , c (XEPrim x)
+  , c (XEApp x)
+  , c (XELam x)
   , c (XEIf x)
-  , c (XEWhile x)
-  , c (XEBinary x)
-  , c (XEUnary x)
-  , c (XEAssign x)
+  , c (XELet x)
+  , c (XEDup x)
+  , c (XEDrop x)
   , c (XETypeHint x)
-  , c (XEBottom x)
   , c (XExp x)
   )
 
@@ -505,146 +288,69 @@ deriving instance GenericX x => Generic (Exp x)
 type instance XELit         HkcPs = ()
 type instance XEVar         HkcPs = ()
 type instance XECon         HkcPs = ()
-type instance XEApp         HkcPs = ()
-type instance XEInfixApp    HkcPs = ()
-type instance XELam         HkcPs = ()
-type instance XEDo          HkcPs = ()
-type instance XEReturn      HkcPs = ()
-type instance XEIf          HkcPs = ()
-type instance XEWhile       HkcPs = ()
 type instance XEPrim        HkcPs = ()
-type instance XEBinary      HkcPs = ()
-type instance XEUnary       HkcPs = ()
-type instance XEAssign      HkcPs = ()
+type instance XEApp         HkcPs = ()
+type instance XELam         HkcPs = ()
+type instance XEIf          HkcPs = ()
+type instance XELet         HkcPs = ()
+type instance XEDup         HkcPs = ()
+type instance XEDrop        HkcPs = ()
 type instance XETypeHint    HkcPs = ()
-type instance XEBottom      HkcPs = ()
 type instance XExp          HkcPs = ()
 
-type instance XELit         HkcRn = ()
-type instance XEVar         HkcRn = ()
-type instance XECon         HkcRn = ()
-type instance XEApp         HkcRn = ()
-type instance XEInfixApp    HkcRn = ()
-type instance XELam         HkcRn = ()
-type instance XEDo          HkcRn = ()
-type instance XEReturn      HkcRn = ()
-type instance XEIf          HkcRn = ()
-type instance XEWhile       HkcRn = ()
-type instance XEPrim        HkcRn = ()
-type instance XEBinary      HkcRn = ()
-type instance XEUnary       HkcRn = ()
-type instance XEAssign      HkcRn = ()
-type instance XETypeHint    HkcRn = ()
-type instance XEBottom      HkcRn = ()
-type instance XExp          HkcRn = ()
+type instance XELit         HkcRn = Maybe Location
+type instance XEVar         HkcRn = Maybe Location
+type instance XECon         HkcRn = Maybe Location
+type instance XEPrim        HkcRn = Maybe Location
+type instance XEApp         HkcRn = Maybe Location
+type instance XELam         HkcRn = Maybe Location
+type instance XEIf          HkcRn = Maybe Location
+type instance XELet         HkcRn = Maybe Location
+type instance XEDup         HkcRn = Maybe Location
+type instance XEDrop        HkcRn = Maybe Location
+type instance XETypeHint    HkcRn = Maybe Location
+type instance XExp          HkcRn = Maybe Location
 
-type instance XELit         HkcTc = ()
-type instance XEVar         HkcTc = ()
-type instance XECon         HkcTc = ()
-type instance XEApp         HkcTc = ()
-type instance XEInfixApp    HkcTc = ()
-type instance XELam         HkcTc = ()
-type instance XEDo          HkcTc = ()
-type instance XEReturn      HkcTc = ()
-type instance XEIf          HkcTc = ()
-type instance XEWhile       HkcTc = ()
-type instance XEPrim        HkcTc = ()
-type instance XEBinary      HkcTc = ()
-type instance XEUnary       HkcTc = ()
-type instance XEAssign      HkcTc = ()
-type instance XETypeHint    HkcTc = ()
-type instance XEBottom      HkcTc = ()
-type instance XExp          HkcRn = ()
+type instance XELit         HkcTc = (Type, Maybe Location)
+type instance XEVar         HkcTc = (Type, Maybe Location)
+type instance XECon         HkcTc = (Type, Maybe Location)
+type instance XEPrim        HkcTc = (Type, Maybe Location)
+type instance XEApp         HkcTc = (Type, Maybe Location)
+type instance XELam         HkcTc = (Type, Maybe Location)
+type instance XEIf          HkcTc = (Type, Maybe Location)
+type instance XELet         HkcTc = (Type, Maybe Location)
+type instance XEDup         HkcTc = (Type, Maybe Location)
+type instance XEDrop        HkcTc = (Type, Maybe Location)
+type instance XETypeHint    HkcTc = (Type, Maybe Location)
+type instance XExp          HkcTc = ()
 
+
+type instance XELit         HkcCore = ()
+type instance XEVar         HkcCore = TLit
+type instance XECon         HkcCore = ()
+type instance XEPrim        HkcCore = ()
+type instance XEApp         HkcCore = TLit
+type instance XELam         HkcCore = ()
+type instance XEIf          HkcCore = TLit
+type instance XELet         HkcCore = TLit
+type instance XEDup         HkcCore = ()
+type instance XEDrop        HkcCore = ()
+type instance XETypeHint    HkcCore = ()
+type instance XExp          HkcCore = ()
 
 type ExpPs = Exp HkcPs
+type ExpRn = Exp HkcRn
+type ExpTc = Exp HkcTc
 type CoreExp = Exp HkcCore
 
 -- -----------------------------------------------------------------------------
--- | Statement
-
-data Stmt x
-  = StmtExpr (Exp x)
-  | StmtDecl (NestedItem x)
-
-deriving instance ShowX x => Show (Stmt x)
-deriving instance EqX x => Eq (Stmt x)
-deriving instance GenericX x => Generic (Stmt x)
-
-
--- -----------------------------------------------------------------------------
--- | Body
-
-data Body x
-  = BodyBlock [Stmt x]
-  | BodyExpr (Exp x)
-
-deriving instance ShowX x => Show (Body x)
-deriving instance EqX x => Eq (Body x)
-deriving instance GenericX x => Generic (Body x)
-
-type CoreBody = Body HkcCore
-
--- -----------------------------------------------------------------------------
 -- | Type Signature
 
-data TypeSig x
+data TypeSig
   = TypeSig
-    { _tySigName :: Name x
-    , _tySigBody :: QType x
-    }
-
-deriving instance ShowX x => Show (TypeSig x)
-deriving instance EqX x => Eq (TypeSig x)
-deriving instance GenericX x => Generic (TypeSig x)
-
-
--- -----------------------------------------------------------------------------
--- | Type Signature
-
-data Vow x
-  = Vow
-    { _vowName :: Name x
-    , _vows :: [VowType]
-    }
-
-deriving instance ShowX x => Show (Vow x)
-deriving instance EqX x => Eq (Vow x)
-deriving instance GenericX x => Generic (Vow x)
-
-data VowType =
-  VowVar
-  | VowVal
-  | VowRef
-  deriving (Eq, Show, Generic)
-
-
--- -----------------------------------------------------------------------------
--- | Variable
-
-data Var x
-  = Var
-    { _varName  :: Name x
-    , _varBody  :: Maybe (Body x)
-    }
-
-deriving instance ShowX x => Show (Var x)
-deriving instance EqX x => Eq (Var x)
-deriving instance GenericX x => Generic (Var x)
-
-
--- -----------------------------------------------------------------------------
--- | Variable
-
-data Val x
-  = Val
-    { _valName  :: Name x
-    , _valBody  :: Body x
-    }
-
-deriving instance ShowX x => Show (Val x)
-deriving instance EqX x => Eq (Val x)
-deriving instance GenericX x => Generic (Val x)
+    { _tySigName :: Name
+    , _tySigBody :: Type
+    } deriving (Show, Eq, Generic)
 
 
 -- -----------------------------------------------------------------------------
@@ -652,9 +358,9 @@ deriving instance GenericX x => Generic (Val x)
 
 data Fun x
   = Fun
-    { _funName   :: Name x
+    { _funName   :: Name
     , _funParams :: [FunParam x]
-    , _funBody   :: Body x
+    , _funBody   :: Exp x
     , _funX      :: XFun x
     }
 
@@ -665,7 +371,8 @@ deriving instance GenericX x => Generic (Fun x)
 type family XFun x
 
 type instance XFun HkcPs = ()
-type instance XFun HkcCore = TypeLit
+type instance XFun HkcRn = ()
+type instance XFun HkcCore = TLit
 
 
 type CoreFun = Fun HkcCore
@@ -687,83 +394,39 @@ deriving instance GenericX x => Generic (FunParam x)
 type family XFunParam x
 
 type instance XFunParam HkcPs = ()
-type instance XFunParam HkcCore = TypeLit
+type instance XFunParam HkcRn = ()
+type instance XFunParam HkcCore = TLit
 
 type CoreFunParam = FunParam HkcCore
 
 -- -----------------------------------------------------------------------------
 -- | New Type
 
-data NewType x
+data NewType
   = NewType
-    { _newTyName     :: Name x
-    , _newTyVars     :: [Name x]
-    , _newTyNewBody  :: Type x
-    }
+    { _newTyName     :: Name
+    , _newTyNewBody  :: Type
+    } deriving (Show, Eq, Generic)
 
-deriving instance ShowX x => Show (NewType x)
-deriving instance EqX x => Eq (NewType x)
-deriving instance GenericX x => Generic (NewType x)
 
 -- -----------------------------------------------------------------------------
 -- | Type Alias
 
-data TypeAlias x
+data TypeAlias
     = TypeAlias
-      { _tyAliasName   :: Name x
-      , _tyAliasTyVars :: [Name x]
-      , _tyAliasBody   :: Type x
-      }
+      { _tyAliasName   :: Name
+      , _tyAliasBody   :: Type
+      } deriving (Show, Eq, Generic)
 
-deriving instance ShowX x => Show (TypeAlias x)
-deriving instance EqX x => Eq (TypeAlias x)
-deriving instance GenericX x => Generic (TypeAlias x)
-
-
--- -----------------------------------------------------------------------------
--- | Type Class
-
-data TypeClass x
-    = TypeClass 
-      { _tyClassContext :: Maybe (TyContext x)
-      , _tyClassName :: Name x
-      , _tyClassVars :: [Name x]
-      , _tyClassBody :: [Either (Fun x) (TypeSig x)]
-      }
-
-deriving instance ShowX x => Show (TypeClass x)
-deriving instance EqX x => Eq (TypeClass x)
-deriving instance GenericX x => Generic (TypeClass x)
-
-
--- -----------------------------------------------------------------------------
--- | Type Class Instance
-
-data TypeClassInst x
-    = TypeClassInst 
-      { _tyClassInstContext :: Maybe (TyContext x)
-      , _tyClassInstName :: Name x
-      , _tyClassInstArgs :: [Type x]
-      , _tyClassInstBody :: [Fun x]
-      }
-
-deriving instance ShowX x => Show (TypeClassInst x)
-deriving instance EqX x => Eq (TypeClassInst x)
-deriving instance GenericX x => Generic (TypeClassInst x)
 
 -- -----------------------------------------------------------------------------
 -- | Data Type
 
-data DataType x
+data DataType
     = DataType
-      { _dataTyName :: Name x
-      , _dataTyVars :: [Name x]
-      , _dataTyBody :: [TypeSig x]
-      }
-
-deriving instance ShowX x => Show (DataType x)
-deriving instance EqX x => Eq (DataType x)
-deriving instance GenericX x => Generic (DataType x)
+      { _dataTyName :: Name
+      , _dataTyBody :: [TypeSig]
+      } deriving (Show, Eq, Generic)
 
 
 -- -----------------------------------------------------------------------------
@@ -841,16 +504,7 @@ instance PrettyX x => PP.Pretty (Item x) where
     pretty (ExposeItem i) =
       PP.pretty i
 
-    pretty (VowItem i) =
-      PP.pretty i
-
     pretty (SigItem i) =
-      PP.pretty i
-
-    pretty (VarItem i) =
-      PP.pretty i
-
-    pretty (ValItem i) =
       PP.pretty i
 
     pretty (FunItem i) =
@@ -862,32 +516,8 @@ instance PrettyX x => PP.Pretty (Item x) where
     pretty (TyAliasItem i) =
       PP.pretty i
 
-    pretty (TyClassItem i) =
-      PP.pretty i
-
-    pretty (TyInstItem i) =
-      PP.pretty i
-
     pretty (DataItem i) =
       PP.pretty i
-
-
--- Vested Item ---------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (NestedItem x) where
-    pretty (NestedVar v) =
-      PP.textStrict "Nested Variable:" <+> PP.pretty v
-
-    pretty (NestedVal v) =
-      PP.textStrict "Nested Value:" <+> PP.pretty v
-
-    pretty (NestedFun f) =
-      PP.textStrict "Nested Function:" <+> PP.pretty f
-    
-    pretty (NestedVow v) =
-      PP.textStrict "Nested Vow:" <+> PP.pretty v
-
-    pretty (NestedSig s) =
-      PP.textStrict "Nested Type Sig:" <+> PP.pretty s
 
 
 -- Dependency ------------------------------------------------------------------
@@ -905,7 +535,7 @@ instance PP.Pretty Dependency where
 
 
 -- Foreign ------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (Foreign x) where
+instance PP.Pretty Foreign where
     pretty (Foreign ft n fs) =
       PP.textStrict "Foreign:"
       PP.<$>
@@ -923,7 +553,7 @@ instance PP.Pretty ForeignType where
 
 
 -- Expose --------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (Expose x) where
+instance PP.Pretty Expose where
     pretty (Expose n) =
       PP.textStrict "Expose:"
       PP.<$>
@@ -949,125 +579,56 @@ instance PP.Pretty DepPath where
 
 -- Name ------------------------------------------------------------------------
 
-instance PrettyX x => PP.Pretty (Name x) where
-    pretty (Name n ex) =
+instance PP.Pretty Name where
+    pretty (Name n) =
       PP.textStrict n
-      PP.<$>
-      PP.pretty ex
 
 
 -- Literal ------------------------------------------------------------------------
 
-instance PrettyX x => PP.Pretty (Lit x) where
-  pretty lit =
-    case lit of
-      IntLit x v ->
-        PP.pretty v
-        PP.<$>
-        PP.textStrict "Ext:" <+> PP.pretty x
-         
-      FloatLit x v ->
-        PP.pretty v
-        PP.<$>
-        PP.textStrict "Ext:" <+> PP.pretty x
-      
-      ArrayLit x vs ->
-        PP.pretty vs
-        PP.<$>
-        PP.textStrict "Ext:" <+> PP.pretty x
-      
-      BoolLit x v ->
-        PP.pretty v
-        PP.<$>
-        PP.textStrict "Ext:" <+> PP.pretty x
-
-      Lit x ->
-        PP.textStrict "Lit Con Ext:" <+> PP.pretty x
+instance PP.Pretty Lit where
+  pretty = \case
+    IntLit v ->
+      PP.pretty v
+        
+    FloatLit v ->
+      PP.pretty v
+    
+    CharLit c ->
+      PP.squotes $ PP.pretty c
+    
+    BoolLit v ->
+      PP.pretty v
 
 
 -- Type ------------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (Type x) where
-    pretty (TyFun ext x y) =
-      PP.textStrict "Type Function:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "from:" <+> PP.pretty x
-          PP.<$>
-          PP.textStrict "to:" PP.<$> PP.pretty y
-          PP.<$>
-          PP.textStrict "ext:" PP.<$> PP.pretty ext
-        )
+instance PP.Pretty TVar where
+  pretty (TypeVar x) =
+    PP.textStrict "TVar:" <+> PP.dquotes (PP.pretty x)
 
-    pretty (TyTuple ext mems) =
-      PP.textStrict "Type Tuple:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "members:" <+> PP.pretty mems
-          PP.<$>
-          PP.textStrict "ext:" PP.<$> PP.pretty ext
-        )
-        
+instance PP.Pretty Type where
+    pretty = \case
+      TCon n ->
+        PP.textStrict "TCon:" <+> PP.pretty n
 
-    pretty (TyApp ext con args) =
-      PP.textStrict "Type App:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "con:" <+> PP.pretty con
-          PP.<$>
-          PP.textStrict "args:" PP.<$> PP.pretty args
-          PP.<$>
-          PP.textStrict "ext:" PP.<$> PP.pretty ext
-        )
-      
-    pretty (TyVar ext name) =
-      PP.textStrict "Type Var" <+> PP.dquotes (PP.pretty name)
-      PP.<$>
-      PP.textStrict "ext:" PP.<$> PP.pretty ext
+      TVar tvar ->
+        PP.pretty tvar
 
-    pretty (TyCon ext name) =
-      PP.textStrict "Type Con" <+> PP.dquotes (PP.pretty name)
-      PP.<$>
-      PP.textStrict "ext:" PP.<$> PP.pretty ext
-
-    pretty (Type ext) =
-      PP.textStrict "Type Ext:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "ext:" <+> PP.pretty ext
-        )
-
-
-instance PrettyX x => PP.Pretty (QType x) where
-    pretty (QType ctx tipe) =
-      PP.textStrict "Qualified Type:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "context:" <+> PP.pretty ctx
-          PP.<$>
-          PP.textStrict "type:" <+> PP.pretty tipe
-        )
-        
-
-instance PrettyX x => PP.Pretty (TyContext x) where
-    pretty (TyContext assrts) =
-      PP.textStrict "Context:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "Assertions:" <+> PP.pretty assrts
-        )
-
-instance PrettyX x => PP.Pretty (TyAssert x) where
-    pretty (TyAssert con tys) =
-      PP.textStrict "Type Assertion:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "Constructor:" <+> PP.pretty con
-          PP.<$>
-          PP.textStrict "Arguments:" <+> PP.pretty tys
-        )
+      TFun f x ->
+        PP.textStrict "TFun:"
+        PP.<$>
+        PP.indent 2
+          ( PP.textStrict "func:" <+> PP.pretty f
+            PP.<$>
+            PP.textStrict "arg:" PP.<$> PP.pretty x
+          )
 
 
 -- Expr -------------------------------------------------------------------------
+instance PP.Pretty Var where
+  pretty (Var n) =
+    PP.textStrict "Var:" PP.<+> PP.textStrict n
+
 instance PrettyX x => PP.Pretty (Exp x) where
     pretty (ELit ext lit) =
       PP.textStrict "Literal:" PP.<+> PP.pretty lit
@@ -1080,10 +641,18 @@ instance PrettyX x => PP.Pretty (Exp x) where
       PP.textStrict "ext:" <+> PP.pretty ext
       
     pretty (ECon ext name) =
-      PP.textStrict "Constructor:" PP.<+> PP.pretty name
+      PP.textStrict "Con:" PP.<+> PP.pretty name
       PP.<$>
       PP.textStrict "ext:" <+> PP.pretty ext
 
+    pretty (EPrim ext i) =
+      PP.textStrict "Prim:"
+      PP.<$>
+      PP.indent 2 
+        ( PP.textStrict "instruction:" <+> PP.pretty i
+          PP.<$>
+          PP.textStrict "ext:" <+> PP.pretty ext
+        )
 
     pretty (EApp ext f as) =
       PP.textStrict "Application:"
@@ -1096,20 +665,6 @@ instance PrettyX x => PP.Pretty (Exp x) where
           PP.textStrict "ext:" <+> PP.pretty ext
         )
 
-    pretty (EInfixApp ext l f r) =
-      PP.textStrict "Infix Application:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "expression:" <+> PP.pretty f
-          PP.<$>
-          PP.textStrict "lhs:" <+> PP.pretty l
-          PP.<$>
-          PP.textStrict "rhs:" <+> PP.pretty r
-          PP.<$>
-          PP.textStrict "ext:" <+> PP.pretty ext
-        )
-
-
     pretty (ELam ext ps b) =
       PP.textStrict "Lambda:"
       PP.<$>
@@ -1117,25 +672,6 @@ instance PrettyX x => PP.Pretty (Exp x) where
         ( PP.textStrict "params:" <+> PP.pretty ps
           PP.<$>
           PP.textStrict "body:" <+> PP.pretty b
-          PP.<$>
-          PP.textStrict "ext:" <+> PP.pretty ext
-        )
-
-          
-    pretty (EDo ext b) =
-      PP.textStrict "Do:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "body:" <+> PP.pretty b
-          PP.<$>
-          PP.textStrict "ext:" <+> PP.pretty ext
-        )
-
-    pretty (EReturn ext e) =
-      PP.textStrict "Return:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "expression:" <+> PP.pretty e
           PP.<$>
           PP.textStrict "ext:" <+> PP.pretty ext
         )
@@ -1153,68 +689,38 @@ instance PrettyX x => PP.Pretty (Exp x) where
           PP.textStrict "ext:" <+> PP.pretty ext
         )
 
-    pretty (EWhile ext cond body) =
-      PP.textStrict "While:"
+    pretty (ELet ext n lhs e) =
+      PP.textStrict "Let:"
+      PP.<$>
+      PP.indent 2 
+        ( PP.textStrict "name:" <+> PP.pretty n
+          PP.<$>
+          PP.textStrict "lhs:" <+> PP.pretty lhs
+          PP.<$>
+          PP.textStrict "exp:" <+> PP.pretty e
+          PP.<$>
+          PP.textStrict "ext:" <+> PP.pretty ext
+        )
+
+    pretty (EDup ext e) =
+      PP.textStrict "Dup:"
       PP.<$>
       PP.indent 2
-        ( PP.textStrict "condition:" <+> PP.pretty cond
-          PP.<$>
-          PP.textStrict "body:" <+> PP.pretty body
+        ( PP.textStrict "exp:" <+> PP.pretty e
           PP.<$>
           PP.textStrict "ext:" <+> PP.pretty ext
         )
 
-    
-    pretty (EPrim ext i a b) =
-      PP.textStrict "Primitive Instruction:"
+    pretty (EDrop ext n e) =
+      PP.textStrict "Drop:"
       PP.<$>
-      PP.indent 2 
-        ( PP.textStrict "instruction:" <+> PP.pretty i
+      PP.indent 2
+        ( PP.textStrict "var:" <+> PP.pretty n
           PP.<$>
-          PP.textStrict "arg1:" <+> PP.pretty a
-          PP.<$>
-          PP.textStrict "arg2:" <+> PP.pretty b
+          PP.textStrict "in:" <+> PP.pretty e
           PP.<$>
           PP.textStrict "ext:" <+> PP.pretty ext
         )
-
-    pretty (EBinary ext l o r) =
-      PP.textStrict "Binary Operator:"
-      PP.<$>
-      PP.indent 2 
-        ( PP.textStrict "op:" <+> PP.pretty o
-          PP.<$>
-          PP.textStrict "lhs:" <+> PP.pretty l
-          PP.<$>
-          PP.textStrict "rhs:" <+> PP.pretty r
-          PP.<$>
-          PP.textStrict "ext:" <+> PP.pretty ext
-        )
-
-    pretty (EUnary ext o e) =
-      PP.textStrict "Unary Operator:"
-      PP.<$>
-      PP.indent 2 
-        ( PP.textStrict "op:" <+> PP.pretty o
-          PP.<$>
-          PP.textStrict "expression:" <+> PP.pretty e
-          PP.<$>
-          PP.textStrict "ext:" <+> PP.pretty ext
-        )
-
-    pretty (EAssign ext l o r) =
-      PP.textStrict "Assignment:"
-      PP.<$>
-      PP.indent 2 
-        ( PP.textStrict "op:" <+> PP.pretty o
-          PP.<$>
-          PP.textStrict "lhs:" <+> PP.pretty l
-          PP.<$>
-          PP.textStrict "rhs:" <+> PP.pretty r
-          PP.<$>
-          PP.textStrict "ext:" <+> PP.pretty ext
-        )
-
         
     pretty (ETypeHint ext e t) =
       PP.textStrict "Type Hint:"
@@ -1227,39 +733,13 @@ instance PrettyX x => PP.Pretty (Exp x) where
           PP.textStrict "ext:" <+> PP.pretty ext
         )
 
-    pretty (EBottom ext) =
-      PP.textStrict "Bottom"
-      PP.<$>
-      PP.textStrict "ext:" <+> PP.pretty ext
 
     pretty (Exp ext) =
       PP.textStrict "ext:" <+> PP.pretty ext
 
 
--- Statement -------------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (Stmt x) where
-    pretty (StmtExpr expr) =
-      PP.textStrict "Statement Expression:"
-      PP.<$>
-      PP.indent 2 ( PP.pretty expr )
-      
-    pretty (StmtDecl i) =
-      PP.textStrict "Statement Declaration:"
-      PP.<$>
-      PP.indent 2 ( PP.pretty i )
-
-
--- Body -------------------------------------------------------------------------  
-instance PrettyX x => PP.Pretty (Body x) where
-    pretty (BodyBlock blk) =
-      PP.textStrict "Body Block:" <+> PP.pretty blk
-
-    pretty (BodyExpr expr) =
-      PP.textStrict "Body Expression:" <+> PP.pretty expr
-
-
 -- Type Signature ---------------------------------------------------------------
-instance PrettyX x => PP.Pretty (TypeSig x) where
+instance PP.Pretty TypeSig where
     pretty (TypeSig name body) =
       PP.textStrict "Type Signature:"
       PP.<$>
@@ -1268,52 +748,6 @@ instance PrettyX x => PP.Pretty (TypeSig x) where
           PP.<$>
           PP.textStrict "body:" <+> PP.pretty body
         )
-
-
--- Vow --------------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (Vow x) where
-  pretty (Vow name vows) =
-    PP.textStrict "Vow Item:"
-    PP.<$>
-    PP.indent 2
-      ( PP.textStrict "name:" <+> PP.pretty name
-        PP.<$>
-        PP.textStrict "vows:" <+> PP.pretty vows
-      )
-
-instance PP.Pretty VowType where
-  pretty VowVar =
-    PP.textStrict "Var"
-
-  pretty VowVal =
-    PP.textStrict "Var"
-
-  pretty VowRef =
-    PP.textStrict "Var"
-
-
--- Variable ----------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (Var x) where
-  pretty (Var name body) =
-    PP.textStrict "Variable Item:"
-    PP.<$>
-    PP.indent 2
-      ( PP.textStrict "name:" <+> PP.pretty name
-        PP.<$>
-        PP.textStrict "body:" <+> PP.pretty body
-      )
-
-
--- Value -------------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (Val x) where
-  pretty (Val name body) =
-    PP.textStrict "Value Item:"
-    PP.<$>
-    PP.indent 2
-      ( PP.textStrict "name:" <+> PP.pretty name
-        PP.<$>
-        PP.textStrict "body:" <+> PP.pretty body
-      )
 
 
 -- Function ---------------------------------------------------------------------
@@ -1345,74 +779,36 @@ instance PrettyX x => PP.Pretty (FunParam x) where
 
 
 -- New Type ----------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (NewType x) where
-    pretty (NewType name tyvars body) =
+instance PP.Pretty NewType where
+    pretty (NewType name body) =
       PP.textStrict "New Type:"
       PP.<$>
       PP.indent 2
         ( 
           PP.textStrict "name:" <+> PP.pretty name
           PP.<$>
-          PP.textStrict "tyvars:" <+> PP.pretty tyvars
-          PP.<$>
           PP.textStrict "body:" <+> PP.pretty body
         )
 
 -- Type Alias ---------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (TypeAlias x) where
-    pretty (TypeAlias name tyvars body) =
+instance PP.Pretty TypeAlias where
+    pretty (TypeAlias name body) =
       PP.textStrict "Type Alias:"
       PP.<$>
       PP.indent 2
         ( PP.textStrict "name:" <+> PP.pretty name
-          PP.<$>
-          PP.textStrict "tyvars:" <+> PP.pretty tyvars
-          PP.<$>
-          PP.textStrict "body:" <+> PP.pretty body
-        )
-
-
--- Type Class ---------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (TypeClass x) where
-    pretty (TypeClass ctx name tyvars body) =
-      PP.textStrict "Type Class"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "context:" <+> PP.pretty ctx
-          PP.<$>
-          PP.textStrict "name:" <+> PP.pretty name
-          PP.<$>
-          PP.textStrict "type vars:" <+> PP.pretty tyvars
-          PP.<$>
-          PP.textStrict "body:" <+> PP.pretty body
-        )
-
-
--- Type Class Instance --------------------------------------------------------------
-instance PrettyX x => PP.Pretty (TypeClassInst x) where
-    pretty (TypeClassInst ctx name args body) =
-      PP.textStrict "Type Class Instance:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "context:" <+> PP.pretty ctx
-          PP.<$>
-          PP.textStrict "name:" <+> PP.pretty name
-          PP.<$>
-          PP.textStrict "args:" <+> PP.pretty args
           PP.<$>
           PP.textStrict "body:" <+> PP.pretty body
         )
 
 
 -- Data Type -----------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (DataType x) where
-    pretty (DataType name tyvars body) =
+instance PP.Pretty DataType where
+    pretty (DataType name body) =
       PP.textStrict "Data Type:"
       PP.<$>
       PP.indent 2
         ( PP.textStrict "name:" <+> PP.pretty name
-          PP.<$>
-          PP.textStrict "tyvars:" <+> PP.pretty tyvars
           PP.<$>
           PP.textStrict "body:" <+> PP.pretty body
         )
@@ -1425,10 +821,6 @@ instance PrettyX x => PP.Pretty (DataType x) where
 instance BinaryX x => Binary (Item x)
 
 
--- Nested Item -----------------------------------------------------------------
-instance BinaryX x => Binary (NestedItem x)
-
-
 -- Dependency ---------------------------------------------------------------
 instance Binary Dependency
 
@@ -1438,66 +830,38 @@ instance Binary DepPath
 
 
 -- Foreign ------------------------------------------------------------------
-instance BinaryX x => Binary (Foreign x)
+instance Binary Foreign
 
 
 instance Binary ForeignType
 
 -- Expose ---------------------------------------------------------------------
-instance BinaryX x => Binary (Expose x)
+instance Binary Expose
 
 
 -- Name ------------------------------------------------------------------------
 
-instance BinaryX x => Binary (Name x)
+instance Binary Name
 
 
 -- Literal ---------------------------------------------------------------------
-instance BinaryX x => Binary (Lit x)
+instance Binary Lit
 
-
+-- Type Literals ------------------------------------------------------------------------
+instance Binary TLit
 
 -- Type ------------------------------------------------------------------------
-instance BinaryX x => Binary (Type x)
-
-
-instance BinaryX x => Binary (QType x)
-
-
--- Type Context --------------------------------------------------------------------
-
-instance BinaryX x => Binary (TyContext x)
-
-instance BinaryX x => Binary (TyAssert x)
+instance Binary TVar
+instance Binary Type where
 
           
 -- Expr -------------------------------------------------------------------------
+instance Binary Var
 instance BinaryX x => Binary (Exp x)
-
--- Body ----------------------------------------------------------------------------
-instance BinaryX x => Binary (Body x)
-
--- Statement -------------------------------------------------------------------------
-instance BinaryX x => Binary (Stmt x)
 
 
 -- Type Signature ---------------------------------------------------------------
-instance BinaryX x => Binary (TypeSig x)
-
-
--- Vow -------------------------------------------------------------------------
-instance BinaryX x => Binary (Vow x)
-
-
-instance Binary VowType
-
-
--- Variable ----------------------------------------------------------------------
-instance BinaryX x => Binary (Var x)
-
-
--- Value -------------------------------------------------------------------------
-instance BinaryX x => Binary (Val x)
+instance Binary TypeSig
 
 
 -- Function ----------------------------------------------------------------------
@@ -1508,23 +872,15 @@ instance BinaryX x => Binary (FunParam x)
 
 
 -- New Type ----------------------------------------------------------------------
-instance BinaryX x => Binary (NewType x)
+instance Binary NewType
 
 
 -- Type Alias ---------------------------------------------------------------------
-instance BinaryX x => Binary (TypeAlias x)
-
-
--- Type Class ---------------------------------------------------------------------
-instance BinaryX x => Binary (TypeClass x)
-
-
--- Type Class Instance --------------------------------------------------------------
-instance BinaryX x => Binary (TypeClassInst x)
+instance Binary TypeAlias
 
 
 -- Data Type -----------------------------------------------------------------------
-instance BinaryX x => Binary (DataType x)
+instance Binary DataType
 
 
 -- -----------------------------------------------------------------------------
@@ -1532,7 +888,6 @@ instance BinaryX x => Binary (DataType x)
 
 
 -- Module ---------------------------------------------------------------------
-
 
 -- Construction function for parse
 mkModPs :: FilePath -> [Text] -> [Either ModPs [Token]] -> ModPs
@@ -1621,6 +976,13 @@ instance Monoid (XMScope x) => Monoid (MScope x) where
                    }
 
 
+
+-- Type Helpers --------------------------------------------------------------
+
+-- Smart Constructors
+
+
+-- Expression Helpers --------------------------------------------------------
 
 -- Name ------------------------------------------------------------------------
 

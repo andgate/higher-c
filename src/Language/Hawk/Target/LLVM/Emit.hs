@@ -1,6 +1,8 @@
 {-# LANGUAGE  MultiParamTypeClasses
             , FlexibleInstances
             , FunctionalDependencies
+            , LambdaCase
+            , OverloadedStrings
   #-}
 module Language.Hawk.Target.LLVM.Emit where
 
@@ -11,6 +13,7 @@ import Control.Monad.State (MonadState)
 import Data.Binary
 import Data.ByteString.Short (ShortByteString)
 import Data.Int
+import Data.Maybe
 import Data.Text (Text)
 import Data.Word
 import System.IO.Unsafe (unsafePerformIO)
@@ -23,16 +26,17 @@ import qualified Foreign                as F
 import Language.Hawk.Target.LLVM.Types
 import Language.Hawk.Target.LLVM.Codegen
 
-import qualified Language.Hawk.Syntax           as Syn
-import qualified Language.Hawk.Syntax.Location  as Syn
-import qualified Language.Hawk.Syntax.Operator  as Syn
-import qualified Language.Hawk.Syntax.Prim      as Syn
+import qualified Language.Hawk.Syntax           as Hk
+import qualified Language.Hawk.Syntax.Location  as Hk
+import qualified Language.Hawk.Syntax.Operator  as Hk
+import qualified Language.Hawk.Syntax.Prim      as Hk
 
-import qualified LLVM.AST as AST
-import qualified LLVM.AST.Constant as C
-import qualified LLVM.AST.Float as F
-import qualified LLVM.AST.FloatingPointPredicate as FP
-import qualified LLVM.AST.Type as Ty
+import qualified LLVM.AST                         as AST
+import qualified LLVM.AST.Constant                as C
+import qualified LLVM.AST.Float                   as F
+import qualified LLVM.AST.FloatingPointPredicate  as FP
+import qualified LLVM.AST.IntegerPredicate        as IP
+import qualified LLVM.AST.Type                    as Ty
 
 
 
@@ -75,40 +79,19 @@ llvmCodegen exp = do
 
 -- I'll work out top-level generation for later
 {- 
-instance (MonadState s m, HasLLVMState s) => Emittable Syn.CoreMod (m ()) where
-  emit (Syn.Mod name items) = do
+instance (MonadState s m, HasLLVMState s) => Emittable Hk.CoreMod (m ()) where
+  emit (Hk.Mod name items) = do
     llmod . _moduleName .= name
     mapM_ emit items
     
-instance (MonadState s m, HasLLVMState s) => Emittable Syn.CoreItem (m ()) where
-  emit (Syn.FunItem (Core.FnDecl vis name retty params) body) = do
+instance (MonadState s m, HasLLVMState s) => Emittable Hk.CoreItem (m ()) where
+  emit (Hk.FunItem (Core.FnDecl vis name retty params) body) = do
     bls <- genBlocks params' body
     define retty' name params' bls
     where
       retty' = emit retty
       params' = map emit params
 -}
-
-
-emitFun :: (MonadState s m, HasLLVMState s)
-        => Syn.CoreFun -> m ()
-emitFun (Syn.Fun (Syn.Name name _) params body retty) = do
-  bls <- emitBody body
-  define retty' (t2sbs name) params' bls
-  where
-    retty' = emitTypeLit retty
-    params' = map emit params
-
-
-emitBody :: (MonadState s m, HasLLVMState s)
-         => Syn.CoreBody -> m [AST.BasicBlock]
-emitBody body = do
-  startBlocks
-  -- allocate parameters (probably uneccessary)
-  -- mapM genParam params
-  emit body
-  endBlocks
-
 {-  
 genParam :: (MonadState s m, HasLLVMState s)
          => AST.Parameter -> m ()
@@ -118,58 +101,121 @@ genParam (AST.Parameter ty pname _) = do
   assignVar pname var
 -}
 
-emitFunParam :: Syn.CoreFunParam -> AST.Parameter
-emitFunParam (Syn.FunParam name ty)
+
+emitFun :: (MonadState s m, HasLLVMState s)
+        => Hk.CoreFun -> m ()
+emitFun (Hk.Fun (Hk.Name name) params exp retty) = do
+  startBlocks
+  emitExp exp
+  bls <- endBlocks
+  define retty' (t2sbs name) params' bls
+  where
+    retty' = emitTypeLit retty
+    params' = map emitFunParam params
+
+
+emitFunParam :: Hk.CoreFunParam -> AST.Parameter
+emitFunParam (Hk.FunParam name ty)
     = AST.Parameter ty' name' []
-    where ty' = emit ty
+    where ty' = emitTypeLit ty
           name' = AST.Name (t2sbs name)
 
+
 emitExp :: (MonadState s m, HasLLVMState s)
-        => Syn.CoreExp -> m ()
-emitExp (Syn.EVar x (Syn.Name n _))
-  = getvar (t2sbs n) >>= load >>= setVal
+        => Hk.CoreExp -> m AST.Operand
+emitExp = \case
+  Hk.EVar ty (Hk.Var n) ->
+    getvar (t2sbs n) >>= load (emitTypeLit ty) >>= setVal
   
-emitExp (Syn.ELit _ c)
-  = setVal $ constOp $ emit c
-  
-emit _ = error "Codegen Error: Expression emission not implemented."
+  Hk.ELit _ c ->
+    setVal $ constOp $ emitLit c
+
+  Hk.ELet ty (Hk.Var n) lhs e -> do
+    let ty' = emitTypeLit ty
+        n'  = AST.Name (t2sbs n)
+    i <- alloca ty'
+    val <- emitExp lhs
+    store ty' i val
+    assignVar n' i
+    emitExp e
+
+  Hk.EApp ty (Hk.EVar _ (Hk.Var n)) arg -> do
+    let ty' = emitTypeLit ty
+    arg' <- emitExp arg
+    call ty' (externf ty' (AST.Name (t2sbs n))) [arg']
+
+  a@(Hk.EApp _ _ b) -> do
+    let (f, args) = viewApp a
+    case f of
+      Hk.EVar ty (Hk.Var f') -> do
+        let ty' = emitTypeLit ty
+        args' <- mapM emitExp args
+        call ty' (externf ty' (AST.Name (t2sbs f'))) args'
 
 
-emitLit :: Syn.CoreLit -> C.Constant
-emitLit (Syn.IntLit Syn.TyLitInt8 v)   = C.Int 8 v
-emitLit (Syn.IntLit Syn.TyLitInt16 v)  = C.Int 16 v
-emitLit (Syn.IntLit Syn.TyLitInt32 v)  = C.Int 32 v
-emitLit (Syn.IntLit Syn.TyLitInt64 v)  = C.Int 64 v
+  Hk.EIf ty cond tr fl -> do
+    ifthen <- addBlock "if.then"
+    ifelse <- addBlock "if.else"
+    ifexit <- addBlock "if.exit"
+    
+    -- Entry
+    cond <- emitExp cond
+    test <- icmp bool IP.EQ (constOp false) cond
+    cbr test ifthen ifelse
 
-emitLit (Syn.FloatLit Syn.TyLitFloat16 v)  = C.Float $ F.Half $ fromFloat v
-emitLit (Syn.FloatLit Syn.TyLitFloat32 v)  = C.Float $ F.Single $ realToFrac v
-emitLit (Syn.FloatLit Syn.TyLitFloat64 v)  = C.Float $ F.Double v
--- emit (Syn.FloatLit Syn.TyLitFloat128 v)  = C.Float $ F.Quadruple v
+    -- if.then
+    setBlock ifthen
+    trval <- emitExp tr
+    br ifexit
+    ifthen <- fromJust <$> getBlock
 
-emitLit (Syn.ArrayLit t v)   = C.Array (emit t) (emit <$> v)
+    -- if.else
+    setBlock ifelse
+    flval <- emitExp fl
+    br ifexit
+    ifelse <- fromJust <$> getBlock
 
-emitLit (Syn.BoolLit _ False)  = C.Int 1 0
-emitLit (Syn.BoolLit _ True)  = C.Int 1 1
+    -- if.exit
+    setBlock ifexit
+    phi (emitTypeLit ty) [(trval, ifthen), (flval, ifelse)]
 
-emitLit (Syn.Lit _)        = error "Codegen Error: Cannot emit lit extension"
+
+
+  Hk.ELam _ _ _ -> error "Lamba expression not lifted"
+
+  Hk.EPrim _ _ -> error "Prim operation not converted"
+
+
+
+viewApp :: Hk.CoreExp -> (Hk.CoreExp, [Hk.CoreExp])
+viewApp = go []
+  where
+    go xs (Hk.EApp _ a b) = go (b : xs) a
+    go xs f = (f, xs)
+
+
+emitLit :: Hk.Lit -> C.Constant
+emitLit = \case
+  Hk.IntLit v       ->  C.Int 64 v
+  Hk.FloatLit v     -> C.Float $ F.Double v
+  Hk.CharLit v      -> C.Int 8 . toInteger . fromEnum $ v -- Does this work??
+  Hk.BoolLit False  -> false
+  Hk.BoolLit True   -> true
 
 -------------------------------------------------------------------------------
 -- Type Emission
 -------------------------------------------------------------------------------
 
-emitTypeLit :: Syn.TypeLit -> Ty.Type
-emitTypeLit (Syn.TyLitInt Syn.TyLitInt8) = Ty.i8
-emitTypeLit (Syn.TyLitInt Syn.TyLitInt16) = Ty.i16
-emitTypeLit (Syn.TyLitInt Syn.TyLitInt32) = Ty.i32
-emitTypeLit (Syn.TyLitInt Syn.TyLitInt64) = Ty.i64
-emitTypeLit (Syn.TyLitInt Syn.TyLitInt128) = Ty.i128
-
-emitTypeLit (Syn.TyLitFloat Syn.TyLitFloat16) = Ty.half
-emitTypeLit (Syn.TyLitFloat Syn.TyLitFloat32) = Ty.float
-emitTypeLit (Syn.TyLitFloat Syn.TyLitFloat64) = Ty.double
-
-emitTypeLit (Syn.TyLitArray n ty) = Ty.ArrayType (fromIntegral n) (emitTypeLit ty)
-emitTypeLit (Syn.TyLitBool) = Ty.i1
+emitTypeLit :: Hk.TLit -> Ty.Type
+emitTypeLit = \case
+  -- Basic type literals
+  Hk.TLitInt    -> Ty.i64
+  Hk.TLitFloat  -> Ty.double
+  Hk.TLitChar   -> Ty.i8
+  Hk.TLitBool   -> bool
+  -- More complicated type literals
+  Hk.TLitData (Hk.Name n) -> Ty.NamedTypeReference . AST.Name . t2sbs $ n
+  Hk.TLitFun args ret     -> Ty.FunctionType (emitTypeLit ret) (map emitTypeLit args) False
   
 -------------------------------------------------------------------------------
 -- Operations

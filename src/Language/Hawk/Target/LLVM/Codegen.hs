@@ -32,6 +32,7 @@ import qualified LLVM.AST.Attribute               as A
 import qualified LLVM.AST.CallingConvention       as CC
 import qualified LLVM.AST.Constant                as C
 import qualified LLVM.AST.FloatingPointPredicate  as FP
+import qualified LLVM.AST.IntegerPredicate        as IP
 import qualified LLVM.AST.Linkage                 as L
 import qualified LLVM.AST.Type                    as Ty
 
@@ -122,14 +123,14 @@ fresh = do
   use llCount
   
 instr :: (MonadState s m, HasLLVMState s)
-      => Instruction -> m (Operand)
-instr ins = do
+      => Type -> Instruction -> m (Operand)
+instr ty ins = do
   n <- fresh
   let ref = (UnName n)
   blk <- current
   let i = _blkStack blk
   modifyBlock (blk { _blkStack = i ++ [ref := ins] } )
-  return $ local ref
+  return $ local ty ref
 
 terminator :: (MonadState s m, HasLLVMState s)
            => Named Terminator -> m (Named Terminator)
@@ -210,70 +211,75 @@ getVal = do
   return $ _blkVal c
 
 setVal :: (MonadState s m, HasLLVMState s)
-       => Operand -> m ()
+       => Operand -> m Operand
 setVal op = do
   c <- current
   modifyBlock $ c & blkVal .~ Just op
+  return op
 
 
 -------------------------------------------------------------------------------
 -- References
-local :: Name -> Operand
-local = LocalReference Ty.double
+local :: Ty.Type -> Name -> Operand
+local = LocalReference
 
-global :: Name -> C.Constant
-global = C.GlobalReference Ty.double
+global :: Ty.Type -> Name -> C.Constant
+global = C.GlobalReference
 
-externf :: Name -> Operand
-externf = ConstantOperand . C.GlobalReference Ty.double
+externf :: Ty.Type -> Name -> Operand
+externf ty = ConstantOperand . C.GlobalReference ty
 
 -- Arithmetic and Constants
 fadd :: (MonadState s m, HasLLVMState s)
-     => Operand -> Operand -> m Operand
-fadd a b = instr $ FAdd NoFastMathFlags a b []
+     => Type -> Operand -> Operand -> m Operand
+fadd ty a b = instr ty $ FAdd NoFastMathFlags a b []
 
 fsub :: (MonadState s m, HasLLVMState s)
-     => Operand -> Operand -> m Operand
-fsub a b = instr $ FSub NoFastMathFlags a b []
+     => Type -> Operand -> Operand -> m Operand
+fsub ty a b = instr ty $ FSub NoFastMathFlags a b []
 
 fmul :: (MonadState s m, HasLLVMState s)
-     => Operand -> Operand -> m Operand
-fmul a b = instr $ FMul NoFastMathFlags a b []
+     => Type -> Operand -> Operand -> m Operand
+fmul ty a b = instr ty $ FMul NoFastMathFlags a b []
 
 fdiv :: (MonadState s m, HasLLVMState s)
-     => Operand -> Operand -> m Operand
-fdiv a b = instr $ FDiv NoFastMathFlags a b []
+     => Type -> Operand -> Operand -> m Operand
+fdiv ty a b = instr ty $ FDiv NoFastMathFlags a b []
 
 fcmp :: (MonadState s m, HasLLVMState s)
-     => FP.FloatingPointPredicate -> Operand -> Operand -> m Operand
-fcmp cond a b = instr $ FCmp cond a b []
+     => Type -> FP.FloatingPointPredicate -> Operand -> Operand -> m Operand
+fcmp ty cond a b = instr ty $ FCmp cond a b []
+
+icmp :: (MonadState s m, HasLLVMState s)
+     => Type -> IP.IntegerPredicate -> Operand -> Operand -> m Operand
+icmp ty cond a b = instr ty $ ICmp cond a b []
 
 constOp :: C.Constant -> Operand
 constOp = ConstantOperand
 
 uitofp :: (MonadState s m, HasLLVMState s)
        => Type -> Operand -> m Operand
-uitofp ty a = instr $ UIToFP a ty []
+uitofp ty a = instr ty $ UIToFP a ty []
 
 toArgs :: [Operand] -> [(Operand, [A.ParameterAttribute])]
 toArgs = map (\x -> (x, []))
 
 -- Effects
 call :: (MonadState s m, HasLLVMState s)
-     => Operand -> [Operand] -> m Operand
-call fn args = instr $ Call Nothing CC.C [] (Right fn) (toArgs args) [] []
+     => Type -> Operand -> [Operand] -> m Operand
+call ty fn args = instr ty $ Call Nothing CC.C [] (Right fn) (toArgs args) [] []
 
 alloca :: (MonadState s m, HasLLVMState s)
        => Type -> m Operand
-alloca ty = instr $ Alloca ty Nothing 0 []
+alloca ty = instr ty $ Alloca ty Nothing 0 []
 
 store :: (MonadState s m, HasLLVMState s)
-      => Operand -> Operand -> m Operand
-store ptr val = instr $ Store False ptr val Nothing 0 []
+      => Type -> Operand -> Operand -> m Operand
+store ty ptr val = instr ty $ Store False ptr val Nothing 0 []
 
 load :: (MonadState s m, HasLLVMState s)
-     => Operand -> m Operand
-load ptr = instr $ Load False ptr Nothing 0 []
+     => Type -> Operand -> m Operand
+load ty ptr = instr ty $ Load False ptr Nothing 0 []
 
 -- Control Flow
 br :: (MonadState s m, HasLLVMState s)
@@ -284,6 +290,23 @@ cbr :: (MonadState s m, HasLLVMState s)
     => Operand -> Name -> Name -> m (Named Terminator)
 cbr cond tr fl = terminator $ Do $ CondBr cond tr fl []
 
+phi :: (MonadState s m, HasLLVMState s)
+    => Type -> [(Operand, Name)] -> m Operand
+phi ty incoming = instr ty $ Phi ty incoming []
+
 ret :: (MonadState s m, HasLLVMState s)
     => Operand -> m (Named Terminator)
 ret val = terminator $ Do $ Ret (Just val) []
+
+
+
+
+-- Literal primitives
+false, true :: C.Constant
+false = C.Int 1 0
+true = C.Int 1 1
+
+
+-- Type Literal primitives
+bool :: Ty.Type
+bool = Ty.i1

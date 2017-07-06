@@ -2,11 +2,13 @@
 module Language.Hawk.TypeCheck.Error where
 
 import Control.Lens
+import Language.Hawk.Syntax (Type, TVar, Var)
 import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
 data TypeCheckError
-  = SomeTypeCheckError
-  | TypeMismatchError
+  = UnificationFailure Type Type
+  | OccursCheckFail TVar Type
+  | UnboundVariable Var
   deriving(Show)
 
 makeClassyPrisms ''TypeCheckError

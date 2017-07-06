@@ -84,6 +84,7 @@ hawk :-
   \}                              { rsvp }
   \<                              { rsvp }
   \>                              { rsvp }
+  \-\o                            { rsvp }
   \-\>                            { rsvp }
   \=\>                            { rsvp }
   \:                              { rsvp }
@@ -116,15 +117,9 @@ hawk :-
   "data"                          { rsvp }
 
   "do"                            { rsvp }
-  "return"                        { rsvp }
-  "for"                           { rsvp }
-  "foreach"                       { rsvp }
-  "while"                         { rsvp }
-  "do"                            { rsvp }
   "if"                            { rsvp }
   "then"                          { rsvp }
   "else"                          { rsvp }
-  "elif"                          { rsvp }
   "let"                           { rsvp }
   "in"                            { rsvp }
   "case"                          { rsvp }

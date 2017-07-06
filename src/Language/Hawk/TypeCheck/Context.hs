@@ -1,1 +1,0 @@
-module Language.Hawk.TypeCheck.Context where

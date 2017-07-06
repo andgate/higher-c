@@ -6,7 +6,7 @@
 name: hawk
 maintainer: Gabriel Anderson
 synopsis: Hawk programming language
-description: Close to the metal with a modern typesystem
+description: Linear Typed Purely Functional Systems Language
 github: andgate/hawk
 category: Compilers
 version: '0.0.0'
@@ -85,7 +85,7 @@ library:
     - vector
     - wl-pprint-text
 
-  exposed-modules:      
+  exposed-modules:
     - Language.Hawk.Compile
     - Language.Hawk.Compile.Config
     - Language.Hawk.Compile.Error
@@ -124,7 +124,6 @@ library:
     - Language.Hawk.Target.LLVM.Types
 
     - Language.Hawk.TypeCheck
-    - Language.Hawk.TypeCheck.Context
     - Language.Hawk.TypeCheck.NameGen
 
     ## Extra, possibly seperate packages or upstream merges
