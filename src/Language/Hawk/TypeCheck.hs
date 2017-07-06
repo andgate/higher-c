@@ -24,6 +24,7 @@ import Data.Text (Text, pack)
 import Text.PrettyPrint.Leijen.Text (pretty)
 
 import Language.Hawk.Syntax
+import Language.Hawk.Syntax.Prim
 import Language.Hawk.TypeCheck.NameGen
 
 import qualified Data.Map   as Map
@@ -110,6 +111,12 @@ nullSubst = Map.empty
 composeSubst :: Subst -> Subst -> Subst
 composeSubst s1 s2 = (Map.map (apply s1) s2) `Map.union` s1
 
+{-
+-- Need to newtype Subst to get this
+instance Monoid Subst where
+    mempty = nullSubst
+    mappend = composeSubst
+-}
 
 -- Type environment helpers
 remove :: TypeEnv -> Var -> TypeEnv
@@ -158,11 +165,20 @@ varBind n t
 
 inferLit :: (MonadState s m, HasInferState s)
          => Lit -> m (Subst, Type)
-inferLit (IntLit v)   = return (nullSubst, TCon . Name $ "Integer")
-inferLit (FloatLit v) = return (nullSubst, TCon . Name $ "Float")
-inferLit (CharLit v)  = return (nullSubst, TCon . Name $ "Char")
-inferLit (BoolLit v)  = return (nullSubst, TCon . Name $ "Bool")
+inferLit = \case
+  IntLit _    -> return (nullSubst, TCon . Name $ "Integer")
+  FloatLit _  -> return (nullSubst, TCon . Name $ "Float")
+  CharLit _   -> return (nullSubst, TCon . Name $ "Char")
+  BoolLit _   -> return (nullSubst, TCon . Name $ "Bool")
 
+
+inferInstr :: (MonadState s m, HasInferState s)
+            => PrimInstr -> m (Subst, Type)
+inferInstr instr
+  | instr `elem` intInstrs = return (nullSubst, TFun (TCon . Name $ "Integer") (TCon . Name $ "Integer"))
+  | instr `elem` floatInstrs = return (nullSubst, TFun (TCon . Name $ "Float") (TCon . Name $ "Float"))
+  | otherwise = error "Uknown instruction encountered!"
+            
 
 inferExp :: (MonadState s m, HasInferState s)
          => TypeEnv -> ExpRn -> m (ExpTc, Subst, Type)
@@ -183,8 +199,9 @@ inferExp env@(TypeEnv envMap) = \case
       Just sigma -> do  t <- instantiate sigma
                         return (ECon (t, loc) n, nullSubst, t)
 
-  EPrim loc instr ->
-    error "primitive instructions are not type checked yet"
+  EPrim loc instr -> do
+    (s, t) <- inferInstr instr
+    return (EPrim (t, loc) instr, s, t)
 
   EApp loc a b -> do
     tv <- newTVar "a"
@@ -204,8 +221,16 @@ inferExp env@(TypeEnv envMap) = \case
     let t' = TFun (apply s tv) t
     return (ELam (t', loc) n e', s, t')
 
-  EIf loc pred e1 e2 ->
-    error "if expression not supported"
+  EIf loc p e1 e2 -> do
+    (p', s1, t1) <- inferExp env p
+    (e1', s2, t2) <- inferExp env e1
+    (e2', s3, t3) <- inferExp env e2
+    s4 <- unify (t1, TCon . Name $ "Bool")
+    s5 <- unify (t2, t3)
+    let e' = EIf (t3, loc) p' e1' e2'
+        s' = s5 `composeSubst` s4 `composeSubst` s3 `composeSubst` s2 `composeSubst` s1
+    return (e', s', t3)
+    
 
   ELet loc n e1 e2 -> do
     (e1', s1, t1) <- inferExp env e1
@@ -225,4 +250,15 @@ inferExp env@(TypeEnv envMap) = \case
     (e', s, t) <- inferExp env e
     return (EDrop (t, loc) v e', s, t)
 
+  ETypeHint loc e t1 -> do
+    (e', s1, t2) <- inferExp env e
+    s2 <- unify (t1, t2)
+    return (ETypeHint (t1, loc) e' t1, s2 `composeSubst` s1, t1)
+
   Exp _ -> error "Expression extension is not supported by typechecker."
+
+
+infer' :: Monad m => Map.Map Var Scheme -> ExpRn -> m (ExpTc, Type)
+infer' env e = do
+  (e', s, t) <- evalInferT . inferExp (TypeEnv env) $ e
+  return (e', apply s t)

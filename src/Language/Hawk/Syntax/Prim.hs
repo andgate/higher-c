@@ -23,6 +23,27 @@ data PrimInstr
   deriving (Show, Eq, Ord, Enum)
 
 
+intInstrs :: [PrimInstr]
+intInstrs = 
+  [ PrimAdd
+  , PrimSub
+  , PrimMul
+  , PrimDiv
+  , PrimUDiv
+  , PrimSDiv
+  ]
+
+
+floatInstrs :: [PrimInstr]
+floatInstrs =
+  [ PrimFAdd
+  , PrimFSub
+  , PrimFMul
+  , PrimFDiv
+  , PrimFDiv
+  ]
+
+
 -- -----------------------------------------------------------------------------
 -- | Instances
 
