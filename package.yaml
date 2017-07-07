@@ -108,6 +108,9 @@ library:
     - Language.Hawk.Parse
     - Language.Hawk.Parse.Error
     - Language.Hawk.Parse.Helpers
+    - Language.Hawk.Parse.Item
+    - Language.Hawk.Parse.Item.GlobalInfo
+    - Language.Hawk.Parse.Item.LocalState
     - Language.Hawk.Parse.Lexer
     - Language.Hawk.Parse.Lexer.Layout
     - Language.Hawk.Parse.Lexer.Token

@@ -12,10 +12,18 @@
 -- when necessary.
 --
 {-# LANGUAGE  FlexibleContexts 
-            , TypeFamilies #-}
+            , TypeFamilies 
+            , GeneralizedNewtypeDeriving
+            , FlexibleInstances
+            , MultiParamTypeClasses
+  #-}
 module Language.Hawk.Parse where
 
+import Control.Applicative
 import Control.Lens
+import Control.Monad.Identity (runIdentity)
+import Control.Monad.State (MonadState, StateT, evalStateT)
+import Control.Monad.Reader (MonadReader, ReaderT, runReaderT)
 import Control.Monad.Log
 import Control.Monad.Chronicle
 import Control.Monad.Chronicle.Extra
@@ -26,8 +34,11 @@ import Data.Set (Set)
 import Data.Text (Text, pack)
 import Text.PrettyPrint.Leijen.Text (pretty)
 
-import Language.Hawk.Parse.Helpers()
 import Language.Hawk.Parse.Error
+import Language.Hawk.Parse.Helpers ()
+import Language.Hawk.Parse.Item
+import Language.Hawk.Parse.Item.LocalState
+import Language.Hawk.Parse.Item.GlobalInfo
 import Language.Hawk.Parse.Module
 import Language.Hawk.Parse.Message
 import Language.Hawk.Parse.Lexer.Token (Token)
@@ -41,7 +52,7 @@ import qualified Text.Megaparsec.Error  as P
 
 
 -- -----------------------------------------------------------------------------
--- Parser
+-- Module Parsing
 
 parseMod :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
              , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
@@ -59,6 +70,39 @@ parseMod (fp, ts)
           return m
 
 
+-- -----------------------------------------------------------------------------
+-- Item Parsing
+
+-- Monad stack for item parsing
+newtype ItemParserT m a = ItemParserT { unItemParserT :: StateT LocalState (ReaderT GlobalInfo (P.ParsecT P.Dec [Token] m)) a }
+    deriving (Functor, Monad, Applicative, Alternative, MonadPlus, MonadState LocalState, MonadReader GlobalInfo, P.MonadParsec P.Dec [Token])
+
+
+runItemParserT :: Monad m => ItemParserT m a -> GlobalInfo -> [Token] -> m (Either (P.ParseError Token P.Dec) a)
+runItemParserT m g ts
+  = P.runParserT (runReaderT (evalStateT (unItemParserT m) def) g) (g^.globalFilePath) ts
+
+
+parseItem :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
+             , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
+             , MonadIO m
+             )
+         => (GlobalInfo, [Token]) -> m ItemPs
+parseItem (g, ts)
+  = either (handleParseError fp) handleSuccess result
+  where
+    fp = g^.globalFilePath
+    result = runIdentity $ runItemParserT itemP g ts
+    
+    handleSuccess m
+      = do
+          logInfo =<< timestamp (_ParseSuccess # fp)
+          return m
+
+
+-- -----------------------------------------------------------------------------
+-- Error Handling
+
 handleParseError :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
                     , MonadIO m, Default a
                     )
@@ -69,26 +113,3 @@ handleParseError fp (P.ParseError _ unexpected _ _)
         -> discloseNow (_UnexpectedToken # t)
 
       _ -> discloseNow (_UnexpectedParseErr # fp)
-
-{-
-import qualified Text.Earley as E
-import Text.Earley (Report (..), Prod)
-import qualified Language.Hawk.Parse.Grammar as G
-
-parseItem :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
-             , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
-             , MonadIO m
-             )
-          => [Token] -> m ItemPs
-parseItem tks =
-      let
-         (parses, r@(Report _ expected unconsumed)) = E.fullParses (E.parser G.toplevel) tks
-      in
-        case parses of
-          []  -> discloseNow (_UnexpectedToken # (head unconsumed))
-          [p] -> do
-            logInfo =<< timestamp (_ParseSuccess # "") -- Need fill path for this message
-            return p
-          -- This will only happen if the grammar is wrong
-          ps  -> discloseNow (_AmbiguousGrammar # ps)
--}
