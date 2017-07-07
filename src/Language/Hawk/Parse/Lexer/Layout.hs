@@ -14,6 +14,9 @@ import Language.Hawk.Syntax.Location (Location(..), Region)
 import qualified Language.Hawk.Syntax.Location  as L
 
 
+layoutTriggers :: [TokenClass]
+layoutTriggers = [TokenRsvp ":=", TokenRsvp "do", TokenRsvp "where"]
+
 -- -----------------------------------------------------------------------------
 -- Cell Type
 
@@ -90,7 +93,7 @@ handleTok t
       yieldTok t
 
       -- Colons trigger block emission for the next token
-      when (t^.tokClass == TokenRsvp ":")
+      when (t^.tokClass `elem` layoutTriggers)
            (blkTriggered .= True)
 
 

@@ -1,120 +1,143 @@
-/* Sample of a basic Hawk program.
-   Hawk is similar in syntax to Haskell,
-   but technically closer to C.
-*/
+--|   Sample of a basic Hawk program.
+    Hawk is similar in syntax to Haskell,
+    but technically closer to C.
+  |--
+
+-- The first item in a Hawk source document is a module declaration.
 mod Example
 
 
-// Import items, place them under a "C" namespace
+-- Import items, place them under a "C" namespace
 -> Core.(IO.(printLn readLn Stdout Stdin)
           Math.Trig.(sin cos tan)
         ) @ C
 
-// Import Core, except for Control.Moand and Data.Array
-// Require minimal namespace qualification.
+--| Import Core, except for Control.Monad and Data.Array
+    Require minimal namespace qualification.
+  |--
 => Core.(\ Control.Monad Data.Array )
 
 
-// var introduces variables
-// Variables can be assigned to the result of an expression
-var a = 1 + 2
-
-// Or bound to the result of a block
-var b:
-  return 1 + 2
-
-// sig can be used to declare the type of a var
-sig c ? Int
-var c = 3
-
-// Or the var's expression can be annotated with a type sig
-var d = 3 ? Int
-
-// sig is used to introduce type signatures
-sig foo ? Int -> Int -> Int
-
-// vow is used for contract programming
-vow foo val val
-// fun is used to introduce a function
-// This is a function bound to an expression
-fun foo x y =
-  #div (#mul (#add x 2) y) 3 // '#' prefix is for primitive instructions
+--| Hawk is a purely functional langauge
+    The definition of variables and functions is similar.
+    In fact, Hawk treats variables as functions that take no arguments.
+  |--
+a = 1 + 2
 
 
-// This is a function bound to an expression
-fun five:
-  var z = #add 2 3
-  return z
+-- Type signatures declare the type of a variable
+c : Int
+c = 3
+
+-- So variable 'c' has type 'Int'
+
+d = 3 : Int
+
+-- Here is a function type signature.
+foo : Int -> Int -> Int
+
+-- 'foo' is a function that takes two Ints and evalutes to an Int.
+-- We can define it like so...
+foo x y =
+  #div (#mul (#add x 2) y) 3
+
+
+--|   You might notice the '#' on the operations.
+    '#' prefix is for primitive instructions.
+    These are builtin to the language. As Hawk
+    becomes more advanced, the regular mathematical
+    operators will replace them.
+  |--
+
+
+-- Let expressions introduce variables into an expression
+five =
+  let z = #add 2 2
+  in #add 1 z
 
 
 
-// Type alias, type system will treat these as interchangable
-type Inch = I32
+-- Type alias, type system will treat these as interchangable
+type Inch = Int
 
-// New types are not treated as interchangable.
-newtype Size = I32
-
-
-mod Color:
-  // Introduce data structures, consisting of only variables
-  data MyColor:
-    r ? F32
-    g ? F32
-    b ? F32
-
-  data OtherColor:
-    red ? F32
-    green ? F32
-    blue ? F32
-    alpha ? F32
-
-  // Type classes define interfaces
-  class HasRGB a:
-    max ? a -> F32
-
-    getR ? a -> F32
-    getG ? a -> F32
-    getB ? a -> F32
-
-    setR ? a -> F32 -> ()
-    setG ? a -> F32 -> ()
-    setB ? a -> F32 -> ()
-
-  // Type classes are then instanced for a specific datatype
-  inst HasRGB MyColor:
-    max c = 255
-
-    getR c = c.r
-    getG c = c.g
-    getB c = c.b
-
-    setR c r = c.r = r
-    setG c g = c.g = g
-    setB c b = c.b = b
+-- New types are not treated as interchangable.
+newtype Size = Int
 
 
-  // Type classes are then instanced for a specific datatype
-  inst HasRGB OtherColor:
-    max c = 1.0
-
-    getR c = c.red
-    getG c = c.green
-    getB c = c.blue
-
-    getR c r = c.red = r
-    getG c g = c.green = g
-    getB c b = c.blue = b
+--| Submodules are allowed.
+    Since the parent module is "Example",
+    the submodules full path is "Example.Colorful". 
+  |--
+mod Colorful :=
+  -- Submodules require a definition block symbol, or ":="
 
 
-  // Then we can define a function that works over ANY data with rgb
-  sig invertRgb ? HasRGB a => a -> ()
-  fun invertRgb c:
-    c.setR (c.max - c.getR)
-    c.setG (c.max - c.getG)
-    c.setB (c.max - c.getB)
-    // No return automatically returns '()', or unit.
+  -- Declare data structures with the data keyword
+  data Color
+    = Color :=
+        red   : Float
+        green : Float
+        blue  : Float
 
-  // So, if there were multiple competing Color types from different libraries,
-  // it's trivial to write a function that applies to all of them.
-  // I didn't get into it, but the numeric values can be classified as well,
-  // so floats of different sizes could be supported as well.
+  --|   This creates a record with one constructor, Color.
+      My color has three field accessors red, green, and blue.
+      These are functions that when used on a variable of type
+      "Color", will evalute to the information in that field.
+    |--
+  
+
+
+  -- Here is a function that produces a new 
+  -- color with the values inverted
+  invert : Color -> Color
+  invert c =
+    let r' = #subf 1.0 (red c)
+        g' = #subf 1.0 (green c)
+        b' = #subf 1.0 (blue c)
+    in Color r' g' b'
+
+  --|   This is a good opportunity to explain Hawk's memory model.
+      Hawk is a linear typed programming language. That means every
+      variable in a definition must be used exactly once and only once.
+      You can think of Hawk functions as hungry functions, that will eat
+      whatever values you pass into them so other functions cannot have them.
+
+        However, 'invert' clearly doesn't follow this rule! But the program
+      compiles and runs! What is going on?
+
+        To cope with a linear typing model, the Hawk language provides two
+      expressions "dup x" and "drop x in e". These allow Hawk to have a linear
+      memory model, but also have specific points where memory duplication and
+      deallocation can occur.
+
+        At some point, the compiler will insert dup and drop where neccessary.
+      So what actually happens in invert is that 'c' is copied twice, and finally
+      used on the last structure accessor. The compiler turns 'invert' into...
+      
+        invert c =
+          let r' = #subf 1.0 (red (dup c))
+              g' = #subf 1.0 (green (dup c))
+              b' = #subf 1.0 (blue c)
+          in Color r' g' b'
+
+      Notice the dup? And for an example of a function that destroys data...
+      
+        destroy x y = x
+
+      Which is transformed into...
+      
+        destroy x y = drop y in x
+
+        As Hawk becomes more advanced, it will be possible to optimize this
+      memory model to reduce copying and destruction under the hood, by mutating
+      values when possible, instead of destroying them and producing new ones.
+        It should also be possible to optimize away the linear typing rules for values
+      that live on stack.
+        Hawk may also provide alternative record accessors, that will duplicate the
+      field and pass out the record unconsumed for reuse. This can also be inferred.
+        And while the potential for optimization is quite large, programs written that
+      follow the law of linear typing (use all variables exactly once) will run quickly
+      and even be competetive with C. And programmers can be confident about when
+      memory allocation and deallocation.
+      
+    |--

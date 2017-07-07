@@ -1,12 +1,12 @@
-// Simple program that computes a fibbonacci number
-// and prints it
+-- Simple program that computes a fibbonacci number
+-- and prints it
 mod Hawk.Example.Fib
 
-// Link to printd from c
+-- Link to printd from c
 foreign ccall "printd" printd ? Double -> ()
 
 
-// Define a fibonacci function
+-- Define a fibonacci function
 sig fib ? Double -> Double
 fun fib n:
   if n < 3:
@@ -14,7 +14,7 @@ fun fib n:
   else:
     fib (x-1) + fib (x-2)
 
-// Program entry point, prints 40th fibonacci number
+-- Program entry point, prints 40th fibonacci number
 sig main ? ()
 fun main:
   printd (fib 40)

@@ -32,19 +32,19 @@ subModP fp =
 
 modHeader :: MonadParser m => m [Text]
 modHeader =
-  rsvp "mod" >> modPath
+  P.try (rsvp "mod") >> modPath
 
 
 subModBody :: MonadParser m
            => FilePath -> m [Either ModPs [Token]]
 subModBody fp =
-  rsvp ":" *> (block $ modItem fp)
+  rsvp ":=" *> (block $ modItem fp)
 
 
 modItem :: MonadParser m
         => FilePath -> m (Either ModPs [Token])
 modItem fp =
-       P.try (Left <$> subModP fp)
+      (Left <$> subModP fp)
   <|> (Right <$> anyLayout)
 
 

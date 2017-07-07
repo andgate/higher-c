@@ -196,7 +196,7 @@ viewApp = go []
 
 emitLit :: Hk.Lit -> C.Constant
 emitLit = \case
-  Hk.IntLit v       ->  C.Int 64 v
+  Hk.IntLit v       -> C.Int 64 v
   Hk.FloatLit v     -> C.Float $ F.Double v
   Hk.CharLit v      -> C.Int 8 . toInteger . fromEnum $ v -- Does this work??
   Hk.BoolLit False  -> false

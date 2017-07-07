@@ -65,12 +65,12 @@ hawk :-
 <0> {
   -- Skip whitespace everywhere
   $whiteNoNewline                 { skipBreak }
-  \n                              { \ _ _ -> nextLineBreak}
-  "//".*                          { skipBreak }
+  [\n\r]                          { \ _ _ -> nextLineBreak }
+  "--|"                           { beginComment }
+  "--"                            { beginLineComment }
   
   \"                              { beginString }
   \' .* \'                        { handleChar }
-  "/*"                            { beginComment }
   
 
   \_                              { rsvp }
@@ -87,6 +87,7 @@ hawk :-
   \-\o                            { rsvp }
   \-\>                            { rsvp }
   \=\>                            { rsvp }
+  \:\=                            { rsvp }
   \:                              { rsvp }
   \=                              { rsvp }
   \?                              { rsvp }
@@ -117,6 +118,8 @@ hawk :-
   "data"                          { rsvp }
 
   "do"                            { rsvp }
+  "where"                         { rsvp }
+
   "if"                            { rsvp }
   "then"                          { rsvp }
   "else"                          { rsvp }
@@ -145,9 +148,14 @@ hawk :-
 }
 
 <commentSC> {
-  "/*"                            { beginComment }
-  "*/"                            { endComment }
-  \n                              { \ _ _ -> nextLineContinue}
+  "--|"                           { continueComment }
+  "|--"                           { endComment }
+  [\n\r]                          { \_ _ -> nextLineContinue }
+  [.]                             { skipContinue }
+}
+
+<lineCommentSC> {
+  [\n\r]                          { endLineComment }
   [.]                             { skipContinue }
 }
 
@@ -280,6 +288,12 @@ beginComment text len =
   do
     moveRegion len
     lexStartcode .= commentSC
+    lexCommentDepth .= 1
+
+continueComment :: LexAction
+continueComment text len =
+  do
+    growRegion len
     lexCommentDepth += 1
          
          
@@ -295,6 +309,18 @@ endComment _ len =
       if cd == 0
         then 0
         else commentSC
+
+beginLineComment :: LexAction
+beginLineComment text len =
+  do
+    moveRegion len
+    lexStartcode .= lineCommentSC
+
+endLineComment :: LexAction
+endLineComment text len =
+  do
+    nextLineContinue
+    lexStartcode .= 0
 
 
 forceRight :: Either a b -> b

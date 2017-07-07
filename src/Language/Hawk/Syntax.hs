@@ -36,7 +36,7 @@ import Text.PrettyPrint.Leijen.Text ((<+>))
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 import qualified Data.Map.Strict              as Map
-import qualified Data.Set                     as S
+import qualified Data.Set                     as Set
 
 
 type ForallX (c :: * -> Constraint) (x :: *)
@@ -92,9 +92,10 @@ type ModMn = Mod HkcMn
 
 data MScope x =
   MScope
-   { _mscopePath  :: FilePath
-   , _mscopeItems :: [Item x]
-   , _mscopeX     :: XMScope x
+   { _mscopePath      :: FilePath
+   , _mscopeTabs      :: MScopeTables
+   , _mscopeItems     :: [Item x]
+   , _mscopeX         :: XMScope x
    }
 
 type family XMScope x
@@ -114,13 +115,37 @@ type MScopeTc = MScope HkcTc
 type MScopeMn = MScope HkcMn
 
 
+data MScopeTables
+  = MScopeTables
+    { _mscopeDeps      :: [Dependency]
+    , _mscopeVars      :: Set Var
+    , _mscopeTypes     :: Set Name
+    , _mscopeVarTypes  :: Map Var Type
+    , _mscopeOps       :: Map Var Operator
+    } deriving (Show, Eq, Generic)
+
+-- -----------------------------------------------------------------------------
+-- | Operator
+
+
+data Operator
+  = Op { _opPrec :: Int
+       , _opFixity :: Fixity
+       } deriving (Show, Eq, Generic)
+
+data Fixity
+  = InfixN
+  | InfixL
+  | InfixR
+  | Prefix
+  | Postfix
+  deriving (Show, Eq, Generic)
+
 -- -----------------------------------------------------------------------------
 -- | Item
 
 data Item x
-  = DepItem Dependency
-
-  | ForeignItem Foreign
+  = ForeignItem Foreign
   | ExposeItem Expose
 
   | SigItem TypeSig
@@ -131,6 +156,7 @@ data Item x
   
   | DataItem DataType
   | EmptyItem
+
 
 deriving instance ShowX x => Show (Item x)
 deriving instance EqX x => Eq (Item x)
@@ -196,7 +222,7 @@ data Expose =
 data Name
   = Name 
     { _nameText :: Text
-    } deriving (Show, Eq, Generic)
+    } deriving (Show, Eq, Ord, Generic)
 
 
 
@@ -451,6 +477,8 @@ makeLenses ''Name
 makeLenses ''Fun
 makeLenses ''Mod
 makeLenses ''MScope
+makeLenses ''MScopeTables
+makeLenses ''Operator
 
 -- -----------------------------------------------------------------------------
 -- | Pretty Printing Instances
@@ -510,9 +538,6 @@ instance PrettyX x => PP.Pretty (MScope x) where
 
 -- Item ------------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (Item x) where
-    pretty (DepItem i) =
-      PP.pretty i
-
     pretty (ForeignItem i) =
       PP.pretty i
 
@@ -832,7 +857,18 @@ instance PP.Pretty DataType where
 -- -----------------------------------------------------------------------------
 -- | Binary Instances
 
--- Nested Item -----------------------------------------------------------------
+-- Module -----------------------------------------------------------------------
+instance BinaryX x => Binary (Mod x)
+
+-- MScope -----------------------------------------------------------------------
+instance BinaryX x => Binary (MScope x)
+instance Binary MScopeTables
+
+-- Operator -----------------------------------------------------------------------
+instance Binary Operator
+instance Binary Fixity
+
+-- Item -----------------------------------------------------------------------
 instance BinaryX x => Binary (Item x)
 
 
@@ -918,10 +954,11 @@ mkModPs fp [n] xs
             , _modScopes = Map.singleton (pack fp) ms
             }
 
-    ms = MScope { _mscopePath  = fp
-                , _mscopeItems = mempty
-                , _mscopeX     = items
-                }
+    ms = (mempty :: MScopePs)
+            { _mscopePath  = fp
+            , _mscopeItems = mempty
+            , _mscopeX     = items
+            }
 mkModPs fp (n:ns) xs
   = Mod { _modName = n
         , _modSubs = Map.singleton (head ns) (mkModPs fp ns xs)
@@ -973,11 +1010,15 @@ instance Monoid (XMScope x) => Monoid (Mod x) where
         = mappend m2 . mappend m1 $ mempty
 
 
+instance Monoid (XMScope x) => Default (MScope x) where
+    def = mempty
+
 instance Monoid (XMScope x) => Monoid (MScope x) where
-    mempty
-      = MScope { _mscopePath  = mempty
-               , _mscopeItems = mempty
-               , _mscopeX     = mempty
+    mempty 
+      = MScope { _mscopePath      = []
+               , _mscopeTabs      = mempty
+               , _mscopeItems     = []
+               , _mscopeX         = mempty
                }
     
     mappend ms1 ms2
@@ -985,10 +1026,31 @@ instance Monoid (XMScope x) => Monoid (MScope x) where
           -- If this ever happens, something went terribly wrong.
           = error "HKC BUG: Can't combined different module scopes"
       | otherwise
-          = MScope { _mscopePath  = ms1^.mscopePath
-                   , _mscopeItems = mappend (ms1^.mscopeItems) (ms2^.mscopeItems)
-                   , _mscopeX     = mappend (ms1^.mscopeX) (ms2^.mscopeX)
-                   }
+          = ms1 { _mscopeTabs  = mappend (ms1^.mscopeTabs) (ms2^.mscopeTabs)
+                , _mscopeItems = mappend (ms1^.mscopeItems) (ms2^.mscopeItems)
+                , _mscopeX     = mappend (ms1^.mscopeX) (ms2^.mscopeX)
+                }
+
+instance Default MScopeTables where
+    def
+      = MScopeTables
+          { _mscopeDeps      = []
+          , _mscopeVars      = Set.empty
+          , _mscopeTypes     = Set.empty
+          , _mscopeVarTypes  = Map.empty
+          , _mscopeOps       = Map.empty
+          }
+
+instance Monoid MScopeTables where
+    mempty = def
+
+    mappend t1 t2
+      = t1 { _mscopeDeps      = (t1^.mscopeDeps)         ++      (t2^.mscopeDeps)
+           , _mscopeVars      = (t1^.mscopeVars)     `Set.union` (t2^.mscopeVars)
+           , _mscopeTypes     = (t1^.mscopeTypes)    `Set.union` (t2^.mscopeTypes)
+           , _mscopeVarTypes  = (t1^.mscopeVarTypes) `Map.union` (t2^.mscopeVarTypes)
+           , _mscopeOps       = (t1^.mscopeOps)      `Map.union` (t2^.mscopeOps)
+           }
 
 
 
