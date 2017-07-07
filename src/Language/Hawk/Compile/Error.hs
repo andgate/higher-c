@@ -19,7 +19,7 @@ data HkcErr
   = HkcLoadErr LoadErr
   | HkcParseErr ParseErr
   | HkcNameCheckError NameCheckError
-  | HkcTypeCheckError TypeCheckError
+  | HkcTcErr TcErr
   deriving (Show)
 
 makeClassyPrisms ''HkcErr
@@ -33,12 +33,12 @@ instance AsParseErr HkcErr where
 instance AsNameCheckError HkcErr where
   _NameCheckError = _HkcNameCheckError
 
-instance AsTypeCheckError HkcErr where
-  _TypeCheckError = _HkcTypeCheckError
+instance AsTcErr HkcErr where
+  _TcErr = _HkcTcErr
 
 
 instance Pretty HkcErr where
     pretty (HkcLoadErr err) = pretty err
     pretty (HkcParseErr err) = pretty err
     pretty (HkcNameCheckError err) = pretty err
-    pretty (HkcTypeCheckError err) = pretty err
+    pretty (HkcTcErr err) = pretty err

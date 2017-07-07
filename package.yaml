@@ -124,6 +124,7 @@ library:
     - Language.Hawk.Target.LLVM.Types
 
     - Language.Hawk.TypeCheck
+    - Language.Hawk.TypeCheck.Error
     - Language.Hawk.TypeCheck.NameGen
 
     ## Extra, possibly seperate packages or upstream merges

@@ -1,5 +1,6 @@
 {-# LANGUAGE  OverloadedStrings
             , TemplateHaskell
+            , LambdaCase
   #-}
 module Language.Hawk.Parse.Error where
 
@@ -13,6 +14,7 @@ import Text.PrettyPrint.Leijen.Text (Pretty(..), (<+>), (<>))
 
 import qualified Text.PrettyPrint.Leijen.Text as P
 
+
 data ParseErr
   = UnexpectedToken Token
   | UnexpectedParseErr FilePath
@@ -22,12 +24,11 @@ data ParseErr
 makeClassyPrisms ''ParseErr
 
 instance Pretty ParseErr where
-    pretty err =
-      case err of
-        UnexpectedToken t  ->
-            P.textStrict "Unexpected token"
-              <+> P.squotes (P.textStrict $ t^.tokText)
-              <+> P.textStrict "at" <+> P.pretty (t^.tokLoc)
+    pretty = \case
+      UnexpectedToken t  ->
+          P.textStrict "Unexpected token"
+            <+> P.squotes (P.textStrict $ t^.tokText)
+            <+> P.textStrict "at" <+> P.pretty (t^.tokLoc)
 
-        UndefinedParseErr ->
-            undefined
+      UndefinedParseErr ->
+          undefined

@@ -83,7 +83,9 @@ deriving instance EqX x => Eq (Mod x)
 deriving instance GenericX x => Generic (Mod x)
 
 type ModPs = Mod HkcPs
-type CoreMod = Mod HkcCore
+type ModRn = Mod HkcRn
+type ModTc = Mod HkcTc
+type ModMn = Mod HkcMn
 
 -- -----------------------------------------------------------------------------
 -- | Module Scope
@@ -100,13 +102,16 @@ type family XMScope x
 type instance XMScope HkcPs = [[Token]]
 type instance XMScope HkcRn = ()
 type instance XMScope HkcTc = ()
-type instance XMScope HkcCore = ()
+type instance XMScope HkcMn = ()
 
 deriving instance ShowX x => Show (MScope x)
 deriving instance EqX x => Eq (MScope x)
 deriving instance GenericX x => Generic (MScope x)
 
-type CoreMScope = MScope HkcCore
+type MScopePs = MScope HkcPs
+type MScopeRn = MScope HkcRn
+type MScopeTc = MScope HkcTc
+type MScopeMn = MScope HkcMn
 
 
 -- -----------------------------------------------------------------------------
@@ -135,7 +140,9 @@ instance Default (Item x) where
     def = EmptyItem
 
 type ItemPs = Item HkcPs
-type CoreItem = Item HkcCore
+type ItemRn = Item HkcRn
+type ItemTc = Item HkcTc
+type ItemMn = Item HkcMn
 
 
 -- -----------------------------------------------------------------------------
@@ -228,6 +235,9 @@ data Type
   | TFun Type Type
   deriving (Show, Eq, Generic)
 
+instance Default Type where
+  def = TCon $ Name "()"
+
 
 -- -----------------------------------------------------------------------------
 -- | Expression
@@ -285,6 +295,9 @@ deriving instance ShowX x => Show (Exp x)
 deriving instance EqX x => Eq (Exp x)
 deriving instance GenericX x => Generic (Exp x)
 
+instance DefaultX x => Default (Exp x) where
+  def = ECon def $ Var "()"
+
 type instance XELit         HkcPs = ()
 type instance XEVar         HkcPs = ()
 type instance XECon         HkcPs = ()
@@ -325,23 +338,23 @@ type instance XETypeHint    HkcTc = (Type, Maybe Location)
 type instance XExp          HkcTc = ()
 
 
-type instance XELit         HkcCore = ()
-type instance XEVar         HkcCore = TLit
-type instance XECon         HkcCore = ()
-type instance XEPrim        HkcCore = ()
-type instance XEApp         HkcCore = TLit
-type instance XELam         HkcCore = ()
-type instance XEIf          HkcCore = TLit
-type instance XELet         HkcCore = TLit
-type instance XEDup         HkcCore = ()
-type instance XEDrop        HkcCore = ()
-type instance XETypeHint    HkcCore = ()
-type instance XExp          HkcCore = ()
+type instance XELit         HkcMn = ()
+type instance XEVar         HkcMn = TLit
+type instance XECon         HkcMn = ()
+type instance XEPrim        HkcMn = ()
+type instance XEApp         HkcMn = TLit
+type instance XELam         HkcMn = ()
+type instance XEIf          HkcMn = TLit
+type instance XELet         HkcMn = TLit
+type instance XEDup         HkcMn = ()
+type instance XEDrop        HkcMn = ()
+type instance XETypeHint    HkcMn = ()
+type instance XExp          HkcMn = ()
 
 type ExpPs = Exp HkcPs
 type ExpRn = Exp HkcRn
 type ExpTc = Exp HkcTc
-type CoreExp = Exp HkcCore
+type ExpMn = Exp HkcMn
 
 -- -----------------------------------------------------------------------------
 -- | Type Signature
@@ -372,10 +385,11 @@ type family XFun x
 
 type instance XFun HkcPs = ()
 type instance XFun HkcRn = ()
-type instance XFun HkcCore = TLit
+type instance XFun HkcTc = ()
+type instance XFun HkcMn = TLit
 
 
-type CoreFun = Fun HkcCore
+type FunMn = Fun HkcMn
 
 
 -- -----------------------------------------------------------------------------
@@ -395,9 +409,10 @@ type family XFunParam x
 
 type instance XFunParam HkcPs = ()
 type instance XFunParam HkcRn = ()
-type instance XFunParam HkcCore = TLit
+type instance XFunParam HkcTc = ()
+type instance XFunParam HkcMn = TLit
 
-type CoreFunParam = FunParam HkcCore
+type FunParamMn = FunParam HkcMn
 
 -- -----------------------------------------------------------------------------
 -- | New Type

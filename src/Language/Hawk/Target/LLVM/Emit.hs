@@ -103,7 +103,7 @@ genParam (AST.Parameter ty pname _) = do
 
 
 emitFun :: (MonadState s m, HasLLVMState s)
-        => Hk.CoreFun -> m ()
+        => Hk.FunMn -> m ()
 emitFun (Hk.Fun (Hk.Name name) params exp retty) = do
   startBlocks
   emitExp exp
@@ -114,7 +114,7 @@ emitFun (Hk.Fun (Hk.Name name) params exp retty) = do
     params' = map emitFunParam params
 
 
-emitFunParam :: Hk.CoreFunParam -> AST.Parameter
+emitFunParam :: Hk.FunParamMn -> AST.Parameter
 emitFunParam (Hk.FunParam name ty)
     = AST.Parameter ty' name' []
     where ty' = emitTypeLit ty
@@ -122,7 +122,7 @@ emitFunParam (Hk.FunParam name ty)
 
 
 emitExp :: (MonadState s m, HasLLVMState s)
-        => Hk.CoreExp -> m AST.Operand
+        => Hk.ExpMn -> m AST.Operand
 emitExp = \case
   Hk.EVar ty (Hk.Var n) ->
     getvar (t2sbs n) >>= load (emitTypeLit ty) >>= setVal
@@ -187,7 +187,7 @@ emitExp = \case
 
 
 
-viewApp :: Hk.CoreExp -> (Hk.CoreExp, [Hk.CoreExp])
+viewApp :: Hk.ExpMn -> (Hk.ExpMn, [Hk.ExpMn])
 viewApp = go []
   where
     go xs (Hk.EApp _ a b) = go (b : xs) a
