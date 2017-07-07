@@ -3,18 +3,20 @@
 mod Hawk.Example.Fib
 
 -- Link to printd from c
-foreign ccall "printd" printd ? Double -> ()
+foreign ccall "printd" printd : Double -> ()
 
 
 -- Define a fibonacci function
-sig fib ? Double -> Double
-fun fib n:
-  if n < 3:
-    1
-  else:
-    fib (x-1) + fib (x-2)
+fib : Float -> Float
+fib n =
+  if n < 3
+    then
+      1
+
+    else
+      fib (x-1) + fib (x-2)
 
 -- Program entry point, prints 40th fibonacci number
-sig main ? ()
-fun main:
+main : ()
+main =
   printd (fib 40)
