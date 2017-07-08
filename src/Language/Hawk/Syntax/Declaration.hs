@@ -1,0 +1,1 @@
+module Language.Hawk.Syntax.Declaration where

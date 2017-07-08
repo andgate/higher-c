@@ -1,7 +1,7 @@
 module Language.Hawk.Syntax.Prim where
 
 import Data.Binary
-import Data.Text.Lazy (pack)
+import Data.Text (pack)
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
@@ -52,7 +52,7 @@ floatInstrs =
 
 instance PP.Pretty PrimInstr where
     pretty =
-      PP.text . pack . show
+      PP.textStrict . pack . show
 
 
 -- Binary ---------------------------------------------------------------------

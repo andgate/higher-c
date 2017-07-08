@@ -216,17 +216,17 @@ inferLit :: ( MonadState s m, HasInferState s
             )
          => Lit -> m (Subst, Type)
 inferLit = \case
-  IntLit _    -> return (nullSubst, TCon . Name $ "Integer")
-  FloatLit _  -> return (nullSubst, TCon . Name $ "Float")
-  CharLit _   -> return (nullSubst, TCon . Name $ "Char")
-  BoolLit _   -> return (nullSubst, TCon . Name $ "Bool")
+  IntLit _    -> return (nullSubst, TCon . Con $ "Integer")
+  FloatLit _  -> return (nullSubst, TCon . Con $ "Float")
+  CharLit _   -> return (nullSubst, TCon . Con $ "Char")
+  BoolLit _   -> return (nullSubst, TCon . Con $ "Bool")
 
 
 inferInstr :: ( MonadState s m, HasInferState s)
             => PrimInstr -> m (Subst, Type)
 inferInstr instr
-  | instr `elem` intInstrs = return (nullSubst, TFun (TCon . Name $ "Integer") (TCon . Name $ "Integer"))
-  | instr `elem` floatInstrs = return (nullSubst, TFun (TCon . Name $ "Float") (TCon . Name $ "Float"))
+  | instr `elem` intInstrs = return (nullSubst, TFun (TCon . Con $ "Integer") (TCon . Con $ "Integer"))
+  | instr `elem` floatInstrs = return (nullSubst, TFun (TCon . Con $ "Float") (TCon . Con $ "Float"))
   | otherwise = error "Uknown instruction encountered!" -- Not handle, should be impossible
             
 
@@ -246,11 +246,11 @@ inferExp env@(TypeEnv envMap) = \case
       Just sigma -> do  t <- instantiate sigma
                         return (EVar (t, loc) n, nullSubst, t)
 
-  ECon loc n ->
-    case Map.lookup n envMap of
-      Nothing -> discloseNow (_UnboundConstructor # (n, fromJust loc)) -- should always have location, but possible error
+  ECon loc con@(Con n) ->
+    case Map.lookup (Var n) envMap of
+      Nothing -> discloseNow (_UnboundConstructor # (con, fromJust loc)) -- should always have location, but possible error
       Just sigma -> do  t <- instantiate sigma
-                        return (ECon (t, loc) n, nullSubst, t)
+                        return (ECon (t, loc) con, nullSubst, t)
 
   EPrim loc instr -> do
     (s, t) <- inferInstr instr
@@ -278,7 +278,7 @@ inferExp env@(TypeEnv envMap) = \case
     (p', s1, t1) <- inferExp env p
     (e1', s2, t2) <- inferExp env e1
     (e2', s3, t3) <- inferExp env e2
-    s4 <- unify (t1, TCon . Name $ "Bool")
+    s4 <- unify (t1, TCon . Con $ "Bool")
     s5 <- unify (t2, t3)
     let e' = EIf (t3, loc) p' e1' e2'
         s' = s5 `composeSubst` s4 `composeSubst` s3 `composeSubst` s2 `composeSubst` s1

@@ -15,7 +15,11 @@
            , TemplateHaskell
            , LambdaCase
   #-}
-module Language.Hawk.Syntax where
+module Language.Hawk.Syntax
+  ( module Language.Hawk.Syntax
+  , module Language.Hawk.Syntax.Name
+  , module Language.Hawk.Syntax.Type
+  ) where
 
 import Data.Binary
 import Data.Default.Class
@@ -25,12 +29,14 @@ import Data.Set (Set)
 import Data.Text (Text, pack)
 import Control.Lens
 import GHC.Types (Constraint)
-import GHC.Generics (Generic, Rec0, (:+:), (:*:))
+import GHC.Generics (Generic)
 import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Operator
 import Language.Hawk.Syntax.Pass
 import Language.Hawk.Syntax.Prim
+import Language.Hawk.Syntax.Name
+import Language.Hawk.Syntax.Type
 import Text.PrettyPrint.Leijen.Text ((<+>))
 
 
@@ -42,8 +48,8 @@ import qualified Data.Set                     as Set
 type ForallX (c :: * -> Constraint) (x :: *)
   = ( ForallExp c x
     , c (XMScope x)
-    , c (XFun x)
-    , c (XFunParam x)
+    , c (XDef x)
+    , c (XPat x)
     )
 
 type GenericX (x :: *)
@@ -117,20 +123,23 @@ type MScopeMn = MScope HkcMn
 
 data MScopeTables
   = MScopeTables
-    { _mscopeDeps      :: [Dependency]
-    , _mscopeVars      :: Set Var
-    , _mscopeTypes     :: Set Name
-    , _mscopeVarTypes  :: Map Var Type
-    , _mscopeOps       :: Map Var Operator
+    { _mscopeDeps   :: [Dependency]
+    , _mscopeVars   :: Set Var
+    , _mscopeCons   :: Set Con
+    , _mscopeTCons  :: Set Con
+    , _mscopeOps    :: Map OpName Operator
     } deriving (Show, Eq, Generic)
 
 -- -----------------------------------------------------------------------------
 -- | Operator
 
+data OpName = OpName Text
+  deriving (Show, Eq, Ord, Generic)
 
 data Operator
-  = Op { _opPrec :: Int
-       , _opFixity :: Fixity
+  = Op { _opFixity :: Fixity
+       , _opPrec :: Integer
+       , _opName :: OpName
        } deriving (Show, Eq, Generic)
 
 data Fixity
@@ -148,8 +157,8 @@ data Item x
   = ForeignItem Foreign
   | ExposeItem Expose
 
-  | SigItem TypeSig
-  | FunItem (Fun x)
+  | DecItem Dec
+  | DefItem (Def x)
   
   | NewTyItem NewType
   | TyAliasItem TypeAlias
@@ -199,7 +208,7 @@ data DepPath =
 -- | Foreign
 
 data Foreign =
-  Foreign ForeignType Text TypeSig
+  Foreign ForeignType Text Dec
   deriving (Show, Eq, Generic)
 
 
@@ -214,17 +223,6 @@ data ForeignType =
 data Expose =
   Expose Name
   deriving(Show, Eq, Generic)
-
-
--- -----------------------------------------------------------------------------
--- | Name
-
-data Name
-  = Name 
-    { _nameText :: Text
-    } deriving (Show, Eq, Ord, Generic)
-
-
 
 -- -----------------------------------------------------------------------------
 -- | Literal
@@ -245,36 +243,18 @@ data TLit
   | TLitFloat
   | TLitChar
   | TLitBool
-  | TLitData Name
+  | TLitData Con
   | TLitFun [TLit] TLit
   deriving (Show, Eq, Generic)
 
 
 -- -----------------------------------------------------------------------------
--- | Type
-
-data TVar = TypeVar Text deriving (Eq, Ord, Show, Generic)
-
-data Type
-  = TCon Name
-  | TVar TVar
-  | TFun Type Type
-  deriving (Show, Eq, Generic)
-
-instance Default Type where
-  def = TCon $ Name "()"
-
-
--- -----------------------------------------------------------------------------
 -- | Expression
-
-data Var = Var Text
-  deriving (Eq, Ord, Show, Generic)
 
 data Exp x
   = ELit (XELit x) Lit
   | EVar (XEVar x) Var
-  | ECon (XECon x) Var
+  | ECon (XECon x) Con
   | EPrim (XEPrim x) PrimInstr
   | EApp (XEApp x) (Exp x) (Exp x)
   | ELam (XELam x) Var (Exp x)
@@ -322,7 +302,7 @@ deriving instance EqX x => Eq (Exp x)
 deriving instance GenericX x => Generic (Exp x)
 
 instance DefaultX x => Default (Exp x) where
-  def = ECon def $ Var "()"
+  def = ECon def $ Con "()"
 
 type instance XELit         HkcPs = ()
 type instance XEVar         HkcPs = ()
@@ -383,62 +363,68 @@ type ExpTc = Exp HkcTc
 type ExpMn = Exp HkcMn
 
 -- -----------------------------------------------------------------------------
--- | Type Signature
+-- | Declarations
 
-data TypeSig
-  = TypeSig
-    { _tySigName :: Name
-    , _tySigBody :: Type
+data Dec
+  = Dec
+    { _decName :: Name
+    , _decType :: Type
     } deriving (Show, Eq, Generic)
 
 
 -- -----------------------------------------------------------------------------
--- | Function
+-- | Definitions
 
-data Fun x
-  = Fun
-    { _funName   :: Name
-    , _funParams :: [FunParam x]
-    , _funBody   :: Exp x
-    , _funX      :: XFun x
+data Def x
+  = Def
+    { _defName  :: Name
+    , _defPats  :: [Pat x]
+    , _defBody  :: Exp x
+    , _defX     :: XDef x
     }
 
-deriving instance ShowX x => Show (Fun x)
-deriving instance EqX x => Eq (Fun x)
-deriving instance GenericX x => Generic (Fun x)
+deriving instance ShowX x => Show (Def x)
+deriving instance EqX x => Eq (Def x)
+deriving instance GenericX x => Generic (Def x)
 
-type family XFun x
+type family XDef x
 
-type instance XFun HkcPs = ()
-type instance XFun HkcRn = ()
-type instance XFun HkcTc = ()
-type instance XFun HkcMn = TLit
+type instance XDef HkcPs = ()
+type instance XDef HkcRn = ()
+type instance XDef HkcTc = ()
+type instance XDef HkcMn = TLit
 
 
-type FunMn = Fun HkcMn
+type DefPs = Def HkcPs
+type DefRn = Def HkcRn
+type DefTc = Def HkcTc
+type DefMn = Def HkcMn
 
 
 -- -----------------------------------------------------------------------------
--- | Function Param
+-- | Definition Patterns
 
-data FunParam x
-  = FunParam
-    { _fparamName :: Text
-    , _fparamX :: XFunParam x
+data Pat x
+  = Pat
+    { _patName  :: Text
+    , _patX     :: XPat x
     }
 
-deriving instance ShowX x => Show (FunParam x)
-deriving instance EqX x => Eq (FunParam x)
-deriving instance GenericX x => Generic (FunParam x)
+deriving instance ShowX x => Show (Pat x)
+deriving instance EqX x => Eq (Pat x)
+deriving instance GenericX x => Generic (Pat x)
 
-type family XFunParam x
+type family XPat x
 
-type instance XFunParam HkcPs = ()
-type instance XFunParam HkcRn = ()
-type instance XFunParam HkcTc = ()
-type instance XFunParam HkcMn = TLit
+type instance XPat HkcPs = ()
+type instance XPat HkcRn = ()
+type instance XPat HkcTc = Type
+type instance XPat HkcMn = TLit
 
-type FunParamMn = FunParam HkcMn
+type PatPs = Pat HkcPs
+type PatRn = Pat HkcRn
+type PatTc = Pat HkcTc
+type PatMn = Pat HkcMn
 
 -- -----------------------------------------------------------------------------
 -- | New Type
@@ -466,7 +452,7 @@ data TypeAlias
 data DataType
     = DataType
       { _dataTyName :: Name
-      , _dataTyBody :: [TypeSig]
+      , _dataTyBody :: [Dec]
       } deriving (Show, Eq, Generic)
 
 
@@ -474,7 +460,7 @@ data DataType
 -- | Lens Instances
 
 makeLenses ''Name
-makeLenses ''Fun
+makeLenses ''Def
 makeLenses ''Mod
 makeLenses ''MScope
 makeLenses ''MScopeTables
@@ -527,6 +513,8 @@ instance PrettyX x => PP.Pretty (MScope x) where
               PP.pretty (m^.mscopeItems)
             )
           PP.<$>
+          PP.pretty (m^.mscopeTabs)
+          PP.<$>
           PP.textStrict "Extension:"
           PP.<$>
           PP.indent 2
@@ -536,6 +524,15 @@ instance PrettyX x => PP.Pretty (MScope x) where
         )
 
 
+instance PP.Pretty MScopeTables where
+  pretty mstabs = 
+    PP.textStrict "Tables"
+    PP.<$>
+    PP.indent 2
+    ( PP.textStrict "Ops:" <+> (PP.textStrict . pack . show) (mstabs^.mscopeOps)
+
+    )
+
 -- Item ------------------------------------------------------------------------
 instance PrettyX x => PP.Pretty (Item x) where
     pretty (ForeignItem i) =
@@ -544,10 +541,10 @@ instance PrettyX x => PP.Pretty (Item x) where
     pretty (ExposeItem i) =
       PP.pretty i
 
-    pretty (SigItem i) =
+    pretty (DecItem i) =
       PP.pretty i
 
-    pretty (FunItem i) =
+    pretty (DefItem i) =
       PP.pretty i
         
     pretty (NewTyItem i) =
@@ -617,12 +614,6 @@ instance PP.Pretty DepPath where
       PP.textStrict "(\\" PP.<> PP.pretty rs PP.<> PP.textStrict ")"
 
 
--- Name ------------------------------------------------------------------------
-
-instance PP.Pretty Name where
-    pretty (Name n) =
-      PP.textStrict n
-
 
 -- Literal ------------------------------------------------------------------------
 
@@ -641,33 +632,10 @@ instance PP.Pretty Lit where
       PP.pretty v
 
 
--- Type ------------------------------------------------------------------------
-instance PP.Pretty TVar where
-  pretty (TypeVar x) =
-    PP.textStrict "TVar:" <+> PP.dquotes (PP.pretty x)
-
-instance PP.Pretty Type where
-    pretty = \case
-      TCon n ->
-        PP.textStrict "TCon:" <+> PP.pretty n
-
-      TVar tvar ->
-        PP.pretty tvar
-
-      TFun f x ->
-        PP.textStrict "TFun:"
-        PP.<$>
-        PP.indent 2
-          ( PP.textStrict "func:" <+> PP.pretty f
-            PP.<$>
-            PP.textStrict "arg:" PP.<$> PP.pretty x
-          )
 
 
 -- Expr -------------------------------------------------------------------------
-instance PP.Pretty Var where
-  pretty (Var n) =
-    PP.textStrict "Var:" PP.<+> PP.textStrict n
+
 
 instance PrettyX x => PP.Pretty (Exp x) where
     pretty (ELit ext lit) =
@@ -779,26 +747,26 @@ instance PrettyX x => PP.Pretty (Exp x) where
 
 
 -- Type Signature ---------------------------------------------------------------
-instance PP.Pretty TypeSig where
-    pretty (TypeSig name body) =
-      PP.textStrict "Type Signature:"
+instance PP.Pretty Dec where
+    pretty (Dec name tipe) =
+      PP.textStrict "Declaration:"
       PP.<$>
       PP.indent 2
         ( PP.textStrict "name:" <+> PP.pretty name
           PP.<$>
-          PP.textStrict "body:" <+> PP.pretty body
+          PP.textStrict "type:" <+> PP.pretty tipe
         )
 
 
 -- Function ---------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (Fun x) where
-  pretty (Fun name params body x) =
-    PP.textStrict "Function Item:"
+instance PrettyX x => PP.Pretty (Def x) where
+  pretty (Def name pats body x) =
+    PP.textStrict "Definition:"
     PP.<$>
     PP.indent 2
       ( PP.textStrict "name:" <+> PP.pretty name
         PP.<$>
-        PP.textStrict "params:" <+> PP.pretty params
+        PP.textStrict "patterns:" <+> PP.pretty pats
         PP.<$>
         PP.textStrict "body:" <+> PP.pretty body
         PP.<$>
@@ -807,9 +775,9 @@ instance PrettyX x => PP.Pretty (Fun x) where
 
 
 -- Function Params ----------------------------------------------------------------
-instance PrettyX x => PP.Pretty (FunParam x) where
-  pretty (FunParam name x) =
-    PP.textStrict "Function Param:"
+instance PrettyX x => PP.Pretty (Pat x) where
+  pretty (Pat name x) =
+    PP.textStrict "Pattern:"
     PP.<$>
     PP.indent 2
       ( PP.textStrict "name:" <+> PP.pretty name
@@ -865,6 +833,7 @@ instance BinaryX x => Binary (MScope x)
 instance Binary MScopeTables
 
 -- Operator -----------------------------------------------------------------------
+instance Binary OpName
 instance Binary Operator
 instance Binary Fixity
 
@@ -890,10 +859,6 @@ instance Binary ForeignType
 instance Binary Expose
 
 
--- Name ------------------------------------------------------------------------
-
-instance Binary Name
-
 
 -- Literal ---------------------------------------------------------------------
 instance Binary Lit
@@ -901,25 +866,21 @@ instance Binary Lit
 -- Type Literals ------------------------------------------------------------------------
 instance Binary TLit
 
--- Type ------------------------------------------------------------------------
-instance Binary TVar
-instance Binary Type where
 
           
 -- Expr -------------------------------------------------------------------------
-instance Binary Var
 instance BinaryX x => Binary (Exp x)
 
 
 -- Type Signature ---------------------------------------------------------------
-instance Binary TypeSig
+instance Binary Dec
 
 
 -- Function ----------------------------------------------------------------------
-instance BinaryX x => Binary (Fun x)
+instance BinaryX x => Binary (Def x)
 
 -- Function Param ----------------------------------------------------------------
-instance BinaryX x => Binary (FunParam x)
+instance BinaryX x => Binary (Pat x)
 
 
 -- New Type ----------------------------------------------------------------------
@@ -939,32 +900,6 @@ instance Binary DataType
 
 
 -- Module ---------------------------------------------------------------------
-
--- Construction function for parse
-mkModPs :: FilePath -> [Text] -> [Either ModPs [Token]] -> ModPs
-mkModPs fp [] _ = error "Cannot make empty module"
-mkModPs fp [n] xs
-  = insertModsWith mappend subs m
-  where
-    subs = lefts xs
-    items = rights xs
-
-    m = Mod { _modName = n
-            , _modSubs = mempty
-            , _modScopes = Map.singleton (pack fp) ms
-            }
-
-    ms = (mempty :: MScopePs)
-            { _mscopePath  = fp
-            , _mscopeItems = mempty
-            , _mscopeX     = items
-            }
-mkModPs fp (n:ns) xs
-  = Mod { _modName = n
-        , _modSubs = Map.singleton (head ns) (mkModPs fp ns xs)
-        , _modScopes = mempty
-        }
-
 
 insertModWith :: (Mod x -> Mod x -> Mod x) -> Mod x -> Mod x -> Mod x
 insertModWith f child parent
@@ -1036,8 +971,8 @@ instance Default MScopeTables where
       = MScopeTables
           { _mscopeDeps      = []
           , _mscopeVars      = Set.empty
-          , _mscopeTypes     = Set.empty
-          , _mscopeVarTypes  = Map.empty
+          , _mscopeCons      = Set.empty
+          , _mscopeTCons     = Set.empty
           , _mscopeOps       = Map.empty
           }
 
@@ -1045,11 +980,11 @@ instance Monoid MScopeTables where
     mempty = def
 
     mappend t1 t2
-      = t1 { _mscopeDeps      = (t1^.mscopeDeps)         ++      (t2^.mscopeDeps)
-           , _mscopeVars      = (t1^.mscopeVars)     `Set.union` (t2^.mscopeVars)
-           , _mscopeTypes     = (t1^.mscopeTypes)    `Set.union` (t2^.mscopeTypes)
-           , _mscopeVarTypes  = (t1^.mscopeVarTypes) `Map.union` (t2^.mscopeVarTypes)
-           , _mscopeOps       = (t1^.mscopeOps)      `Map.union` (t2^.mscopeOps)
+      = t1 { _mscopeDeps      = (t1^.mscopeDeps)       ++      (t2^.mscopeDeps)
+           , _mscopeVars      = (t1^.mscopeVars)  `Set.union` (t2^.mscopeVars)
+           , _mscopeCons      = (t1^.mscopeCons)  `Set.union` (t2^.mscopeCons)
+           , _mscopeTCons     = (t1^.mscopeTCons) `Set.union` (t2^.mscopeTCons)
+           , _mscopeOps       = (t1^.mscopeOps)   `Map.union` (t2^.mscopeOps)
            }
 
 

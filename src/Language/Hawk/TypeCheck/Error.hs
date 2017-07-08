@@ -5,7 +5,7 @@
 module Language.Hawk.TypeCheck.Error where
 
 import Control.Lens
-import Language.Hawk.Syntax (Type, TVar, Var)
+import Language.Hawk.Syntax (Type, TVar, Var, Con)
 import Language.Hawk.Syntax.Location
 import Text.PrettyPrint.Leijen.Text (Pretty(..), (<>), (<+>))
 
@@ -16,7 +16,7 @@ data TcErr
   = UnificationFailure Type Type
   | OccursCheckFail TVar Type
   | UnboundVariable Var Location
-  | UnboundConstructor Var Location
+  | UnboundConstructor Con Location
   deriving(Show)
 
 makeClassyPrisms ''TcErr

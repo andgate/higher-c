@@ -11,6 +11,7 @@ import Control.Applicative
 import Control.Lens
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Text (Text)
+import Language.Hawk.Syntax (OpName (..))
 import Language.Hawk.Parse.Lexer.Token
 
 import Text.Megaparsec.Prim (MonadParsec(..))
@@ -150,6 +151,29 @@ opT
       case t^.tokClass of
         TokenOpId _  -> True
         _             -> False
+
+{-# INLINE opNameP #-}
+opNameP :: MonadParser m => m OpName
+opNameP
+  = P.token testTok Nothing
+  where
+    {-# INLINE testTok #-}
+    testTok t =
+      case t^.tokClass of
+        (TokenOpId n) -> Right (OpName n)
+        _ -> Left (Set.singleton (P.Tokens (t:|[])), Set.empty, Set.empty)
+
+
+{-# INLINE integerP #-}
+integerP :: MonadParser m => m Integer
+integerP
+  = P.token testTok Nothing
+  where
+    {-# INLINE testTok #-}
+    testTok t =
+      case t^.tokClass of
+        (TokenInteger x) -> Right x
+        _ -> Left (Set.singleton (P.Tokens (t:|[])), Set.empty, Set.empty)
 
 -- -----------------------------------------------------------------------------
 -- Layout Helpers

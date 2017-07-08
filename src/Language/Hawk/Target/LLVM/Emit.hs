@@ -102,20 +102,20 @@ genParam (AST.Parameter ty pname _) = do
 -}
 
 
-emitFun :: (MonadState s m, HasLLVMState s)
-        => Hk.FunMn -> m ()
-emitFun (Hk.Fun (Hk.Name name) params exp retty) = do
+emitDef :: (MonadState s m, HasLLVMState s)
+        => Hk.DefMn -> m ()
+emitDef (Hk.Def (Hk.Name name) pats exp retty) = do
   startBlocks
   emitExp exp
   bls <- endBlocks
-  define retty' (t2sbs name) params' bls
+  define retty' (t2sbs name) pats' bls
   where
     retty' = emitTypeLit retty
-    params' = map emitFunParam params
+    pats' = map emitPat pats
 
 
-emitFunParam :: Hk.FunParamMn -> AST.Parameter
-emitFunParam (Hk.FunParam name ty)
+emitPat :: Hk.PatMn -> AST.Parameter
+emitPat (Hk.Pat name ty)
     = AST.Parameter ty' name' []
     where ty' = emitTypeLit ty
           name' = AST.Name (t2sbs name)
@@ -214,7 +214,7 @@ emitTypeLit = \case
   Hk.TLitChar   -> Ty.i8
   Hk.TLitBool   -> bool
   -- More complicated type literals
-  Hk.TLitData (Hk.Name n) -> Ty.NamedTypeReference . AST.Name . t2sbs $ n
+  Hk.TLitData (Hk.Con n) -> Ty.NamedTypeReference . AST.Name . t2sbs $ n
   Hk.TLitFun args ret     -> Ty.FunctionType (emitTypeLit ret) (map emitTypeLit args) False
   
 -------------------------------------------------------------------------------

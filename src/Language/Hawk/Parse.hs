@@ -19,11 +19,8 @@
   #-}
 module Language.Hawk.Parse where
 
-import Control.Applicative
 import Control.Lens
 import Control.Monad.Identity (runIdentity)
-import Control.Monad.State (MonadState, StateT, evalStateT)
-import Control.Monad.Reader (MonadReader, ReaderT, runReaderT)
 import Control.Monad.Log
 import Control.Monad.Chronicle
 import Control.Monad.Chronicle.Extra
@@ -37,8 +34,8 @@ import Text.PrettyPrint.Leijen.Text (pretty)
 import Language.Hawk.Parse.Error
 import Language.Hawk.Parse.Helpers ()
 import Language.Hawk.Parse.Item
-import Language.Hawk.Parse.Item.LocalState
-import Language.Hawk.Parse.Item.GlobalInfo
+import Language.Hawk.Parse.Item.Monad
+import Language.Hawk.Parse.Item.Types
 import Language.Hawk.Parse.Module
 import Language.Hawk.Parse.Message
 import Language.Hawk.Parse.Lexer.Token (Token)
@@ -69,29 +66,18 @@ parseMod (fp, ts)
           logInfo =<< timestamp (_ParseSuccess # fp)
           return m
 
-
 -- -----------------------------------------------------------------------------
--- Item Parsing
+-- Definition Parsing
 
--- Monad stack for item parsing
-newtype ItemParserT m a = ItemParserT { unItemParserT :: StateT LocalState (ReaderT GlobalInfo (P.ParsecT P.Dec [Token] m)) a }
-    deriving (Functor, Monad, Applicative, Alternative, MonadPlus, MonadState LocalState, MonadReader GlobalInfo, P.MonadParsec P.Dec [Token])
-
-
-runItemParserT :: Monad m => ItemParserT m a -> GlobalInfo -> [Token] -> m (Either (P.ParseError Token P.Dec) a)
-runItemParserT m g ts
-  = P.runParserT (runReaderT (evalStateT (unItemParserT m) def) g) (g^.globalFilePath) ts
-
-
-parseItem :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
+parseDef :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
              , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
              , MonadIO m
              )
          => (GlobalInfo, [Token]) -> m ItemPs
-parseItem (g, ts)
+parseDef (g, ts)
   = either (handleParseError fp) handleSuccess result
   where
-    fp = g^.globalFilePath
+    fp = g^.gFilePath
     result = runIdentity $ runItemParserT itemP g ts
     
     handleSuccess m

@@ -109,8 +109,8 @@ library:
     - Language.Hawk.Parse.Error
     - Language.Hawk.Parse.Helpers
     - Language.Hawk.Parse.Item
-    - Language.Hawk.Parse.Item.GlobalInfo
-    - Language.Hawk.Parse.Item.LocalState
+    - Language.Hawk.Parse.Item.Monad
+    - Language.Hawk.Parse.Item.Types
     - Language.Hawk.Parse.Lexer
     - Language.Hawk.Parse.Lexer.Layout
     - Language.Hawk.Parse.Lexer.Token
@@ -118,9 +118,11 @@ library:
     - Language.Hawk.Parse.Module
 
     - Language.Hawk.Syntax
+    - Language.Hawk.Syntax.Location
+    - Language.Hawk.Syntax.Name
     - Language.Hawk.Syntax.Pass
     - Language.Hawk.Syntax.Prim
-    - Language.Hawk.Syntax.Location
+    - Language.Hawk.Syntax.Type
 
     - Language.Hawk.Target.LLVM.Codegen
     - Language.Hawk.Target.LLVM.Emit

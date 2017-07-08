@@ -1,6 +1,6 @@
 {-# LANGUAGE  TemplateHaskell
   #-}
-module Language.Hawk.Parse.Item.LocalState where
+module Language.Hawk.Parse.Item.Types where
 
 import Control.Lens
 import Data.Default.Class
@@ -11,21 +11,26 @@ import Language.Hawk.Syntax
 import qualified Data.Map                   as Map
 import qualified Data.Set                   as Set
 
+
+data GlobalInfo
+  = GlobalInfo
+      { _gFilePath :: FilePath
+      , _gOps   :: Map OpName Operator
+      , _gTOps  :: Map OpName Operator
+      , _gVars  :: Set Var
+      , _gCons  :: Set Con
+      }
+
 data LocalState
   = LocalState
-      { _localOps :: Map Var Operator
-      , _localTOps :: Map TVar Operator 
-      , _localVars :: Set Var
-      , _localTVars :: Set TVar
+      { _localVars  :: Set Var
       }
 
 instance Default LocalState where
     def =
       LocalState
-        { _localOps = Map.empty
-        , _localTOps = Map.empty
-        , _localVars = Set.empty
-        , _localTVars = Set.empty
-        }
+        { _localVars = Set.empty }
 
+
+makeClassy ''GlobalInfo
 makeClassy ''LocalState
