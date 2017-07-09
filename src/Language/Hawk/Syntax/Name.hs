@@ -10,19 +10,19 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 
 data Name
   = Name Text
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Read, Show, Generic)
 
 data Var
   = Var Text
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Read, Show, Generic)
 
 data Con
   = Con Text
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Read, Show, Generic)
 
 data TVar
   = TypeVar Text
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Read, Show, Generic)
 
 
 

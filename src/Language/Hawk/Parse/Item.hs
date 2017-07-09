@@ -27,5 +27,5 @@ itemP :: ( MonadParser m
          , MonadState s m, HasLocalState s
          , MonadReader i m, HasGlobalInfo i
          )
-      => m ItemPs
+      => m Item
 itemP = undefined

@@ -23,24 +23,24 @@ import qualified Data.Set                   as Set
 
 -- Items that this parser will produce and store in the top-level module
 data ModItem
-  = SubMod ModPs 
+  = SubMod Mod 
   | ModDep Dependency
   | OpDec [Operator]
   | UnparsedItem [Token]
 
 
 
-modP :: MonadParser m => FilePath -> m ModPs
+modP :: MonadParser m => FilePath -> m Mod
 modP fp =
-  mkModPs fp <$> linefold modHeader
-              <*> linefolds (modItem fp)
+  mkMod fp <$> linefold modHeader
+           <*> linefolds (modItem fp)
 
 
 subModP :: MonadParser m
-        => FilePath -> m ModPs
+        => FilePath -> m Mod
 subModP fp =
-    mkModPs fp <$> modHeader
-               <*> subModBody fp
+  mkMod fp <$> modHeader
+           <*> subModBody fp
 
 modHeader :: MonadParser m => m [Text]
 modHeader =
@@ -123,7 +123,7 @@ modPathNext =
 -- | Module Specific Helpers
 
 -- Extraction -----------------------------------------------------------------
-extractSubs :: [ModItem] -> [ModPs]
+extractSubs :: [ModItem] -> [Mod]
 extractSubs = foldr extract []
   where extract (SubMod m) ms = m:ms
         extract _ ms = ms
@@ -155,32 +155,32 @@ mkOpTable ops
 -- Super Duper Smart Constructor --------------------------------------------
 
 -- Another example of why I need custom MegaParsec errors!!
-mkModPs :: FilePath -> [Text] -> [ModItem] -> ModPs
-mkModPs fp [] _ = error "Cannot make empty module!"
-mkModPs fp [n] xs
+mkMod :: FilePath -> [Text] -> [ModItem] -> Mod
+mkMod fp [] _ = error "Cannot make empty module!"
+mkMod fp [n] xs
   = insertModsWith mappend subs m
   where
     subs = extractSubs xs
     deps = extractDeps xs
     ops = mkOpTable $ extractOps xs
-    uitem = extractToks xs
+    toks = extractToks xs
 
     m = Mod { _modName = n
             , _modSubs = mempty
             , _modScopes = Map.singleton (pack fp) ms
             }
 
-    ms = (mempty :: MScopePs)
+    ms = mempty
             { _mscopePath  = fp
             , _mscopeItems = mempty
             , _mscopeTabs  = mstabs
-            , _mscopeX     = uitem
+            , _mscopeToks  = toks
             }
-    mstabs = def { _mscopeOps = ops }
+    mstabs = def { _mscopeOps = ops, _mscopeDeps = deps }
 
-mkModPs fp (n:ns) xs
-  = Mod { _modName = n
-        , _modSubs = Map.singleton (head ns) (mkModPs fp ns xs)
+mkMod fp (n:ns) xs
+  = Mod { _modName   = n
+        , _modSubs   = Map.singleton (head ns) (mkMod fp ns xs)
         , _modScopes = mempty
         }
 

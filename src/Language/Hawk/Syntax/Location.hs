@@ -20,7 +20,7 @@ data Location
     { _locPath  :: !FilePath
     , _locReg   :: {-# UNPACK #-} !Region 
     }
-    deriving (Eq, Ord, Show, Generic)
+    deriving (Eq, Ord, Read, Show, Generic)
 
 
 data Region
@@ -28,7 +28,7 @@ data Region
     { _regStart :: {-# UNPACK #-} !Position
     , _regEnd   :: {-# UNPACK #-} !Position
     }
-    deriving (Eq, Ord, Show, Generic)
+    deriving (Eq, Ord, Read, Show, Generic)
 
 
 data Position
@@ -36,7 +36,7 @@ data Position
     { _posLine    :: {-# UNPACK #-} !Int
     , _posColumn  :: {-# UNPACK #-} !Int
     }
-    deriving (Eq, Ord, Show, Generic)
+    deriving (Eq, Ord, Read, Show, Generic)
 
 makeClassy ''Location
 makeClassy ''Region

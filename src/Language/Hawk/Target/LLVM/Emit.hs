@@ -103,34 +103,35 @@ genParam (AST.Parameter ty pname _) = do
 
 
 emitDef :: (MonadState s m, HasLLVMState s)
-        => Hk.DefMn -> m ()
-emitDef (Hk.Def (Hk.Name name) pats exp retty) = do
+        => Hk.Def -> m ()
+emitDef (Hk.Def (Hk.Name name) pats (Hk.ETLit ty exp)) = do
   startBlocks
   emitExp exp
   bls <- endBlocks
   define retty' (t2sbs name) pats' bls
   where
+    (pattys, retty) = viewTLit ty
     retty' = emitTypeLit retty
-    pats' = map emitPat pats
+    pats' = map emitPat (zip pats pattys)
 
 
-emitPat :: Hk.PatMn -> AST.Parameter
-emitPat (Hk.Pat name ty)
+emitPat :: (Hk.Pat, Hk.TLit) -> AST.Parameter
+emitPat (Hk.Pat name, ty)
     = AST.Parameter ty' name' []
     where ty' = emitTypeLit ty
           name' = AST.Name (t2sbs name)
 
 
 emitExp :: (MonadState s m, HasLLVMState s)
-        => Hk.ExpMn -> m AST.Operand
+        => Hk.Exp Hk.Var -> m AST.Operand
 emitExp = \case
-  Hk.EVar ty (Hk.Var n) ->
-    getvar (t2sbs n) >>= load (emitTypeLit ty) >>= setVal
-  
-  Hk.ELit _ c ->
+  Hk.ELit c ->
     setVal $ constOp $ emitLit c
+  
+  Hk.ETLit ty (Hk.EVar (Hk.Var n)) ->
+    getvar (t2sbs n) >>= load (emitTypeLit ty) >>= setVal
 
-  Hk.ELet ty (Hk.Var n) lhs e -> do
+  Hk.ETLit ty (Hk.ELet (Hk.Var n) lhs e) -> do
     let ty' = emitTypeLit ty
         n'  = AST.Name (t2sbs n)
     i <- alloca ty'
@@ -139,21 +140,22 @@ emitExp = \case
     assignVar n' i
     emitExp e
 
-  Hk.EApp ty (Hk.EVar _ (Hk.Var n)) arg -> do
+
+  Hk.ETLit ty (Hk.EApp (Hk.EVar (Hk.Var n)) arg) -> do
     let ty' = emitTypeLit ty
     arg' <- emitExp arg
     call ty' (externf ty' (AST.Name (t2sbs n))) [arg']
 
-  a@(Hk.EApp _ _ b) -> do
+  a@(Hk.EApp _ b) -> do
     let (f, args) = viewApp a
     case f of
-      Hk.EVar ty (Hk.Var f') -> do
+      Hk.ETLit ty (Hk.EVar (Hk.Var f')) -> do
         let ty' = emitTypeLit ty
         args' <- mapM emitExp args
         call ty' (externf ty' (AST.Name (t2sbs f'))) args'
 
 
-  Hk.EIf ty cond tr fl -> do
+  Hk.ETLit ty (Hk.EIf cond tr fl) -> do
     ifthen <- addBlock "if.then"
     ifelse <- addBlock "if.else"
     ifexit <- addBlock "if.exit"
@@ -181,17 +183,26 @@ emitExp = \case
 
 
 
-  Hk.ELam _ _ _ -> error "Lamba expression not lifted"
+  Hk.ELam _ -> error "Lamba expression not lifted"
 
-  Hk.EPrim _ _ -> error "Prim operation not converted"
+  Hk.EPrim _ -> error "Prim operation not implemented"
+
+  e -> error ("Unimplemented expression encountered!" ++ show e)
 
 
 
-viewApp :: Hk.ExpMn -> (Hk.ExpMn, [Hk.ExpMn])
+viewApp :: Hk.Exp Hk.Var -> (Hk.Exp Hk.Var, [Hk.Exp Hk.Var])
 viewApp = go []
   where
-    go xs (Hk.EApp _ a b) = go (b : xs) a
+    go xs (Hk.EApp a b) = go (b : xs) a
     go xs f = (f, xs)
+
+
+viewTLit :: Hk.TLit -> ([Hk.TLit], Hk.TLit)
+viewTLit = go []
+  where
+    go xs (Hk.TLitFun pattys retty) = go pattys retty
+    go xs f = (xs, f)
 
 
 emitLit :: Hk.Lit -> C.Constant

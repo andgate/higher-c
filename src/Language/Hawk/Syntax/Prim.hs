@@ -20,7 +20,7 @@ data PrimInstr
   | PrimUDiv
   | PrimSDiv
   | PrimFDiv
-  deriving (Show, Eq, Ord, Enum)
+  deriving (Read, Show, Eq, Ord, Enum)
 
 
 intInstrs :: [PrimInstr]

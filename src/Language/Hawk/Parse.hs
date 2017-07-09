@@ -55,7 +55,7 @@ parseMod :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
              , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
              , MonadIO m
              )
-         => (FilePath, [Token]) -> m ModPs
+         => (FilePath, [Token]) -> m Mod
 parseMod (fp, ts)
   = either (handleParseError fp) handleSuccess result
   where
@@ -73,7 +73,7 @@ parseDef :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
              , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
              , MonadIO m
              )
-         => (GlobalInfo, [Token]) -> m ItemPs
+         => (GlobalInfo, [Token]) -> m Item
 parseDef (g, ts)
   = either (handleParseError fp) handleSuccess result
   where

@@ -17,7 +17,7 @@ data Type
   = TCon Con
   | TVar TVar
   | TFun Type Type
-  deriving (Show, Eq, Generic)
+  deriving (Show, Read, Eq, Ord, Generic)
 
 -- -----------------------------------------------------------------------------
 -- | Instances

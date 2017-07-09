@@ -17,8 +17,14 @@
   #-}
 module Language.Hawk.Syntax
   ( module Language.Hawk.Syntax
+  , module Language.Hawk.Syntax.Expression
+  , module Language.Hawk.Syntax.Extensions
+  , module Language.Hawk.Syntax.Literal
+  , module Language.Hawk.Syntax.Location
   , module Language.Hawk.Syntax.Name
+  , module Language.Hawk.Syntax.Prim
   , module Language.Hawk.Syntax.Type
+  , module Language.Hawk.Syntax.TypeLiteral
   ) where
 
 import Data.Binary
@@ -31,12 +37,16 @@ import Control.Lens
 import GHC.Types (Constraint)
 import GHC.Generics (Generic)
 import Language.Hawk.Parse.Lexer.Token
+import Language.Hawk.Syntax.Expression
+import Language.Hawk.Syntax.Extensions
+import Language.Hawk.Syntax.Literal
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Operator
 import Language.Hawk.Syntax.Pass
 import Language.Hawk.Syntax.Prim
 import Language.Hawk.Syntax.Name
 import Language.Hawk.Syntax.Type
+import Language.Hawk.Syntax.TypeLiteral
 import Text.PrettyPrint.Leijen.Text ((<+>))
 
 
@@ -45,80 +55,28 @@ import qualified Data.Map.Strict              as Map
 import qualified Data.Set                     as Set
 
 
-type ForallX (c :: * -> Constraint) (x :: *)
-  = ( ForallExp c x
-    , c (XMScope x)
-    , c (XDef x)
-    , c (XPat x)
-    )
-
-type GenericX (x :: *)
-  = ForallX Generic x
-
-type ShowX (x :: *)
-  = ForallX Show x
-
-type EqX (x :: *)
-  = ForallX Eq x
-
-type OrdX (x :: *)
-  = ForallX Ord x
-
-type PrettyX (x :: *)
-  = ForallX PP.Pretty x
-
-type BinaryX (x :: *)
-  = (ForallX Binary x, GenericX x)
-
-type DefaultX (x :: *)
-  = (ForallX Default x)
-
 
 -- -----------------------------------------------------------------------------
 -- | Module
 
-data Mod x =
+data Mod =
   Mod
     { _modName :: Text
-    , _modSubs :: Map Text (Mod x)
-    , _modScopes :: Map Text (MScope x)
-    }
+    , _modSubs :: Map Text Mod
+    , _modScopes :: Map Text MScope
+    } deriving (Show, Eq, Generic)
 
-deriving instance ShowX x => Show (Mod x)
-deriving instance EqX x => Eq (Mod x)
-deriving instance GenericX x => Generic (Mod x)
-
-type ModPs = Mod HkcPs
-type ModRn = Mod HkcRn
-type ModTc = Mod HkcTc
-type ModMn = Mod HkcMn
 
 -- -----------------------------------------------------------------------------
 -- | Module Scope
 
-data MScope x =
+data MScope =
   MScope
    { _mscopePath      :: FilePath
    , _mscopeTabs      :: MScopeTables
-   , _mscopeItems     :: [Item x]
-   , _mscopeX         :: XMScope x
-   }
-
-type family XMScope x
-
-type instance XMScope HkcPs = [[Token]]
-type instance XMScope HkcRn = ()
-type instance XMScope HkcTc = ()
-type instance XMScope HkcMn = ()
-
-deriving instance ShowX x => Show (MScope x)
-deriving instance EqX x => Eq (MScope x)
-deriving instance GenericX x => Generic (MScope x)
-
-type MScopePs = MScope HkcPs
-type MScopeRn = MScope HkcRn
-type MScopeTc = MScope HkcTc
-type MScopeMn = MScope HkcMn
+   , _mscopeItems     :: [Item]
+   , _mscopeToks      :: [[Token]]
+   } deriving (Show, Eq, Generic)
 
 
 data MScopeTables
@@ -153,31 +111,22 @@ data Fixity
 -- -----------------------------------------------------------------------------
 -- | Item
 
-data Item x
+data Item
   = ForeignItem Foreign
   | ExposeItem Expose
 
   | DecItem Dec
-  | DefItem (Def x)
+  | DefItem Def
   
   | NewTyItem NewType
   | TyAliasItem TypeAlias
   
   | DataItem DataType
   | EmptyItem
+  deriving (Show, Eq, Generic)
 
-
-deriving instance ShowX x => Show (Item x)
-deriving instance EqX x => Eq (Item x)
-deriving instance GenericX x => Generic (Item x)
-
-instance Default (Item x) where
+instance Default Item where
     def = EmptyItem
-
-type ItemPs = Item HkcPs
-type ItemRn = Item HkcRn
-type ItemTc = Item HkcTc
-type ItemMn = Item HkcMn
 
 
 -- -----------------------------------------------------------------------------
@@ -224,143 +173,6 @@ data Expose =
   Expose Name
   deriving(Show, Eq, Generic)
 
--- -----------------------------------------------------------------------------
--- | Literal
-
-data Lit
-  = IntLit Integer
-  | FloatLit Double
-  | CharLit Char
-  | BoolLit Bool
-  deriving (Show, Eq, Generic)
-
-
--- -----------------------------------------------------------------------------
--- | Type Literal
-
-data TLit
-  = TLitInt
-  | TLitFloat
-  | TLitChar
-  | TLitBool
-  | TLitData Con
-  | TLitFun [TLit] TLit
-  deriving (Show, Eq, Generic)
-
-
--- -----------------------------------------------------------------------------
--- | Expression
-
-data Exp x
-  = ELit (XELit x) Lit
-  | EVar (XEVar x) Var
-  | ECon (XECon x) Con
-  | EPrim (XEPrim x) PrimInstr
-  | EApp (XEApp x) (Exp x) (Exp x)
-  | ELam (XELam x) Var (Exp x)
-  | EIf (XEIf x) (Exp x) (Exp x) (Exp x)
-  | ELet (XELet x) Var (Exp x) (Exp x)
-  | EDup (XEDup x) (Exp x)
-  | EDrop (XEDrop x) Var (Exp x)
-
-
-  -- Type hints and bottom
-  | ETypeHint (XETypeHint x) (Exp x) Type
-  | Exp (XExp x)
-
-type family XELit x
-type family XEVar x
-type family XECon x
-type family XEApp x
-type family XELam x
-type family XELet x
-type family XEDup x
-type family XEDrop x
-type family XEPrim x
-type family XEIf x
-type family XETypeHint x
-type family XExp x
-
-
-type ForallExp (c :: * -> Constraint) (x :: *) =
-  ( c (XELit x)
-  , c (XEVar x)
-  , c (XECon x)
-  , c (XEPrim x)
-  , c (XEApp x)
-  , c (XELam x)
-  , c (XEIf x)
-  , c (XELet x)
-  , c (XEDup x)
-  , c (XEDrop x)
-  , c (XETypeHint x)
-  , c (XExp x)
-  )
-
-deriving instance ShowX x => Show (Exp x)
-deriving instance EqX x => Eq (Exp x)
-deriving instance GenericX x => Generic (Exp x)
-
-instance DefaultX x => Default (Exp x) where
-  def = ECon def $ Con "()"
-
-type instance XELit         HkcPs = ()
-type instance XEVar         HkcPs = ()
-type instance XECon         HkcPs = ()
-type instance XEPrim        HkcPs = ()
-type instance XEApp         HkcPs = ()
-type instance XELam         HkcPs = ()
-type instance XEIf          HkcPs = ()
-type instance XELet         HkcPs = ()
-type instance XEDup         HkcPs = ()
-type instance XEDrop        HkcPs = ()
-type instance XETypeHint    HkcPs = ()
-type instance XExp          HkcPs = ()
-
-type instance XELit         HkcRn = Maybe Location
-type instance XEVar         HkcRn = Maybe Location
-type instance XECon         HkcRn = Maybe Location
-type instance XEPrim        HkcRn = Maybe Location
-type instance XEApp         HkcRn = Maybe Location
-type instance XELam         HkcRn = Maybe Location
-type instance XEIf          HkcRn = Maybe Location
-type instance XELet         HkcRn = Maybe Location
-type instance XEDup         HkcRn = Maybe Location
-type instance XEDrop        HkcRn = Maybe Location
-type instance XETypeHint    HkcRn = Maybe Location
-type instance XExp          HkcRn = Maybe Location
-
-type instance XELit         HkcTc = (Type, Maybe Location)
-type instance XEVar         HkcTc = (Type, Maybe Location)
-type instance XECon         HkcTc = (Type, Maybe Location)
-type instance XEPrim        HkcTc = (Type, Maybe Location)
-type instance XEApp         HkcTc = (Type, Maybe Location)
-type instance XELam         HkcTc = (Type, Maybe Location)
-type instance XEIf          HkcTc = (Type, Maybe Location)
-type instance XELet         HkcTc = (Type, Maybe Location)
-type instance XEDup         HkcTc = (Type, Maybe Location)
-type instance XEDrop        HkcTc = (Type, Maybe Location)
-type instance XETypeHint    HkcTc = (Type, Maybe Location)
-type instance XExp          HkcTc = ()
-
-
-type instance XELit         HkcMn = ()
-type instance XEVar         HkcMn = TLit
-type instance XECon         HkcMn = ()
-type instance XEPrim        HkcMn = ()
-type instance XEApp         HkcMn = TLit
-type instance XELam         HkcMn = ()
-type instance XEIf          HkcMn = TLit
-type instance XELet         HkcMn = TLit
-type instance XEDup         HkcMn = ()
-type instance XEDrop        HkcMn = ()
-type instance XETypeHint    HkcMn = ()
-type instance XExp          HkcMn = ()
-
-type ExpPs = Exp HkcPs
-type ExpRn = Exp HkcRn
-type ExpTc = Exp HkcTc
-type ExpMn = Exp HkcMn
 
 -- -----------------------------------------------------------------------------
 -- | Declarations
@@ -375,56 +187,21 @@ data Dec
 -- -----------------------------------------------------------------------------
 -- | Definitions
 
-data Def x
+data Def
   = Def
     { _defName  :: Name
-    , _defPats  :: [Pat x]
-    , _defBody  :: Exp x
-    , _defX     :: XDef x
-    }
-
-deriving instance ShowX x => Show (Def x)
-deriving instance EqX x => Eq (Def x)
-deriving instance GenericX x => Generic (Def x)
-
-type family XDef x
-
-type instance XDef HkcPs = ()
-type instance XDef HkcRn = ()
-type instance XDef HkcTc = ()
-type instance XDef HkcMn = TLit
-
-
-type DefPs = Def HkcPs
-type DefRn = Def HkcRn
-type DefTc = Def HkcTc
-type DefMn = Def HkcMn
+    , _defPats  :: [Pat]
+    , _defBody  :: Exp Var
+    } deriving (Show, Eq, Generic)
 
 
 -- -----------------------------------------------------------------------------
 -- | Definition Patterns
 
-data Pat x
+data Pat
   = Pat
     { _patName  :: Text
-    , _patX     :: XPat x
-    }
-
-deriving instance ShowX x => Show (Pat x)
-deriving instance EqX x => Eq (Pat x)
-deriving instance GenericX x => Generic (Pat x)
-
-type family XPat x
-
-type instance XPat HkcPs = ()
-type instance XPat HkcRn = ()
-type instance XPat HkcTc = Type
-type instance XPat HkcMn = TLit
-
-type PatPs = Pat HkcPs
-type PatRn = Pat HkcRn
-type PatTc = Pat HkcTc
-type PatMn = Pat HkcMn
+    } deriving (Show, Eq, Generic)
 
 -- -----------------------------------------------------------------------------
 -- | New Type
@@ -479,7 +256,7 @@ instance (PP.Pretty l, PP.Pretty r) => PP.Pretty (Either l r) where
 
 
 -- Module ------------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (Mod x) where
+instance PP.Pretty Mod where
     pretty m =
       PP.textStrict "Module:" PP.<+> PP.textStrict (m^.modName)
       PP.<$>
@@ -501,7 +278,7 @@ instance PrettyX x => PP.Pretty (Mod x) where
 
 
 -- ModuleScope ------------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (MScope x) where
+instance PP.Pretty MScope where
     pretty m =
       PP.textStrict "Module Scope:" PP.<+> PP.textStrict (pack (m^.mscopePath))
       PP.<$>
@@ -519,7 +296,7 @@ instance PrettyX x => PP.Pretty (MScope x) where
           PP.<$>
           PP.indent 2
             (
-              PP.pretty (m^.mscopeX)
+              PP.pretty (m^.mscopeToks)
             )
         )
 
@@ -534,7 +311,7 @@ instance PP.Pretty MScopeTables where
     )
 
 -- Item ------------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (Item x) where
+instance PP.Pretty Item where
     pretty (ForeignItem i) =
       PP.pretty i
 
@@ -615,137 +392,6 @@ instance PP.Pretty DepPath where
 
 
 
--- Literal ------------------------------------------------------------------------
-
-instance PP.Pretty Lit where
-  pretty = \case
-    IntLit v ->
-      PP.pretty v
-        
-    FloatLit v ->
-      PP.pretty v
-    
-    CharLit c ->
-      PP.squotes $ PP.pretty c
-    
-    BoolLit v ->
-      PP.pretty v
-
-
-
-
--- Expr -------------------------------------------------------------------------
-
-
-instance PrettyX x => PP.Pretty (Exp x) where
-    pretty (ELit ext lit) =
-      PP.textStrict "Literal:" PP.<+> PP.pretty lit
-      PP.<$>
-      PP.textStrict "ext:" <+> PP.pretty ext
-
-    pretty (EVar ext name) =
-      PP.textStrict "Variable:" PP.<+> PP.pretty name
-      PP.<$>
-      PP.textStrict "ext:" <+> PP.pretty ext
-      
-    pretty (ECon ext name) =
-      PP.textStrict "Con:" PP.<+> PP.pretty name
-      PP.<$>
-      PP.textStrict "ext:" <+> PP.pretty ext
-
-    pretty (EPrim ext i) =
-      PP.textStrict "Prim:"
-      PP.<$>
-      PP.indent 2 
-        ( PP.textStrict "instruction:" <+> PP.pretty i
-          PP.<$>
-          PP.textStrict "ext:" <+> PP.pretty ext
-        )
-
-    pretty (EApp ext f as) =
-      PP.textStrict "Application:"
-      PP.<$>
-      PP.indent 2 
-        ( PP.textStrict "expression:" <+> PP.pretty f
-          PP.<$>
-          PP.textStrict "applied to:" <+> PP.pretty as
-          PP.<$>
-          PP.textStrict "ext:" <+> PP.pretty ext
-        )
-
-    pretty (ELam ext ps b) =
-      PP.textStrict "Lambda:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "params:" <+> PP.pretty ps
-          PP.<$>
-          PP.textStrict "body:" <+> PP.pretty b
-          PP.<$>
-          PP.textStrict "ext:" <+> PP.pretty ext
-        )
-
-    pretty (EIf ext predicate thenBranch elseBranch) =
-      PP.textStrict "If:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "predicate:" <+> PP.pretty predicate
-          PP.<$>
-          PP.textStrict "then branch:" <+> PP.pretty thenBranch
-          PP.<$>
-          PP.textStrict "else branch:" <+> PP.pretty elseBranch
-          PP.<$>
-          PP.textStrict "ext:" <+> PP.pretty ext
-        )
-
-    pretty (ELet ext n lhs e) =
-      PP.textStrict "Let:"
-      PP.<$>
-      PP.indent 2 
-        ( PP.textStrict "name:" <+> PP.pretty n
-          PP.<$>
-          PP.textStrict "lhs:" <+> PP.pretty lhs
-          PP.<$>
-          PP.textStrict "exp:" <+> PP.pretty e
-          PP.<$>
-          PP.textStrict "ext:" <+> PP.pretty ext
-        )
-
-    pretty (EDup ext e) =
-      PP.textStrict "Dup:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "exp:" <+> PP.pretty e
-          PP.<$>
-          PP.textStrict "ext:" <+> PP.pretty ext
-        )
-
-    pretty (EDrop ext n e) =
-      PP.textStrict "Drop:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "var:" <+> PP.pretty n
-          PP.<$>
-          PP.textStrict "in:" <+> PP.pretty e
-          PP.<$>
-          PP.textStrict "ext:" <+> PP.pretty ext
-        )
-        
-    pretty (ETypeHint ext e t) =
-      PP.textStrict "Type Hint:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "expression:" <+> PP.pretty e
-          PP.<$>
-          PP.textStrict "hint:" <+> PP.pretty t
-          PP.<$>
-          PP.textStrict "ext:" <+> PP.pretty ext
-        )
-
-
-    pretty (Exp ext) =
-      PP.textStrict "ext:" <+> PP.pretty ext
-
-
 -- Type Signature ---------------------------------------------------------------
 instance PP.Pretty Dec where
     pretty (Dec name tipe) =
@@ -759,8 +405,8 @@ instance PP.Pretty Dec where
 
 
 -- Function ---------------------------------------------------------------------
-instance PrettyX x => PP.Pretty (Def x) where
-  pretty (Def name pats body x) =
+instance PP.Pretty Def where
+  pretty (Def name pats body) =
     PP.textStrict "Definition:"
     PP.<$>
     PP.indent 2
@@ -769,20 +415,16 @@ instance PrettyX x => PP.Pretty (Def x) where
         PP.textStrict "patterns:" <+> PP.pretty pats
         PP.<$>
         PP.textStrict "body:" <+> PP.pretty body
-        PP.<$>
-        PP.textStrict "ext:" <+> PP.pretty x
       )
 
 
 -- Function Params ----------------------------------------------------------------
-instance PrettyX x => PP.Pretty (Pat x) where
-  pretty (Pat name x) =
+instance PP.Pretty Pat where
+  pretty (Pat name) =
     PP.textStrict "Pattern:"
     PP.<$>
     PP.indent 2
       ( PP.textStrict "name:" <+> PP.pretty name
-        PP.<$>
-        PP.textStrict "ext:" <+> PP.pretty x
       )
 
 
@@ -826,19 +468,21 @@ instance PP.Pretty DataType where
 -- | Binary Instances
 
 -- Module -----------------------------------------------------------------------
-instance BinaryX x => Binary (Mod x)
+instance Binary Mod
 
 -- MScope -----------------------------------------------------------------------
-instance BinaryX x => Binary (MScope x)
+instance Binary MScope
 instance Binary MScopeTables
+
 
 -- Operator -----------------------------------------------------------------------
 instance Binary OpName
 instance Binary Operator
 instance Binary Fixity
 
+
 -- Item -----------------------------------------------------------------------
-instance BinaryX x => Binary (Item x)
+instance Binary Item
 
 
 -- Dependency ---------------------------------------------------------------
@@ -859,28 +503,15 @@ instance Binary ForeignType
 instance Binary Expose
 
 
-
--- Literal ---------------------------------------------------------------------
-instance Binary Lit
-
--- Type Literals ------------------------------------------------------------------------
-instance Binary TLit
-
-
-          
--- Expr -------------------------------------------------------------------------
-instance BinaryX x => Binary (Exp x)
-
-
 -- Type Signature ---------------------------------------------------------------
 instance Binary Dec
 
 
 -- Function ----------------------------------------------------------------------
-instance BinaryX x => Binary (Def x)
+instance Binary Def
 
 -- Function Param ----------------------------------------------------------------
-instance BinaryX x => Binary (Pat x)
+instance Binary Pat
 
 
 -- New Type ----------------------------------------------------------------------
@@ -901,18 +532,18 @@ instance Binary DataType
 
 -- Module ---------------------------------------------------------------------
 
-insertModWith :: (Mod x -> Mod x -> Mod x) -> Mod x -> Mod x -> Mod x
+insertModWith :: (Mod -> Mod -> Mod) -> Mod -> Mod -> Mod
 insertModWith f child parent
   = parent & modSubs .~ Map.insertWith f (child^.modName) child (parent^.modSubs)
 
 
-insertModsWith :: (Mod x -> Mod x -> Mod x) -> [Mod x] -> Mod x -> Mod x
+insertModsWith :: (Mod -> Mod -> Mod) -> [Mod] -> Mod -> Mod
 insertModsWith _ [] m = m
 insertModsWith f children parent
   = foldr (insertModWith f) parent children
 
 
-unionModWith :: (Mod x -> Mod x -> Mod x) -> (MScope x -> MScope x -> MScope x) -> Mod x -> Mod x -> Mod x
+unionModWith :: (Mod -> Mod -> Mod) -> (MScope -> MScope -> MScope) -> Mod -> Mod -> Mod
 unionModWith f g m1 m2
   = Mod { _modName = m1^.modName
         , _modSubs = Map.unionWith f (m1^.modSubs) (m2^.modSubs)
@@ -920,7 +551,7 @@ unionModWith f g m1 m2
         }
 
 
-instance Default (Mod x) where
+instance Default Mod where
     def
       = Mod { _modName = "root"
             , _modSubs = Map.empty
@@ -928,7 +559,7 @@ instance Default (Mod x) where
             }
 
 
-instance Monoid (XMScope x) => Monoid (Mod x) where
+instance Monoid Mod where
     mempty = def
 
     mappend m1 m2
@@ -945,15 +576,15 @@ instance Monoid (XMScope x) => Monoid (Mod x) where
         = mappend m2 . mappend m1 $ mempty
 
 
-instance Monoid (XMScope x) => Default (MScope x) where
+instance Default MScope where
     def = mempty
 
-instance Monoid (XMScope x) => Monoid (MScope x) where
+instance Monoid MScope where
     mempty 
       = MScope { _mscopePath      = []
                , _mscopeTabs      = mempty
                , _mscopeItems     = []
-               , _mscopeX         = mempty
+               , _mscopeToks      = []
                }
     
     mappend ms1 ms2
@@ -963,7 +594,7 @@ instance Monoid (XMScope x) => Monoid (MScope x) where
       | otherwise
           = ms1 { _mscopeTabs  = mappend (ms1^.mscopeTabs) (ms2^.mscopeTabs)
                 , _mscopeItems = mappend (ms1^.mscopeItems) (ms2^.mscopeItems)
-                , _mscopeX     = mappend (ms1^.mscopeX) (ms2^.mscopeX)
+                , _mscopeToks  = mappend (ms1^.mscopeToks) (ms2^.mscopeToks)
                 }
 
 instance Default MScopeTables where

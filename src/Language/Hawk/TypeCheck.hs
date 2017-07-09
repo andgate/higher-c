@@ -234,85 +234,97 @@ inferExp :: ( MonadState s m, HasInferState s
             , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
             , MonadIO m
             )
-         => TypeEnv -> ExpRn -> m (ExpTc, Subst, Type)
-inferExp env@(TypeEnv envMap) = \case
-  ELit loc lit -> do
+         => TypeEnv -> Exp Var -> m (Exp Var, Subst, Type)
+inferExp env = \case
+  ELoc loc e -> inferExpLoc env loc e
+  _ -> error "Built-in expression encountered!"
+
+inferExpLoc :: ( MonadState s m, HasInferState s
+            , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
+            , MonadIO m
+            )
+         => TypeEnv -> Location -> Exp Var -> m (Exp Var, Subst, Type)
+inferExpLoc env@(TypeEnv envMap) loc = \case
+  ELit lit -> do
     (s, t) <- inferLit lit
-    return (ELit (t, loc) lit, s, t)
+    return (EType t $ ELoc loc $ ELit lit, s, t)
 
-  EVar loc n ->
+  EVar n ->
     case Map.lookup n envMap of
-      Nothing -> discloseNow (_UnboundVariable # (n, fromJust loc)) -- should always have location, but possible error
+      Nothing -> discloseNow (_UnboundVariable # (n, loc))
       Just sigma -> do  t <- instantiate sigma
-                        return (EVar (t, loc) n, nullSubst, t)
+                        return (EType t $ ELoc loc $ EVar n, nullSubst, t)
 
-  ECon loc con@(Con n) ->
+  ECon con@(Con n) ->
     case Map.lookup (Var n) envMap of
-      Nothing -> discloseNow (_UnboundConstructor # (con, fromJust loc)) -- should always have location, but possible error
+      Nothing -> discloseNow (_UnboundConstructor # (con, loc))
       Just sigma -> do  t <- instantiate sigma
-                        return (ECon (t, loc) con, nullSubst, t)
+                        return (EType t $ ELoc loc $ ECon con, nullSubst, t)
 
-  EPrim loc instr -> do
+  EPrim instr -> do
     (s, t) <- inferInstr instr
-    return (EPrim (t, loc) instr, s, t)
+    return (EType t $ ELoc loc $ EPrim instr, s, t)
 
-  EApp loc a b -> do
+  EApp a b -> do
     tv <- newTVar "a"
     (a', s1, t1) <- inferExp env a
     (b', s2, t2) <- inferExp (apply s1 env) b
     s3 <- unify (apply s2 t1, TFun t2 tv)
     let s' = s3 `composeSubst` s2 `composeSubst` s1
         t' = apply s3 tv
-        e' = EApp (t',loc) a' b' 
+        e' = EType t' $ ELoc loc $ EApp a' b' 
     return (e', s', t')
 
-  ELam loc n e -> do
+  -- Temporarily disabled while I work out bound scoping
+  {-
+  ELam s -> do
     tv <- newTVar "a"
     let TypeEnv env' = remove env n
         env'' = TypeEnv $ env' `Map.union` Map.singleton n (Scheme [] tv)
     (e', s, t) <- inferExp env'' e
     let t' = TFun (apply s tv) t
-    return (ELam (t', loc) n e', s, t')
+    return (EType t' $ ELoc loc $ ELam n e', s, t')
+  -}
 
-  EIf loc p e1 e2 -> do
+  EIf p e1 e2 -> do
     (p', s1, t1) <- inferExp env p
     (e1', s2, t2) <- inferExp env e1
     (e2', s3, t3) <- inferExp env e2
     s4 <- unify (t1, TCon . Con $ "Bool")
     s5 <- unify (t2, t3)
-    let e' = EIf (t3, loc) p' e1' e2'
+    let e' = EType t3 $ ELoc loc $ EIf p' e1' e2'
         s' = s5 `composeSubst` s4 `composeSubst` s3 `composeSubst` s2 `composeSubst` s1
     return (e', s', t3)
     
 
-  ELet loc n e1 e2 -> do
+  ELet n e1 e2 -> do
     (e1', s1, t1) <- inferExp env e1
     let TypeEnv env' = remove env n
         t' = generalize (apply s1 env) t1
         env'' = TypeEnv (Map.insert n t' env')
     (e2', s2, t2) <- inferExp (apply s1 env'') e2
-    let e' = ELet (t2, loc) n e1' e2'
+    let e' = EType t2 $ ELoc loc $ ELet n e1' e2'
         s' = s1 `composeSubst` s2
     return (e', s', t2)
 
-  EDup loc e -> do
+  EDup e -> do
     (e', s, t) <- inferExp env e
-    return (EDup (t, loc) e', s, t)
+    return (EType t $ ELoc loc $ EDup e', s, t)
 
-  EDrop loc v e -> do
+  EDrop v e -> do
     (e', s, t) <- inferExp env e
-    return (EDrop (t, loc) v e', s, t)
+    return (EType t $ ELoc loc $ EDrop v e', s, t)
 
-  ETypeHint loc e t1 -> do
+  EType t1 e -> do
     (e', s1, t2) <- inferExp env e
     s2 <- unify (t1, t2)
-    return (ETypeHint (t1, loc) e' t1, s2 `composeSubst` s1, t1)
+    return (ELoc loc $ EType t1 e', s2 `composeSubst` s1, t1)
 
-  Exp _ -> error "Expression extension is not supported by typechecker." -- Not handled, should be impossible
+  e -> error ("Expression extension is not supported by typechecker." ++ show e) -- Not handled, should be impossible
 
 
 infer' :: (MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e, MonadIO m)
-       => Map.Map Var Scheme -> ExpRn -> m (ExpTc, Type)
+       => Map.Map Var Scheme -> Exp Var -> m (Exp Var, Type)
 infer' env e = do
   (e', s, t) <- evalInferT . inferExp (TypeEnv env) $ e
   return (e', apply s t)

@@ -6,7 +6,7 @@ mod Hawk.Example.Fib
 foreign ccall "printd" printd : Double -> ()
 
 
-infixr 6 * /
+infixr 4 * /
 infixr 5 + -
 
 -- Define a fibonacci function

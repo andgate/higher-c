@@ -51,10 +51,13 @@ library:
     - array
     - base
     - binary
+    - bound
+    - bytes
     - bytestring
     - containers
     - data-default-class
     - data-default-instances-text
+    - deriving-compat
     - directory
     - edit-distance
     - exceptions
@@ -72,6 +75,7 @@ library:
     - mono-traversable
     - mtl
     - primitive
+    - reducers
     - resourcet
     - safe
     - streaming-commons
@@ -118,6 +122,8 @@ library:
     - Language.Hawk.Parse.Module
 
     - Language.Hawk.Syntax
+    - Language.Hawk.Syntax.Expression
+    - Language.Hawk.Syntax.Extensions
     - Language.Hawk.Syntax.Location
     - Language.Hawk.Syntax.Name
     - Language.Hawk.Syntax.Pass
