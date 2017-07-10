@@ -275,16 +275,15 @@ inferExpLoc env@(TypeEnv envMap) loc = \case
         e' = EType t' $ ELoc loc $ EApp a' b' 
     return (e', s', t')
 
-  -- Temporarily disabled while I work out bound scoping
-  {-
-  ELam s -> do
+
+  ELam n e -> do
     tv <- newTVar "a"
     let TypeEnv env' = remove env n
         env'' = TypeEnv $ env' `Map.union` Map.singleton n (Scheme [] tv)
     (e', s, t) <- inferExp env'' e
     let t' = TFun (apply s tv) t
     return (EType t' $ ELoc loc $ ELam n e', s, t')
-  -}
+
 
   EIf p e1 e2 -> do
     (p', s1, t1) <- inferExp env p
@@ -295,15 +294,15 @@ inferExpLoc env@(TypeEnv envMap) loc = \case
     let e' = EType t3 $ ELoc loc $ EIf p' e1' e2'
         s' = s5 `composeSubst` s4 `composeSubst` s3 `composeSubst` s2 `composeSubst` s1
     return (e', s', t3)
-    
 
-  ELet n e1 e2 -> do
+    
+  ELet (n, e1) e2 -> do
     (e1', s1, t1) <- inferExp env e1
     let TypeEnv env' = remove env n
         t' = generalize (apply s1 env) t1
         env'' = TypeEnv (Map.insert n t' env')
     (e2', s2, t2) <- inferExp (apply s1 env'') e2
-    let e' = EType t2 $ ELoc loc $ ELet n e1' e2'
+    let e' = EType t2 $ ELoc loc $ ELet (n, e1') e2'
         s' = s1 `composeSubst` s2
     return (e', s', t2)
 
@@ -311,9 +310,9 @@ inferExpLoc env@(TypeEnv envMap) loc = \case
     (e', s, t) <- inferExp env e
     return (EType t $ ELoc loc $ EDup e', s, t)
 
-  EDrop v e -> do
+  EFree v e -> do
     (e', s, t) <- inferExp env e
-    return (EType t $ ELoc loc $ EDrop v e', s, t)
+    return (EType t $ ELoc loc $ EFree v e', s, t)
 
   EType t1 e -> do
     (e', s1, t2) <- inferExp env e

@@ -94,6 +94,8 @@ hawk :-
   \\                              { rsvp }
   \@                              { rsvp }
 
+  "noconsume"                     { rsvp }
+
   "expose"                        { rsvp }
   "foreign"                       { rsvp }
   "ccall"                         { rsvp }
@@ -104,21 +106,16 @@ hawk :-
 
   "mod"                           { rsvp }
 
-  "vow"                           { rsvp }
-  "var"                           { rsvp }
-  "val"                           { rsvp }
-  "ref"                           { rsvp }
-  "fun"                           { rsvp }
-  "sig"                           { rsvp }
-
+  "type"                          { rsvp }
+  "alias"                         { rsvp }
+  "data"                          { rsvp }
   "class"                         { rsvp }
   "inst"                          { rsvp }
-  "type"                          { rsvp }
-  "newtype"                       { rsvp }
-  "data"                          { rsvp }
 
   "do"                            { rsvp }
   "where"                         { rsvp }
+  "free"                          { rsvp }
+  "so"                            { rsvp }
 
   "if"                            { rsvp }
   "then"                          { rsvp }

@@ -122,6 +122,16 @@ emitPat (Hk.Pat name, ty)
           name' = AST.Name (t2sbs name)
 
 
+emitPatBind :: (MonadState s m, HasLLVMState s)
+        => (Hk.Var, Hk.Exp Hk.Var) -> m ()
+emitPatBind (Hk.Var n, (Hk.ETLit t e)) = do
+  let t' = emitTypeLit t
+      n' = AST.Name (t2sbs n)
+  i <- alloca t'
+  v <- emitExp e
+  store t' i v
+  assignVar n' i
+
 emitExp :: (MonadState s m, HasLLVMState s)
         => Hk.Exp Hk.Var -> m AST.Operand
 emitExp = \case
@@ -131,13 +141,9 @@ emitExp = \case
   Hk.ETLit ty (Hk.EVar (Hk.Var n)) ->
     getvar (t2sbs n) >>= load (emitTypeLit ty) >>= setVal
 
-  Hk.ETLit ty (Hk.ELet (Hk.Var n) lhs e) -> do
-    let ty' = emitTypeLit ty
-        n'  = AST.Name (t2sbs n)
-    i <- alloca ty'
-    val <- emitExp lhs
-    store ty' i val
-    assignVar n' i
+
+  Hk.ETLit _ (Hk.ELet bs e) -> do
+    emitPatBind bs
     emitExp e
 
 
@@ -183,7 +189,7 @@ emitExp = \case
 
 
 
-  Hk.ELam _ -> error "Lamba expression not lifted"
+  Hk.ELam _ _ -> error "Lamba expression not lifted"
 
   Hk.EPrim _ -> error "Prim operation not implemented"
 
