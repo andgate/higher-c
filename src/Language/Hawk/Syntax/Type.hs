@@ -1,7 +1,8 @@
-{-# LANGUAGE LambdaCase, DeriveGeneric, OverloadedStrings #-}
+{-# LANGUAGE LambdaCase, DeriveGeneric, DeriveDataTypeable, OverloadedStrings #-}
 module Language.Hawk.Syntax.Type where
 
 import Data.Binary
+import Data.Data
 import Data.Default.Class
 import Data.Text
 import GHC.Generics (Generic)
@@ -17,7 +18,7 @@ data Type
   = TCon Con
   | TVar TVar
   | TFun Type Type
-  deriving (Show, Read, Eq, Ord, Generic)
+  deriving (Show, Read, Eq, Ord, Data, Typeable, Generic)
 
 -- -----------------------------------------------------------------------------
 -- | Instances

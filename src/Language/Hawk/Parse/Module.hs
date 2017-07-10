@@ -23,21 +23,21 @@ import qualified Data.Set                   as Set
 
 -- Items that this parser will produce and store in the top-level module
 data ModItem
-  = SubMod Mod 
+  = SubMod SrcMod 
   | ModDep Dependency
   | OpDec [Operator]
   | UnparsedItem [Token]
 
 
 
-modP :: MonadParser m => FilePath -> m Mod
+modP :: MonadParser m => FilePath -> m SrcMod
 modP fp =
   mkMod fp <$> linefold modHeader
            <*> linefolds (modItem fp)
 
 
 subModP :: MonadParser m
-        => FilePath -> m Mod
+        => FilePath -> m SrcMod
 subModP fp =
   mkMod fp <$> modHeader
            <*> subModBody fp
@@ -74,7 +74,7 @@ infixDecN = do
   P.try $ rsvp "infix"
   p <- integerP
   checkFixity p
-  ops <- some opNameP
+  ops <- some anyOpNameP
   return $ map (Op InfixN p) ops
 
 
@@ -84,7 +84,7 @@ infixDecL = do
   P.try $ rsvp "infixl"
   p <- integerP
   checkFixity p
-  ops <- some opNameP
+  ops <- some anyOpNameP
   return $ map (Op InfixL p) ops
 
 infixDecR :: MonadParser m
@@ -93,7 +93,7 @@ infixDecR = do
   P.try $ rsvp "infixr"
   p <- integerP
   checkFixity p
-  ops <- some opNameP
+  ops <- some anyOpNameP
   return $ map (Op InfixR p) ops
 
 
@@ -107,11 +107,11 @@ checkFixity x
 
 modPath :: MonadParser m => m [Text]
 modPath =
-  modPath' <|> (pure <$> modId)
+  modPath' <|> (pure <$> anyModId)
 
 modPath' :: MonadParser m => m [Text]
 modPath' =
-  (:) <$> modId <*> modPathNext
+  (:) <$> anyModId <*> modPathNext
 
 modPathNext :: MonadParser m => m [Text]
 modPathNext =
@@ -123,7 +123,7 @@ modPathNext =
 -- | Module Specific Helpers
 
 -- Extraction -----------------------------------------------------------------
-extractSubs :: [ModItem] -> [Mod]
+extractSubs :: [ModItem] -> [SrcMod]
 extractSubs = foldr extract []
   where extract (SubMod m) ms = m:ms
         extract _ ms = ms
@@ -155,7 +155,7 @@ mkOpTable ops
 -- Super Duper Smart Constructor --------------------------------------------
 
 -- Another example of why I need custom MegaParsec errors!!
-mkMod :: FilePath -> [Text] -> [ModItem] -> Mod
+mkMod :: FilePath -> [Text] -> [ModItem] -> SrcMod
 mkMod fp [] _ = error "Cannot make empty module!"
 mkMod fp [n] xs
   = insertModsWith mappend subs m
@@ -165,7 +165,7 @@ mkMod fp [n] xs
     ops = mkOpTable $ extractOps xs
     toks = extractToks xs
 
-    m = Mod { _modName = n
+    m = SrcMod { _modName = n
             , _modSubs = mempty
             , _modScopes = Map.singleton (pack fp) ms
             }
@@ -179,7 +179,7 @@ mkMod fp [n] xs
     mstabs = def { _mscopeOps = ops, _mscopeDeps = deps }
 
 mkMod fp (n:ns) xs
-  = Mod { _modName   = n
+  = SrcMod { _modName   = n
         , _modSubs   = Map.singleton (head ns) (mkMod fp ns xs)
         , _modScopes = mempty
         }

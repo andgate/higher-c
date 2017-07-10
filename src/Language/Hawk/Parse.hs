@@ -16,10 +16,15 @@
             , GeneralizedNewtypeDeriving
             , FlexibleInstances
             , MultiParamTypeClasses
+            , TupleSections
+            , LambdaCase
   #-}
 module Language.Hawk.Parse where
 
 import Control.Lens
+import Control.Lens.Internal.Zoom
+import Control.Monad (mapM)
+import Control.Monad.State (MonadState)
 import Control.Monad.Identity (runIdentity)
 import Control.Monad.Log
 import Control.Monad.Chronicle
@@ -27,12 +32,13 @@ import Control.Monad.Chronicle.Extra
 import Data.Bag
 import Data.Default.Class
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Foldable
 import Data.Set (Set)
 import Data.Text (Text, pack)
 import Text.PrettyPrint.Leijen.Text (pretty)
 
 import Language.Hawk.Parse.Error
-import Language.Hawk.Parse.Helpers ()
+import Language.Hawk.Parse.Helpers (ParserOpTable, mkParserOpTable)
 import Language.Hawk.Parse.Item
 import Language.Hawk.Parse.Item.Monad
 import Language.Hawk.Parse.Item.Types
@@ -48,16 +54,49 @@ import qualified Text.Megaparsec.Prim   as P
 import qualified Text.Megaparsec.Error  as P
 
 
+parse :: ( MonadState s m, HasSrcMod s
+         , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
+         , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
+         , MonadIO m
+         )
+         => [(FilePath, [Token])] -> m ()
+parse xs = do 
+  -- m is unparsed
+  mapM_ parseMod xs
+  -- handle operator imports here
+  -- Traverse each module scope, generate an op table
+  -- parse each module scope's items, and then produce
+  -- a new module scope using the generated items
+  m <- use srcMod
+  srcMod <~ transformM parseModItems m
+  
+  where
+    parseModItems m = do
+      let scopes = m ^. modScopes
+      scopes' <- mapM parseMScopeItems scopes
+      return (m & modScopes .~ scopes')
+
+    parseMScopeItems s = do
+      let fp    = s^.mscopePath
+          ops   = mkParserOpTable (s^.mscopeOps)
+          toks  = s^.mscopeToks
+      items <- mapM (parseItem fp ops) toks
+      return (s & mscopeItems .~ items)
+
+
 -- -----------------------------------------------------------------------------
 -- Module Parsing
+-- | Parses module structurre, fills it with unparsed items,
+-- | and builds operator sets.
 
-parseMod :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
-             , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
-             , MonadIO m
-             )
-         => (FilePath, [Token]) -> m Mod
+parseMod :: ( MonadState s m, HasSrcMod s
+            , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
+            , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
+            , MonadIO m
+            )
+         => (FilePath, [Token]) -> m ()
 parseMod (fp, ts)
-  = either (handleParseError fp) handleSuccess result
+  = (srcMod <>=) =<< either (handleParseError fp) handleSuccess result
   where
     result = P.runParser (modP fp) fp ts
     
@@ -67,18 +106,17 @@ parseMod (fp, ts)
           return m
 
 -- -----------------------------------------------------------------------------
--- Definition Parsing
+-- Item Parsing
 
-parseDef :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
+parseItem :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
              , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
              , MonadIO m
              )
-         => (GlobalInfo, [Token]) -> m Item
-parseDef (g, ts)
+         => FilePath -> ParserOpTable -> [Token] -> m Item
+parseItem fp ops ts
   = either (handleParseError fp) handleSuccess result
   where
-    fp = g^.gFilePath
-    result = runIdentity $ runItemParserT itemP g ts
+    result = runIdentity $ runItemParserT itemP fp ops ts
     
     handleSuccess m
       = do

@@ -3,11 +3,13 @@
             , DeriveGeneric
             , OverloadedStrings
             , TemplateHaskell
+            , DeriveDataTypeable
   #-}
 module Language.Hawk.Syntax.Location where
 
 import Control.Lens
 import Data.Binary
+import Data.Data
 import Data.Text (pack)
 import GHC.Generics (Generic)
 import Text.PrettyPrint.Leijen.Text ((<>))
@@ -20,7 +22,7 @@ data Location
     { _locPath  :: !FilePath
     , _locReg   :: {-# UNPACK #-} !Region 
     }
-    deriving (Eq, Ord, Read, Show, Generic)
+    deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
 
 
 data Region
@@ -28,7 +30,7 @@ data Region
     { _regStart :: {-# UNPACK #-} !Position
     , _regEnd   :: {-# UNPACK #-} !Position
     }
-    deriving (Eq, Ord, Read, Show, Generic)
+    deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
 
 
 data Position
@@ -36,7 +38,7 @@ data Position
     { _posLine    :: {-# UNPACK #-} !Int
     , _posColumn  :: {-# UNPACK #-} !Int
     }
-    deriving (Eq, Ord, Read, Show, Generic)
+    deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
 
 makeClassy ''Location
 makeClassy ''Region

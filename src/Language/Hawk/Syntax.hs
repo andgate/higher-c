@@ -14,6 +14,7 @@
            , UndecidableInstances
            , TemplateHaskell
            , LambdaCase
+           , DeriveDataTypeable
   #-}
 module Language.Hawk.Syntax
   ( module Language.Hawk.Syntax
@@ -27,13 +28,15 @@ module Language.Hawk.Syntax
   , module Language.Hawk.Syntax.TypeLiteral
   ) where
 
+import Control.Lens
 import Data.Binary
+import Data.Data hiding (Fixity, DataType)
+import Data.Data.Lens (uniplate)
 import Data.Default.Class
 import Data.Either
 import Data.Map.Strict (Map)
 import Data.Set (Set)
 import Data.Text (Text, pack)
-import Control.Lens
 import GHC.Types (Constraint)
 import GHC.Generics (Generic)
 import Language.Hawk.Parse.Lexer.Token
@@ -59,13 +62,14 @@ import qualified Data.Set                     as Set
 -- -----------------------------------------------------------------------------
 -- | Module
 
-data Mod =
-  Mod
+data SrcMod =
+  SrcMod
     { _modName :: Text
-    , _modSubs :: Map Text Mod
+    , _modSubs :: Map Text SrcMod
     , _modScopes :: Map Text MScope
-    } deriving (Show, Eq, Generic)
+    } deriving (Show, Eq, Data, Typeable, Generic)
 
+instance Plated SrcMod
 
 -- -----------------------------------------------------------------------------
 -- | Module Scope
@@ -76,7 +80,7 @@ data MScope =
    , _mscopeTabs      :: MScopeTables
    , _mscopeItems     :: [Item]
    , _mscopeToks      :: [[Token]]
-   } deriving (Show, Eq, Generic)
+   } deriving (Show, Eq, Data, Typeable, Generic)
 
 
 data MScopeTables
@@ -85,20 +89,25 @@ data MScopeTables
     , _mscopeVars   :: Set Var
     , _mscopeCons   :: Set Con
     , _mscopeTCons  :: Set Con
-    , _mscopeOps    :: Map OpName Operator
-    } deriving (Show, Eq, Generic)
+    , _mscopeOps    :: OpTable
+    } deriving (Show, Eq, Data, Typeable, Generic)
 
 -- -----------------------------------------------------------------------------
 -- | Operator
 
+type OpTable = Map OpName Operator
+
 data OpName = OpName Text
-  deriving (Show, Eq, Ord, Generic)
+  deriving (Show, Eq, Ord, Data, Typeable, Generic)
 
 data Operator
   = Op { _opFixity :: Fixity
        , _opPrec :: Integer
        , _opName :: OpName
-       } deriving (Show, Eq, Generic)
+       } deriving (Show, Eq, Data, Typeable, Generic)
+
+instance Ord Operator where
+    compare a b = compare (_opPrec a) (_opPrec b)
 
 data Fixity
   = InfixN
@@ -106,7 +115,7 @@ data Fixity
   | InfixR
   | Prefix
   | Postfix
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq, Data, Typeable, Generic)
 
 -- -----------------------------------------------------------------------------
 -- | Item
@@ -123,7 +132,7 @@ data Item
   
   | DataItem DataType
   | EmptyItem
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq, Data, Typeable, Generic)
 
 instance Default Item where
     def = EmptyItem
@@ -137,7 +146,7 @@ data Dependency =
     { _depIsQual  :: Bool
     , _depPath    :: DepPath
     , _depAlias   :: Maybe Text
-    } deriving (Eq, Show, Generic)
+    } deriving (Eq, Show, Data, Typeable, Generic)
 
 
 -- -----------------------------------------------------------------------------
@@ -150,7 +159,7 @@ data DepPath =
     { _depSpecIsHidden  :: Bool
     , _depSpecfiers     :: [DepPath]
     }
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Data, Typeable, Generic)
 
 
 -- -----------------------------------------------------------------------------
@@ -158,12 +167,12 @@ data DepPath =
 
 data Foreign =
   Foreign ForeignType Text Dec
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq, Data, Typeable, Generic)
 
 
 data ForeignType =
   ForeignC
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Data, Typeable, Generic)
 
 
 -- -----------------------------------------------------------------------------
@@ -171,7 +180,7 @@ data ForeignType =
 
 data Expose =
   Expose Name
-  deriving(Show, Eq, Generic)
+  deriving(Show, Eq, Data, Typeable, Generic)
 
 
 -- -----------------------------------------------------------------------------
@@ -181,7 +190,7 @@ data Dec
   = Dec
     { _decName :: Name
     , _decType :: Type
-    } deriving (Show, Eq, Generic)
+    } deriving (Show, Eq, Data, Typeable, Generic)
 
 
 -- -----------------------------------------------------------------------------
@@ -192,7 +201,7 @@ data Def
     { _defName  :: Name
     , _defPats  :: [Pat]
     , _defBody  :: Exp Var
-    } deriving (Show, Eq, Generic)
+    } deriving (Show, Eq, Data, Typeable, Generic)
 
 
 -- -----------------------------------------------------------------------------
@@ -201,7 +210,7 @@ data Def
 data Pat
   = Pat
     { _patName  :: Text
-    } deriving (Show, Eq, Generic)
+    } deriving (Show, Eq, Data, Typeable, Generic)
 
 -- -----------------------------------------------------------------------------
 -- | New Type
@@ -210,7 +219,7 @@ data NewType
   = NewType
     { _newTyName     :: Name
     , _newTyNewBody  :: Type
-    } deriving (Show, Eq, Generic)
+    } deriving (Show, Eq, Data, Typeable, Generic)
 
 
 -- -----------------------------------------------------------------------------
@@ -220,7 +229,7 @@ data TypeAlias
     = TypeAlias
       { _tyAliasName   :: Name
       , _tyAliasBody   :: Type
-      } deriving (Show, Eq, Generic)
+      } deriving (Show, Eq, Data, Typeable, Generic)
 
 
 -- -----------------------------------------------------------------------------
@@ -230,7 +239,7 @@ data DataType
     = DataType
       { _dataTyName :: Name
       , _dataTyBody :: [Dec]
-      } deriving (Show, Eq, Generic)
+      } deriving (Show, Eq, Data, Typeable, Generic)
 
 
 -- -----------------------------------------------------------------------------
@@ -238,10 +247,13 @@ data DataType
 
 makeLenses ''Name
 makeLenses ''Def
-makeLenses ''Mod
-makeLenses ''MScope
-makeLenses ''MScopeTables
+makeClassy ''SrcMod
+makeClassy ''MScope
+makeClassy ''MScopeTables
 makeLenses ''Operator
+
+instance HasMScopeTables MScope where
+  mScopeTables = mscopeTabs
 
 -- -----------------------------------------------------------------------------
 -- | Pretty Printing Instances
@@ -256,7 +268,7 @@ instance (PP.Pretty l, PP.Pretty r) => PP.Pretty (Either l r) where
 
 
 -- Module ------------------------------------------------------------------------
-instance PP.Pretty Mod where
+instance PP.Pretty SrcMod where
     pretty m =
       PP.textStrict "Module:" PP.<+> PP.textStrict (m^.modName)
       PP.<$>
@@ -332,6 +344,9 @@ instance PP.Pretty Item where
 
     pretty (DataItem i) =
       PP.pretty i
+
+    pretty (EmptyItem) =
+      PP.textStrict "Empty Item"
 
 
 -- Dependency ------------------------------------------------------------------
@@ -468,7 +483,7 @@ instance PP.Pretty DataType where
 -- | Binary Instances
 
 -- Module -----------------------------------------------------------------------
-instance Binary Mod
+instance Binary SrcMod
 
 -- MScope -----------------------------------------------------------------------
 instance Binary MScope
@@ -532,34 +547,34 @@ instance Binary DataType
 
 -- Module ---------------------------------------------------------------------
 
-insertModWith :: (Mod -> Mod -> Mod) -> Mod -> Mod -> Mod
+insertModWith :: (SrcMod -> SrcMod -> SrcMod) -> SrcMod -> SrcMod -> SrcMod
 insertModWith f child parent
   = parent & modSubs .~ Map.insertWith f (child^.modName) child (parent^.modSubs)
 
 
-insertModsWith :: (Mod -> Mod -> Mod) -> [Mod] -> Mod -> Mod
+insertModsWith :: (SrcMod -> SrcMod -> SrcMod) -> [SrcMod] -> SrcMod -> SrcMod
 insertModsWith _ [] m = m
 insertModsWith f children parent
   = foldr (insertModWith f) parent children
 
 
-unionModWith :: (Mod -> Mod -> Mod) -> (MScope -> MScope -> MScope) -> Mod -> Mod -> Mod
+unionModWith :: (SrcMod -> SrcMod -> SrcMod) -> (MScope -> MScope -> MScope) -> SrcMod -> SrcMod -> SrcMod
 unionModWith f g m1 m2
-  = Mod { _modName = m1^.modName
+  = SrcMod { _modName = m1^.modName
         , _modSubs = Map.unionWith f (m1^.modSubs) (m2^.modSubs)
         , _modScopes = Map.unionWith g (m1^.modScopes) (m2^.modScopes)
         }
 
 
-instance Default Mod where
+instance Default SrcMod where
     def
-      = Mod { _modName = "root"
+      = SrcMod { _modName = "root"
             , _modSubs = Map.empty
             , _modScopes = Map.empty
             }
 
 
-instance Monoid Mod where
+instance Monoid SrcMod where
     mempty = def
 
     mappend m1 m2

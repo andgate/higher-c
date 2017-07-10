@@ -1,7 +1,8 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, DeriveDataTypeable #-}
 module Language.Hawk.Syntax.TypeLiteral where
 
 import Data.Binary
+import Data.Data
 import Data.Text (pack)
 import GHC.Generics (Generic)
 
@@ -19,7 +20,7 @@ data TLit
   | TLitBool
   | TLitData Con
   | TLitFun [TLit] TLit
-  deriving (Show, Read, Eq, Ord, Generic)
+  deriving (Show, Read, Eq, Ord, Data, Typeable, Generic)
 
 
 instance Binary TLit

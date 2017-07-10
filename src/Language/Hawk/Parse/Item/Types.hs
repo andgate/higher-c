@@ -1,36 +1,20 @@
 {-# LANGUAGE  TemplateHaskell
+            , RankNTypes
   #-}
 module Language.Hawk.Parse.Item.Types where
 
 import Control.Lens
 import Data.Default.Class
 import Data.Map (Map)
-import Data.Set (Set)
 import Language.Hawk.Syntax
+import Language.Hawk.Parse.Helpers (ParserOpTable)
 
-import qualified Data.Map                   as Map
-import qualified Data.Set                   as Set
-
+import qualified Text.Megaparsec.Expr as P
 
 data GlobalInfo
   = GlobalInfo
       { _gFilePath :: FilePath
-      , _gOps   :: Map OpName Operator
-      , _gTOps  :: Map OpName Operator
-      , _gVars  :: Set Var
-      , _gCons  :: Set Con
+      , _gOps      :: ParserOpTable
       }
-
-data LocalState
-  = LocalState
-      { _localVars  :: Set Var
-      }
-
-instance Default LocalState where
-    def =
-      LocalState
-        { _localVars = Set.empty }
-
 
 makeClassy ''GlobalInfo
-makeClassy ''LocalState

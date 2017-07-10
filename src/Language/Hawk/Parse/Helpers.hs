@@ -4,22 +4,25 @@
             , FlexibleInstances
             , TypeFamilies
             , BangPatterns
+            , RankNTypes
   #-}
 module Language.Hawk.Parse.Helpers where
 
 import Control.Applicative
-import Control.Lens
+import Control.Lens hiding (op)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Text (Text)
-import Language.Hawk.Syntax (OpName (..))
+import Language.Hawk.Syntax (OpName (..), Exp (..), Var (..), mkOp, OpTable)
 import Language.Hawk.Parse.Lexer.Token
 
 import Text.Megaparsec.Prim (MonadParsec(..))
 
+import qualified Data.Map                   as Map
 import qualified Data.Set                   as Set
 import qualified Text.Megaparsec.Prim       as P
 import qualified Text.Megaparsec.Combinator as P
 import qualified Text.Megaparsec.Error      as P
+import qualified Text.Megaparsec.Expr       as P
 
 -- -----------------------------------------------------------------------------
 -- Parser Monad Class
@@ -80,6 +83,9 @@ op :: MonadParser m => Text -> m Token
 op
   = matchT . TokenOpId
 
+opId :: MonadParser m => Text -> m Text
+opId name
+  = (^.tokText) <$> op name
 
 -- -----------------------------------------------------------------------------
 -- Combinator Helpers
@@ -105,56 +111,56 @@ angleBrackets p
 -- Id Helpers
 
 -- Id Text
-varId :: MonadParser m => m Text
-varId = (^.tokText) <$> varT
+anyVarId :: MonadParser m => m Text
+anyVarId = (^.tokText) <$> anyVarT
 
-conId :: MonadParser m => m Text
-conId = modId <|> conId'
+anyConId :: MonadParser m => m Text
+anyConId = anyModId <|> anyConId'
 
-conId' :: MonadParser m => m Text
-conId' = (^.tokText) <$> conT
+anyConId' :: MonadParser m => m Text
+anyConId' = (^.tokText) <$> anyConT
 
-modId :: MonadParser m => m Text
-modId = (^.tokText) <$> modT
+anyModId :: MonadParser m => m Text
+anyModId = (^.tokText) <$> anyModT
 
-opId :: MonadParser m => m Text
-opId = (^.tokText) <$> opT
+anyOpId :: MonadParser m => m Text
+anyOpId = (^.tokText) <$> anyOpT
 
 
 
 -- Id tokens
-varT :: MonadParser m => m Token
-varT
+anyVarT :: MonadParser m => m Token
+anyVarT
   = satisfyT $ \t ->
       case t^.tokClass of
         TokenVarId _  -> True
         _             -> False
 
-conT :: MonadParser m => m Token
-conT
+anyConT :: MonadParser m => m Token
+anyConT
   = satisfyT $ \t ->
       case t^.tokClass of
         TokenConId _  -> True
         _             -> False
 
-modT :: MonadParser m => m Token
-modT
+anyModT :: MonadParser m => m Token
+anyModT
   = satisfyT $ \t ->
       case t^.tokClass of
         TokenModId _  -> True
         _             -> False
 
 
-opT :: MonadParser m => m Token
-opT
+anyOpT :: MonadParser m => m Token
+anyOpT
   = satisfyT $ \t ->
       case t^.tokClass of
         TokenOpId _  -> True
         _             -> False
 
-{-# INLINE opNameP #-}
-opNameP :: MonadParser m => m OpName
-opNameP
+{-# INLINE anyOpNameP #-}
+anyOpNameP :: MonadParser m => m OpName
+anyOpNameP
   = P.token testTok Nothing
   where
     {-# INLINE testTok #-}
@@ -244,3 +250,34 @@ anyBlock = do
   ts <- anyLayout
   t2 <- blk'
   return $ t1:(ts ++ [t2])
+
+
+-- -----------------------------------------------------------------------------
+-- Operator Helpers
+
+infixN :: MonadParser m => Text -> P.Operator m (Exp Var)
+infixN name
+  = P.InfixN (mkOp <$> opId name)
+
+infixL :: MonadParser m => Text -> P.Operator m (Exp Var)
+infixL name
+  = P.InfixL (mkOp <$> opId name)
+
+infixR :: MonadParser m => Text -> P.Operator m (Exp Var)
+infixR name
+  = P.InfixR (mkOp <$> opId name)
+
+prefix :: MonadParser m => Text -> P.Operator m (Exp Var)
+prefix name
+  = P.Prefix (EApp . EVar . Var <$> opId name)
+
+
+postfix :: MonadParser m => Text -> P.Operator m (Exp Var)
+postfix name
+  = P.Postfix (EApp . EVar . Var <$> opId name)
+
+newtype ParserOpTable = ParserOpTable { table :: forall m. MonadParser m => [[P.Operator m (Exp Var)]] }
+
+mkParserOpTable :: OpTable -> ParserOpTable
+mkParserOpTable ops = undefined
+ -- sortOn snd . Map.toList ops

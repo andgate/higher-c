@@ -8,7 +8,7 @@
   #-}
 module Language.Hawk.Compile.Monad where
 
-
+import Control.Lens
 import Control.Monad.Except
 import Control.Monad.Chronicle
 import Control.Monad.Chronicle.Extra ()
@@ -32,9 +32,10 @@ import System.IO
 
 -------------------------------------------------------------------------------
 -- Compiler Monad
-newtype Hkc a = Hkc { unHkc :: ReaderT HkcConfig (ChronicleT (Bag (WithTimestamp HkcErr)) (LoggingT (WithSeverity (WithTimestamp HkcMsg)) IO)) a }
+newtype Hkc a = Hkc { unHkc :: StateT HkcState (ReaderT HkcConfig (ChronicleT (Bag (WithTimestamp HkcErr)) (LoggingT (WithSeverity (WithTimestamp HkcMsg)) IO))) a }
     deriving
      ( Functor, Applicative, Monad
+     , MonadState HkcState
      , MonadReader  HkcConfig
      , MonadLog (WithSeverity (WithTimestamp HkcMsg))
      , MonadChronicle (Bag (WithTimestamp HkcErr))
@@ -50,7 +51,7 @@ runHkc m conf =
   void $
     withFDHandler defaultBatchingOptions stderr 0.4 80 $ \stderrHandler ->
     withFDHandler defaultBatchingOptions stdout 0.4 80 $ \stdoutHandler ->
-    runLoggingT (logErrors =<< runChronicleT (runReaderT (unHkc m) conf))
+    runLoggingT (logErrors =<< runChronicleT (runReaderT (evalStateT (unHkc m) def) conf))
                 (\msg ->
                     case msgSeverity msg of
                       Error -> stderrHandler $ renderWithTimestamp (formatTime defaultTimeLocale rfc822DateFormat)
@@ -81,7 +82,7 @@ logErrors =
 -- Helper instances
 
 instance MonadBaseControl IO Hkc where
-    type StM Hkc a = These (Bag (WithTimestamp HkcErr)) a
+    type StM Hkc a = These (Bag (WithTimestamp HkcErr)) (a, HkcState)
     liftBaseWith f = Hkc $ liftBaseWith $ \q -> f (q . unHkc)
     restoreM = Hkc . restoreM
     {-# INLINABLE liftBaseWith #-}

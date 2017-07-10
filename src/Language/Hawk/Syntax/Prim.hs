@@ -1,7 +1,10 @@
+{-# LANGUAGE DeriveGeneric, DeriveDataTypeable #-}
 module Language.Hawk.Syntax.Prim where
 
 import Data.Binary
+import Data.Data
 import Data.Text (pack)
+import GHC.Generics (Generic)
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
@@ -20,7 +23,7 @@ data PrimInstr
   | PrimUDiv
   | PrimSDiv
   | PrimFDiv
-  deriving (Read, Show, Eq, Ord, Enum)
+  deriving (Read, Show, Eq, Ord, Enum, Data, Typeable, Generic)
 
 
 intInstrs :: [PrimInstr]

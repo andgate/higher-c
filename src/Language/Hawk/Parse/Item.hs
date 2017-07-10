@@ -24,8 +24,7 @@ import qualified Text.Megaparsec.Combinator as P
 
 
 itemP :: ( MonadParser m
-         , MonadState s m, HasLocalState s
          , MonadReader i m, HasGlobalInfo i
          )
       => m Item
-itemP = undefined
+itemP = return EmptyItem

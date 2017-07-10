@@ -9,21 +9,14 @@
             , OverloadedStrings
             , LambdaCase
             , TemplateHaskell
+            , DeriveDataTypeable
   #-}
 module Language.Hawk.Syntax.Expression where
 
-import Bound
 import Data.Binary (Binary)
-import Data.Bytes.Get
-import Data.Bytes.Put
-import Data.Bytes.Serial
+import Data.Data
 import Data.Default.Class
-import Data.Deriving (deriveEq1, deriveOrd1, deriveRead1, deriveShow1) 
-import Data.List (elemIndex)
-import Data.Foldable hiding (notElem)
-import Data.Functor.Classes
-import Control.Applicative
-import Control.Monad
+import Data.Text
 import GHC.Generics (Generic)
 
 import Language.Hawk.Syntax.Extensions
@@ -57,7 +50,7 @@ data Exp b
   | EType Type (Exp b)
   | ETLit TLit (Exp b)
   | ELoc  Location (Exp b)
-  deriving(Functor, Foldable, Traversable)
+  deriving(Functor, Foldable, Traversable, Data, Typeable)
 
 -- -----------------------------------------------------------------------------
 -- | Instances
@@ -128,6 +121,9 @@ let_ bs b = ELet (map (abstr . snd) bs) (abstr b)
   where abstr = abstract (`elemIndex` map fst bs)
 
 -}
+
+mkOp :: Text -> Exp Var -> Exp Var -> Exp Var
+mkOp name lhs rhs = EApp (EApp (EVar (Var name)) (lhs)) (rhs)
 
 -- -----------------------------------------------------------------------------
 -- | Extension Instances

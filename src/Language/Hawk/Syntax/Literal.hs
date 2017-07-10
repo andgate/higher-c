@@ -1,7 +1,8 @@
-{-# LANGUAGE DeriveGeneric, LambdaCase #-}
+{-# LANGUAGE DeriveGeneric, DeriveDataTypeable, LambdaCase #-}
 module Language.Hawk.Syntax.Literal where
 
 import Data.Binary
+import Data.Data
 import GHC.Generics (Generic)
 import Text.PrettyPrint.Leijen.Text (Pretty (..), squotes)
 
@@ -13,7 +14,7 @@ data Lit
   | FloatLit Double
   | CharLit Char
   | BoolLit Bool
-  deriving (Show, Read, Eq, Ord, Generic)
+  deriving (Show, Read, Eq, Ord, Data, Typeable, Generic)
 
 
 instance Binary Lit

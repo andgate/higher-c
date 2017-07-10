@@ -1,28 +1,30 @@
 {-# LANGUAGE  DeriveGeneric
+            , DeriveDataTypeable
   #-}
 module Language.Hawk.Syntax.Name where
 
 import Data.Binary
 import Data.Text
+import Data.Data
 import GHC.Generics (Generic)
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
 data Name
   = Name Text
-  deriving (Eq, Ord, Read, Show, Generic)
+  deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
 
 data Var
   = Var Text
-  deriving (Eq, Ord, Read, Show, Generic)
+  deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
 
 data Con
   = Con Text
-  deriving (Eq, Ord, Read, Show, Generic)
+  deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
 
 data TVar
   = TypeVar Text
-  deriving (Eq, Ord, Read, Show, Generic)
+  deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
 
 
 

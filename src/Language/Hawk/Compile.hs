@@ -14,6 +14,7 @@ import Control.Monad.Chronicle
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Log
 import Control.Monad.Reader
+import Control.Monad.State (MonadState)
 import Control.Monad.Trans.Control
 import Data.Bag
 import Data.Foldable
@@ -21,6 +22,7 @@ import Data.Foldable
 import Language.Hawk.Load
 import Language.Hawk.Parse
 import Language.Hawk.Parse.Lexer
+import Language.Hawk.Syntax
 
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.Error
@@ -40,7 +42,8 @@ hkc :: HkcConfig -> IO ()
 hkc = runHkc compile
 
 compile
-  :: ( MonadReader c m , HasHkcConfig c
+  :: ( MonadState s m, HasHkcState s, HasSrcMod s
+     , MonadReader c m , HasHkcConfig c
      , MonadLog (WithSeverity (WithTimestamp msg)) m, AsHkcMsg msg, AsLoadMsg msg, AsParseMsg msg
      , MonadChronicle (Bag (WithTimestamp e)) m
      , AsHkcErr e, AsLoadErr e, AsParseErr e, AsNameCheckError e, AsTcErr e
@@ -50,8 +53,9 @@ compile
 compile = do
   load
     >>= mapM (return . lexer)
-    >>= condemn . mapM parseMod
-    >>= liftIO . print . pretty . fold
+    >>= condemn . parse
+    
+  liftIO . print . pretty =<< use srcMod
   
   --parseFiles
   --namecheck

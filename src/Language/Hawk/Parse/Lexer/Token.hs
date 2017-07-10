@@ -4,11 +4,13 @@
            , TypeFamilies
            , FlexibleInstances
            , BangPatterns
+           , DeriveDataTypeable
   #-}
 module Language.Hawk.Parse.Lexer.Token where
 
 import Control.Lens
 import Data.Binary hiding (encode)
+import Data.Data
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import Language.Hawk.Syntax.Location
@@ -26,7 +28,7 @@ data Token = Token
     { _tokClass     :: !TokenClass
     , _tokText      :: !Text
     , _tokLoc       :: !Location
-    } deriving (Eq, Show, Ord, Generic)
+    } deriving (Eq, Show, Ord, Data, Typeable, Generic)
 
 -- The token type:
 data TokenClass
@@ -56,7 +58,7 @@ data TokenClass
   | TokenLn'
   
   | TokenEof
-  deriving (Eq, Show, Ord, Generic)
+  deriving (Eq, Show, Ord, Data, Typeable, Generic)
 
 
 makeLenses ''Token
