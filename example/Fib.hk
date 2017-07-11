@@ -1,25 +1,30 @@
--- Simple program that computes a fibbonacci number
--- and prints it
-mod Hawk.Example.Fib
+-- Simple program that computes a fibbonacci number and prints it
 
 -- Link to printd from c
 foreign ccall "printd" printd : Double -> ()
 
+-- Set the infix for operators
+-- infix 10 <
+infixl 6 + -
 
-infixr 4 * /
-infixr 5 + -
+(+) :: Float -> Float -> Float
+(+) x y = #addf x y
+noconsume +
+
+(-) :: Float -> Float -> Float
+(-) x y = #subf x y
 
 -- Define a fibonacci function
 fib : Float -> Float
 fib n =
-  if n < 3
+  if n < 3.0
     then
-      1
+      1.0
 
     else
-      fib (x-1) + fib (x-2)
+      fib (x-1.0) + fib (x-2.0)
 
 -- Program entry point, prints 40th fibonacci number
 main : ()
 main =
-  printd (fib 40)
+  printd (fib 40.0)

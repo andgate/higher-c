@@ -11,13 +11,14 @@ module Language.Hawk.Parse.Helpers where
 import Control.Applicative
 import Control.Lens hiding (op)
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.IntMap (IntMap)
 import Data.Text (Text)
-import Language.Hawk.Syntax (OpName (..), Exp (..), Var (..), mkOp, OpTable)
+import Language.Hawk.Syntax
 import Language.Hawk.Parse.Lexer.Token
 
 import Text.Megaparsec.Prim (MonadParsec(..))
 
-import qualified Data.Map                   as Map
+import qualified Data.IntMap.Lazy           as IMap
 import qualified Data.Set                   as Set
 import qualified Text.Megaparsec.Prim       as P
 import qualified Text.Megaparsec.Combinator as P
@@ -29,6 +30,7 @@ import qualified Text.Megaparsec.Expr       as P
 
 type MonadParser m = (Functor m, Applicative m, Monad m, MonadParsec P.Dec [Token] m)
 
+type ExpParser = P.Parsec P.Dec [Token]
 
 -- -----------------------------------------------------------------------------
 -- Token Parser Helpers
@@ -158,17 +160,6 @@ anyOpT
         TokenOpId _  -> True
         _             -> False
 
-{-# INLINE anyOpNameP #-}
-anyOpNameP :: MonadParser m => m OpName
-anyOpNameP
-  = P.token testTok Nothing
-  where
-    {-# INLINE testTok #-}
-    testTok t =
-      case t^.tokClass of
-        (TokenOpId n) -> Right (OpName n)
-        _ -> Left (Set.singleton (P.Tokens (t:|[])), Set.empty, Set.empty)
-
 
 {-# INLINE integerP #-}
 integerP :: MonadParser m => m Integer
@@ -252,6 +243,9 @@ anyBlock = do
   return $ t1:(ts ++ [t2])
 
 
+splitLinefolds :: MonadParser m => m [[Token]]
+splitLinefolds = linefolds anyLayout
+
 -- -----------------------------------------------------------------------------
 -- Operator Helpers
 
@@ -276,8 +270,19 @@ postfix :: MonadParser m => Text -> P.Operator m (Exp Var)
 postfix name
   = P.Postfix (EApp . EVar . Var <$> opId name)
 
-newtype ParserOpTable = ParserOpTable { table :: forall m. MonadParser m => [[P.Operator m (Exp Var)]] }
 
-mkParserOpTable :: OpTable -> ParserOpTable
-mkParserOpTable ops = undefined
- -- sortOn snd . Map.toList ops
+type ParserOpTable = [[P.Operator ExpParser (Exp Var)]]
+
+mkParserOpTable :: IntMap [Operator] -> ParserOpTable
+mkParserOpTable = map (map toParsecOp) . reverse . IMap.elems
+  where
+    toParsecOp o =
+      let
+        n = o^.opName
+      in
+        case o^.opFixity of
+          InfixN  -> infixN n
+          InfixL  -> infixL n
+          InfixR  -> infixR n
+          Prefix  -> prefix n
+          Postfix -> postfix n

@@ -99,8 +99,6 @@ library:
     - Language.Hawk.Compile.PhaseStatus
     - Language.Hawk.Compile.State
 
-    - Language.Hawk.DepExpansion
-
     - Language.Hawk.Load
     - Language.Hawk.Load.Message
     - Language.Hawk.Load.Error
@@ -112,13 +110,14 @@ library:
     - Language.Hawk.Parse.Error
     - Language.Hawk.Parse.Helpers
     - Language.Hawk.Parse.Item
-    - Language.Hawk.Parse.Item.Monad
-    - Language.Hawk.Parse.Item.Types
     - Language.Hawk.Parse.Lexer
     - Language.Hawk.Parse.Lexer.Layout
     - Language.Hawk.Parse.Lexer.Token
+    - Language.Hawk.Parse.Lexer.State
+    - Language.Hawk.Parse.Lexer.Error
     - Language.Hawk.Parse.Message
-    - Language.Hawk.Parse.Module
+    - Language.Hawk.Parse.OpTable
+    - Language.Hawk.Parse.State
 
     - Language.Hawk.Syntax
     - Language.Hawk.Syntax.Expression

@@ -12,7 +12,6 @@ import Control.Monad.Reader (MonadReader, ReaderT)
 import Data.Map (Map)
 import Data.Set (Set)
 import Data.Text (Text)
-import Language.Hawk.Parse.Item.Types
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Syntax
@@ -23,8 +22,6 @@ import qualified Text.Megaparsec.Prim       as P
 import qualified Text.Megaparsec.Combinator as P
 
 
-itemP :: ( MonadParser m
-         , MonadReader i m, HasGlobalInfo i
-         )
-      => m Item
-itemP = return EmptyItem
+itemP :: MonadParser m
+      => ParserOpTable -> m Item
+itemP ops = return EmptyItem

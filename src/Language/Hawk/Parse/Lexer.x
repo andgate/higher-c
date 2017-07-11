@@ -1,20 +1,28 @@
 {
 {-# LANGUAGE   OverloadedStrings
              , TupleSections
+             , FlexibleContexts
   #-}
 
 module Language.Hawk.Parse.Lexer where
 
 import Control.Lens
 import Control.Monad
-import Control.Monad.State.Strict (State, evalState)
+import Control.Monad.Chronicle
+import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Log
+import Control.Monad.State.Strict (MonadState, State, evalState)
 import Data.Bits (shiftR, (.&.))
+import Data.Bag (Bag)
 import Data.Char (digitToInt, ord)
 import Data.Default.Class
 import Data.Text (Text)
 import Data.Word (Word8)
+import Language.Hawk.Compile.State
+import Language.Hawk.Parse.Lexer.Error
 import Language.Hawk.Parse.Lexer.State
 import Language.Hawk.Parse.Lexer.Token
+import Language.Hawk.Parse.State
 import Language.Hawk.Syntax.Location
 import System.FilePath (FilePath)
 
@@ -74,7 +82,6 @@ hawk :-
   
 
   \_                              { rsvp }
-  \.                              { rsvp }
   \,                              { rsvp }
   \(                              { rsvp }
   \)                              { rsvp }
@@ -82,15 +89,12 @@ hawk :-
   \]                              { rsvp }
   \{                              { rsvp }
   \}                              { rsvp }
-  \<                              { rsvp }
-  \>                              { rsvp }
   \-\o                            { rsvp }
   \-\>                            { rsvp }
   \=\>                            { rsvp }
   \:\=                            { rsvp }
   \:                              { rsvp }
   \=                              { rsvp }
-  \?                              { rsvp }
   \\                              { rsvp }
   \@                              { rsvp }
 
@@ -104,12 +108,10 @@ hawk :-
   "infixl"                        { rsvp }
   "infixr"                        { rsvp }
 
-  "mod"                           { rsvp }
-
   "type"                          { rsvp }
   "alias"                         { rsvp }
   "data"                          { rsvp }
-  "class"                         { rsvp }
+  "class"                         { rsvp }  
   "inst"                          { rsvp }
 
   "do"                            { rsvp }
@@ -388,11 +390,14 @@ alexInputPrevChar = prevChar
     `lexModl` keeps track of position and returns the remainder of the input if
     lexing fails.
 -}
-lexer :: (FilePath, Text) -> (FilePath, [Token])
-lexer (fp, text)
-  = (fp, LO.layout ts)
+lexer :: ( MonadState s m, HasHkcState s, HasParseState s
+         , MonadChronicle (Bag (WithTimestamp e)) m, AsLexErr e
+         )
+      => m ()
+lexer = do 
+    psToks <~ (uses hkcFileTexts $ map (LO.layout . lexText))
   where
-    ts = evalState (go (AlexInput '\n' [] text)) (def & lexFilePath .~ fp)
+    lexText (fp, text) = evalState (go (AlexInput '\n' [] text)) (def & lexFilePath .~ fp)
 
     start text = go (AlexInput '\n' [] text)
 
@@ -405,6 +410,7 @@ lexer (fp, text)
 
         AlexError (AlexInput p cs text) ->
             -- This is why we need ExceptT or ChronicleT
+            
             error $ "Lexical Error: Cannot produce token.\n\tPrevious Char: \'" ++ [p] ++ "\'\n\tCurrent Chars: " ++ show cs ++ "\n\tRest of file: " ++ T.unpack text
         
         AlexSkip  input' len           -> do

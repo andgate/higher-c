@@ -27,15 +27,16 @@ import qualified Data.Text.IO as T
 
 load
   :: ( MonadReader c m, HasHkcConfig c
+     , MonadState s m, HasHkcState s
      , MonadLog (WithSeverity (WithTimestamp msg)) m, AsLoadMsg msg
      , MonadChronicle (Bag (WithTimestamp e)) m, AsLoadErr e
      , MonadIO m, MonadBaseControl IO m
      )
-  => m [(FilePath, Text)]
+  => m ()
 load =
-  condemn $ do
-    fps <- view hkcSrcFiles
-    mapM loadFile fps
+  condemn $
+    hkcFileTexts <~ (mapM loadFile =<< view hkcSrcFiles)
+    
 
 
 loadFile

@@ -17,7 +17,9 @@ import qualified Text.PrettyPrint.Leijen.Text as P
 
 data ParseErr
   = UnexpectedToken Token
-  | UnexpectedParseErr FilePath
+  | FixityTooLow Int
+  | FixityTooHigh Int
+  | UnexpectedParseErr
   | UndefinedParseErr
   deriving(Show)
 
@@ -29,6 +31,14 @@ instance Pretty ParseErr where
           P.textStrict "Unexpected token"
             <+> P.squotes (P.textStrict $ t^.tokText)
             <+> P.textStrict "at" <+> P.pretty (t^.tokLoc)
+
+      FixityTooLow x  ->
+          P.textStrict "Fixity cannot be less than"
+            <+> P.pretty x
+
+      FixityTooHigh x  ->
+          P.textStrict "Fixity cannot be greater than"
+            <+> P.pretty x
 
       UndefinedParseErr ->
           undefined

@@ -24,7 +24,7 @@ module Language.Hawk.Parse where
 import Control.Lens
 import Control.Lens.Internal.Zoom
 import Control.Monad (mapM)
-import Control.Monad.State (MonadState)
+import Control.Monad.State (MonadState, execState)
 import Control.Monad.Identity (runIdentity)
 import Control.Monad.Log
 import Control.Monad.Chronicle
@@ -37,73 +37,105 @@ import Data.Set (Set)
 import Data.Text (Text, pack)
 import Text.PrettyPrint.Leijen.Text (pretty)
 
+import Language.Hawk.Compile.State
 import Language.Hawk.Parse.Error
-import Language.Hawk.Parse.Helpers (ParserOpTable, mkParserOpTable)
+import Language.Hawk.Parse.Helpers (MonadParser, ParserOpTable, mkParserOpTable, splitLinefolds)
 import Language.Hawk.Parse.Item
-import Language.Hawk.Parse.Item.Monad
-import Language.Hawk.Parse.Item.Types
-import Language.Hawk.Parse.Module
 import Language.Hawk.Parse.Message
+import Language.Hawk.Parse.OpTable
+import Language.Hawk.Parse.State
 import Language.Hawk.Parse.Lexer.Token (Token)
 import Language.Hawk.Syntax
 
 import qualified Data.List.NonEmpty     as NE
+import qualified Data.Map.Lazy          as Map
 import qualified Data.Set               as Set
 import qualified Data.Text              as Text
 import qualified Text.Megaparsec.Prim   as P
 import qualified Text.Megaparsec.Error  as P
 
 
-parse :: ( MonadState s m, HasSrcMod s
+parse :: ( MonadState s m, HasHkcState s, HasParseState s
          , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
          , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
          , MonadIO m
          )
-         => [(FilePath, [Token])] -> m ()
-parse xs = do 
-  -- m is unparsed
-  mapM_ parseMod xs
-  -- handle operator imports here
-  -- Traverse each module scope, generate an op table
-  -- parse each module scope's items, and then produce
-  -- a new module scope using the generated items
-  m <- use srcMod
-  srcMod <~ transformM parseModItems m
-  
-  where
-    parseModItems m = do
-      let scopes = m ^. modScopes
-      scopes' <- mapM parseMScopeItems scopes
-      return (m & modScopes .~ scopes')
-
-    parseMScopeItems s = do
-      let fp    = s^.mscopePath
-          ops   = mkParserOpTable (s^.mscopeOps)
-          toks  = s^.mscopeToks
-      items <- mapM (parseItem fp ops) toks
-      return (s & mscopeItems .~ items)
-
+         => m ()
+parse = do 
+  parseFilesplit
+  parseOpTable
+  --ops <- uses psOps mkParserOpTable
+  --items <- (traverseOf each (parseItem ops) =<< use psToks)
+  --return ()
 
 -- -----------------------------------------------------------------------------
--- Module Parsing
--- | Parses module structurre, fills it with unparsed items,
--- | and builds operator sets.
+-- Operator table parsing
 
-parseMod :: ( MonadState s m, HasSrcMod s
+parseFilesplit :: ( MonadState s m, HasParseState s
+                  , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
+                  , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
+                  , MonadIO m
+                  )
+        => m ()
+parseFilesplit = do
+  tss <- use psToks
+  psToks <~ (foldrM handleToks [] tss)
+
+  where
+    parse = P.runParser splitLinefolds ""
+
+    handleToks toks acc =
+      let r = parse toks
+      in handleResult r acc
+
+    handleResult r acc = either (\err -> handleParseError err) 
+                                (\toks -> return (toks ++ acc))
+                                r
+
+
+parseOpTable :: ( MonadState s m, HasParseState s
+                , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
+                , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
+                , MonadIO m
+                )
+         => m ()
+parseOpTable =
+  psToks <~ (foldrM handleToks [] =<< use psToks)
+
+  where
+    parseFixity = P.runParser fixityP ""
+    
+    handleToks toks acc =
+      let r = parseFixity toks
+      in handleResult acc r
+
+    handleResult acc = either (\err -> handleParseError err) 
+                              (handleSuccess acc)
+    handleSuccess acc =
+      either (\toks -> return (toks:acc))
+             (\ops -> mapM_ insertOp ops >> return acc)
+
+
+insertOp :: ( MonadState s m, HasParseState s
             , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
-            , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
             , MonadIO m
             )
-         => (FilePath, [Token]) -> m ()
-parseMod (fp, ts)
-  = (srcMod <>=) =<< either (handleParseError fp) handleSuccess result
-  where
-    result = P.runParser (modP fp) fp ts
-    
-    handleSuccess m
-      = do
-          logInfo =<< timestamp (_ParseSuccess # fp)
-          return m
+         => Operator -> m ()
+insertOp o = do
+  let p = o^.opPrec
+  checkPrecedence p
+  psOps . at p . _Just %= (o:)
+
+
+-- This should at least be in Chronicle
+checkPrecedence :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
+                   , MonadIO m
+                   )
+                => Int -> m ()
+checkPrecedence x
+  | x < 0 = discloseNow (_FixityTooLow # x) -- Todo: get location information
+  | x > 9 = discloseNow (_FixityTooHigh # x)
+  | otherwise = return () -- fixity was just right
 
 -- -----------------------------------------------------------------------------
 -- Item Parsing
@@ -112,15 +144,15 @@ parseItem :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
              , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
              , MonadIO m
              )
-         => FilePath -> ParserOpTable -> [Token] -> m Item
-parseItem fp ops ts
-  = either (handleParseError fp) handleSuccess result
+         => ParserOpTable -> [Token] -> m Item
+parseItem ops ts
+  = either handleParseError handleSuccess result
   where
-    result = runIdentity $ runItemParserT itemP fp ops ts
+    result = P.runParser (itemP ops) "" ts
     
     handleSuccess m
       = do
-          logInfo =<< timestamp (_ParseSuccess # fp)
+          logInfo =<< timestamp (_ParseSuccess # "")
           return m
 
 
@@ -130,10 +162,10 @@ parseItem fp ops ts
 handleParseError :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
                     , MonadIO m, Default a
                     )
-            => FilePath -> P.ParseError Token P.Dec -> m a
-handleParseError fp (P.ParseError _ unexpected _ _)
+            => P.ParseError Token P.Dec -> m a
+handleParseError (P.ParseError _ unexpected _ _)
   = case Set.toList unexpected of
       ((P.Tokens (t:|_)):_)
         -> discloseNow (_UnexpectedToken # t)
 
-      _ -> discloseNow (_UnexpectedParseErr # fp)
+      _ -> discloseNow (_UnexpectedParseErr # ())

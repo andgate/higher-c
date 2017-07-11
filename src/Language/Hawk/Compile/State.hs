@@ -7,16 +7,20 @@ module Language.Hawk.Compile.State
 
 import Control.Lens
 import Data.Default.Class
+import Data.Map.Lazy (Map)
 import Data.Text
+import Language.Hawk.Parse.State
 import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Syntax
 
 
+import qualified Data.Map.Lazy as Map
+
 data HkcState = 
   HkcState
     { _hkcFileTexts :: [(FilePath, Text)]
-    , _hkcFileTokens :: [(FilePath, [Token])]
-    , _hkcRootMod :: SrcMod
+    , _hkcParseState :: ParseState
+    , _hkcDefs :: Map Text Def
     }
 
 makeClassy ''HkcState
@@ -25,9 +29,10 @@ instance Default HkcState where
     def =
         HkcState
         { _hkcFileTexts = []
-        , _hkcFileTokens = []
-        , _hkcRootMod = def
+        , _hkcParseState = def
+        , _hkcDefs = Map.empty
         }
 
-instance HasSrcMod HkcState where
-    srcMod = hkcRootMod
+
+instance HasParseState HkcState where
+  parseState = hkcParseState

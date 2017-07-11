@@ -22,6 +22,8 @@ import Data.Foldable
 import Language.Hawk.Load
 import Language.Hawk.Parse
 import Language.Hawk.Parse.Lexer
+import Language.Hawk.Parse.Lexer.Error
+import Language.Hawk.Parse.State
 import Language.Hawk.Syntax
 
 import Language.Hawk.Compile.Config
@@ -42,22 +44,23 @@ hkc :: HkcConfig -> IO ()
 hkc = runHkc compile
 
 compile
-  :: ( MonadState s m, HasHkcState s, HasSrcMod s
+  :: ( MonadState s m, HasHkcState s, HasParseState s
      , MonadReader c m , HasHkcConfig c
      , MonadLog (WithSeverity (WithTimestamp msg)) m, AsHkcMsg msg, AsLoadMsg msg, AsParseMsg msg
      , MonadChronicle (Bag (WithTimestamp e)) m
-     , AsHkcErr e, AsLoadErr e, AsParseErr e, AsNameCheckError e, AsTcErr e
+     , AsHkcErr e, AsLoadErr e, AsParseErr e, AsNameCheckError e, AsTcErr e, AsLexErr e
      , MonadIO m, MonadBaseControl IO m
      )
   => m ()
 compile = do
-  load
-    >>= mapM (return . lexer)
-    >>= condemn . parse
+  condemn $ do
+    load
+    lexer
+    parse
     
-  liftIO . print . pretty =<< use srcMod
+  liftIO . print . pretty =<< use psToks
+  liftIO . print =<< use psOps
   
-  --parseFiles
   --namecheck
   --typecheck
   --optimize

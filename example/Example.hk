@@ -3,21 +3,6 @@
     but technically closer to C.
   |--
 
--- The first item in a Hawk source document is a module declaration.
-mod Example
-
-
--- Import items, place them under a "C" namespace
--> Core.(IO.(printLn readLn Stdout Stdin)
-          Math.Trig.(sin cos tan)
-        ) @ C
-
---| Import Core, except for Control.Monad and Data.Array
-    Require minimal namespace qualification.
-  |--
-=> Core.(\ Control.Monad Data.Array )
-
-
 --| Hawk is a purely functional langauge
     The definition of variables and functions is similar.
     In fact, Hawk treats variables as functions that take no arguments.
@@ -64,80 +49,72 @@ type Inch = Int
 newtype Size = Int
 
 
---| Submodules are allowed.
-    Since the parent module is "Example",
-    the submodules full path is "Example.Colorful". 
+-- Declare data structures with the data keyword
+data Color
+  = Color :=
+      red   : Float
+      green : Float
+      blue  : Float
+
+--|   This creates a record with one constructor, Color.
+    My color has three field accessors red, green, and blue.
+    These are functions that when used on a variable of type
+    "Color", will evalute to the information in that field.
   |--
-mod Colorful :=
-  -- Submodules require a definition block symbol, or ":="
 
 
-  -- Declare data structures with the data keyword
-  data Color
-    = Color :=
-        red   : Float
-        green : Float
-        blue  : Float
 
-  --|   This creates a record with one constructor, Color.
-      My color has three field accessors red, green, and blue.
-      These are functions that when used on a variable of type
-      "Color", will evalute to the information in that field.
-    |--
-  
+-- Here is a function that produces a new 
+-- color with the values inverted
+invert : Color -> Color
+invert c =
+  let r' = #subf 1.0 (red c)
+      g' = #subf 1.0 (green c)
+      b' = #subf 1.0 (blue c)
+  in Color r' g' b'
 
+--|   This is a good opportunity to explain Hawk's memory model.
+    Hawk is a linear typed programming language. That means every
+    variable in a definition must be used exactly once and only once.
+    You can think of Hawk functions as hungry functions, that will eat
+    whatever values you pass into them so other functions cannot have them.
 
-  -- Here is a function that produces a new 
-  -- color with the values inverted
-  invert : Color -> Color
-  invert c =
-    let r' = #subf 1.0 (red c)
-        g' = #subf 1.0 (green c)
-        b' = #subf 1.0 (blue c)
-    in Color r' g' b'
+      However, 'invert' clearly doesn't follow this rule! But the program
+    compiles and runs! What is going on?
 
-  --|   This is a good opportunity to explain Hawk's memory model.
-      Hawk is a linear typed programming language. That means every
-      variable in a definition must be used exactly once and only once.
-      You can think of Hawk functions as hungry functions, that will eat
-      whatever values you pass into them so other functions cannot have them.
+      To cope with a linear typing model, the Hawk language provides two
+    expressions "dup x" and "drop x in e". These allow Hawk to have a linear
+    memory model, but also have specific points where memory duplication and
+    deallocation can occur.
 
-        However, 'invert' clearly doesn't follow this rule! But the program
-      compiles and runs! What is going on?
+      At some point, the compiler will insert dup and drop where neccessary.
+    So what actually happens in invert is that 'c' is copied twice, and finally
+    used on the last structure accessor. The compiler turns 'invert' into...
+    
+      invert c =
+        let r' = #subf 1.0 (red (dup c))
+            g' = #subf 1.0 (green (dup c))
+            b' = #subf 1.0 (blue c)
+        in Color r' g' b'
 
-        To cope with a linear typing model, the Hawk language provides two
-      expressions "dup x" and "drop x in e". These allow Hawk to have a linear
-      memory model, but also have specific points where memory duplication and
-      deallocation can occur.
+    Notice the dup? And for an example of a function that destroys data...
+    
+      destroy x y = x
 
-        At some point, the compiler will insert dup and drop where neccessary.
-      So what actually happens in invert is that 'c' is copied twice, and finally
-      used on the last structure accessor. The compiler turns 'invert' into...
-      
-        invert c =
-          let r' = #subf 1.0 (red (dup c))
-              g' = #subf 1.0 (green (dup c))
-              b' = #subf 1.0 (blue c)
-          in Color r' g' b'
+    Which is transformed into...
+    
+      destroy x y = drop y in x
 
-      Notice the dup? And for an example of a function that destroys data...
-      
-        destroy x y = x
-
-      Which is transformed into...
-      
-        destroy x y = drop y in x
-
-        As Hawk becomes more advanced, it will be possible to optimize this
-      memory model to reduce copying and destruction under the hood, by mutating
-      values when possible, instead of destroying them and producing new ones.
-        It should also be possible to optimize away the linear typing rules for values
-      that live on stack.
-        Hawk may also provide alternative record accessors, that will duplicate the
-      field and pass out the record unconsumed for reuse. This can also be inferred.
-        And while the potential for optimization is quite large, programs written that
-      follow the law of linear typing (use all variables exactly once) will run quickly
-      and even be competetive with C. And programmers can be confident about when
-      memory allocation and deallocation.
-      
-    |--
+      As Hawk becomes more advanced, it will be possible to optimize this
+    memory model to reduce copying and destruction under the hood, by mutating
+    values when possible, instead of destroying them and producing new ones.
+      It should also be possible to optimize away the linear typing rules for values
+    that live on stack.
+      Hawk may also provide alternative record accessors, that will duplicate the
+    field and pass out the record unconsumed for reuse. This can also be inferred.
+      And while the potential for optimization is quite large, programs written that
+    follow the law of linear typing (use all variables exactly once) will run quickly
+    and even be competetive with C. And programmers can be confident about when
+    memory allocation and deallocation.
+    
+  |--

@@ -13,8 +13,10 @@
   #-}
 module Language.Hawk.Syntax.Expression where
 
+import Control.Lens
 import Data.Binary (Binary)
 import Data.Data
+import Data.Data.Lens (uniplate)
 import Data.Default.Class
 import Data.Text
 import GHC.Generics (Generic)
@@ -54,7 +56,6 @@ data Exp b
 
 -- -----------------------------------------------------------------------------
 -- | Instances
-
 
 instance Default (Exp b) where
   def = ECon . Con $ "()"
@@ -98,6 +99,9 @@ deriveShow1 ''Exp
 
 deriving instance (Generic b) => Generic (Exp b)
 instance (Generic b, Binary b) => Binary (Exp b)
+
+instance Data b => Plated (Exp b)
+
 {-
 instance Serial1 Exp where
     serializeWith m = \case
