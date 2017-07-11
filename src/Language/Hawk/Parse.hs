@@ -39,7 +39,7 @@ import Text.PrettyPrint.Leijen.Text (pretty)
 
 import Language.Hawk.Compile.State
 import Language.Hawk.Parse.Error
-import Language.Hawk.Parse.Helpers (MonadParser, ParserOpTable, mkParserOpTable, splitLinefolds)
+import Language.Hawk.Parse.Helpers (MonadParser, ExpOpTable, mkParserOpTable, splitLinefolds)
 import Language.Hawk.Parse.Item
 import Language.Hawk.Parse.Message
 import Language.Hawk.Parse.OpTable
@@ -64,9 +64,21 @@ parse :: ( MonadState s m, HasHkcState s, HasParseState s
 parse = do 
   parseFilesplit
   parseOpTable
-  --ops <- uses psOps mkParserOpTable
-  --items <- (traverseOf each (parseItem ops) =<< use psToks)
-  --return ()
+  ops <- uses psOps mkParserOpTable
+  items <- (traverseOf each (parseItem ops) =<< use psToks)
+  return ()
+  where
+    parseItem ops ts =
+      handleResult (parser ops ts) 
+      
+    parser ops = P.runParser (itemP ops) ""
+    
+    handleResult = either handleParseError handleSuccess
+    handleSuccess m
+      = do
+          logInfo =<< timestamp (_ParseSuccess # "")
+          return m
+
 
 -- -----------------------------------------------------------------------------
 -- Operator table parsing
@@ -82,10 +94,10 @@ parseFilesplit = do
   psToks <~ (foldrM handleToks [] tss)
 
   where
-    parse = P.runParser splitLinefolds ""
+    splitParser = P.runParser splitLinefolds ""
 
     handleToks toks acc =
-      let r = parse toks
+      let r = splitParser toks
       in handleResult r acc
 
     handleResult r acc = either (\err -> handleParseError err) 
@@ -136,24 +148,6 @@ checkPrecedence x
   | x < 0 = discloseNow (_FixityTooLow # x) -- Todo: get location information
   | x > 9 = discloseNow (_FixityTooHigh # x)
   | otherwise = return () -- fixity was just right
-
--- -----------------------------------------------------------------------------
--- Item Parsing
-
-parseItem :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
-             , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
-             , MonadIO m
-             )
-         => ParserOpTable -> [Token] -> m Item
-parseItem ops ts
-  = either handleParseError handleSuccess result
-  where
-    result = P.runParser (itemP ops) "" ts
-    
-    handleSuccess m
-      = do
-          logInfo =<< timestamp (_ParseSuccess # "")
-          return m
 
 
 -- -----------------------------------------------------------------------------

@@ -271,9 +271,9 @@ postfix name
   = P.Postfix (EApp . EVar . Var <$> opId name)
 
 
-type ParserOpTable = [[P.Operator ExpParser (Exp Var)]]
+type ExpOpTable m = [[P.Operator m (Exp Var)]]
 
-mkParserOpTable :: IntMap [Operator] -> ParserOpTable
+mkParserOpTable :: MonadParser m => IntMap [Operator] -> ExpOpTable m
 mkParserOpTable = map (map toParsecOp) . reverse . IMap.elems
   where
     toParsecOp o =
