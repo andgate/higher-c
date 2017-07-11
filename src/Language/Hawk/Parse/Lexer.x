@@ -2,6 +2,7 @@
 {-# LANGUAGE   OverloadedStrings
              , TupleSections
              , FlexibleContexts
+             , NoMonomorphismRestriction
   #-}
 
 module Language.Hawk.Parse.Lexer where
@@ -9,9 +10,10 @@ module Language.Hawk.Parse.Lexer where
 import Control.Lens
 import Control.Monad
 import Control.Monad.Chronicle
+import Control.Monad.Chronicle.Extra
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Log
-import Control.Monad.State.Strict (MonadState, State, evalState)
+import Control.Monad.State.Strict (MonadState, StateT, evalStateT)
 import Data.Bits (shiftR, (.&.))
 import Data.Bag (Bag)
 import Data.Char (digitToInt, ord)
@@ -160,84 +162,91 @@ hawk :-
 
 {
 
-type Lex a = State LexState a
-type LexAction = Text -> Int -> Lex ()
+type LexAction m = Text -> Int -> m ()
 
-tag :: Text -> TokenClass -> Lex Token
+tag :: (MonadState s m, HasLexState s)
+    => Text -> TokenClass -> m Token
 tag text tc = do
   fp <- use lexFilePath
   r <- use lexRegion
   return $ Token tc text (Loc fp r)
 
 
-moveRegion :: Int -> Lex ()
-moveRegion len =
-  zoom lexRegion $ do
-    r1 <- use regEnd
-    regStart .= r1 
-    regEnd . posColumn += len
+moveRegion :: (MonadState s m, HasLexState s, HasRegion s)
+           => Int -> m ()
+moveRegion len = do
+  r1 <- use regEnd
+  regStart .= r1 
+  regEnd . posColumn += len
 
 
-growRegion :: Int -> Lex ()
+growRegion :: (MonadState s m, HasLexState s)
+           => Int -> m ()
 growRegion len =
   lexRegion . regEnd . posColumn += len
 
   
-nextLineBreak :: Lex ()
-nextLineBreak =
-  zoom lexRegion $ do
-    zoom regStart $ do
-      posLine += 1
-      posColumn .= 0
-    
-    zoom regEnd $ do
-      posLine += 1
-      posColumn .= 0
+nextLineBreak :: (MonadState s m, HasLexState s, HasRegion s)
+              => m ()
+nextLineBreak = do
+  regStart . posLine += 1
+  regStart . posColumn .= 0
+
+  regEnd . posLine += 1
+  regEnd . posColumn .= 0
 
 
-nextLineContinue :: Lex ()
-nextLineContinue =
-  zoom (lexRegion . regEnd) $ do
-    posLine += 1
-    posColumn .= 0
+nextLineContinue :: (MonadState s m, HasLexState s, HasRegion s)
+                 => m ()
+nextLineContinue = do
+  regEnd . posLine += 1
+  regEnd . posColumn .= 0
 
 
-yieldTokAt :: TokenClass -> LexAction
+yieldTokAt :: (MonadState s m, HasLexState s, HasRegion s)
+           => TokenClass -> LexAction m
 yieldTokAt c text len = do
   moveRegion len
   yieldTaggedTok c text
 
 
-yieldTaggedTok :: TokenClass -> Text -> Lex ()
+yieldTaggedTok :: (MonadState s m, HasLexState s, HasRegion s)
+               => TokenClass -> Text -> m ()
 yieldTaggedTok c text = do
   t <- tag text c
   yieldTok t
 
-yieldTok :: Token -> Lex ()
+yieldTok :: (MonadState s m, HasLexState s, HasRegion s)
+         => Token -> m ()
 yieldTok t =
   lexTokAcc %= (t:)
 
 
-rsvp :: LexAction
+rsvp :: (MonadState s m, HasLexState s, HasRegion s)
+     => LexAction m
 rsvp text =
   yieldTokAt (TokenRsvp text) text
 
 
-skipBreak :: LexAction
+skipBreak :: (MonadState s m, HasLexState s, HasRegion s)
+          => LexAction m
 skipBreak text len = do
   moveRegion len
 
-skipContinue :: LexAction
+skipContinue :: (MonadState s m, HasLexState s, HasRegion s)
+             =>  LexAction m
 skipContinue text len = do
   growRegion len
 
-beginString :: LexAction
+beginString :: (MonadState s m, HasLexState s, HasRegion s)
+            => LexAction m
 beginString text len =
   do
     moveRegion len
     lexStartcode .= stringSC
   
-endString :: LexAction
+endString :: (MonadState s m, HasLexState s, HasRegion s)
+          => LexAction m
 endString text len = do
   buf <- do
     growRegion len
@@ -249,14 +258,16 @@ endString text len = do
     lexStringBuf .= ""
     lexStartcode .= 0
   
-appendString :: LexAction
+appendString :: (MonadState s m, HasLexState s, HasRegion s)
+             => LexAction m
 appendString text len =
   do
     growRegion len
     let c = T.head text
     lexStringBuf %= (c:)
 
-escapeString :: LexAction
+escapeString :: (MonadState s m, HasLexState s, HasRegion s)
+             => LexAction m
 escapeString text len = do
   let c = T.head $ T.tail text
       unesc =
@@ -269,7 +280,11 @@ escapeString text len = do
 
     
 
-handleChar :: LexAction
+handleChar :: ( MonadState s m, HasLexState s, HasRegion s
+              , MonadChronicle (Bag (WithTimestamp e)) m, AsLexErr e
+              , MonadIO m
+              )
+           => LexAction m
 handleChar text len = do
   let trim = T.unpack . T.tail . T.init
       yieldCharAt ch = yieldTokAt (TokenChar ch) text len
@@ -279,24 +294,27 @@ handleChar text len = do
       "\t"   -> yieldCharAt '\t'
       "\r"   -> yieldCharAt '\r'
       "\'"   -> yieldCharAt '\''
-      _      -> return $ error $ "[Lexical Error] Invalid Character Literal: " ++ T.unpack text
+      _      -> discloseNow (_InvalidCharLit # text)
 
 
-beginComment :: LexAction
+beginComment :: (MonadState s m, HasLexState s, HasRegion s)
+             => LexAction m
 beginComment text len =
   do
     moveRegion len
     lexStartcode .= commentSC
     lexCommentDepth .= 1
 
-continueComment :: LexAction
+continueComment :: (MonadState s m, HasLexState s, HasRegion s)
+                => LexAction m
 continueComment text len =
   do
     growRegion len
     lexCommentDepth += 1
          
          
-endComment :: LexAction
+endComment :: (MonadState s m, HasLexState s, HasRegion s)
+           => LexAction m
 endComment _ len =
   do
     growRegion len
@@ -309,13 +327,15 @@ endComment _ len =
         then 0
         else commentSC
 
-beginLineComment :: LexAction
+beginLineComment :: (MonadState s m, HasLexState s, HasRegion s)
+                 => LexAction m
 beginLineComment text len =
   do
     moveRegion len
     lexStartcode .= lineCommentSC
 
-endLineComment :: LexAction
+endLineComment :: (MonadState s m, HasLexState s, HasRegion s)
+               => LexAction m
 endLineComment text len =
   do
     nextLineContinue
@@ -392,14 +412,21 @@ alexInputPrevChar = prevChar
 -}
 lexer :: ( MonadState s m, HasHkcState s, HasParseState s
          , MonadChronicle (Bag (WithTimestamp e)) m, AsLexErr e
+         , MonadIO m
          )
       => m ()
-lexer = do 
-    psToks <~ (uses hkcFileTexts $ map (LO.layout . lexText))
-  where
-    lexText (fp, text) = evalState (go (AlexInput '\n' [] text)) (def & lexFilePath .~ fp)
+lexer =
+  psToks <~ (mapM lexText =<< use hkcFileTexts)
 
-    start text = go (AlexInput '\n' [] text)
+  where
+    lexText t =
+      LO.layout <$> lexText' t
+    
+    lexText' (fp, text) =
+      evalStateT (start text)
+                 ((def :: LexState) & lexFilePath .~ fp)
+
+    start = go . AlexInput '\n' []
 
     go input = do
       sc <- use lexStartcode
@@ -409,13 +436,10 @@ lexer = do
             reverse <$> use lexTokAcc
 
         AlexError (AlexInput p cs text) ->
-            -- This is why we need ExceptT or ChronicleT
-            
-            error $ "Lexical Error: Cannot produce token.\n\tPrevious Char: \'" ++ [p] ++ "\'\n\tCurrent Chars: " ++ show cs ++ "\n\tRest of file: " ++ T.unpack text
+            discloseNow (_UnproducibleToken # (p, show cs, text))
         
         AlexSkip  input' len           -> do
-            -- This is another reason for ExceptT or ChronicleT
-            error $ "Lexical Error: default Alex skip should never be invoked."
+            discloseNow (_IllegalLexerSkip # ())
         
         AlexToken input' len act       -> do
             act (T.take (fromIntegral len) (currInput input)) (fromIntegral len)

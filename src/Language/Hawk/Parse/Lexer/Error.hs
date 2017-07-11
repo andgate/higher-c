@@ -17,6 +17,7 @@ import qualified Text.PrettyPrint.Leijen.Text as P
 
 data LexErr
   = UnproducibleToken Char String Text
+  | InvalidCharLit Text
   | IllegalLexerSkip
   deriving(Show)
 

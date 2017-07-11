@@ -15,7 +15,11 @@ data LexState =
             , _lexFilePath :: FilePath
             } deriving Show
 
-makeLenses ''LexState
+makeClassy ''LexState
+
+
+instance HasRegion LexState where
+  region = lexRegion
 
 
 instance Default LexState where
