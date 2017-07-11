@@ -41,12 +41,11 @@ five =
   in #add 1 z
 
 
-
 -- Type alias, type system will treat these as interchangable
 type Inch = Int
 
 -- New types are not treated as interchangable.
-newtype Size = Int
+alias Size = Int
 
 
 -- Declare data structures with the data keyword
@@ -66,12 +65,14 @@ data Color
 
 -- Here is a function that produces a new 
 -- color with the values inverted
+--|
 invert : Color -> Color
 invert c =
   let r' = #subf 1.0 (red c)
       g' = #subf 1.0 (green c)
       b' = #subf 1.0 (blue c)
   in Color r' g' b'
+  |--
 
 --|   This is a good opportunity to explain Hawk's memory model.
     Hawk is a linear typed programming language. That means every

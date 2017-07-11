@@ -40,5 +40,8 @@ instance Pretty ParseErr where
           P.textStrict "Fixity cannot be greater than"
             <+> P.pretty x
 
+      UnexpectedParseErr ->
+          P.textStrict "Unexpected parser error encountered."
+
       UndefinedParseErr ->
           undefined

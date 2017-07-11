@@ -90,6 +90,8 @@ data Item
   = ForeignItem Foreign
   | ExposeItem Expose
 
+  | NoConsume Name
+
   | DecItem Dec
   | DefItem Def
   
@@ -208,6 +210,9 @@ instance PP.Pretty Item where
 
     pretty (ExposeItem i) =
       PP.pretty i
+
+    pretty (NoConsume i) =
+      PP.textStrict "Non-consumer:" PP.<+> PP.pretty i
 
     pretty (DecItem i) =
       PP.pretty i

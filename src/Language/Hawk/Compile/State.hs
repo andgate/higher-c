@@ -21,16 +21,18 @@ data HkcState =
     { _hkcFileTexts :: [(FilePath, Text)]
     , _hkcParseState :: ParseState
     , _hkcDefs :: Map Text Def
+    , _hkcItems :: [Item]
     }
 
 makeClassy ''HkcState
 
 instance Default HkcState where
     def =
-        HkcState
+      HkcState
         { _hkcFileTexts = []
         , _hkcParseState = def
         , _hkcDefs = Map.empty
+        , _hkcItems = []
         }
 
 

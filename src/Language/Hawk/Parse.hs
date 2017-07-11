@@ -65,8 +65,8 @@ parse = do
   parseFilesplit
   parseOpTable
   ops <- uses psOps mkParserOpTable
-  items <- (traverseOf each (parseItem ops) =<< use psToks)
-  return ()
+  hkcItems <~ (traverseOf each (parseItem ops) =<< use psToks)
+  
   where
     parseItem ops ts =
       handleResult (parser ops ts) 

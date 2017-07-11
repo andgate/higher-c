@@ -4,15 +4,15 @@
 foreign ccall "printd" printd : Double -> ()
 
 -- Set the infix for operators
--- infix 10 <
+infix 4 <
 infixl 6 + -
 
-(+) :: Float -> Float -> Float
-(+) x y = #addf x y
-noconsume +
+(+) : Float -> Float -> Float
+(+) x y = #fadd x y
+noconsume (+)
 
-(-) :: Float -> Float -> Float
-(-) x y = #subf x y
+(-) : Float -> Float -> Float
+(-) x y = #fsub x y
 
 -- Define a fibonacci function
 fib : Float -> Float

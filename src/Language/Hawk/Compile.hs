@@ -58,8 +58,9 @@ compile = do
     lexer
     parse
     
-  liftIO . print . pretty =<< use psToks
-  liftIO . print =<< use psOps
+    liftIO . print . pretty =<< use psToks
+    liftIO . print =<< use psOps
+    liftIO . print . pretty =<< use hkcItems
   
   --namecheck
   --typecheck

@@ -12,7 +12,7 @@ import Control.Applicative
 import Control.Lens hiding (op)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.IntMap (IntMap)
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import Language.Hawk.Syntax
 import Language.Hawk.Parse.Lexer.Token
 
@@ -129,7 +129,6 @@ anyOpId :: MonadParser m => m Text
 anyOpId = (^.tokText) <$> anyOpT
 
 
-
 -- Id tokens
 anyVarT :: MonadParser m => m Token
 anyVarT
@@ -170,6 +169,43 @@ integerP
     testTok t =
       case t^.tokClass of
         (TokenInteger x) -> Right x
+        _ -> Left (Set.singleton (P.Tokens (t:|[])), Set.empty, Set.empty)
+
+
+{-# INLINE doubleP #-}
+doubleP :: MonadParser m => m Double
+doubleP
+  = P.token testTok Nothing
+  where
+    {-# INLINE testTok #-}
+    testTok t =
+      case t^.tokClass of
+        (TokenDouble x) -> Right x
+        _ -> Left (Set.singleton (P.Tokens (t:|[])), Set.empty, Set.empty)
+
+
+{-# INLINE charP #-}
+charP :: MonadParser m => m Char
+charP
+  = P.token testTok Nothing
+  where
+    {-# INLINE testTok #-}
+    testTok t =
+      case t^.tokClass of
+        (TokenChar c) -> Right c
+        _ -> Left (Set.singleton (P.Tokens (t:|[])), Set.empty, Set.empty)
+
+
+
+{-# INLINE stringP #-}
+stringP :: MonadParser m => m Text
+stringP
+  = P.token testTok Nothing
+  where
+    {-# INLINE testTok #-}
+    testTok t =
+      case t^.tokClass of
+        (TokenString x) -> Right (pack x)
         _ -> Left (Set.singleton (P.Tokens (t:|[])), Set.empty, Set.empty)
 
 -- -----------------------------------------------------------------------------
