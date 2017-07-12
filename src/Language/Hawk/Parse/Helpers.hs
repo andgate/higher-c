@@ -12,6 +12,7 @@ import Control.Applicative
 import Control.Lens hiding (op)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.IntMap (IntMap)
+import Data.Monoid
 import Data.Text (Text, pack)
 import Language.Hawk.Syntax
 import Language.Hawk.Parse.Lexer.Token
@@ -247,11 +248,32 @@ eof = matchT TokenEof
 
 peekLoc :: MonadParser m => m Location
 peekLoc =
-  (^.tokLoc) <$> anyT
+  (^.tokLoc) <$> P.lookAhead anyT
 
 peekIndent :: MonadParser m => m Int
 peekIndent =
-  (^.regStart.posColumn) <$> anyT
+  (^.regStart.posColumn) <$> P.lookAhead anyT
+
+
+locP :: MonadParser m
+     => m a -> m (L a)
+locP p = do
+  l1 <- peekLoc
+  x <- p
+  withRecovery (\_ -> return $ L l1 x) $ do
+    l2 <- peekLoc
+    return $ L (l1 <> l2) x
+
+-- | Wrap an expression with a location
+elocP :: MonadParser m
+        => m (Exp Var) -> m (Exp Var)
+elocP p = do
+  l1 <- peekLoc
+  e <- p
+  withRecovery (\_ -> return $ ELoc l1 e) $ do
+    l2 <- peekLoc
+    return $ ELoc (l1 <> l2) e
+
 
 -- -----------------------------------------------------------------------------
 -- Token Grouping Helpers
@@ -298,24 +320,24 @@ splitLinefolds = linefolds anyLayout
 
 infixN :: MonadParser m => Text -> P.Operator m (Exp Var)
 infixN name
-  = P.InfixN (mkOp <$> opId name)
+  = P.InfixN $ mkOp2 <$> locP (opId name)
 
 infixL :: MonadParser m => Text -> P.Operator m (Exp Var)
 infixL name
-  = P.InfixL (mkOp <$> opId name)
+  = P.InfixL $ mkOp2 <$> locP (opId name)
 
 infixR :: MonadParser m => Text -> P.Operator m (Exp Var)
 infixR name
-  = P.InfixR (mkOp <$> opId name)
+  = P.InfixR $ mkOp2 <$> locP (opId name)
 
 prefix :: MonadParser m => Text -> P.Operator m (Exp Var)
 prefix name
-  = P.Prefix (EApp . EVar . Var <$> opId name)
+  = P.Prefix $ mkOp1 <$> locP (opId name)
 
 
 postfix :: MonadParser m => Text -> P.Operator m (Exp Var)
 postfix name
-  = P.Postfix (EApp . EVar . Var <$> opId name)
+  = P.Postfix $ mkOp1 <$> locP (opId name)
 
 
 type ExpOpTable m = [[P.Operator m (Exp Var)]]

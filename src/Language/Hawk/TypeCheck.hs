@@ -236,15 +236,15 @@ inferExp :: ( MonadState s m, HasInferState s
             )
          => TypeEnv -> Exp Var -> m (Exp Var, Subst, Type)
 inferExp env = \case
-  ELoc loc e -> inferExpLoc env loc e
+  ELoc loc e -> inferExp' env loc e
   _ -> error "Built-in expression encountered!"
 
-inferExpLoc :: ( MonadState s m, HasInferState s
+inferExp' :: ( MonadState s m, HasInferState s
             , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
             , MonadIO m
             )
          => TypeEnv -> Location -> Exp Var -> m (Exp Var, Subst, Type)
-inferExpLoc env@(TypeEnv envMap) loc = \case
+inferExp' env@(TypeEnv envMap) loc = \case
   ELit lit -> do
     (s, t) <- inferLit lit
     return (EType t $ ELoc loc $ ELit lit, s, t)

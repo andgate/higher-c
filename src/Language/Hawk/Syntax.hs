@@ -20,7 +20,6 @@
 module Language.Hawk.Syntax
   ( module Language.Hawk.Syntax
   , module Language.Hawk.Syntax.Expression
-  , module Language.Hawk.Syntax.Extensions
   , module Language.Hawk.Syntax.Literal
   , module Language.Hawk.Syntax.Location
   , module Language.Hawk.Syntax.Name
@@ -44,7 +43,6 @@ import GHC.Types (Constraint)
 import GHC.Generics (Generic)
 import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Syntax.Expression
-import Language.Hawk.Syntax.Extensions
 import Language.Hawk.Syntax.Literal
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Operator

@@ -18,10 +18,10 @@ import Data.Binary (Binary)
 import Data.Data
 import Data.Data.Lens (uniplate)
 import Data.Default.Class
+import Data.Monoid
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
-import Language.Hawk.Syntax.Extensions
 import Language.Hawk.Syntax.Literal
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Name
@@ -127,14 +127,36 @@ let_ bs b = ELet (map (abstr . snd) bs) (abstr b)
 -}
 
 let_ :: [(b, Exp b)] -> Exp b -> Exp b
-let_ bs b = foldr ELet b (reverse bs)
+let_ bs e = foldr elet' e (reverse bs)
+  where
+    elet' a@(_, (ELoc l1 _)) b@(ELoc l2 _)
+      = ELoc (l1 <> l2) $ ELet a b
 
 eapp_ :: Exp b -> [Exp b] -> Exp b
-eapp_ f = foldr (flip EApp) f . reverse
+eapp_ f = foldr eapp' f . reverse
+  where
+    eapp' b@(ELoc l1 _) a@(ELoc l2 _)
+      =  ELoc (l1 <> l2)
+              (EApp a b)
 
 
-mkOp :: Text -> Exp Var -> Exp Var -> Exp Var
-mkOp name lhs rhs = EApp (EApp (EVar (Var name)) (lhs)) (rhs)
+mkOp1 :: L Text -> Exp Var -> Exp Var
+mkOp1 (L l1 name) e@(ELoc l2 _) 
+  = ELoc l3 $ EApp v e
+  where
+    v = ELoc l1 $ EVar (Var name)
+    l3 = l1 <> l2
+
+
+mkOp2 :: L Text -> Exp Var -> Exp Var -> Exp Var
+mkOp2 (L l0@(Loc fp r1) name) lhs rhs
+  = ELoc l2 (EApp (ELoc l1 $ EApp v lhs) rhs)
+  where
+    v = ELoc l0 $ EVar (Var name)
+    (ELoc (Loc _ r2) _) = lhs
+    (ELoc (Loc _ r3) _) = rhs
+    l1 = Loc fp (r1 <> r2)
+    l2 = Loc fp (r1 <> r3)
 
 -- -----------------------------------------------------------------------------
 -- | Extension Instances

@@ -78,7 +78,7 @@ parse = do
       _ -> return ()
 
     parseItem ops ts =
-      handleResult (parser ops ts) 
+      handleResult (parser ops ts)
       
     parser ops = P.runParser (itemP ops) ""
     

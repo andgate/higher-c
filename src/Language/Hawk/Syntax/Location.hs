@@ -10,9 +10,9 @@ module Language.Hawk.Syntax.Location where
 import Control.Lens
 import Data.Binary
 import Data.Data
+import Data.Monoid
 import Data.Text (pack)
 import GHC.Generics (Generic)
-import Text.PrettyPrint.Leijen.Text ((<>))
 
 import qualified Text.PrettyPrint.Leijen.Text as P
 
@@ -72,10 +72,18 @@ stretch a n = mkRegion p1 p2
 -- -----------------------------------------------------------------------------
 -- Helper Instances,
 
+instance Monoid Location where
+    mempty = Loc "" mempty
+    mappend (Loc fp r1) (Loc _ r2)
+      = Loc fp (r1 <> r2)
+
 instance Monoid Region where
     mempty = R (P 0 0) (P 0 0)
-    mappend (R start _) (R _ end) =
-      R start end
+    mappend (R start _) (R _ end)
+      | (start^.posLine) < (end^.posLine) = R start end
+      | (start^.posLine) > (end^.posLine) = R end start
+      | (start^.posColumn) > (end^.posColumn) = R start end
+      | otherwise = R end start
 
 -- -----------------------------------------------------------------------------
 -- Pretty Instances   
@@ -89,19 +97,20 @@ instance P.Pretty a => P.Pretty (L a) where
 
 instance P.Pretty Location where
     pretty loc =
-       P.textStrict (pack $ loc^.locPath) <> P.textStrict ":" <> P.pretty (loc^.locReg)
+       P.textStrict (pack $ loc^.locPath) P.<> P.textStrict ":" P.<> P.pretty (loc^.locReg)
+
 
 instance P.Pretty Region where
   pretty (R s e)
     | s == e
       = P.pretty s
     | otherwise
-      = P.pretty s <> P.textStrict "-" <> P.pretty e
+      = P.pretty s P.<> P.textStrict "-" <> P.pretty e
 
 
 instance P.Pretty Position where
   pretty (P l c) =
-    P.pretty (l+1) <> P.textStrict ":" <> P.pretty (c+1)
+    P.pretty (l+1) P.<> P.textStrict ":" <> P.pretty (c+1)
 
 
 -- -----------------------------------------------------------------------------

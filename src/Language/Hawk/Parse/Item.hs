@@ -10,6 +10,7 @@ import Control.Lens
 import Control.Monad.State (MonadState, StateT)
 import Control.Monad.Reader (MonadReader, ReaderT)
 import Data.Map (Map)
+import Data.Monoid
 import Data.Set (Set)
 import Data.Text (Text)
 import Language.Hawk.Parse.Helpers
@@ -75,7 +76,8 @@ patP =
 
 expP :: MonadParser m
      => ExpOpTable m -> m (Exp Var)
-expP ops = dexp ops
+expP ops =
+  dexp ops
 
 
 dexp :: MonadParser m
@@ -86,13 +88,15 @@ dexp ops =
 
 cexp :: MonadParser m
      => ExpOpTable m -> m (Exp Var)
-cexp ops = P.makeExprParser (bexp ops) ops
+cexp ops =
+  P.makeExprParser (bexp ops) ops
 
 
 bexp :: MonadParser m
      => ExpOpTable m -> m (Exp Var)
 bexp ops =
   eapp_ <$> aexp ops <*> many (aexp ops)
+
 
 aexp :: MonadParser m
       => ExpOpTable m -> m (Exp Var)
@@ -105,13 +109,16 @@ aexp ops =
 
 
 evarP :: MonadParser m => m (Exp Var)
-evarP = EVar <$> varP
+evarP = elocP $ EVar <$> varP
+
 
 econP :: MonadParser m => m (Exp Var)
-econP = ECon <$> conP
+econP = elocP $ ECon <$> conP
+
 
 elitP :: MonadParser m => m (Exp Var)
-elitP = ELit <$> litP
+elitP = elocP $ ELit <$> litP
+
 
 litP :: MonadParser m => m Lit
 litP =     
@@ -122,7 +129,7 @@ litP =
 
 
 eprimP :: MonadParser m => m (Exp Var)
-eprimP =
+eprimP = elocP $
   EPrim <$> primInstrP
 
 
@@ -142,16 +149,16 @@ primInstrP =
 
 eifP :: MonadParser m
      => ExpOpTable m -> m (Exp Var)
-eifP ops = do
-  e1 <- rsvp "if" *> cexp ops
-  e2 <- rsvp "then" *> expP ops
-  e3 <- rsvp "else" *> expP ops
+eifP ops = elocP $ do
+  e1 <- rsvp "if" *> (cexp ops)
+  e2 <- rsvp "then" *> (expP ops)
+  e3 <- rsvp "else" *> (expP ops)
   return $ EIf e1 e2 e3
 
 
 eletP :: MonadParser m
      => ExpOpTable m -> m (Exp Var)
-eletP ops =
+eletP ops = elocP $
   let_ <$> (rsvp "let" *> block binder)
        <*> (rsvp "in" *> expP ops)
   where

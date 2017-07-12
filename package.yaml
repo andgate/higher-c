@@ -121,7 +121,6 @@ library:
 
     - Language.Hawk.Syntax
     - Language.Hawk.Syntax.Expression
-    - Language.Hawk.Syntax.Extensions
     - Language.Hawk.Syntax.Location
     - Language.Hawk.Syntax.Name
     - Language.Hawk.Syntax.Pass
