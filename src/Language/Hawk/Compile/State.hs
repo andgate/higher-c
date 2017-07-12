@@ -20,8 +20,8 @@ data HkcState =
   HkcState
     { _hkcFileTexts :: [(FilePath, Text)]
     , _hkcParseState :: ParseState
-    , _hkcDefs :: Map Text Def
-    , _hkcItems :: [Item]
+    , _hkcDefs :: Map Text [Def]
+    , _hkcTypes :: Map Var Scheme
     }
 
 makeClassy ''HkcState
@@ -32,7 +32,7 @@ instance Default HkcState where
         { _hkcFileTexts = []
         , _hkcParseState = def
         , _hkcDefs = Map.empty
-        , _hkcItems = []
+        , _hkcTypes = Map.empty
         }
 
 

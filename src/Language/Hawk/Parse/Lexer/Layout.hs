@@ -8,6 +8,7 @@ module Language.Hawk.Parse.Lexer.Layout where
 import Control.Lens
 import Control.Monad (when, unless, void)
 import Control.Monad.State.Strict (State, evalState)
+import Safe (headDef)
 import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Syntax.Location (Location(..), Region)
 
@@ -159,19 +160,17 @@ close = do
 -- | Otherwise, it will just close a linefold, if there is one.
 closeBlk :: Layout ()
 closeBlk = do
-  -- First, close an open line if there is one
-  closeLn
-  
-  -- Then, close an open block, if there is one
-  (Cell _ ct) <- peekCell
-  when (ct == Block)
-       close
+  -- Peek two cells off the stack
+  (Cell i1 ct1) <- peekCell
+  (Cell i2 ct2) <- uses layStack (headDef defCell . tail)
 
-closeLn :: Layout ()
-closeLn = do
-  (Cell _ ct) <- peekCell
-  when (ct == LineFold)
-       close
+  -- Close twice when there is a linefold followed by a block that isn't root
+  when (ct1 == LineFold && ct2 == Block && i2 /= 0)
+       (close >> close)
+
+  -- Close once when there is a block that isn't root
+  when (ct1 == Block && i1 /= 0)
+       (close)
 
 
 -- -----------------------------------------------------------------------------
@@ -207,7 +206,7 @@ popCell = do
 
 peekCell :: Layout Cell
 peekCell = 
-  uses layStack head
+  uses layStack (headDef defCell)
 
     
 openTok :: Location -> Cell -> Token

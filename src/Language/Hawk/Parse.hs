@@ -23,7 +23,7 @@ module Language.Hawk.Parse where
 
 import Control.Lens
 import Control.Lens.Internal.Zoom
-import Control.Monad (mapM)
+import Control.Monad (mapM, (<=<))
 import Control.Monad.State (MonadState, execState)
 import Control.Monad.Identity (runIdentity)
 import Control.Monad.Log
@@ -65,9 +65,18 @@ parse = do
   parseFilesplit
   parseOpTable
   ops <- uses psOps mkParserOpTable
-  hkcItems <~ (traverseOf each (parseItem ops) =<< use psToks)
+  (traverseOf_ each (processItem <=< parseItem ops)) =<< use psToks
 
   where
+    processItem = \case
+      DecItem (Dec (Name n) t) ->
+        hkcTypes . at (Var n) .= Just (Scheme [] t)
+
+      DefItem d@(Def (Name n) _ _) ->
+        hkcDefs . at n <>= Just [d]
+
+      _ -> return ()
+
     parseItem ops ts =
       handleResult (parser ops ts) 
       
@@ -76,7 +85,7 @@ parse = do
     handleResult = either handleParseError handleSuccess
     handleSuccess m
       = do
-          logInfo =<< timestamp (_ParseSuccess # "")
+          -- logInfo =<< timestamp (_ParseSuccess # "")
           return m
 
 

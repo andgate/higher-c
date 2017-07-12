@@ -20,6 +20,9 @@ data Type
   | TFun Type Type
   deriving (Show, Read, Eq, Ord, Data, Typeable, Generic)
 
+
+data Scheme = Scheme [TVar] Type
+
 -- -----------------------------------------------------------------------------
 -- | Instances
 
@@ -45,3 +48,13 @@ instance PP.Pretty Type where
             PP.<$>
             PP.textStrict "arg:" PP.<$> PP.pretty x
           )
+
+instance PP.Pretty Scheme where
+  pretty (Scheme vs t) =
+    PP.textStrict "Scheme:"
+    PP.<$>
+    PP.indent 2
+      ( PP.textStrict "tvars:" PP.<+> PP.pretty vs
+        PP.<$>
+        PP.textStrict "type:" PP.<$> PP.pretty t
+      )

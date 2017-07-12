@@ -30,6 +30,7 @@ import Data.Set (Set, (\\))
 import Data.Text (Text, pack)
 import Text.PrettyPrint.Leijen.Text (pretty)
 
+import Language.Hawk.Compile.State
 import Language.Hawk.Syntax
 import Language.Hawk.Syntax.Prim
 import Language.Hawk.TypeCheck.Error
@@ -42,7 +43,6 @@ import qualified Data.Text  as T
 
 
 newtype TypeEnv = TypeEnv (Map Var Scheme)
-data Scheme = Scheme [TVar] Type
 data Subst = Subst (Map TVar Type)
 
 
@@ -322,8 +322,26 @@ inferExpLoc env@(TypeEnv envMap) loc = \case
   e -> error ("Expression extension is not supported by typechecker." ++ show e) -- Not handled, should be impossible
 
 
+
+
 infer' :: (MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e, MonadIO m)
        => Map.Map Var Scheme -> Exp Var -> m (Exp Var, Type)
 infer' env e = do
   (e', s, t) <- evalInferT . inferExp (TypeEnv env) $ e
   return (e', apply s t)
+
+
+typecheck :: ( MonadState s m, HasHkcState s
+             , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
+             , MonadIO m
+             ) => m ()
+typecheck = do
+  env <- use hkcTypes
+  defs <- use hkcDefs
+  hkcDefs <~ mapM (mapM (checkDef env)) defs
+
+  where
+    checkDef env (Def (Name n) bs e) = do
+      (e', t') <- infer' env e
+      hkcTypes . at (Var n) .= Just (Scheme [] t')
+      return (Def (Name n) bs e')

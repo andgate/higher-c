@@ -26,6 +26,8 @@ import Language.Hawk.Parse.Lexer.Error
 import Language.Hawk.Parse.State
 import Language.Hawk.Syntax
 
+import Language.Hawk.TypeCheck (typecheck)
+
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.Error
 import Language.Hawk.Compile.Message
@@ -35,9 +37,10 @@ import Language.Hawk.Compile.Options
 import Text.PrettyPrint.Leijen.Text (pretty)
 
 
-import qualified Data.Text                        as T
-import qualified Data.Vector                      as V
-import qualified Language.Hawk.Parse              as P
+import qualified Data.Text             as T
+import qualified Data.Vector           as V
+import qualified Data.Map.Lazy         as Map
+import qualified Language.Hawk.Parse   as P
 
 
 hkc :: HkcConfig -> IO ()
@@ -57,13 +60,17 @@ compile = do
     load
     lexer
     parse
-    
-    liftIO . print . pretty =<< use psToks
-    liftIO . print =<< use psOps
-    liftIO . print . pretty =<< use hkcItems
-  
+
   --namecheck
-  --typecheck
+
+  typecheck
+    
+  liftIO . print . pretty =<< use psToks
+  liftIO . print =<< use psOps
+  liftIO . print . pretty . Map.toList =<< use hkcDefs
+  liftIO . print . pretty . Map.toList =<< use hkcTypes
+  
+  
   --optimize
   --codegen
   return ()
