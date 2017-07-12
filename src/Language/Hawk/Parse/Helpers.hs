@@ -243,6 +243,17 @@ eof = matchT TokenEof
 
 
 -- -----------------------------------------------------------------------------
+-- Location Helpers
+
+peekLoc :: MonadParser m => m Location
+peekLoc =
+  (^.tokLoc) <$> anyT
+
+peekIndent :: MonadParser m => m Int
+peekIndent =
+  (^.regStart.posColumn) <$> anyT
+
+-- -----------------------------------------------------------------------------
 -- Token Grouping Helpers
 
 {-# INLINE exceptLayout #-}

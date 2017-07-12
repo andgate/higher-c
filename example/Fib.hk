@@ -22,7 +22,7 @@ fib n =
       1.0
 
     else
-      fib (x-1.0) + fib (x-2.0)
+      fib (x - 1.0) + fib (x-2.0)
 
 -- Program entry point, prints 40th fibonacci number
 main : ()

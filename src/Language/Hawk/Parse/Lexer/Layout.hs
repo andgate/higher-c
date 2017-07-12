@@ -14,8 +14,11 @@ import Language.Hawk.Syntax.Location (Location(..), Region)
 import qualified Language.Hawk.Syntax.Location  as L
 
 
-layoutTriggers :: [TokenClass]
-layoutTriggers = [TokenRsvp ":=", TokenRsvp "do", TokenRsvp "where"]
+blkTriggers :: [TokenClass]
+blkTriggers = [TokenRsvp ":=", TokenRsvp "do", TokenRsvp "where", TokenRsvp "let"]
+
+blkEndTriggers :: [TokenClass]
+blkEndTriggers = [TokenRsvp "in"]
 
 -- -----------------------------------------------------------------------------
 -- Cell Type
@@ -88,12 +91,15 @@ handleTok t
       when emitBlk $ do
         blkTriggered .= False
         open Block
+      
+      when (t^.tokClass `elem` blkEndTriggers)
+           closeBlk
 
       closeInvalid
       yieldTok t
 
       -- Colons trigger block emission for the next token
-      when (t^.tokClass `elem` layoutTriggers)
+      when (t^.tokClass `elem` blkTriggers)
            (blkTriggered .= True)
 
 
@@ -147,6 +153,25 @@ close = do
   r <- use layRegion
   yieldTok $ closeTok (Loc fp r) cl
   void popCell
+
+
+-- | This will close a block layout, if there is one.
+-- | Otherwise, it will just close a linefold, if there is one.
+closeBlk :: Layout ()
+closeBlk = do
+  -- First, close an open line if there is one
+  closeLn
+  
+  -- Then, close an open block, if there is one
+  (Cell _ ct) <- peekCell
+  when (ct == Block)
+       close
+
+closeLn :: Layout ()
+closeLn = do
+  (Cell _ ct) <- peekCell
+  when (ct == LineFold)
+       close
 
 
 -- -----------------------------------------------------------------------------

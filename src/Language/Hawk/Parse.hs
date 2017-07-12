@@ -66,7 +66,7 @@ parse = do
   parseOpTable
   ops <- uses psOps mkParserOpTable
   hkcItems <~ (traverseOf each (parseItem ops) =<< use psToks)
-  
+
   where
     parseItem ops ts =
       handleResult (parser ops ts) 
@@ -119,7 +119,7 @@ parseOpTable =
     
     handleToks toks acc =
       let r = parseFixity toks
-      in handleResult acc r
+          x = () in handleResult acc r
 
     handleResult acc = either (\err -> handleParseError err) 
                               (handleSuccess acc)

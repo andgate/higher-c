@@ -65,6 +65,9 @@ varnameP = Name <$> (anyVarId <|> parens anyOpId)
 varP :: MonadParser m => m Var
 varP = Var <$> anyVarId
 
+opVarP :: MonadParser m => m Var
+opVarP = Var <$> parens anyOpId
+
 patP :: MonadParser m => m Pat
 patP =
   Pat <$> anyVarId
@@ -78,25 +81,24 @@ expP ops = dexp ops
 dexp :: MonadParser m
      => ExpOpTable m -> m (Exp Var)
 dexp ops =
-  eifP ops <|> cexp ops
+  eifP ops <|> eletP ops <|> cexp ops
 
 
 cexp :: MonadParser m
      => ExpOpTable m -> m (Exp Var)
-cexp ops = P.makeExprParser (aexpP ops) ops
+cexp ops = P.makeExprParser (bexp ops) ops
 
 
 bexp :: MonadParser m
      => ExpOpTable m -> m (Exp Var)
-bexp ops = do
-  e1 <- aexpP ops
-  (EApp e1 <$> P.try (bexp ops))
-    <|> return e1
+bexp ops =
+  eapp_ <$> aexp ops <*> many (aexp ops)
 
-aexpP :: MonadParser m
+aexp :: MonadParser m
       => ExpOpTable m -> m (Exp Var)
-aexpP ops =
+aexp ops =
       evarP
+  <|> econP
   <|> eprimP 
   <|> elitP 
   <|> parens (expP ops)
@@ -105,16 +107,19 @@ aexpP ops =
 evarP :: MonadParser m => m (Exp Var)
 evarP = EVar <$> varP
 
+econP :: MonadParser m => m (Exp Var)
+econP = ECon <$> conP
+
 elitP :: MonadParser m => m (Exp Var)
 elitP = ELit <$> litP
 
-eifP :: MonadParser m
-     => ExpOpTable m -> m (Exp Var)
-eifP ops = do
-  e1 <- rsvp "if" *> cexp ops
-  e2 <- rsvp "then" *> expP ops
-  e3 <- rsvp "else" *> expP ops
-  return $ EIf e1 e2 e3
+litP :: MonadParser m => m Lit
+litP =     
+      ( IntLit <$> integerP )
+  <|> ( FloatLit <$> doubleP )
+  <|> ( CharLit <$> charP )
+  
+
 
 eprimP :: MonadParser m => m (Exp Var)
 eprimP =
@@ -134,11 +139,23 @@ primInstrP =
       <|> (prim "#sdiv" *> pure PrimSDiv)
       <|> (prim "#fdiv" *> pure PrimFDiv)
 
-litP :: MonadParser m => m Lit
-litP =     
-      ( IntLit <$> integerP )
-  <|> ( FloatLit <$> doubleP )
-  <|> ( CharLit <$> charP )
+
+eifP :: MonadParser m
+     => ExpOpTable m -> m (Exp Var)
+eifP ops = do
+  e1 <- rsvp "if" *> cexp ops
+  e2 <- rsvp "then" *> expP ops
+  e3 <- rsvp "else" *> expP ops
+  return $ EIf e1 e2 e3
+
+
+eletP :: MonadParser m
+     => ExpOpTable m -> m (Exp Var)
+eletP ops =
+  let_ <$> (rsvp "let" *> block binder)
+       <*> (rsvp "in" *> expP ops)
+  where
+    binder = (,) <$> varP <*> (rsvp "=" *> expP ops)
 
 
 typeP :: MonadParser m => m Type

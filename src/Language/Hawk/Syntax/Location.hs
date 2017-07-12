@@ -17,6 +17,11 @@ import Text.PrettyPrint.Leijen.Text ((<>))
 import qualified Text.PrettyPrint.Leijen.Text as P
 
 
+-- Location wrapper
+data L a = L Location a
+  deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
+
+
 data Location
   = Loc
     { _locPath  :: !FilePath
@@ -75,6 +80,13 @@ instance Monoid Region where
 -- -----------------------------------------------------------------------------
 -- Pretty Instances   
 
+instance P.Pretty a => P.Pretty (L a) where
+    pretty (L loc a) =
+       P.pretty a
+       P.<$>
+       P.textStrict "located at" P.<+> P.pretty loc
+
+
 instance P.Pretty Location where
     pretty loc =
        P.textStrict (pack $ loc^.locPath) <> P.textStrict ":" <> P.pretty (loc^.locReg)
@@ -95,6 +107,7 @@ instance P.Pretty Position where
 -- -----------------------------------------------------------------------------
 -- Binary Instances
 
+instance Binary a => Binary (L a)
 instance Binary Location
 instance Binary Region
 instance Binary Position

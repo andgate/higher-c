@@ -50,10 +50,12 @@ alias Size = Int
 
 -- Declare data structures with the data keyword
 data Color
-  = Color :=
-      red   : Float
-      green : Float
-      blue  : Float
+  = Color
+      { red   : Float
+      , green : Float
+      , blue  : Float
+      }
+  | 
 
 --|   This creates a record with one constructor, Color.
     My color has three field accessors red, green, and blue.
@@ -65,14 +67,13 @@ data Color
 
 -- Here is a function that produces a new 
 -- color with the values inverted
---|
 invert : Color -> Color
 invert c =
-  let r' = #subf 1.0 (red c)
-      g' = #subf 1.0 (green c)
-      b' = #subf 1.0 (blue c)
+  let r' = #fsub 1.0 (red c)
+      g' = #fsub 1.0 (green c)
+      b' = #fsub 1.0 (blue c)
   in Color r' g' b'
-  |--
+
 
 --|   This is a good opportunity to explain Hawk's memory model.
     Hawk is a linear typed programming language. That means every

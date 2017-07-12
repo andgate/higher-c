@@ -18,7 +18,7 @@ import Data.Binary (Binary)
 import Data.Data
 import Data.Data.Lens (uniplate)
 import Data.Default.Class
-import Data.Text
+import Data.Text (Text)
 import GHC.Generics (Generic)
 
 import Language.Hawk.Syntax.Extensions
@@ -125,6 +125,13 @@ let_ bs b = ELet (map (abstr . snd) bs) (abstr b)
   where abstr = abstract (`elemIndex` map fst bs)
 
 -}
+
+let_ :: [(b, Exp b)] -> Exp b -> Exp b
+let_ bs b = foldr ELet b (reverse bs)
+
+eapp_ :: Exp b -> [Exp b] -> Exp b
+eapp_ f = foldr (flip EApp) f . reverse
+
 
 mkOp :: Text -> Exp Var -> Exp Var -> Exp Var
 mkOp name lhs rhs = EApp (EApp (EVar (Var name)) (lhs)) (rhs)
