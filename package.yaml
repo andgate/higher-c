@@ -59,6 +59,7 @@ library:
     - data-default-instances-text
     - directory
     - edit-distance
+    - either
     - exceptions
     - filepath
     - ghc-prim

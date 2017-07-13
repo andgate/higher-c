@@ -339,14 +339,10 @@ typecheck :: ( MonadState s m, HasHkcState s
 typecheck = do
   env <- use hkcTypes
   defs <- use hkcDefs
-  hkcDefs <~ mapM (mapM (checkDef env)) defs
+  hkcDefs <~ mapM (mapM (conceal . checkDef env)) defs
 
   where
-    checkDef env d = do
-      r <- memento $ checkDef' env d
-      either disclose return r
-
-    checkDef' env (Def (Name n) ps e) = do
+    checkDef env (Def (Name n) ps e) = do
       let e' = foldr lamPat e ps
       (e'', t') <- infer' env e'
       hkcTypes . at (Var n) .= Just (Scheme [] t')

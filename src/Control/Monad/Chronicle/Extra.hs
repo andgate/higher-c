@@ -11,6 +11,7 @@ import Control.Monad.Chronicle
 import Control.Monad.Catch
 import Control.Monad.Log
 import Control.Monad.Trans.Control
+import Control.Monad.Trans.Either (EitherT(..), eitherT)
 import Data.Bag
 import Data.Default.Class
 import Data.Semigroup
@@ -34,6 +35,13 @@ confessNow :: (MonadChronicle (Bag (WithTimestamp c)) m  -- Is there a better wa
 confessNow c = do
     c' <- timestamp c
     confess (One c')
+
+
+conceal :: (MonadChronicle (Bag (WithTimestamp c)) m  -- Is there a better way to handle semigroup?
+           , MonadIO m, Default a
+           ) => m a -> m a
+conceal =
+  eitherT disclose return . EitherT . memento
 
 
 -------------------------------------------------------------------------------
