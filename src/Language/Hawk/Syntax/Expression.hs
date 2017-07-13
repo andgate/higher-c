@@ -60,71 +60,25 @@ data Exp b
 instance Default (Exp b) where
   def = ECon . Con $ "()"
 
-{-
-instance Applicative Exp where
-  pure  = EVar
-  (<*>) = ap
-
-instance Monad Exp where
-  return = EVar
-
-  EVar b    >>= f   = f b
-  EApp x y  >>= f   = EApp (x >>= f) (y >>= f)
-  ELam e    >>= f   = ELam (e >>>= f)
-  ELet bs b >>= f   = ELet (map (>>>= f) bs) (b >>>= f)
-  ELit l    >>= _   = ELit l
-  ECon c    >>= _   = ECon c
-  EPrim i   >>= _   = EPrim i
-  EIf x a b >>= f   = EIf (x >>= f) (a >>= f) (b >>= f)
-  EDup e    >>= f   = EDup (e >>= f)
-  EDrop b e >>= f   = EDrop (b >>>= f) (e >>= f)
-  EType t e >>= f   = EType t (e >>= f)
-  ETLit t e >>= f   = ETLit t (e >>= f)
-  ELoc lc e >>= f   = ELoc lc (e >>= f)
-
--}
 
 deriving instance (Eq b) => Eq (Exp b)
 deriving instance (Ord b) => Ord (Exp b)
 deriving instance (Read b) => Read (Exp b)
 deriving instance (Show b) => Show (Exp b)
-
-{-
-deriveEq1   ''Exp
-deriveOrd1  ''Exp
-deriveRead1 ''Exp
-deriveShow1 ''Exp
--}
-
-
 deriving instance (Generic b) => Generic (Exp b)
 instance (Generic b, Binary b) => Binary (Exp b)
 
 instance Data b => Plated (Exp b)
 
-{-
-instance Serial1 Exp where
-    serializeWith m = \case
-      _ -> undefined
-    
-    deserializeWith m = getWord8 >>= \case
-      _ -> undefined
--}
 
 
 -- -----------------------------------------------------------------------------
 -- | "Smart" Constructors
 
-{-
-lam :: Eq a => a -> Exp a -> Exp a
-lam v b = ELam (abstract1 v b)
 
-let_ :: Eq a => [(a, Exp a)] -> Exp a -> Exp a
-let_ [] b = b
-let_ bs b = ELet (map (abstr . snd) bs) (abstr b)
-  where abstr = abstract (`elemIndex` map fst bs)
-
--}
+lam_ :: b -> Exp b -> Exp b
+lam_ b e@(ELoc l _)
+  = ELoc l $ ELam b e
 
 let_ :: [(b, Exp b)] -> Exp b -> Exp b
 let_ bs e = foldr elet' e (reverse bs)

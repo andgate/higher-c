@@ -28,6 +28,14 @@ discloseNow c = do
     disclose (One c')
 
 
+confessNow :: (MonadChronicle (Bag (WithTimestamp c)) m  -- Is there a better way to handle semigroup?
+              , MonadIO m
+              ) => c -> m a
+confessNow c = do
+    c' <- timestamp c
+    confess (One c')
+
+
 -------------------------------------------------------------------------------
 -- Extra instances
 

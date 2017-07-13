@@ -7,7 +7,7 @@
     The definition of variables and functions is similar.
     In fact, Hawk treats variables as functions that take no arguments.
   |--
-a = 1 + 2
+a = #add 1 2
 
 
 -- Type signatures declare the type of a variable

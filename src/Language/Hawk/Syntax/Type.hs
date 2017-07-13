@@ -23,6 +23,22 @@ data Type
 
 data Scheme = Scheme [TVar] Type
 
+
+-- -----------------------------------------------------------------------------
+-- | "Smart" Constructors
+
+tcon_ :: Text -> Type
+tcon_ = TCon . Con
+
+tfun1 :: Type -> Type -> Type
+tfun1 = TFun
+
+
+tfun2 :: Type -> Type -> Type -> Type
+tfun2 a b = TFun a . TFun b
+
+
+
 -- -----------------------------------------------------------------------------
 -- | Instances
 

@@ -145,6 +145,9 @@ data Def
     , _defBody  :: Exp Var
     } deriving (Show, Eq, Data, Typeable, Generic)
 
+instance Default Def where
+  def = Def (Name "<empty>") [] def
+
 
 -- -----------------------------------------------------------------------------
 -- | Definition Patterns

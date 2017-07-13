@@ -216,7 +216,7 @@ inferLit :: ( MonadState s m, HasInferState s
             )
          => Lit -> m (Subst, Type)
 inferLit = \case
-  IntLit _    -> return (nullSubst, TCon . Con $ "Integer")
+  IntLit _    -> return (nullSubst, TCon . Con $ "Int")
   FloatLit _  -> return (nullSubst, TCon . Con $ "Float")
   CharLit _   -> return (nullSubst, TCon . Con $ "Char")
   BoolLit _   -> return (nullSubst, TCon . Con $ "Bool")
@@ -225,8 +225,8 @@ inferLit = \case
 inferInstr :: ( MonadState s m, HasInferState s)
             => PrimInstr -> m (Subst, Type)
 inferInstr instr
-  | instr `elem` intInstrs = return (nullSubst, TFun (TCon . Con $ "Integer") (TCon . Con $ "Integer"))
-  | instr `elem` floatInstrs = return (nullSubst, TFun (TCon . Con $ "Float") (TCon . Con $ "Float"))
+  | instr `elem` intInstrs = return (nullSubst, tfun2 (tcon_ "Int") (tcon_ "Int") (tcon_ "Int"))
+  | instr `elem` floatInstrs = return (nullSubst, tfun2 (tcon_ "Float") (tcon_ "Float") (tcon_ "Float"))
   | otherwise = error "Uknown instruction encountered!" -- Not handle, should be impossible
             
 
@@ -251,13 +251,13 @@ inferExp' env@(TypeEnv envMap) loc = \case
 
   EVar n ->
     case Map.lookup n envMap of
-      Nothing -> discloseNow (_UnboundVariable # (n, loc))
+      Nothing -> confessNow (_UnboundVariable # (n, loc))
       Just sigma -> do  t <- instantiate sigma
                         return (EType t $ ELoc loc $ EVar n, nullSubst, t)
 
   ECon con@(Con n) ->
     case Map.lookup (Var n) envMap of
-      Nothing -> discloseNow (_UnboundConstructor # (con, loc))
+      Nothing -> confessNow (_UnboundConstructor # (con, loc))
       Just sigma -> do  t <- instantiate sigma
                         return (EType t $ ELoc loc $ ECon con, nullSubst, t)
 
@@ -342,13 +342,15 @@ typecheck = do
   hkcDefs <~ mapM (mapM (checkDef env)) defs
 
   where
-    checkDef env (Def (Name n) ps e) = do
-      let env' = foldr bind env ps
-      (e', t') <- infer' env' e
-      hkcTypes . at (Var n) .= Just (Scheme [] t')
-      return (Def (Name n) ps e')
+    checkDef env d = do
+      r <- memento $ checkDef' env d
+      either disclose return r
 
-    bind (Pat n) env =
-      let s = Scheme [TypeVar "x"] (TVar $ TypeVar "x")
-      in Map.insert (Var n) s env
+    checkDef' env (Def (Name n) ps e) = do
+      let e' = foldr lamPat e ps
+      (e'', t') <- infer' env e'
+      hkcTypes . at (Var n) .= Just (Scheme [] t')
+      return (Def (Name n) ps e'')
+
+    lamPat (Pat n) = lam_ (Var n)
 
