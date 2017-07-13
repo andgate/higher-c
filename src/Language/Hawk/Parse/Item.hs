@@ -158,7 +158,7 @@ eifP ops = elocP $ do
 
 eletP :: MonadParser m
      => ExpOpTable m -> m (Exp Var)
-eletP ops = elocP $
+eletP ops =
   let_ <$> (rsvp "let" *> block binder)
        <*> (rsvp "in" *> expP ops)
   where

@@ -7,14 +7,14 @@ module Language.Hawk.TypeCheck.Error where
 import Control.Lens
 import Language.Hawk.Syntax (Type, TVar, Var, Con)
 import Language.Hawk.Syntax.Location
-import Text.PrettyPrint.Leijen.Text (Pretty(..), (<>), (<+>))
+import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
 import qualified Text.PrettyPrint.Leijen.Text as P
 
 
 data TcErr
-  = UnificationFailure Type Type
-  | OccursCheckFail TVar Type
+  = UnificationFailure Type (Maybe Location) Type (Maybe Location)
+  | OccursCheckFail TVar (Maybe Location) Type (Maybe Location)
   | UnboundVariable Var Location
   | UnboundConstructor Con Location
   deriving(Show)
@@ -23,19 +23,40 @@ makeClassyPrisms ''TcErr
 
 instance Pretty TcErr where
     pretty = \case
-      UnificationFailure t1 t2 ->
+      UnificationFailure t1 l1 t2 l2 ->
         P.textStrict "Types do not unify:"
-          P.<$> P.indent 2 (pretty t1 <+> "vs." <+> pretty t2)
+        P.<$>
+        P.indent 2 
+        ( maybe (pretty t1)
+                (\l1' -> pretty l1' P.<+> pretty t1)
+                l1
+          P.<$>
+          P.textStrict "vs."
+          P.<$>
+          maybe (pretty t2)
+                (\l2' -> pretty l2' P.<+> pretty t2)
+                l2
+        )
 
-      OccursCheckFail v t ->
+      OccursCheckFail v lv t lt ->
         P.textStrict "Occurs check fails:"
-          P.<$> P.indent 2 (pretty v <+> "vs." <+> pretty t)
+        P.<$>
+        P.indent 2
+        ( maybe (pretty v)
+                (\lv' -> pretty lv' P.<+> pretty v)
+                lv
+          P.<$> 
+          P.textStrict "vs."
+          P.<$>
+          maybe (pretty t)
+                (\lt' -> pretty lt' P.<+> pretty t)
+                lt
+        )
 
       UnboundVariable v loc ->
-        P.textStrict "Unbound variable encountered:"
-          <+> pretty v
+        P.pretty loc P.<+>
+        P.textStrict "Unbound variable encountered:" P.<+> pretty v
 
       UnboundConstructor c loc ->
-        P.textStrict "Unbound constructor encountered:"
-          <+> pretty c
-          P.<$> P.indent 2 (P.textStrict "in" <+> pretty loc)
+        P.pretty loc P.<+>
+        P.textStrict "Unbound constructor encountered:" P.<+> pretty c

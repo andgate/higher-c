@@ -43,7 +43,14 @@ data Position
     { _posLine    :: {-# UNPACK #-} !Int
     , _posColumn  :: {-# UNPACK #-} !Int
     }
-    deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
+    deriving (Eq, Read, Show, Data, Typeable, Generic)
+
+
+instance Ord Position where
+    compare (P l1 c1) (P l2 c2)
+      | l1 == l2  = c1 `compare` c2
+      | otherwise = l1 `compare` l2
+
 
 makeClassy ''Location
 makeClassy ''Region
@@ -78,12 +85,13 @@ instance Monoid Location where
       = Loc fp (r1 <> r2)
 
 instance Monoid Region where
-    mempty = R (P 0 0) (P 0 0)
-    mappend (R start _) (R _ end)
-      | (start^.posLine) < (end^.posLine) = R start end
-      | (start^.posLine) > (end^.posLine) = R end start
-      | (start^.posColumn) > (end^.posColumn) = R start end
-      | otherwise = R end start
+    mempty
+      = R (P 0 0) (P 0 0)
+
+    mappend (R s1 e1) (R s2 e2)
+      = R (min s1 s2)
+          (max e1 e2 )
+
 
 -- -----------------------------------------------------------------------------
 -- Pretty Instances   
