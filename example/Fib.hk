@@ -1,7 +1,7 @@
 -- Simple program that computes a fibbonacci number and prints it
 
 -- Link to printd from c
-foreign ccall "printd" printd : Double -> ()
+foreign ccall "printd" printd : Float -> ()
 
 -- Set the infix for operators
 infix 4 <
@@ -22,7 +22,7 @@ fib n =
       1.0
 
     else
-      fib (x - 1.0) + fib (x-2.0)
+      fib (n-1.0) + fib (n-2.0)
 
 -- Program entry point, prints 40th fibonacci number
 main : ()

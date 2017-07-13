@@ -185,12 +185,12 @@ unify :: ( MonadState s m, HasInferState s
       => (Maybe Location, Maybe Location) -> (Type, Type) -> m Subst
 unify (loc1, loc2) = \case
   (TFun a1 b1, TFun a2 b2) -> do
-      s1 <- unify (Nothing, Nothing) (a1, a2)
-      s2 <- unify (Nothing, Nothing) (apply s1 b1, apply s1 b2)
+      s1 <- unify (loc1, loc2) (a1, a2)
+      s2 <- unify (loc1, loc1) (apply s1 b1, apply s1 b2)
       return (s1 `composeSubst` s2)
   
-  (TVar n, t) -> varBind n t
-  (t, TVar n) -> varBind n t
+  (TVar n, t) -> varBind n loc1 t loc2
+  (t, TVar n) -> varBind n loc1 t loc2
 
   (TCon n1, TCon n2)
     | n1 == n2 -> return nullSubst 
@@ -203,10 +203,10 @@ varBind :: ( MonadState s m, HasInferState s
            , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
            , MonadIO m
            )
-        => TVar -> Type -> m Subst
-varBind n t
+        => TVar -> Maybe Location -> Type -> Maybe Location -> m Subst
+varBind n ln t lt
   | t == TVar n                 = return nullSubst
-  | n `Set.member` freeTVars t  = discloseNow (_OccursCheckFail # (n, Nothing, t, Nothing))
+  | n `Set.member` freeTVars t  = discloseNow (_OccursCheckFail # (n, ln, t, lt))
   | otherwise                   = return $ subst n t
 
 
@@ -237,7 +237,7 @@ inferExp :: ( MonadState s m, HasInferState s
          => TypeEnv -> Exp Var -> m (Exp Var, Subst, Type)
 inferExp env = \case
   ELoc loc e -> inferExp' env loc e
-  _ -> error "Built-in expression encountered!"
+  _ -> error "Built-in expression encountered!" -- Built-in expressions shouldn't be generated yet
 
 inferExp' :: ( MonadState s m, HasInferState s
             , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
@@ -265,11 +265,12 @@ inferExp' env@(TypeEnv envMap) loc = \case
     (s, t) <- inferInstr instr
     return (EType t $ ELoc loc $ EPrim instr, s, t)
 
-  EApp a b -> do
+  
+  EApp a@(ELoc la _) b@(ELoc lb _) -> do
     tv <- newTVar "a"
     (a', s1, t1) <- inferExp env a
     (b', s2, t2) <- inferExp (apply s1 env) b
-    s3 <- unify (Nothing, Nothing) (apply s2 t1, TFun t2 tv)
+    s3 <- unify (Just la, Just lb) (apply s2 t1, TFun t2 tv)
     let s' = s3 `composeSubst` s2 `composeSubst` s1
         t' = apply s3 tv
         e' = EType t' $ ELoc loc $ EApp a' b' 
@@ -285,12 +286,12 @@ inferExp' env@(TypeEnv envMap) loc = \case
     return (EType t' $ ELoc loc $ ELam n e', s, t')
 
 
-  EIf p e1 e2 -> do
+  EIf p@(ELoc lp _) e1@(ELoc l1 _) e2@(ELoc l2 _) -> do
     (p', s1, t1) <- inferExp env p
     (e1', s2, t2) <- inferExp env e1
     (e2', s3, t3) <- inferExp env e2
-    s4 <- unify (Nothing, Nothing) (t1, TCon . Con $ "Bool")
-    s5 <- unify (Nothing, Nothing) (t2, t3)
+    s4 <- unify (Just lp, Nothing) (t1, TCon . Con $ "Bool")
+    s5 <- unify (Just l1, Just l2) (t2, t3)
     let e' = EType t3 $ ELoc loc $ EIf p' e1' e2'
         s' = s5 `composeSubst` s4 `composeSubst` s3 `composeSubst` s2 `composeSubst` s1
     return (e', s', t3)
@@ -314,9 +315,9 @@ inferExp' env@(TypeEnv envMap) loc = \case
     (e', s, t) <- inferExp env e
     return (EType t $ ELoc loc $ EFree v e', s, t)
 
-  EType t1 e -> do
+  EType t1 e@(ELoc l1 _) -> do
     (e', s1, t2) <- inferExp env e
-    s2 <- unify (Nothing, Nothing) (t1, t2)
+    s2 <- unify (Just loc, Just l1) (t1, t2)
     return (ELoc loc $ EType t1 e', s2 `composeSubst` s1, t1)
 
   e -> error $ "Expression extension is not supported by typechecker.\n" ++ show (pretty e) -- Not handled, should be impossible
@@ -343,7 +344,7 @@ typecheck = do
   where
     checkDef env (Def (Name n) ps e) = do
       let env' = foldr bind env ps
-      (e', t') <- infer' env e
+      (e', t') <- infer' env' e
       hkcTypes . at (Var n) .= Just (Scheme [] t')
       return (Def (Name n) ps e')
 
