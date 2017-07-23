@@ -19,13 +19,15 @@ import Control.Monad
 import Control.Monad.Chronicle
 import Control.Monad.Chronicle.Extra
 import Control.Monad.Log
+import Control.Monad.Reader (MonadReader, ReaderT, runReaderT, local)
 import Control.Monad.State (MonadState, StateT, evalStateT)
 import Data.Bag
 import Data.Default.Class
+import Data.List (lookup, nub, find, delete)
 import Data.Map (Map)
 import Data.Maybe
 import Data.Monoid
-import Data.Semigroup
+import Data.Semigroup hiding ((<>))
 import Data.Set (Set, (\\))
 import Data.Text (Text, pack)
 import Text.PrettyPrint.Leijen.Text (pretty)
@@ -34,7 +36,6 @@ import Language.Hawk.Compile.State
 import Language.Hawk.Syntax
 import Language.Hawk.Syntax.Prim
 import Language.Hawk.TypeCheck.Error
-import Language.Hawk.TypeCheck.NameGen
 
 import qualified Data.Map   as Map
 import qualified Data.Set   as Set
@@ -43,8 +44,13 @@ import qualified Data.Text  as T
 
 
 newtype TypeEnv = TypeEnv (Map Var Scheme)
-data Subst = Subst (Map TVar Type)
+newtype Subst = Subst { substDict :: Map Tyvar Type }
+  deriving (Eq, Ord, Show)
 
+data Constraint
+  = EqConst Type Type
+  | ImpInstConst Type (Set Tyvar) Type
+  | ExpInstConst Type Scheme
 
 -- Inference State
 data InferState
@@ -59,20 +65,23 @@ instance Default InferState where
     def = InferState 0 nullSubst
 
 -- Inference Monad Transformer
-newtype InferT m a = InferT { unInferT :: StateT InferState m a }
-  deriving (Functor, Applicative, Monad, MonadState InferState, MonadTrans)
+newtype InferT m a = InferT { unInferT :: ReaderT (Set Tyvar) (StateT InferState m) a }
+  deriving (Functor, Applicative, Monad, MonadReader (Set Tyvar), MonadState InferState)
 
-evalInferT :: Monad m => InferT m a -> m a
-evalInferT = flip evalStateT def . unInferT
+runInferT :: Monad m => InferT m a -> m a
+runInferT m = evalStateT (runReaderT (unInferT m) Set.empty) def
 
 newTVar :: (MonadState s m, HasInferState s)
         => Text -> m Type 
 newTVar prefix = do
   i <- pack . show <$> use inferSupply
   inferSupply += 1
-  return . TVar . TypeVar $ prefix `T.append` i  
+  return . TVar . Tyvar $ prefix `T.append` i  
 
 deriving instance MonadIO m => MonadIO (InferT m)
+
+instance MonadTrans InferT where
+    lift = InferT . lift . lift
 
 instance MonadChronicle c m => MonadChronicle c (InferT m) where
     dictate = lift . dictate
@@ -85,129 +94,130 @@ instance MonadChronicle c m => MonadChronicle c (InferT m) where
 
 
 -- Free Type Variables
-class HasFreeTVars a where
-    freeTVars :: a -> Set TVar
+class FreeTVars a where
+    ftv :: a -> Set Tyvar
 
-instance HasFreeTVars Type where
-    freeTVars = \case
-      TCon _     -> Set.empty
+instance FreeTVars Type where
+    ftv = \case
+      TCon _    -> Set.empty
       TVar v    -> Set.singleton v
-      TFun a b  -> freeTVars a `Set.union` freeTVars b
+      TApp a b  -> ftv a `Set.union` ftv b
 
-instance HasFreeTVars Scheme where
-    freeTVars (Scheme tvs t) = freeTVars t \\ Set.fromList tvs
+instance FreeTVars Tyvar where
+    ftv = Set.singleton
 
-instance (HasFreeTVars a) => HasFreeTVars [a] where
-    freeTVars = foldr Set.union Set.empty . map freeTVars
+instance FreeTVars Scheme where
+    ftv (Forall tvs t) = ftv t \\ Set.fromList tvs
 
-instance HasFreeTVars TypeEnv where
-    freeTVars (TypeEnv env) = freeTVars $ Map.elems env
+instance FreeTVars a => FreeTVars [a] where
+    ftv = foldr (Set.union . ftv) Set.empty
 
+instance (Ord a, FreeTVars a) => FreeTVars (Set a) where
+    ftv = foldr (Set.union . ftv) Set.empty
 
--- Substitubles
+-- Active Type Variables
+class ActiveTVars a where
+    atv :: a -> Set Tyvar
+
+instance ActiveTVars Constraint where
+    atv = \case
+      EqConst t1 t2         -> ftv t1 `Set.union` ftv t2
+      ImpInstConst t1 ms t2 -> ftv t1 `Set.union` (ftv ms `Set.intersection` ftv t2)
+      ExpInstConst t s      -> ftv t `Set.union` ftv s
+
+-- Substituble
 class Substitutable a where
     apply :: Subst -> a -> a
 
+instance Substitutable Tyvar where
+    apply (Subst s) a = tv
+      where t = TVar a
+            (TVar tv) = Map.findWithDefault t a s
+
 instance Substitutable Type where
     apply s = \case
-      TVar n    -> case findSubst n s of
-                          Nothing -> TVar n
-                          Just t  -> t
-
-      TFun a b  -> TFun (apply s a) (apply s b)
-      t         -> t
+      t@(TVar a)  -> Map.findWithDefault t a (substDict s)
+      TCon a      -> TCon a
+      TApp a b    -> TApp (apply s a) (apply s b)
 
 
 instance Substitutable Scheme where
-    apply s (Scheme vs t) = Scheme vs (apply (foldr removeSubst s vs) t)
+    apply (Subst s) (Forall as t) = Forall as $ apply s' t
+                      where s' = Subst $ foldr Map.delete s as
 
 
-instance (Substitutable a) => Substitutable [a] where
-    apply s = map (apply s)
+instance Substitutable a => Substitutable [a] where
+    apply = map . apply
+
+instance (Ord a, Substitutable a) => Substitutable (Set a) where
+    apply = Set.map . apply
 
 instance Substitutable TypeEnv where
     apply s (TypeEnv env) = TypeEnv (Map.map (apply s) env)
 
 
--- Substitution Helpers
-nullSubst :: Subst
-nullSubst = Subst $ Map.empty
-
-subst :: TVar -> Type -> Subst
-subst var t = Subst $ Map.singleton var t
-
-substs :: [(TVar, Type)] -> Subst
-substs = Subst . Map.fromList
-
-composeSubst :: Subst -> Subst -> Subst
-composeSubst subst1@(Subst s1) (Subst s2)
-  = Subst $ (Map.map (apply subst1) s2) `Map.union` s1
-
-findSubst :: TVar -> Subst -> Maybe Type
-findSubst var (Subst s) = Map.lookup var s
-
-removeSubst :: TVar -> Subst -> Subst
-removeSubst tvar (Subst s) = Subst $ Map.delete tvar s
+-------------------------------------------------------------------------------
+-- Inference
+-------------------------------------------------------------------------------
 
 
+typecheck :: ( MonadState s m, HasHkcState s
+             , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
+             , MonadIO m
+             ) => m ()
+typecheck = do
+  env <- use hkcTypes
+  defs <- use hkcDefs
+  hkcDefs <~ mapM (mapM (conceal . checkDef env)) defs
 
-instance Default Subst where
-    def = nullSubst
+  where
+    checkDef env (Def (Name n) ps e) = do
+      let e' = foldr lamPat e ps
+      (e'', t') <- infer' env e'
+      hkcTypes . at (Var n) .= Just (Forall [] t')
+      return (Def (Name n) ps e'')
 
--- Need to newtype Subst to get this
-instance Monoid Subst where
-    mempty = nullSubst
-    mappend = composeSubst
+    lamPat (Pat n) = lam_ (Var n)
 
--- Type environment helpers
-remove :: TypeEnv -> Var -> TypeEnv
-remove (TypeEnv env) var = TypeEnv (Map.delete var env)
+
+infer' :: (MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e, MonadIO m)
+       => Map.Map Var Scheme -> Exp Var -> m (Exp Var, Type)
+infer' env e = do
+  (e', s, t) <- runInferT . inferExp (TypeEnv env) $ e
+  return (e', apply s t)
+
+
+
+closeOver :: Type -> Scheme
+closeOver = normalize . generalize Set.empty
+
+extendMSet :: MonadReader (Set Tyvar) m => Tyvar -> m a -> m a
+extendMSet x = local (Set.insert x)
+
+letters :: [String]
+letters = [1..] >>= flip replicateM ['a' .. 'z']
+
+
+fresh :: (MonadState s m, HasInferState s) => m Type
+fresh = do
+  inferSupply += 1
+  uses inferSupply $
+    TVar . Tyvar . pack . (letters !!)
 
 
 -- The core of the Algorithm W
-generalize :: TypeEnv -> Type -> Scheme
-generalize env t = Scheme vs t
-  where vs = Set.toList $ freeTVars t \\ freeTVars env
-
-
 instantiate :: (MonadState s m, HasInferState s)
             => Scheme -> m Type
-instantiate (Scheme vars t) = do
-  nvars <- mapM (\_ -> newTVar "a") vars
-  let s = Subst $ Map.fromList (zip vars nvars)
+instantiate (Forall as t) = do
+  as' <- mapM (const fresh) as
+  let s = Subst . Map.fromList $ zip as as'
   return $ apply s t
 
 
-unify :: ( MonadState s m, HasInferState s
-         , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
-         , MonadIO m
-         )
-      => (Maybe Location, Maybe Location) -> (Type, Type) -> m Subst
-unify (loc1, loc2) = \case
-  (TFun a1 b1, TFun a2 b2) -> do
-      s1 <- unify (loc1, loc2) (a1, a2)
-      s2 <- unify (loc1, loc1) (apply s1 b1, apply s1 b2)
-      return (s1 `composeSubst` s2)
-  
-  (TVar n, t) -> varBind n loc1 t loc2
-  (t, TVar n) -> varBind n loc1 t loc2
 
-  (TCon n1, TCon n2)
-    | n1 == n2 -> return nullSubst 
-    | otherwise -> discloseNow (_UnificationFailure # (TCon n1, loc1, TCon n2, loc2))
-
-  (t1, t2) -> discloseNow (_UnificationFailure # (t1, loc1, t2, loc2))
-
-
-varBind :: ( MonadState s m, HasInferState s
-           , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
-           , MonadIO m
-           )
-        => TVar -> Maybe Location -> Type -> Maybe Location -> m Subst
-varBind n ln t lt
-  | t == TVar n                 = return nullSubst
-  | n `Set.member` freeTVars t  = discloseNow (_OccursCheckFail # (n, ln, t, lt))
-  | otherwise                   = return $ subst n t
+generalize :: Set Tyvar -> Type -> Scheme
+generalize free t = Forall as t
+  where as = Set.toList $ ftv t \\ free
 
 
 inferLit :: ( MonadState s m, HasInferState s
@@ -216,17 +226,17 @@ inferLit :: ( MonadState s m, HasInferState s
             )
          => Lit -> m (Subst, Type)
 inferLit = \case
-  IntLit _    -> return (nullSubst, TCon . Con $ "Int")
-  FloatLit _  -> return (nullSubst, TCon . Con $ "Float")
-  CharLit _   -> return (nullSubst, TCon . Con $ "Char")
-  BoolLit _   -> return (nullSubst, TCon . Con $ "Bool")
+  IntLit _    -> return (nullSubst, TCon . Tycon $ "Int")
+  FloatLit _  -> return (nullSubst, TCon . Tycon $ "Float")
+  CharLit _   -> return (nullSubst, TCon . Tycon $ "Char")
+  BoolLit _   -> return (nullSubst, TCon . Tycon $ "Bool")
 
 
 inferInstr :: ( MonadState s m, HasInferState s)
             => PrimInstr -> m (Subst, Type)
 inferInstr instr
-  | instr `elem` intInstrs = return (nullSubst, tfun2 (tcon_ "Int") (tcon_ "Int") (tcon_ "Int"))
-  | instr `elem` floatInstrs = return (nullSubst, tfun2 (tcon_ "Float") (tcon_ "Float") (tcon_ "Float"))
+  | instr `elem` intInstrs = return (nullSubst, tFun2 (tcon_ "Int") (tcon_ "Int") (tcon_ "Int"))
+  | instr `elem` floatInstrs = return (nullSubst, tFun2 (tcon_ "Float") (tcon_ "Float") (tcon_ "Float"))
   | otherwise = error "Uknown instruction encountered!" -- Not handle, should be impossible
             
 
@@ -270,7 +280,7 @@ inferExp' env@(TypeEnv envMap) loc = \case
     tv <- newTVar "a"
     (a', s1, t1) <- inferExp env a
     (b', s2, t2) <- inferExp (apply s1 env) b
-    s3 <- unify (Just la, Just lb) (apply s2 t1, TFun t2 tv)
+    s3 <- unify (Just la, Just lb) (apply s2 t1, TApp t2 tv)
     let s' = s3 `composeSubst` s2 `composeSubst` s1
         t' = apply s3 tv
         e' = EType t' $ ELoc loc $ EApp a' b' 
@@ -280,9 +290,9 @@ inferExp' env@(TypeEnv envMap) loc = \case
   ELam n e -> do
     tv <- newTVar "a"
     let TypeEnv env' = remove env n
-        env'' = TypeEnv $ env' `Map.union` Map.singleton n (Scheme [] tv)
+        env'' = TypeEnv $ env' `Map.union` Map.singleton n (Forall [] tv)
     (e', s, t) <- inferExp env'' e
-    let t' = TFun (apply s tv) t
+    let t' = TApp (apply s tv) t
     return (EType t' $ ELoc loc $ ELam n e', s, t')
 
 
@@ -290,7 +300,7 @@ inferExp' env@(TypeEnv envMap) loc = \case
     (p', s1, t1) <- inferExp env p
     (e1', s2, t2) <- inferExp env e1
     (e2', s3, t3) <- inferExp env e2
-    s4 <- unify (Just lp, Nothing) (t1, TCon . Con $ "Bool")
+    s4 <- unify (Just lp, Nothing) (t1, TCon . Tycon $ "Bool")
     s5 <- unify (Just l1, Just l2) (t2, t3)
     let e' = EType t3 $ ELoc loc $ EIf p' e1' e2'
         s' = s5 `composeSubst` s4 `composeSubst` s3 `composeSubst` s2 `composeSubst` s1
@@ -323,30 +333,103 @@ inferExp' env@(TypeEnv envMap) loc = \case
   e -> error $ "Expression extension is not supported by typechecker.\n" ++ show (pretty e) -- Not handled, should be impossible
 
 
-
-
-infer' :: (MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e, MonadIO m)
-       => Map.Map Var Scheme -> Exp Var -> m (Exp Var, Type)
-infer' env e = do
-  (e', s, t) <- evalInferT . inferExp (TypeEnv env) $ e
-  return (e', apply s t)
-
-
-typecheck :: ( MonadState s m, HasHkcState s
-             , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
-             , MonadIO m
-             ) => m ()
-typecheck = do
-  env <- use hkcTypes
-  defs <- use hkcDefs
-  hkcDefs <~ mapM (mapM (conceal . checkDef env)) defs
-
+normalize :: Scheme -> Scheme
+normalize (Forall _ body) = Forall (map snd ord) (normtype body)
   where
-    checkDef env (Def (Name n) ps e) = do
-      let e' = foldr lamPat e ps
-      (e'', t') <- infer' env e'
-      hkcTypes . at (Var n) .= Just (Scheme [] t')
-      return (Def (Name n) ps e'')
+    ord = zip (nub $ fv body) (map (Tyvar . pack) letters)
 
-    lamPat (Pat n) = lam_ (Var n)
+    fv = \case
+      TVar a    -> [a]
+      TCon _    -> []
+      TApp a b  -> fv a ++ fv b
+      TKind _ t -> fv t
 
+    normtype = \case
+      TApp a b  -> TApp (normtype a) (normtype b)
+      TCon a    -> TCon a
+      TKind k t -> TKind k t
+      TVar a    -> case Prelude.lookup a ord of
+                     Just x   -> TVar x
+                     Nothing  -> error "type variable not in signature"
+
+-------------------------------------------------------------------------------
+-- Constraint Solver
+-------------------------------------------------------------------------------
+
+-- Substitution Helpers
+nullSubst :: Subst
+nullSubst = Subst Map.empty
+
+composeSubst :: Subst -> Subst -> Subst
+composeSubst subst1@(Subst s1) (Subst s2)
+  = Subst $ Map.map (apply subst1) s2 `Map.union` s1
+
+instance Monoid Subst where
+  mempty = nullSubst
+  mappend = composeSubst
+
+instance Default Subst where
+    def = nullSubst
+
+
+unifyMany :: ([Type], [Type]) -> m Subst
+unifyMany = \case
+  ([], []) -> return mempty
+  (t1:ts1, t2:ts2) ->
+    do  su1 <- unifies t1 t2
+        su2 <- unifyMany (apply su1 ts1) (apply su1 ts2)
+        return $ su1 <> su2
+  (t1, t2) -> error "Unification mismatch"
+
+
+unifies :: (Type, Type) -> m Subst
+unifies = \case
+  (t1, t2)
+    | t1 == t2 -> return mempty
+  
+  (TVar v, t) -> v `bind` t
+  (t, TVar v) -> v `bind` t
+
+  (TApp a1 b1, TApp a2 b2) -> unifyMany [a1, b1] [a2, b2]
+
+  _ -> error "Unification Fail"
+
+
+bind :: Tyvar -> Type -> m Subst
+bind a t
+  | t == TVar a = return mempty
+  | occursCheck a t = error "Infinite Type Error"
+  | otherwise = return . Subst $ Map.singleton a t
+
+
+occursCheck :: FreeTVars a => Tyvar -> a -> Bool
+occursCheck a t = a `Set.member` ftv t
+
+
+nextSolvable :: [Constraint] -> (Constraint, [Constraint])
+nextSolvable xs = fromJust (find solvable (chooseOne xs))
+  where
+    chooseOne xs = [(x, ys) | x <- xs, let ys = delete x xs]
+
+    solvable = \case
+      (EqConst{}, _)      -> True
+      (ExpInstConst{}, _) -> True
+      (ImpInstConst t1 ms t2, cs) -> Set.null ((ftv t2 `Set.difference` ms) `Set.intersection` atv cs)
+
+
+solve :: [Constraint] -> m Subst
+solve [] = return mempty
+solve cs = solve' . nextSolvable $ cs
+
+solve' :: (Constraint, [Constraint]) -> m Subst
+solve' = \case
+  (EqConst t1 t2, cs) ->
+    do  su1 <- unifies t1 t2
+        su2 <- solve $ apply su1 cs
+        return $ su2 <> su1
+
+  (ImpInstConst t1 ms t2, cs) -> solve $ ExpInstConst t1 (generalize ms t2):cs
+
+  (ExpInstConst t s, cs) ->
+    do  s' <- instantiate s
+        solve $ EqConst t s' : cs

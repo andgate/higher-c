@@ -19,7 +19,7 @@ c = 3
 d = 3 : Int
 
 -- Here is a function type signature.
-foo : Int -> Int -> Int
+foo : Int -o Int -o Int
 
 -- 'foo' is a function that takes two Ints and evalutes to an Int.
 -- We can define it like so...
@@ -48,6 +48,7 @@ type Inch = Int
 -- New types are not treated as interchangable.
 alias Size = Int
 
+  |--
 
 -- Declare data structures with the data keyword
 data Color
@@ -56,7 +57,6 @@ data Color
       , green : Float
       , blue  : Float
       }
-  |--
 
 --|   This creates a record with one constructor, Color.
     My color has three field accessors red, green, and blue.

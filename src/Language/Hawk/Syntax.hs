@@ -19,8 +19,10 @@
   #-}
 module Language.Hawk.Syntax
   ( module Language.Hawk.Syntax
+  , module Language.Hawk.Syntax.DataDecl
   , module Language.Hawk.Syntax.Expression
   , module Language.Hawk.Syntax.Literal
+  , module Language.Hawk.Syntax.Kind
   , module Language.Hawk.Syntax.Location
   , module Language.Hawk.Syntax.Name
   , module Language.Hawk.Syntax.Prim
@@ -42,7 +44,9 @@ import Data.Tree
 import GHC.Types (Constraint)
 import GHC.Generics (Generic)
 import Language.Hawk.Parse.Lexer.Token
+import Language.Hawk.Syntax.DataDecl
 import Language.Hawk.Syntax.Expression
+import Language.Hawk.Syntax.Kind
 import Language.Hawk.Syntax.Literal
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Operator
@@ -88,15 +92,13 @@ data Item
   = ForeignItem Foreign
   | ExposeItem Expose
 
-  | NoConsume Name
-
   | DecItem Dec
   | DefItem Def
   
   | NewTyItem NewType
   | TyAliasItem TypeAlias
   
-  | DataItem DataType
+  | DataItem DataDecl
   | EmptyItem
   deriving (Show, Eq, Data, Typeable, Generic)
 
@@ -177,15 +179,6 @@ data TypeAlias
       } deriving (Show, Eq, Data, Typeable, Generic)
 
 
--- -----------------------------------------------------------------------------
--- | Data Type
-
-data DataType
-    = DataType
-      { _dataTyName :: Name
-      , _dataTyBody :: [Dec]
-      } deriving (Show, Eq, Data, Typeable, Generic)
-
 
 -- -----------------------------------------------------------------------------
 -- | Lens Instances
@@ -211,9 +204,6 @@ instance PP.Pretty Item where
 
     pretty (ExposeItem i) =
       PP.pretty i
-
-    pretty (NoConsume i) =
-      PP.textStrict "Non-consumer:" PP.<+> PP.pretty i
 
     pretty (DecItem i) =
       PP.pretty i
@@ -322,16 +312,7 @@ instance PP.Pretty TypeAlias where
         )
 
 
--- Data Type -----------------------------------------------------------------------
-instance PP.Pretty DataType where
-    pretty (DataType name body) =
-      PP.textStrict "Data Type:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "name:" <+> PP.pretty name
-          PP.<$>
-          PP.textStrict "body:" <+> PP.pretty body
-        )
+
 
 
 -- -----------------------------------------------------------------------------
@@ -375,7 +356,3 @@ instance Binary NewType
 
 -- Type Alias ---------------------------------------------------------------------
 instance Binary TypeAlias
-
-
--- Data Type -----------------------------------------------------------------------
-instance Binary DataType

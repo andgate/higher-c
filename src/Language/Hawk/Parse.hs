@@ -70,10 +70,13 @@ parse = do
   where
     processItem = \case
       DecItem (Dec (Name n) t) ->
-        hkcTypes . at (Var n) .= Just (Scheme [] t)
+        hkcTypes . at (Var n) .= Just (Forall [] t)
 
       DefItem d@(Def (Name n) _ _) ->
         hkcDefs . at n <>= Just [d]
+
+      DataItem dd ->
+        processDataDecl dd
 
       _ -> return ()
 
@@ -88,6 +91,19 @@ parse = do
           -- logInfo =<< timestamp (_ParseSuccess # "")
           return m
 
+
+processDataDecl :: ( MonadState s m, HasHkcState s, HasParseState s
+                , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
+                , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
+                , MonadIO m
+                )
+         => DataDecl -> m ()
+processDataDecl dd@(DataDecl (Name n) cd) = do
+  hkcDatas . at n .= Just dd
+  return ()
+  where
+    processConDecl cd = undefined
+       
 
 -- -----------------------------------------------------------------------------
 -- Operator table parsing

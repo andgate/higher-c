@@ -91,7 +91,7 @@ opId name
   = (^.tokText) <$> op name
 
 -- -----------------------------------------------------------------------------
--- Combinator Helpers
+-- Grouping Helpers
 
 parens :: MonadParser m => m a -> m a
 parens p
@@ -111,9 +111,23 @@ angleBrackets p
 
 
 -- -----------------------------------------------------------------------------
--- Id Helpers
+-- Seperators Helpers
 
--- Id Text
+commaSep1 :: MonadParser m => m a -> m [a]
+commaSep1 = (`P.sepBy1` rsvp ",")
+
+-- -----------------------------------------------------------------------------
+-- Id Name Helpers 
+
+anyVarName :: MonadParser m => m Name
+anyVarName = Name <$> anyVarId
+
+anyConName :: MonadParser m => m Name
+anyConName = Name <$> anyConId
+
+-- -----------------------------------------------------------------------------
+-- Id Text Helpers 
+
 anyVarId :: MonadParser m => m Text
 anyVarId = (^.tokText) <$> anyVarT
 
@@ -130,7 +144,9 @@ anyOpId :: MonadParser m => m Text
 anyOpId = (^.tokText) <$> anyOpT
 
 
--- Id tokens
+-- -----------------------------------------------------------------------------
+-- Id Token Helpers
+
 anyVarT :: MonadParser m => m Token
 anyVarT
   = satisfyT $ \t ->

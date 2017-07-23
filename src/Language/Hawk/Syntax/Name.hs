@@ -10,20 +10,16 @@ import GHC.Generics (Generic)
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
-data Name
+newtype Name
   = Name Text
   deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
 
-data Var
+newtype Var
   = Var Text
   deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
 
-data Con
+newtype Con
   = Con Text
-  deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
-
-data TVar
-  = TypeVar Text
   deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
 
 
@@ -31,7 +27,6 @@ data TVar
 instance Binary Name
 instance Binary Var
 instance Binary Con
-instance Binary TVar
 
 
 
@@ -44,5 +39,3 @@ instance PP.Pretty Var where
 instance PP.Pretty Con where
   pretty (Con n) = PP.textStrict n
 
-instance PP.Pretty TVar where
-  pretty (TypeVar n) =  PP.pretty n

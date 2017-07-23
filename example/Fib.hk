@@ -15,7 +15,7 @@ noconsume (+)
 (-) x y = #fsub x y
 
 -- Define a fibonacci function
-fib : Float -> Float
+fib : Float -o Float
 fib n =
   if n < 3.0
     then

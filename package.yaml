@@ -121,7 +121,9 @@ library:
     - Language.Hawk.Parse.State
 
     - Language.Hawk.Syntax
+    - Language.Hawk.Syntax.DataDecl
     - Language.Hawk.Syntax.Expression
+    - Language.Hawk.Syntax.Kind
     - Language.Hawk.Syntax.Location
     - Language.Hawk.Syntax.Name
     - Language.Hawk.Syntax.Pass
@@ -134,7 +136,6 @@ library:
 
     - Language.Hawk.TypeCheck
     - Language.Hawk.TypeCheck.Error
-    - Language.Hawk.TypeCheck.NameGen
 
     ## Extra, possibly seperate packages or upstream merges
     - Data.Bag

@@ -21,6 +21,7 @@ data HkcState =
     { _hkcFileTexts :: [(FilePath, Text)]
     , _hkcParseState :: ParseState
     , _hkcDefs :: Map Text [Def]
+    , _hkcDatas :: Map Text DataDecl
     , _hkcTypes :: Map Var Scheme
     }
 
@@ -32,6 +33,7 @@ instance Default HkcState where
         { _hkcFileTexts = []
         , _hkcParseState = def
         , _hkcDefs = Map.empty
+        , _hkcDatas = Map.empty
         , _hkcTypes = Map.empty
         }
 

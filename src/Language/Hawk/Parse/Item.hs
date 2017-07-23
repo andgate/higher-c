@@ -28,9 +28,9 @@ itemP :: MonadParser m
       => ExpOpTable m -> m Item
 itemP ops = 
       (ForeignItem <$> foreignP)
-  <|> (noconsumeP)
   <|> (DecItem <$> decP)
   <|> (DefItem <$> defP ops)
+  <|> (DataItem <$> dataDeclP)
 
 
 
@@ -42,9 +42,6 @@ foreignTypeP :: MonadParser m => m ForeignType
 foreignTypeP =
     ForeignC <$ rsvp "ccall"
 
-noconsumeP :: MonadParser m => m Item
-noconsumeP =
-  NoConsume <$> (rsvp "noconsume" *> varnameP)
 
 decP :: MonadParser m
      => m Dec
@@ -150,9 +147,9 @@ primInstrP =
 eifP :: MonadParser m
      => ExpOpTable m -> m (Exp Var)
 eifP ops = elocP $ do
-  e1 <- rsvp "if" *> (cexp ops)
-  e2 <- rsvp "then" *> (expP ops)
-  e3 <- rsvp "else" *> (expP ops)
+  e1 <- rsvp "if" *> cexp ops
+  e2 <- rsvp "then" *> expP ops
+  e3 <- rsvp "else" *> expP ops
   return $ EIf e1 e2 e3
 
 
@@ -168,7 +165,7 @@ eletP ops =
 typeP :: MonadParser m => m Type
 typeP = do
     t1 <- atypeP
-    (TFun t1 <$> (P.try (rsvp "->") *> typeP))
+    (TApp t1 <$> (P.try (rsvp "->") *> typeP))
       <|> return t1
 
 --btypeP :: MonadParser m => m Type
@@ -186,16 +183,35 @@ gconP =
 
 
 tconP :: MonadParser m => m Type
-tconP = TCon <$> conP
+tconP = TCon <$> tyconP
 
 tconUnitP :: MonadParser m => m Type
-tconUnitP = TCon (Con "Unit") <$ (rsvp "(" *> rsvp ")")
+tconUnitP = tUnit <$ (rsvp "(" *> rsvp ")")
 
 tvarP :: MonadParser m => m Type
 tvarP = TVar <$> typevarP
 
-typevarP :: MonadParser m => m TVar
-typevarP = TypeVar <$> anyVarId
+typevarP :: MonadParser m => m Tyvar
+typevarP = Tyvar <$> anyVarId
 
 conP :: MonadParser m => m Con
 conP = Con <$> anyConId
+
+tyconP :: MonadParser m => m Tycon
+tyconP = Tycon <$> anyConId
+
+
+
+dataDeclP :: MonadParser m => m DataDecl
+dataDeclP =
+  DataDecl <$> (rsvp "data" *> anyConName) <*> (rsvp "=" *> some conDecl)
+
+
+conDecl :: MonadParser m => m ConDecl
+conDecl =
+      (ConDecl <$> anyConName <*> many atypeP)
+  <|> (RecDecl <$> anyConName <*> curlyBrackets (commaSep1 recField))
+
+recField :: MonadParser m => m RecField
+recField =
+  RecField <$> anyVarName <*> (rsvp ":" *> atypeP)
