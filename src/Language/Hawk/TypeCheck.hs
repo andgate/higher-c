@@ -35,6 +35,7 @@ import Text.PrettyPrint.Leijen.Text (pretty)
 import Language.Hawk.Compile.State
 import Language.Hawk.Syntax
 import Language.Hawk.Syntax.Prim
+import qualified Language.Hawk.TypeCheck.Assumption as As
 import Language.Hawk.TypeCheck.Error
 
 import qualified Data.Map   as Map
@@ -43,7 +44,6 @@ import qualified Data.Text  as T
 
 
 
-newtype TypeEnv = TypeEnv (Map Var Scheme)
 newtype Subst = Subst { substDict :: Map Tyvar Type }
   deriving (Eq, Ord, Show)
 
@@ -51,6 +51,7 @@ data Constraint
   = EqConst Type Type
   | ImpInstConst Type (Set Tyvar) Type
   | ExpInstConst Type Scheme
+  deriving (Show, Eq, Ord)
 
 -- Inference State
 data InferState
@@ -125,6 +126,9 @@ instance ActiveTVars Constraint where
       ImpInstConst t1 ms t2 -> ftv t1 `Set.union` (ftv ms `Set.intersection` ftv t2)
       ExpInstConst t s      -> ftv t `Set.union` ftv s
 
+instance ActiveTVars a => ActiveTVars [a] where
+    atv = foldr (Set.union . atv) Set.empty
+
 -- Substituble
 class Substitutable a where
     apply :: Subst -> a -> a
@@ -146,21 +150,25 @@ instance Substitutable Scheme where
                       where s' = Subst $ foldr Map.delete s as
 
 
+instance Substitutable Constraint where
+  apply s = \case
+    EqConst t1 t2         -> EqConst (apply s t1) (apply s t2)
+    ExpInstConst t sc     -> ExpInstConst (apply s t) (apply s sc)
+    ImpInstConst t1 ms t2 -> ImpInstConst (apply s t1) (apply s ms) (apply s t2)
+
 instance Substitutable a => Substitutable [a] where
     apply = map . apply
 
 instance (Ord a, Substitutable a) => Substitutable (Set a) where
     apply = Set.map . apply
 
-instance Substitutable TypeEnv where
-    apply s (TypeEnv env) = TypeEnv (Map.map (apply s) env)
-
 
 -------------------------------------------------------------------------------
 -- Inference
 -------------------------------------------------------------------------------
 
-
+typecheck = undefined
+{-
 typecheck :: ( MonadState s m, HasHkcState s
              , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
              , MonadIO m
@@ -186,7 +194,7 @@ infer' env e = do
   (e', s, t) <- runInferT . inferExp (TypeEnv env) $ e
   return (e', apply s t)
 
-
+-}
 
 closeOver :: Type -> Scheme
 closeOver = normalize . generalize Set.empty
@@ -232,14 +240,31 @@ inferLit = \case
   BoolLit _   -> return (nullSubst, TCon . Tycon $ "Bool")
 
 
-inferInstr :: ( MonadState s m, HasInferState s)
-            => PrimInstr -> m (Subst, Type)
+inferInstr :: PrimInstr -> Type
 inferInstr instr
-  | instr `elem` intInstrs = return (nullSubst, tFun2 (tcon_ "Int") (tcon_ "Int") (tcon_ "Int"))
-  | instr `elem` floatInstrs = return (nullSubst, tFun2 (tcon_ "Float") (tcon_ "Float") (tcon_ "Float"))
+  | instr `elem` intInstrs = tFun2 (tcon_ "Int") (tcon_ "Int") (tcon_ "Int")
+  | instr `elem` floatInstrs = tFun2 (tcon_ "Float") (tcon_ "Float") (tcon_ "Float")
   | otherwise = error "Uknown instruction encountered!" -- Not handle, should be impossible
             
 
+infer :: ( MonadReader (Set Tyvar) m
+         , MonadState s m, HasInferState s
+         )
+      => Exp Var -> m (As.Assumption, [Constraint], Type)
+infer = \case
+  EVar (Var x) -> do
+    tv <- fresh
+    return (As.singleton x tv, [], tv)
+
+  ELam (Var x) e -> do
+    tv@(TVar a) <- fresh
+    (as, cs, t) <- extendMSet a (infer e)
+    return ( as `As.remove` x
+           , cs ++ [EqConst t' tv | t' <- As.lookup x as]
+           , tv `tLnFun1` t
+           )
+
+{-
 inferExp :: ( MonadState s m, HasInferState s
             , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
             , MonadIO m
@@ -332,6 +357,8 @@ inferExp' env@(TypeEnv envMap) loc = \case
 
   e -> error $ "Expression extension is not supported by typechecker.\n" ++ show (pretty e) -- Not handled, should be impossible
 
+-}
+
 
 normalize :: Scheme -> Scheme
 normalize (Forall _ body) = Forall (map snd ord) (normtype body)
@@ -372,17 +399,17 @@ instance Default Subst where
     def = nullSubst
 
 
-unifyMany :: ([Type], [Type]) -> m Subst
+unifyMany :: Monad m => ([Type], [Type]) -> m Subst
 unifyMany = \case
   ([], []) -> return mempty
   (t1:ts1, t2:ts2) ->
-    do  su1 <- unifies t1 t2
-        su2 <- unifyMany (apply su1 ts1) (apply su1 ts2)
+    do  su1 <- unifies (t1, t2)
+        su2 <- unifyMany (apply su1 ts1, apply su1 ts2)
         return $ su1 <> su2
   (t1, t2) -> error "Unification mismatch"
 
 
-unifies :: (Type, Type) -> m Subst
+unifies :: Monad m => (Type, Type) -> m Subst
 unifies = \case
   (t1, t2)
     | t1 == t2 -> return mempty
@@ -390,12 +417,12 @@ unifies = \case
   (TVar v, t) -> v `bind` t
   (t, TVar v) -> v `bind` t
 
-  (TApp a1 b1, TApp a2 b2) -> unifyMany [a1, b1] [a2, b2]
+  (TApp a1 b1, TApp a2 b2) -> unifyMany ([a1, b1], [a2, b2])
 
   _ -> error "Unification Fail"
 
 
-bind :: Tyvar -> Type -> m Subst
+bind :: Monad m => Tyvar -> Type -> m Subst
 bind a t
   | t == TVar a = return mempty
   | occursCheck a t = error "Infinite Type Error"
@@ -417,14 +444,16 @@ nextSolvable xs = fromJust (find solvable (chooseOne xs))
       (ImpInstConst t1 ms t2, cs) -> Set.null ((ftv t2 `Set.difference` ms) `Set.intersection` atv cs)
 
 
-solve :: [Constraint] -> m Subst
+solve :: (MonadState s m, HasInferState s)
+      => [Constraint] -> m Subst
 solve [] = return mempty
 solve cs = solve' . nextSolvable $ cs
 
-solve' :: (Constraint, [Constraint]) -> m Subst
+solve' :: (MonadState s m, HasInferState s)
+       => (Constraint, [Constraint]) -> m Subst
 solve' = \case
   (EqConst t1 t2, cs) ->
-    do  su1 <- unifies t1 t2
+    do  su1 <- unifies (t1, t2)
         su2 <- solve $ apply su1 cs
         return $ su2 <> su1
 

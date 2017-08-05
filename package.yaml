@@ -44,6 +44,10 @@ executables:
       - -rtsopts
       - -threaded
       - -with-rtsopts=-N
+      - -Wall
+      - -Wincomplete-uni-patterns
+      - -Wincomplete-record-updates
+      - -Wmissing-import-lists
 
 library:
   source-dirs: src
@@ -85,6 +89,7 @@ library:
     - time
     - transformers
     - transformers-base
+    - unbound
     - utf8-string
     - vector
     - wl-pprint-text
@@ -135,6 +140,7 @@ library:
     - Language.Hawk.Target.LLVM.Types
 
     - Language.Hawk.TypeCheck
+    - Language.Hawk.TypeCheck.Assumption
     - Language.Hawk.TypeCheck.Error
 
     ## Extra, possibly seperate packages or upstream merges

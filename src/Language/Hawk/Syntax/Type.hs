@@ -30,7 +30,7 @@ data Type
 
 
 data Scheme = Forall [Tyvar] Type
-
+  deriving (Show, Eq, Ord)
 
 data Qual t =
   [Pred] :=> t
