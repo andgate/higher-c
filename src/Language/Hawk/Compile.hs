@@ -26,7 +26,7 @@ import Language.Hawk.Parse.Lexer.Error
 import Language.Hawk.Parse.State
 import Language.Hawk.Syntax
 
-import Language.Hawk.TypeCheck (typecheck)
+import Language.Hawk.TypeCheck
 
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.Error
@@ -63,7 +63,7 @@ compile = do
 
   --namecheck
 
-  typecheck
+  -- typecheck
     
   liftIO . print . pretty =<< use psToks
   liftIO . print =<< use psOps

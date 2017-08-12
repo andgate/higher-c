@@ -61,6 +61,7 @@ library:
     - containers
     - data-default-class
     - data-default-instances-text
+    - deriving-compat
     - directory
     - edit-distance
     - either
@@ -89,7 +90,7 @@ library:
     - time
     - transformers
     - transformers-base
-    - unbound
+    - unbound-generics
     - utf8-string
     - vector
     - wl-pprint-text
@@ -126,6 +127,7 @@ library:
     - Language.Hawk.Parse.State
 
     - Language.Hawk.Syntax
+    - Language.Hawk.Syntax.Decl
     - Language.Hawk.Syntax.DataDecl
     - Language.Hawk.Syntax.Expression
     - Language.Hawk.Syntax.Kind
@@ -133,6 +135,7 @@ library:
     - Language.Hawk.Syntax.Name
     - Language.Hawk.Syntax.Pass
     - Language.Hawk.Syntax.Prim
+    - Language.Hawk.Syntax.Term
     - Language.Hawk.Syntax.Type
 
     - Language.Hawk.Target.LLVM.Codegen
@@ -140,7 +143,8 @@ library:
     - Language.Hawk.Target.LLVM.Types
 
     - Language.Hawk.TypeCheck
-    - Language.Hawk.TypeCheck.Assumption
+    - Language.Hawk.TypeCheck.Environment
+    - Language.Hawk.TypeCheck.Equality
     - Language.Hawk.TypeCheck.Error
 
     ## Extra, possibly seperate packages or upstream merges

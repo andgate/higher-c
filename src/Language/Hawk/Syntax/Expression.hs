@@ -113,7 +113,7 @@ mkOp2 (L l0@(Loc fp r1) name) lhs rhs
     l2 = Loc fp (r1 <> r3)
 
 -- -----------------------------------------------------------------------------
--- | Extension Instances
+-- | Class Instances
 
 instance PP.Pretty b => PP.Pretty (Exp b) where
     pretty (ELit lit) =

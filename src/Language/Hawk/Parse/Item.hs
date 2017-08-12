@@ -24,6 +24,57 @@ import qualified Text.Megaparsec.Combinator as P
 import qualified Text.Megaparsec.Expr       as P
 
 
+
+{- 
+
+Concrete syntax for the language: 
+Optional components in this BNF are marked with < >
+
+  terms:
+    a,b,A,B ::=
+      *                        Intuitionistic Universe
+    | o                        Linear Universe
+    | x                        Variables   (start with lowercase)
+    | \ x . a                  Function definition
+    | a b                      Application
+    | (x : A) -> B             Pi type
+    | (x : A) -o B             Linear Pi Type
+
+    | (a : A)                  Annotations
+    | (a)                      Parens
+    | _                        An axiom hole, inhabits all types
+
+    | let x = a in b           Let expression
+    | if a then b else c       If 
+
+    | Type Literal             Type level Literal
+    | Literal                  Value level Literal
+    | Prim                     Primitive instructions
+
+    | dup a                    Duplicates a variable without consuming
+    | free a in b              Free a variable and evaluates b
+
+    | Bool                     Boolean type
+    | True | False             Boolean values
+
+
+
+  declarations:
+
+      foo : A
+      foo = a
+
+
+  Syntax sugar:
+
+   - You can collapse lambdas, like:
+
+         \ x [y] z . a
+
+     This gets parsed as \ x . \ [y] . \ z . a
+
+-}
+
 itemP :: MonadParser m
       => ExpOpTable m -> m Item
 itemP ops = 
