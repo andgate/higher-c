@@ -3,7 +3,7 @@
             , ConstraintKinds
             , TypeFamilies
   #-}
-module Language.Hawk.Parse.Item where
+module Language.Hawk.Parse.Decl where
 
 import Control.Applicative
 import Control.Lens
@@ -75,13 +75,40 @@ Optional components in this BNF are marked with < >
 
 -}
 
-itemP :: MonadParser m
-      => ExpOpTable m -> m Item
-itemP ops = 
-      (ForeignItem <$> foreignP)
-  <|> (DecItem <$> decP)
-  <|> (DefItem <$> defP ops)
-  <|> (DataItem <$> dataDeclP)
+declP :: MonadParser m
+      => m Decl
+declP = 
+      sigP
+  <|> defP
+  <|> recdefP
+  <|> foreignP
+  <|> fixityP
+
+
+
+fixityP :: MonadParser m =>  m Decl
+fixityP = do
+  fx <- try infixP
+  p <- fromIntegral <$> integerP
+  ops <- some anyOpId
+
+  return $ Fixity fx p ops
+    
+
+infixP :: MonadParser m => m Fixity
+infixP =
+  infixDecN <|> infixDecL <|> infixDecR
+
+
+infixP :: MonadParser m => m Fixity
+infixP = rsvp "infix" *> pure InfixN
+
+infixlP :: MonadParser m => m Fixity
+infixlP = rsvp "infixl" *> pure InfixL
+
+infixrP :: MonadParser m => m Fixity
+infixrP = rsvp "infixr" *> pure InfixR
+
 
 
 

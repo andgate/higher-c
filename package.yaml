@@ -106,6 +106,8 @@ library:
     - Language.Hawk.Compile.PhaseStatus
     - Language.Hawk.Compile.State
 
+    - Language.Hawk.Eval
+
     - Language.Hawk.Load
     - Language.Hawk.Load.Message
     - Language.Hawk.Load.Error
@@ -114,33 +116,30 @@ library:
     - Language.Hawk.Namespace
     
     - Language.Hawk.Parse
+    - Language.Hawk.Parse.Decl
     - Language.Hawk.Parse.Error
     - Language.Hawk.Parse.Helpers
-    - Language.Hawk.Parse.Item
     - Language.Hawk.Parse.Lexer
     - Language.Hawk.Parse.Lexer.Layout
     - Language.Hawk.Parse.Lexer.Token
     - Language.Hawk.Parse.Lexer.State
     - Language.Hawk.Parse.Lexer.Error
     - Language.Hawk.Parse.Message
-    - Language.Hawk.Parse.OpTable
-    - Language.Hawk.Parse.State
+    - Language.Hawk.Parse.Term
 
     - Language.Hawk.Syntax
     - Language.Hawk.Syntax.Decl
     - Language.Hawk.Syntax.DataDecl
-    - Language.Hawk.Syntax.Expression
     - Language.Hawk.Syntax.Kind
     - Language.Hawk.Syntax.Location
     - Language.Hawk.Syntax.Name
     - Language.Hawk.Syntax.Pass
     - Language.Hawk.Syntax.Prim
     - Language.Hawk.Syntax.Term
-    - Language.Hawk.Syntax.Type
 
-    - Language.Hawk.Target.LLVM.Codegen
-    - Language.Hawk.Target.LLVM.Emit
-    - Language.Hawk.Target.LLVM.Types
+    # - Language.Hawk.Target.LLVM.Codegen
+    # - Language.Hawk.Target.LLVM.Emit
+    # - Language.Hawk.Target.LLVM.Types
 
     - Language.Hawk.TypeCheck
     - Language.Hawk.TypeCheck.Environment

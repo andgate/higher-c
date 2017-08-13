@@ -9,7 +9,7 @@ import Data.Binary
 import Data.Data
 import GHC.Generics (Generic)
 import Language.Hawk.Syntax.Name
-import Language.Hawk.Syntax.Type
+import Language.Hawk.Syntax.Term
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
@@ -22,12 +22,12 @@ data DataDecl
       } deriving (Show, Eq, Data, Typeable, Generic)
 
 data ConDecl
-    = ConDecl Name [Type]
+    = ConDecl Name [Term]
     | RecDecl Name [RecField]
     deriving (Show, Eq, Data, Typeable, Generic)
 
 data RecField =
-    RecField Name Type
+    RecField Name Term
     deriving (Show, Eq, Data, Typeable, Generic)
 
 

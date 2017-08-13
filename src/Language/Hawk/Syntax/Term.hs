@@ -7,6 +7,8 @@
             , OverloadedStrings
             , LambdaCase
             , TemplateHaskell
+            , TypeSynonymInstances
+            , FlexibleInstances
   #-}
 module Language.Hawk.Syntax.Term where
 
@@ -18,7 +20,7 @@ import Data.Data
 import Data.Data.Lens (uniplate)
 import Data.Default.Class
 import Data.Monoid
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import Data.Deriving (deriveEq1, deriveOrd1, deriveRead1, deriveShow1)
 import Data.Functor.Classes
@@ -91,3 +93,13 @@ pop = Kind Pop
 
 box :: Term
 box = Kind Box
+
+
+-- -----------------------------------------------------------------------------
+-- | Pretty Printing
+
+instance PP.Pretty TName where
+  pretty = PP.textStrict . pack . name2String
+
+instance PP.Pretty Term where
+  pretty t = undefined
