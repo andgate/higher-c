@@ -12,16 +12,12 @@ category: Compilers
 version: '0.0.0'
 license: MIT
 
-build-tools:
-  - alex
-
 extra-source-files:
   - CHANGELOG.md
   - LICENSE.md
   - package.yaml
   - README.md
   - stack.yaml
-  - src/Language/Hawk/Parse/Lexer.x
 
 ghc-options: 
   - -Wall
@@ -119,20 +115,13 @@ library:
     - Language.Hawk.Parse.Decl
     - Language.Hawk.Parse.Error
     - Language.Hawk.Parse.Helpers
-    - Language.Hawk.Parse.Lexer
-    - Language.Hawk.Parse.Lexer.Layout
-    - Language.Hawk.Parse.Lexer.Token
-    - Language.Hawk.Parse.Lexer.State
-    - Language.Hawk.Parse.Lexer.Error
     - Language.Hawk.Parse.Message
     - Language.Hawk.Parse.Term
 
     - Language.Hawk.Syntax
     - Language.Hawk.Syntax.Decl
     - Language.Hawk.Syntax.DataDecl
-    - Language.Hawk.Syntax.Kind
     - Language.Hawk.Syntax.Location
-    - Language.Hawk.Syntax.Name
     - Language.Hawk.Syntax.Pass
     - Language.Hawk.Syntax.Prim
     - Language.Hawk.Syntax.Term

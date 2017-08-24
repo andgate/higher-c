@@ -12,18 +12,17 @@ import Control.Monad.Reader (MonadReader, ReaderT)
 import Data.Map (Map)
 import Data.Monoid
 import Data.Set (Set)
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import Language.Hawk.Parse.Helpers
-import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Syntax
 
 import qualified Data.Map                   as Map
 import qualified Data.Set                   as Set
-import qualified Text.Megaparsec.Prim       as P
-import qualified Text.Megaparsec.Combinator as P
-import qualified Text.Megaparsec.Expr       as P
+import qualified Text.Megaparsec            as P
+import qualified Text.Megaparsec.Char       as P
+import qualified Text.Megaparsec.Char.Lexer as L
 
-
+import Unbound.Generics.LocallyNameless
 
 {- 
 
@@ -75,164 +74,130 @@ Optional components in this BNF are marked with < >
 
 -}
 
+termP :: MonadParser m
+     => m () -> m Term
+termP = cterm
 
 
-
-varnameP :: MonadParser m => m Name
-varnameP = Name <$> (anyVarId <|> parens anyOpId)
-
-varP :: MonadParser m => m Var
-varP = Var <$> anyVarId
-
-opVarP :: MonadParser m => m Var
-opVarP = Var <$> parens anyOpId
-
-patP :: MonadParser m => m Pat
-patP =
-  Pat <$> anyVarId
+cterm :: MonadParser m
+     => m () -> m Term
+cterm ws =
+  P.choice [ ifP ws
+           , letP ws
+           , bterm ws
+           ]
 
 
-expP :: MonadParser m
-     => ExpOpTable m -> m (Exp Var)
-expP ops =
-  dexp ops
+bterm :: MonadParser m
+     => m () -> m Term
+bterm ws =
+  P.try (App <$> aterm ws <*> bterm ws)
+  <|> aterm ws
 
 
-dexp :: MonadParser m
-     => ExpOpTable m -> m (Exp Var)
-dexp ops =
-  eifP ops <|> eletP ops <|> cexp ops
+aterm :: MonadParser m
+      => m () -> m Term
+aterm ws =
+  P.choice [ varP ws
+           , conP ws
+           , primP ws
+           , litP ws
+           , parenP ws
+           ]
 
 
-cexp :: MonadParser m
-     => ExpOpTable m -> m (Exp Var)
-cexp ops =
-  P.makeExprParser (bexp ops) ops
+varP :: MonadParser m => m () -> m Term
+varP ws = tlocP $ Var . s2n <$> varid ws
 
 
-bexp :: MonadParser m
-     => ExpOpTable m -> m (Exp Var)
-bexp ops =
-  eapp_ <$> aexp ops <*> many (aexp ops)
+conP :: MonadParser m => m () -> m Term
+conP ws = tlocP $ Con . pack <$> conid ws
 
 
-aexp :: MonadParser m
-      => ExpOpTable m -> m (Exp Var)
-aexp ops =
-      evarP
-  <|> econP
-  <|> eprimP 
-  <|> elitP 
-  <|> parens (expP ops)
+litP :: MonadParser m => m () -> m Term
+litP ws = tlocP $ Lit <$> litP' ws
+
+litP' :: MonadParser m => m () -> m Lit
+litP' ws =
+  P.choice [ IntLit <$> integerP ws
+           , FloatLit <$> doubleP ws
+           , CharLit <$> charP ws
+           ]
+
+primP :: MonadParser m => m () -> m Term
+primP ws = tlocP $
+  Prim <$> primInstrP ws
 
 
-evarP :: MonadParser m => m (Exp Var)
-evarP = elocP $ EVar <$> varP
+primInstrP :: MonadParser m => m () -> m PrimInstr
+primInstrP ws =
+  P.choice
+    [ prim "#add" *> pure PrimAdd
+    , prim "#fadd" *> pure PrimFAdd
+    , prim "#sub" *> pure PrimSub
+    , prim "#fsub" *> pure PrimFSub
+    , prim "#mul" *> pure PrimMul
+    , prim "#fmul" *> pure PrimFMul
+    , prim "#div" *> pure PrimDiv
+    , prim "#udiv" *> pure PrimUDiv
+    , prim "#sdiv" *> pure PrimSDiv
+    , prim "#fdiv" *> pure PrimFDiv
+    ]
+  where
+    prim = L.lexeme ws . P.string
 
-
-econP :: MonadParser m => m (Exp Var)
-econP = elocP $ ECon <$> conP
-
-
-elitP :: MonadParser m => m (Exp Var)
-elitP = elocP $ ELit <$> litP
-
-
-litP :: MonadParser m => m Lit
-litP =     
-      ( IntLit <$> integerP )
-  <|> ( FloatLit <$> doubleP )
-  <|> ( CharLit <$> charP )
+parenP :: MonadParser m => m () -> m Term
+parenP ws =
+  Paren <$> parens ws (termP ws)
   
 
-
-eprimP :: MonadParser m => m (Exp Var)
-eprimP = elocP $
-  EPrim <$> primInstrP
-
-
-primInstrP :: MonadParser m => m PrimInstr
-primInstrP =
-          (prim "#add" *> pure PrimAdd)
-      <|> (prim "#fadd" *> pure PrimFAdd)
-      <|> (prim "#sub" *> pure PrimSub)
-      <|> (prim "#fsub" *> pure PrimFSub)
-      <|> (prim "#mul" *> pure PrimMul)
-      <|> (prim "#fmul" *> pure PrimFMul)
-      <|> (prim "#div" *> pure PrimDiv)
-      <|> (prim "#udiv" *> pure PrimUDiv)
-      <|> (prim "#sdiv" *> pure PrimSDiv)
-      <|> (prim "#fdiv" *> pure PrimFDiv)
+ifP :: MonadParser m
+     => m () -> m Term
+ifP ws = tlocP $ do
+  P.try $ rsvp ws "if"
+  a <- bterm ws
+  rsvp ws "then"
+  b <- termP ws
+  rsvp ws "else"
+  c <- termP ws
+  return $ If a b c (Annot Nothing)
 
 
-eifP :: MonadParser m
-     => ExpOpTable m -> m (Exp Var)
-eifP ops = elocP $ do
-  e1 <- rsvp "if" *> cexp ops
-  e2 <- rsvp "then" *> expP ops
-  e3 <- rsvp "else" *> expP ops
-  return $ EIf e1 e2 e3
+letP :: MonadParser m
+     => m () -> m Term
+letP ws = do
+  rsvp ws "let"
+  x <- varName ws
+  equals ws
+  a <- termP ws
+  rsvp ws "in"
+  b <- termP ws
+  return $ Let (bind (x, embed a) b)
 
 
-eletP :: MonadParser m
-     => ExpOpTable m -> m (Exp Var)
-eletP ops =
-  let_ <$> (rsvp "let" *> block binder)
-       <*> (rsvp "in" *> expP ops)
+piP :: MonadParser m => m () -> m Term
+piP ws = do
+  x <- forallP <|> pure wildcardName
+  a <- bterm ws
+  arrowr ws
+  b <- bterm ws
+  return $ Pi (bind (x, embed a) b)
+  
   where
-    binder = (,) <$> varP <*> (rsvp "=" *> expP ops)
+    forallP = do
+      P.try $ rsvp ws "forall"
+      x <- varName ws
+      dot ws
+      return x
 
 
-typeP :: MonadParser m => m Type
-typeP = do
-    t1 <- atypeP
-    (TApp t1 <$> (P.try (rsvp "->") *> typeP))
-      <|> return t1
+lambdaP :: MonadParser m => m () -> m Term
+lambdaP ws = do
+  backslash ws
+  binds <- P.some (varName ws)
+  dot ws
+  body <- termP ws
+  return $ foldr lam body binds
 
---btypeP :: MonadParser m => m Type
---btypeP = TApp <$> atypeP <*> many atypeP
-
-atypeP :: MonadParser m => m Type
-atypeP =
-  gconP <|> tvarP <|> parens typeP
-
-
-gconP :: MonadParser m => m Type
-gconP =
-      tconP
-  <|> tconUnitP
-
-
-tconP :: MonadParser m => m Type
-tconP = TCon <$> tyconP
-
-tconUnitP :: MonadParser m => m Type
-tconUnitP = tUnit <$ (rsvp "(" *> rsvp ")")
-
-tvarP :: MonadParser m => m Type
-tvarP = TVar <$> typevarP
-
-typevarP :: MonadParser m => m Tyvar
-typevarP = Tyvar <$> anyVarId
-
-conP :: MonadParser m => m Con
-conP = Con <$> anyConId
-
-tyconP :: MonadParser m => m Tycon
-tyconP = Tycon <$> anyConId
-
-
-
-dataDeclP :: MonadParser m => m DataDecl
-dataDeclP =
-  DataDecl <$> (rsvp "data" *> anyConName) <*> (rsvp "=" *> some conDecl)
-
-
-conDecl :: MonadParser m => m ConDecl
-conDecl =
-      (ConDecl <$> anyConName <*> many atypeP)
-  <|> (RecDecl <$> anyConName <*> curlyBrackets (commaSep1 recField))
-
-recField :: MonadParser m => m RecField
-recField =
-  RecField <$> anyVarName <*> (rsvp ":" *> atypeP)
+  where
+    lam x m = Lam (bind (x, embed $ Annot Nothing) m)

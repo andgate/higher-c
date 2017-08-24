@@ -14,14 +14,13 @@ import Data.Monoid
 import Data.Set (Set)
 import Data.Text (Text)
 import Language.Hawk.Parse.Helpers
-import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Syntax
 
 import qualified Data.Map                   as Map
 import qualified Data.Set                   as Set
-import qualified Text.Megaparsec.Prim       as P
-import qualified Text.Megaparsec.Combinator as P
-import qualified Text.Megaparsec.Expr       as P
+import qualified Text.Megaparsec            as P
+import qualified Text.Megaparsec.Char       as P
+import qualified Text.Megaparsec.Char.Lexer as L
 
 
 

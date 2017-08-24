@@ -22,9 +22,7 @@ module Language.Hawk.Syntax
   , module Language.Hawk.Syntax.DataDecl
   , module Language.Hawk.Syntax.Decl
   , module Language.Hawk.Syntax.Literal
-  , module Language.Hawk.Syntax.Kind
   , module Language.Hawk.Syntax.Location
-  , module Language.Hawk.Syntax.Name
   , module Language.Hawk.Syntax.Prim
   , module Language.Hawk.Syntax.Term
   , module Language.Hawk.Syntax.TypeLiteral
@@ -43,19 +41,14 @@ import Data.Text (Text, pack)
 import Data.Tree
 import GHC.Types (Constraint)
 import GHC.Generics (Generic)
-import Language.Hawk.Parse.Lexer.Token
 import Language.Hawk.Syntax.DataDecl
 import Language.Hawk.Syntax.Decl
-import Language.Hawk.Syntax.Expression
-import Language.Hawk.Syntax.Kind
 import Language.Hawk.Syntax.Literal
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Operator
 import Language.Hawk.Syntax.Pass
 import Language.Hawk.Syntax.Prim
-import Language.Hawk.Syntax.Name
 import Language.Hawk.Syntax.Term
-import Language.Hawk.Syntax.Type
 import Language.Hawk.Syntax.TypeLiteral
 import Text.PrettyPrint.Leijen.Text ((<+>))
 

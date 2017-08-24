@@ -3,330 +3,164 @@
             , FlexibleContexts
             , FlexibleInstances
             , TypeFamilies
-            , BangPatterns
             , RankNTypes
   #-}
 module Language.Hawk.Parse.Helpers where
 
 import Control.Applicative
-import Control.Lens hiding (op)
-import Data.List.NonEmpty (NonEmpty (..))
-import Data.IntMap (IntMap)
-import Data.Monoid
+import Control.Monad (void)
 import Data.Text (Text, pack)
 import Language.Hawk.Syntax
-import Language.Hawk.Parse.Lexer.Token
 
-import Text.Megaparsec.Prim (MonadParsec(..))
+import Text.Megaparsec (MonadParsec(..))
 
-import qualified Data.IntMap.Lazy           as IMap
-import qualified Data.Set                   as Set
-import qualified Text.Megaparsec.Prim       as P
-import qualified Text.Megaparsec.Combinator as P
-import qualified Text.Megaparsec.Error      as P
-import qualified Text.Megaparsec.Expr       as P
+import Unbound.Generics.LocallyNameless (s2n)
+
+import qualified Text.Megaparsec            as P
+import qualified Text.Megaparsec.Char       as P
+import qualified Text.Megaparsec.Char.Lexer as L
+import qualified Text.Megaparsec.Pos        as P
+
 
 -- -----------------------------------------------------------------------------
 -- Parser Monad Class
 
-type MonadParser m = (Functor m, Applicative m, Monad m, MonadParsec P.Dec [Token] m)
+type MonadParser m = (Functor m, Applicative m, Monad m, MonadParsec () String m)
 
-type ExpParser = P.Parsec P.Dec [Token]
+type Parser = P.Parsec () String
+
 
 -- -----------------------------------------------------------------------------
--- Token Parser Helpers
+-- Comments and Whitespace
 
-{-# INLINE satisfyT #-}
-satisfyT :: MonadParser m => (Token -> Bool) -> m Token
-satisfyT f
-  = P.token testTok Nothing
+lnCmt :: MonadParser m => m ()
+lnCmt = L.skipLineComment "--"
+
+blkCmt :: MonadParser m => m ()
+blkCmt = L.skipBlockCommentNested "--|" "|--"
+
+-- Whitespace w/ newline
+scn :: MonadParser m => m ()
+scn = L.space P.space1 lnCmt blkCmt
+
+
+-- Whitespace w/out newline
+sc :: MonadParser m => m ()
+sc = L.space (void $ takeWhile1P Nothing f) lnCmt blkCmt
   where
-    {-# INLINE testTok #-}
-    testTok t =
-      if f t
-        then Right t
-        else Left (Set.singleton (P.Tokens (t:|[])), Set.empty, Set.empty)
+    f x = x == ' ' || x == '\t'
 
 
+-- -----------------------------------------------------------------------------
+-- Reserved words and Identifiers
 
-matchT :: MonadParser m => TokenClass -> m Token
-matchT tc
-  = satisfyT q
+reserved :: [String]
+reserved = [ "let", "in"
+           , "free", "copy"
+           , "if", "then", "else"
+           ]
+
+
+rsvp :: MonadParser m => m () -> String -> m ()
+rsvp ws w = L.lexeme ws (P.string w *> P.notFollowedBy P.alphaNumChar)
+
+
+varName :: MonadParser m => m () -> m TName
+varName ws = s2n <$> varid ws
+
+varid :: MonadParser m => m () -> m String
+varid ws = (L.lexeme ws . try) (p >>= check)
   where
-    q t = 
-      tc == t^.tokClass
+    p       = (:) <$> P.lowerChar <*> many (P.alphaNumChar <|> P.char '_' <|> P.char '\'')
+    check x = if x `elem` reserved
+                then fail $ "keyword " ++ show x ++ " cannot be an variable identifier"
+                else return x
 
 
-anyT :: MonadParser m => m Token
-anyT = satisfyT $ const True
-
-
-exceptT :: MonadParser m => TokenClass -> m Token
-exceptT tc
-   = satisfyT q
-   where
-     q t = 
-      tc /= t^.tokClass
-
-
--- -----------------------------------------------------------------------------
--- Terminal Helpers
-
-rsvp :: MonadParser m => Text -> m Token
-rsvp
-  = matchT . TokenRsvp 
-
-
-prim :: MonadParser m => Text -> m Token
-prim
-  = matchT . TokenPrim 
-
-
-op :: MonadParser m => Text -> m Token
-op
-  = matchT . TokenOpId
-
-opId :: MonadParser m => Text -> m Text
-opId name
-  = (^.tokText) <$> op name
-
--- -----------------------------------------------------------------------------
--- Grouping Helpers
-
-parens :: MonadParser m => m a -> m a
-parens p
-  = rsvp "(" *> p <* rsvp ")"
-
-sqrBrackets :: MonadParser m => m a -> m a
-sqrBrackets p
-  = rsvp "[" *> p <* rsvp "]"
-
-curlyBrackets :: MonadParser m => m a -> m a
-curlyBrackets p
-  = rsvp "{" *> p <* rsvp "}"
-
-angleBrackets :: MonadParser m => m a -> m a
-angleBrackets p
-  = rsvp "<" *> p <* rsvp ">"
-
-
--- -----------------------------------------------------------------------------
--- Seperators Helpers
-
-commaSep1 :: MonadParser m => m a -> m [a]
-commaSep1 = (`P.sepBy1` rsvp ",")
-
--- -----------------------------------------------------------------------------
--- Id Name Helpers 
-
-anyVarName :: MonadParser m => m Name
-anyVarName = Name <$> anyVarId
-
-anyConName :: MonadParser m => m Name
-anyConName = Name <$> anyConId
-
--- -----------------------------------------------------------------------------
--- Id Text Helpers 
-
-anyVarId :: MonadParser m => m Text
-anyVarId = (^.tokText) <$> anyVarT
-
-anyConId :: MonadParser m => m Text
-anyConId = anyModId <|> anyConId'
-
-anyConId' :: MonadParser m => m Text
-anyConId' = (^.tokText) <$> anyConT
-
-anyModId :: MonadParser m => m Text
-anyModId = (^.tokText) <$> anyModT
-
-anyOpId :: MonadParser m => m Text
-anyOpId = (^.tokText) <$> anyOpT
-
-
--- -----------------------------------------------------------------------------
--- Id Token Helpers
-
-anyVarT :: MonadParser m => m Token
-anyVarT
-  = satisfyT $ \t ->
-      case t^.tokClass of
-        TokenVarId _  -> True
-        _             -> False
-
-anyConT :: MonadParser m => m Token
-anyConT
-  = satisfyT $ \t ->
-      case t^.tokClass of
-        TokenConId _  -> True
-        _             -> False
-
-anyModT :: MonadParser m => m Token
-anyModT
-  = satisfyT $ \t ->
-      case t^.tokClass of
-        TokenModId _  -> True
-        _             -> False
-
-
-anyOpT :: MonadParser m => m Token
-anyOpT
-  = satisfyT $ \t ->
-      case t^.tokClass of
-        TokenOpId _  -> True
-        _             -> False
-
-
-{-# INLINE integerP #-}
-integerP :: MonadParser m => m Integer
-integerP
-  = P.token testTok Nothing
+conid :: MonadParser m => m () -> m String
+conid ws = (L.lexeme ws . try) p
   where
-    {-# INLINE testTok #-}
-    testTok t =
-      case t^.tokClass of
-        (TokenInteger x) -> Right x
-        _ -> Left (Set.singleton (P.Tokens (t:|[])), Set.empty, Set.empty)
-
-
-{-# INLINE doubleP #-}
-doubleP :: MonadParser m => m Double
-doubleP
-  = P.token testTok Nothing
-  where
-    {-# INLINE testTok #-}
-    testTok t =
-      case t^.tokClass of
-        (TokenDouble x) -> Right x
-        _ -> Left (Set.singleton (P.Tokens (t:|[])), Set.empty, Set.empty)
-
-
-{-# INLINE charP #-}
-charP :: MonadParser m => m Char
-charP
-  = P.token testTok Nothing
-  where
-    {-# INLINE testTok #-}
-    testTok t =
-      case t^.tokClass of
-        (TokenChar c) -> Right c
-        _ -> Left (Set.singleton (P.Tokens (t:|[])), Set.empty, Set.empty)
-
-
-
-{-# INLINE stringP #-}
-stringP :: MonadParser m => m Text
-stringP
-  = P.token testTok Nothing
-  where
-    {-# INLINE testTok #-}
-    testTok t =
-      case t^.tokClass of
-        (TokenString x) -> Right (pack x)
-        _ -> Left (Set.singleton (P.Tokens (t:|[])), Set.empty, Set.empty)
+    p       = (:) <$> P.upperChar <*> many (P.alphaNumChar <|> P.char '_' <|> P.char '\'')
 
 -- -----------------------------------------------------------------------------
--- Layout Helpers
+-- Symbols
 
-block :: MonadParser m => m a -> m [a]
-block p = blk *> linefolds p <* blk'
+parens :: MonadParser m => m () -> m a -> m a
+parens ws = P.between (L.symbol ws "(") (L.symbol ws ")")
 
-linefolds0 :: MonadParser m => m a -> m [a]
-linefolds0 p = many $ linefold p
+braces :: MonadParser m => m () -> m a -> m a
+braces ws = P.between (L.symbol ws "{") (L.symbol ws "}")
 
-linefolds :: MonadParser m => m a -> m [a]
-linefolds p = some $ linefold p
+angles :: MonadParser m => m () -> m a -> m a
+angles ws = P.between (L.symbol ws "<") (L.symbol ws ">")
 
-linefold :: MonadParser m => m a -> m a
-linefold p = ln *> p <* ln'
+brackets :: MonadParser m => m () -> m a -> m a
+brackets ws = P.between (L.symbol ws "[") (L.symbol ws "]")
+
+semicolon :: MonadParser m => m () -> m String
+semicolon ws = L.symbol ws ";"
+
+comma :: MonadParser m => m () -> m String
+comma ws = L.symbol ws ","
+
+colon :: MonadParser m => m () -> m String
+colon ws = L.symbol ws ":"
+
+dot :: MonadParser m => m () -> m String
+dot ws = L.symbol ws "."
+
+equals :: MonadParser m => m () -> m String
+equals ws = L.symbol ws "="
+
+arrowr :: MonadParser m => m () -> m String
+arrowr ws = L.symbol ws "->"
+
+arrowl :: MonadParser m => m () -> m String
+arrowl ws = L.symbol ws "<-"
 
 
-blk :: MonadParser m => m Token
-blk = matchT TokenBlk
+backslash :: MonadParser m => m () -> m String
+backslash ws = L.symbol ws "\\"
 
-blk' :: MonadParser m => m Token
-blk' = matchT TokenBlk'
+-- -----------------------------------------------------------------------------
+-- Literals
 
+integerP :: MonadParser m => m () -> m Integer
+integerP ws = L.lexeme ws L.decimal
 
-ln :: MonadParser m => m Token
-ln = matchT TokenLn P.<?> "linefold open"
+doubleP :: MonadParser m => m () -> m Double
+doubleP ws = L.lexeme ws L.float
 
-ln' :: MonadParser m => m Token
-ln' = matchT TokenLn' P.<?> "linefold close"
-
-
-eof :: MonadParser m => m Token
-eof = matchT TokenEof
-
-
+charP :: MonadParser m => m () -> m Char
+charP ws = L.lexeme ws (P.char '\'' *>  L.charLiteral <* P.char '\'')
+      
 -- -----------------------------------------------------------------------------
 -- Location Helpers
 
-peekLoc :: MonadParser m => m Location
-peekLoc =
-  (^.tokLoc) <$> P.lookAhead anyT
 
-peekIndent :: MonadParser m => m Int
-peekIndent =
-  (^.regStart.posColumn) <$> P.lookAhead anyT
+peekPos :: MonadParser m => m (FilePath, Position)
+peekPos = do
+  P.SourcePos fp ln col <- P.getPosition
+  let ln' = P.unPos ln
+      col' = P.unPos col
+  return (fp, P ln' col')
 
 
 locP :: MonadParser m
      => m a -> m (L a)
-locP p = do
-  l1 <- peekLoc
-  x <- p
-  withRecovery (\_ -> return $ L l1 x) $ do
-    l2 <- peekLoc
-    return $ L (l1 <> l2) x
+locP m = do
+  (fp, p1) <- peekPos
+  x <- m
+  withRecovery (\_ -> return $ L (Loc fp $ R p1 p1) x) $ do
+    (_, p2) <- peekPos
+    return $ L (Loc fp $ R p1 p2) x
 
 -- | Wrap an expression with a location
-elocP :: MonadParser m
-        => m (Exp Var) -> m (Exp Var)
-elocP p = do
-  l1 <- peekLoc
-  e <- p
-  withRecovery (\_ -> return $ ELoc l1 e) $ do
-    l2 <- peekLoc
-    return $ ELoc (l1 <> l2) e
-
-
--- -----------------------------------------------------------------------------
--- Token Grouping Helpers
-
-{-# INLINE exceptLayout #-}
-exceptLayout :: MonadParser m => m Token
-exceptLayout
-  = satisfyT $ \t ->
-      t^.tokClass `notElem` [TokenLn, TokenLn', TokenBlk, TokenBlk']
-
-
-{-# INLINE anyLayout #-}
-anyLayout :: MonadParser m => m [Token]
-anyLayout = concat <$> some anyLayout'
-
-{-# INLINE anyLayout' #-}
-anyLayout' :: MonadParser m => m [Token]
-anyLayout' = try (some exceptLayout) <|> try anyLine <|> anyBlock
-
-
-{-# INLINE anyLine #-}
-anyLine :: MonadParser m => m [Token]
-anyLine = do
-  t1 <- ln
-  ts <- anyLayout
-  t2 <- ln'
-  return $ t1:(ts ++ [t2])
-
-
-{-# INLINE anyBlock #-}
-anyBlock :: MonadParser m => m [Token]
-anyBlock = do
-  t1 <- blk
-  ts <- anyLayout
-  t2 <- blk'
-  return $ t1:(ts ++ [t2])
-
-
-splitLinefolds :: MonadParser m => m [[Token]]
-splitLinefolds = linefolds anyLayout
+tlocP :: MonadParser m
+        => m Term -> m Term
+tlocP m = do
+  (fp, p1) <- peekPos
+  t <- m
+  withRecovery (\_ -> return $ TLoc (Loc fp $ R p1 p1) t) $ do
+    (_, p2) <- peekPos
+    return $ TLoc (Loc fp $ R p1 p2) t

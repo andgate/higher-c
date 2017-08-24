@@ -1,5 +1,4 @@
 {-# LANGUAGE  DeriveGeneric
-            , DeriveDataTypeable
             , OverloadedStrings
             , LambdaCase
   #-}
@@ -19,16 +18,16 @@ data DataDecl
     = DataDecl
       { _dataName :: Name
       , _dataBody :: [ConDecl]
-      } deriving (Show, Eq, Data, Typeable, Generic)
+      } deriving (Show, Generic)
 
 data ConDecl
     = ConDecl Name [Term]
     | RecDecl Name [RecField]
-    deriving (Show, Eq, Data, Typeable, Generic)
+    deriving (Show, Generic)
 
 data RecField =
     RecField Name Term
-    deriving (Show, Eq, Data, Typeable, Generic)
+    deriving (Show, Generic)
 
 
 
