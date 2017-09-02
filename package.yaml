@@ -121,18 +121,18 @@ library:
     - Language.Hawk.Syntax
     - Language.Hawk.Syntax.Decl
     - Language.Hawk.Syntax.DataDecl
+    - Language.Hawk.Syntax.Expression
     - Language.Hawk.Syntax.Location
     - Language.Hawk.Syntax.Pass
     - Language.Hawk.Syntax.Prim
-    - Language.Hawk.Syntax.Term
+    - Language.Hawk.Syntax.Type
+    # - Language.Hawk.Syntax.Term
 
     # - Language.Hawk.Target.LLVM.Codegen
     # - Language.Hawk.Target.LLVM.Emit
     # - Language.Hawk.Target.LLVM.Types
 
     - Language.Hawk.TypeCheck
-    - Language.Hawk.TypeCheck.Environment
-    - Language.Hawk.TypeCheck.Equality
     - Language.Hawk.TypeCheck.Error
 
     ## Extra, possibly seperate packages or upstream merges

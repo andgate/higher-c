@@ -14,10 +14,7 @@ import qualified Text.PrettyPrint.Leijen.Text as P
 
 
 data ParseErr
-  = UnexpectedToken
-  | FixityTooLow Int
-  | FixityTooHigh Int
-  | UnexpectedParseErr
+  = ParseFailed Text
   | UndefinedParseErr
   deriving(Show)
 
@@ -25,19 +22,8 @@ makeClassyPrisms ''ParseErr
 
 instance Pretty ParseErr where
     pretty = \case
-      UnexpectedToken ->
-          P.textStrict "Unexpected token"
-
-      FixityTooLow x  ->
-          P.textStrict "Fixity cannot be less than"
-            <+> P.pretty x
-
-      FixityTooHigh x  ->
-          P.textStrict "Fixity cannot be greater than"
-            <+> P.pretty x
-
-      UnexpectedParseErr ->
-          P.textStrict "Unexpected parser error encountered."
+      ParseFailed msg ->
+          P.textStrict msg
 
       UndefinedParseErr ->
-          undefined
+          P.textStrict "Undefined Parse Error encountered."

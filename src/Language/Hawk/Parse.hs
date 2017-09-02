@@ -35,55 +35,54 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Foldable
 import Data.Set (Set)
 import Data.Text (Text, pack)
+import Data.Void (Void)
 import Text.PrettyPrint.Leijen.Text (pretty)
 
 import Language.Hawk.Compile.State
+import Language.Hawk.Parse.Decl
 import Language.Hawk.Parse.Error
-import Language.Hawk.Parse.Helpers (MonadParser, ExpOpTable, mkParserOpTable, splitLinefolds)
-import Language.Hawk.Parse.Item
+import Language.Hawk.Parse.Helpers (MonadParser, sc)
 import Language.Hawk.Parse.Message
-import Language.Hawk.Parse.OpTable
-import Language.Hawk.Parse.State
-import Language.Hawk.Parse.Lexer.Token (Token)
+import Language.Hawk.Parse.Term
 import Language.Hawk.Syntax
 
 import qualified Data.List.NonEmpty     as NE
 import qualified Data.Map.Lazy          as Map
 import qualified Data.Set               as Set
 import qualified Data.Text              as Text
-import qualified Text.Megaparsec.Prim   as P
+import qualified Text.Megaparsec        as P
 import qualified Text.Megaparsec.Error  as P
 
 
-parse :: ( MonadState s m, HasHkcState s, HasParseState s
+parse :: ( MonadState s m, HasHkcState s
          , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
          , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
          , MonadIO m
          )
          => m ()
-parse = do 
-  parseFilesplit
-  parseOpTable
-  ops <- uses psOps mkParserOpTable
-  (traverseOf_ each (processItem <=< parseItem ops)) =<< use psToks
+parse =
+  (traverseOf_ each (processDecls <=< parseDecl)) =<< use hkcFileTexts
 
   where
-    processItem = \case
-      DecItem (Dec (Name n) t) ->
-        hkcTypes . at (Var n) .= Just (Forall [] t)
+    processDecls =
+      mapM_ processDecl
+      
+    processDecl = \case
+      Sig n t ->
+        hkcTypes . at n .= Just (Forall [] t)
 
-      DefItem d@(Def (Name n) _ _) ->
-        hkcDefs . at n <>= Just [d]
+      Def n e ->
+        hkcDefs . at n <>= Just [e]
 
-      DataItem dd ->
+      DataD dd ->
         processDataDecl dd
 
       _ -> return ()
 
-    parseItem ops ts =
-      handleResult (parser ops ts)
+    parseDecl =
+      handleResult . parser
       
-    parser ops = P.runParser (itemP ops) ""
+    parser (fp, str) = P.runParser (P.many $ declP sc) fp str
     
     handleResult = either handleParseError handleSuccess
     handleSuccess m
@@ -92,13 +91,13 @@ parse = do
           return m
 
 
-processDataDecl :: ( MonadState s m, HasHkcState s, HasParseState s
+processDataDecl :: ( MonadState s m, HasHkcState s
                 , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
                 , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
                 , MonadIO m
                 )
          => DataDecl -> m ()
-processDataDecl dd@(DataDecl (Name n) cd) = do
+processDataDecl dd@(DataDecl n cd) = do
   hkcDatas . at n .= Just dd
   return ()
   where
@@ -106,85 +105,14 @@ processDataDecl dd@(DataDecl (Name n) cd) = do
        
 
 -- -----------------------------------------------------------------------------
--- Operator table parsing
-
-parseFilesplit :: ( MonadState s m, HasParseState s
-                  , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
-                  , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
-                  , MonadIO m
-                  )
-        => m ()
-parseFilesplit = do
-  tss <- use psToks
-  psToks <~ (foldrM handleToks [] tss)
-
-  where
-    splitParser = P.runParser splitLinefolds ""
-
-    handleToks toks acc =
-      let r = splitParser toks
-      in handleResult r acc
-
-    handleResult r acc = either (\err -> handleParseError err) 
-                                (\toks -> return (toks ++ acc))
-                                r
-
-
-parseOpTable :: ( MonadState s m, HasParseState s
-                , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
-                , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
-                , MonadIO m
-                )
-         => m ()
-parseOpTable =
-  psToks <~ (foldrM handleToks [] =<< use psToks)
-
-  where
-    parseFixity = P.runParser fixityP ""
-    
-    handleToks toks acc =
-      let r = parseFixity toks
-          x = () in handleResult acc r
-
-    handleResult acc = either (\err -> handleParseError err) 
-                              (handleSuccess acc)
-    handleSuccess acc =
-      either (\toks -> return (toks:acc))
-             (\ops -> mapM_ insertOp ops >> return acc)
-
-
-insertOp :: ( MonadState s m, HasParseState s
-            , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
-            , MonadIO m
-            )
-         => Operator -> m ()
-insertOp o = do
-  let p = o^.opPrec
-  checkPrecedence p
-  psOps . at p . _Just %= (o:)
-
-
--- This should at least be in Chronicle
-checkPrecedence :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
-                   , MonadIO m
-                   )
-                => Int -> m ()
-checkPrecedence x
-  | x < 0 = discloseNow (_FixityTooLow # x) -- Todo: get location information
-  | x > 9 = discloseNow (_FixityTooHigh # x)
-  | otherwise = return () -- fixity was just right
-
-
--- -----------------------------------------------------------------------------
 -- Error Handling
 
 handleParseError :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
                     , MonadIO m, Default a
                     )
-            => P.ParseError Token P.Dec -> m a
-handleParseError (P.ParseError _ unexpected _ _)
-  = case Set.toList unexpected of
-      ((P.Tokens (t:|_)):_)
-        -> discloseNow (_UnexpectedToken # t)
-
-      _ -> discloseNow (_UnexpectedParseErr # ())
+            => P.ParseError Char Void -> m a
+handleParseError e =
+  let
+    msg = pack $ P.parseErrorPretty e
+  in
+    discloseNow (_ParseFailed # msg)

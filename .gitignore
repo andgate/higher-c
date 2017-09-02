@@ -1,5 +1,9 @@
+*~
+\#*\#
+.\#*
 hk.db
 /.stack-work/
 /*.cabal
 /*.tix
 /*.hpc
+TAGS

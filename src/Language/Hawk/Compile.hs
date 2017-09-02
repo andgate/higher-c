@@ -1,3 +1,4 @@
+
 {-# LANGUAGE RankNTypes
            , OverloadedStrings
            , FlexibleContexts
@@ -21,9 +22,6 @@ import Data.Foldable
 
 import Language.Hawk.Load
 import Language.Hawk.Parse
-import Language.Hawk.Parse.Lexer
-import Language.Hawk.Parse.Lexer.Error
-import Language.Hawk.Parse.State
 import Language.Hawk.Syntax
 
 import Language.Hawk.TypeCheck
@@ -47,26 +45,23 @@ hkc :: HkcConfig -> IO ()
 hkc = runHkc compile
 
 compile
-  :: ( MonadState s m, HasHkcState s, HasParseState s
+  :: ( MonadState s m, HasHkcState s
      , MonadReader c m , HasHkcConfig c
      , MonadLog (WithSeverity (WithTimestamp msg)) m, AsHkcMsg msg, AsLoadMsg msg, AsParseMsg msg
      , MonadChronicle (Bag (WithTimestamp e)) m
-     , AsHkcErr e, AsLoadErr e, AsParseErr e, AsNameCheckError e, AsTcErr e, AsLexErr e
+     , AsHkcErr e, AsLoadErr e, AsParseErr e, AsNameCheckError e, AsTcErr e
      , MonadIO m, MonadBaseControl IO m
      )
   => m ()
 compile = do
   condemn $ do
     load
-    lexer
     parse
 
   --namecheck
 
   -- typecheck
     
-  liftIO . print . pretty =<< use psToks
-  liftIO . print =<< use psOps
   liftIO . print . pretty . Map.toList =<< use hkcDefs
   liftIO . print . pretty . Map.toList =<< use hkcTypes
   

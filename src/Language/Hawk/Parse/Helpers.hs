@@ -10,24 +10,22 @@ module Language.Hawk.Parse.Helpers where
 import Control.Applicative
 import Control.Monad (void)
 import Data.Text (Text, pack)
+import Data.Void (Void)
 import Language.Hawk.Syntax
 
 import Text.Megaparsec (MonadParsec(..))
 
-import Unbound.Generics.LocallyNameless (s2n)
-
 import qualified Text.Megaparsec            as P
 import qualified Text.Megaparsec.Char       as P
 import qualified Text.Megaparsec.Char.Lexer as L
-import qualified Text.Megaparsec.Pos        as P
 
 
 -- -----------------------------------------------------------------------------
 -- Parser Monad Class
 
-type MonadParser m = (Functor m, Applicative m, Monad m, MonadParsec () String m)
+type MonadParser m = (Functor m, Applicative m, Monad m, MonadParsec Void String m)
 
-type Parser = P.Parsec () String
+type Parser = P.Parsec Void String
 
 
 -- -----------------------------------------------------------------------------
@@ -58,15 +56,30 @@ reserved :: [String]
 reserved = [ "let", "in"
            , "free", "copy"
            , "if", "then", "else"
+           , "infix", "infixl", "infixr"
            ]
 
+reservedOps :: [String]
+reservedOps =
+  [ "="
+  , ":"
+  ]
 
 rsvp :: MonadParser m => m () -> String -> m ()
 rsvp ws w = L.lexeme ws (P.string w *> P.notFollowedBy P.alphaNumChar)
 
+symbol :: MonadParser m => m () -> String -> m String
+symbol = L.symbol 
 
-varName :: MonadParser m => m () -> m TName
-varName ws = s2n <$> varid ws
+varName :: MonadParser m => m () -> m Text
+varName ws = pack <$> varid ws
+
+conName :: MonadParser m => m () -> m Text
+conName ws = pack <$> conid ws
+
+opName :: MonadParser m => m () -> m Text
+opName ws = pack <$> opid ws
+  
 
 varid :: MonadParser m => m () -> m String
 varid ws = (L.lexeme ws . try) (p >>= check)
@@ -81,6 +94,16 @@ conid :: MonadParser m => m () -> m String
 conid ws = (L.lexeme ws . try) p
   where
     p       = (:) <$> P.upperChar <*> many (P.alphaNumChar <|> P.char '_' <|> P.char '\'')
+
+
+opid :: MonadParser m => m () -> m String
+opid ws = (L.lexeme ws . try) (p >>= check)
+  where
+    p       = some P.symbolChar
+    check x = if x `elem` reservedOps
+                then fail $ "keyword " ++ show x ++ " is reserved and cannot be an operator"
+                else return x
+                     
 
 -- -----------------------------------------------------------------------------
 -- Symbols
@@ -122,6 +145,10 @@ arrowl ws = L.symbol ws "<-"
 backslash :: MonadParser m => m () -> m String
 backslash ws = L.symbol ws "\\"
 
+
+commaSep1 :: MonadParser m => m () -> m a -> m [a]
+commaSep1 ws p = P.sepBy1 p (comma ws) 
+
 -- -----------------------------------------------------------------------------
 -- Literals
 
@@ -132,8 +159,19 @@ doubleP :: MonadParser m => m () -> m Double
 doubleP ws = L.lexeme ws L.float
 
 charP :: MonadParser m => m () -> m Char
-charP ws = L.lexeme ws (P.char '\'' *>  L.charLiteral <* P.char '\'')
-      
+charP ws =
+  L.lexeme ws $
+    P.char '\'' *>  L.charLiteral <* P.char '\''
+
+stringP' :: MonadParser m => m () -> m Text
+stringP' ws =
+  pack <$> stringP ws
+
+stringP :: MonadParser m => m () -> m String
+stringP ws =
+  L.lexeme ws $
+    P.char '"' >> P.manyTill L.charLiteral (P.char '"')
+           
 -- -----------------------------------------------------------------------------
 -- Location Helpers
 
@@ -156,11 +194,11 @@ locP m = do
     return $ L (Loc fp $ R p1 p2) x
 
 -- | Wrap an expression with a location
-tlocP :: MonadParser m
-        => m Term -> m Term
-tlocP m = do
+elocP :: MonadParser m
+         => m Exp -> m Exp
+elocP m = do
   (fp, p1) <- peekPos
   t <- m
-  withRecovery (\_ -> return $ TLoc (Loc fp $ R p1 p1) t) $ do
+  withRecovery (\_ -> return $ ELoc (Loc fp $ R p1 p1) t) $ do
     (_, p2) <- peekPos
-    return $ TLoc (Loc fp $ R p1 p2) t
+    return $ ELoc (Loc fp $ R p1 p2) t

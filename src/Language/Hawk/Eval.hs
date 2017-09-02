@@ -1,3 +1,3 @@
 module Language.Hawk.Eval where
 
-import Language.Hawk.Syntax.Term
+import Language.Hawk.Syntax

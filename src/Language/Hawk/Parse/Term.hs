@@ -24,80 +24,31 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import Unbound.Generics.LocallyNameless
 
-{- 
 
-Concrete syntax for the language: 
-Optional components in this BNF are marked with < >
-
-  terms:
-    a,b,A,B ::=
-      *                        Intuitionistic Universe
-    | o                        Linear Universe
-    | x                        Variables   (start with lowercase)
-    | \ x . a                  Function definition
-    | a b                      Application
-    | (x : A) -> B             Pi type
-    | (x : A) -o B             Linear Pi Type
-
-    | (a : A)                  Annotations
-    | (a)                      Parens
-    | _                        An axiom hole, inhabits all types
-
-    | let x = a in b           Let expression
-    | if a then b else c       If 
-
-    | Type Literal             Type level Literal
-    | Literal                  Value level Literal
-    | Prim                     Primitive instructions
-
-    | dup a                    Duplicates a variable without consuming
-    | free a in b              Free a variable and evaluates b
-
-    | Bool                     Boolean type
-    | True | False             Boolean values
+expP :: MonadParser m
+     => m () -> m Exp
+expP = cexp
 
 
-
-  declarations:
-
-      foo : A
-      foo = a
-
-
-  Syntax sugar:
-
-   - You can collapse lambdas, like:
-
-         \ x [y] z . a
-
-     This gets parsed as \ x . \ [y] . \ z . a
-
--}
-
-termP :: MonadParser m
-     => m () -> m Term
-termP = cterm
-
-
-cterm :: MonadParser m
-     => m () -> m Term
-cterm ws =
+cexp :: MonadParser m
+  => m () -> m Exp
+cexp ws =
   P.choice [ ifP ws
            , letP ws
-           , bterm ws
+           , bexp ws
            ]
 
 
-bterm :: MonadParser m
-     => m () -> m Term
-bterm ws =
-  P.try (App <$> aterm ws <*> bterm ws)
-  <|> aterm ws
+bexp :: MonadParser m
+  => m () -> m Exp
+bexp ws =
+  P.try (EApp <$> aexp ws <*> bexp ws)
+  <|> aexp ws
 
 
-aterm :: MonadParser m
-      => m () -> m Term
-aterm ws =
+aexp :: MonadParser m
+     => m () -> m Exp
+aexp ws =
   P.choice [ varP ws
            , conP ws
            , primP ws
@@ -106,16 +57,16 @@ aterm ws =
            ]
 
 
-varP :: MonadParser m => m () -> m Term
-varP ws = tlocP $ Var . s2n <$> varid ws
+varP :: MonadParser m => m () -> m Exp
+varP ws = elocP $ EVar <$> varName ws
 
 
-conP :: MonadParser m => m () -> m Term
-conP ws = tlocP $ Con . pack <$> conid ws
+conP :: MonadParser m => m () -> m Exp
+conP ws = elocP $ ECon <$> conName ws
 
 
-litP :: MonadParser m => m () -> m Term
-litP ws = tlocP $ Lit <$> litP' ws
+litP :: MonadParser m => m () -> m Exp
+litP ws = elocP $ ELit <$> litP' ws
 
 litP' :: MonadParser m => m () -> m Lit
 litP' ws =
@@ -124,9 +75,9 @@ litP' ws =
            , CharLit <$> charP ws
            ]
 
-primP :: MonadParser m => m () -> m Term
-primP ws = tlocP $
-  Prim <$> primInstrP ws
+primP :: MonadParser m => m () -> m Exp
+primP ws = elocP $
+  EPrim <$> primInstrP ws
 
 
 primInstrP :: MonadParser m => m () -> m PrimInstr
@@ -146,58 +97,86 @@ primInstrP ws =
   where
     prim = L.lexeme ws . P.string
 
-parenP :: MonadParser m => m () -> m Term
+parenP :: MonadParser m => m () -> m Exp
 parenP ws =
-  Paren <$> parens ws (termP ws)
-  
+  EParen <$> parens ws (expP ws)
+
 
 ifP :: MonadParser m
-     => m () -> m Term
-ifP ws = tlocP $ do
+     => m () -> m Exp
+ifP ws = elocP $ do
   P.try $ rsvp ws "if"
-  a <- bterm ws
+  a <- bexp ws
   rsvp ws "then"
-  b <- termP ws
+  b <- expP ws
   rsvp ws "else"
-  c <- termP ws
-  return $ If a b c (Annot Nothing)
+  c <- expP ws
+  return $ EIf a b c
 
 
 letP :: MonadParser m
-     => m () -> m Term
+     => m () -> m Exp
 letP ws = do
   rsvp ws "let"
   x <- varName ws
   equals ws
-  a <- termP ws
+  a <- expP ws
   rsvp ws "in"
-  b <- termP ws
-  return $ Let (bind (x, embed a) b)
+  b <- expP ws
+  return $ ELet (x, a) b 
 
 
-piP :: MonadParser m => m () -> m Term
-piP ws = do
-  x <- forallP <|> pure wildcardName
-  a <- bterm ws
-  arrowr ws
-  b <- bterm ws
-  return $ Pi (bind (x, embed a) b)
-  
-  where
-    forallP = do
-      P.try $ rsvp ws "forall"
-      x <- varName ws
-      dot ws
-      return x
-
-
-lambdaP :: MonadParser m => m () -> m Term
+lambdaP :: MonadParser m => m () -> m Exp
 lambdaP ws = do
   backslash ws
   binds <- P.some (varName ws)
   dot ws
-  body <- termP ws
-  return $ foldr lam body binds
+  body <- expP ws
+  return $ foldr ELam body binds
 
-  where
-    lam x m = Lam (bind (x, embed $ Annot Nothing) m)
+
+typeP :: MonadParser m => m () -> m Type
+typeP ws = do
+    t1 <- atypeP ws
+    (TApp t1 <$> (P.try (arrowr ws) *> typeP ws))
+      <|> return t1
+
+btypeP :: MonadParser m => m () -> m Type
+btypeP ws = (TApp <$> btypeP ws <*> atypeP ws)
+            <|> atypeP ws
+
+atypeP :: MonadParser m => m () -> m Type
+atypeP ws =
+  gconP ws <|> tvarP ws <|> parens ws (typeP ws)
+
+
+gconP :: MonadParser m => m() -> m Type
+gconP ws =
+      tconP ws
+  <|> tconUnitP ws
+
+
+tconP :: MonadParser m => m () -> m Type
+tconP ws = TCon <$> conName ws
+
+tconUnitP :: MonadParser m => m () -> m Type
+tconUnitP ws =
+  tUnit <$ (L.symbol ws "()")
+
+tvarP :: MonadParser m => m () -> m Type
+tvarP ws = TVar <$> varName ws
+
+
+dataDeclP :: MonadParser m => m () -> m DataDecl
+dataDeclP ws =
+  DataDecl <$> (rsvp ws "data" *> conName ws) <*> (equals ws *> some (conDecl ws))
+
+
+conDecl :: MonadParser m => m () -> m ConDecl
+conDecl ws =
+      (ConDecl <$> conName ws <*> many (atypeP ws))
+  <|> (RecDecl <$> conName ws <*> braces ws (commaSep1 ws (recField ws)))
+
+recField :: MonadParser m => m () -> m RecField
+recField ws =
+  RecField <$> varName ws <*> (colon ws *> atypeP ws)

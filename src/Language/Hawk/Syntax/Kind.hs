@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, DeriveGeneric, DeriveDataTypeable, OverloadedStrings #-}
-module Language.Hawk.Syntax.Kind where
+ module Language.Hawk.Syntax.Kind where
 
 import Data.Binary
 import Data.Data

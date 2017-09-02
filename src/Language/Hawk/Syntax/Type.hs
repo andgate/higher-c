@@ -7,7 +7,6 @@ import Data.Default.Class
 import Data.Text
 import GHC.Generics (Generic)
 
-import Language.Hawk.Syntax.Name
 import Language.Hawk.Syntax.Kind
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
@@ -15,21 +14,15 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 -- -----------------------------------------------------------------------------
 -- | Type
 
-newtype Tyvar = Tyvar Text
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
-
-newtype Tycon = Tycon Text
-  deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
-
 data Type
-  = TVar Tyvar
-  | TCon Tycon
+  = TVar Text
+  | TCon Text
   | TApp Type Type
   | TKind Kind Type
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 
-data Scheme = Forall [Tyvar] Type
+data Scheme = Forall [Text] Type
   deriving (Show, Eq, Ord)
 
 data Qual t =
@@ -44,7 +37,7 @@ data Pred
 -- | "Smart" Constructors
 
 tcon_ :: Text -> Type
-tcon_ = TCon . Tycon
+tcon_ = TCon
 
 tFun1 :: Type -> Type -> Type
 tFun1 a b = TApp a (TApp tArr b)
@@ -59,14 +52,14 @@ tLnFun2 :: Type -> Type -> Type -> Type
 tLnFun2 a b c = tLnFun1 a (tLnFun1 b c)
 
 tUnit, tInt, tFloat, tChar, tArr, tLoli :: Type
-tUnit = TKind KPop . TCon . Tycon $ "()"
-tInt = TKind KPop . TCon . Tycon $ "Int"
-tFloat = TKind KPop . TCon . Tycon $ "Float"
-tChar = TKind KPop . TCon . Tycon $ "Char"
+tUnit  = TKind KPop . TCon $ "()"
+tInt   = TKind KPop . TCon $ "Int"
+tFloat = TKind KPop . TCon $ "Float"
+tChar  = TKind KPop . TCon $ "Char"
 
-tArr = TKind k . TCon . Tycon $ "(->)"
+tArr  = TKind k . TCon $ "(->)"
   where k = KArr KStar (KArr KPop KPop)
-tLoli = TKind k . TCon . Tycon $ "(-o)"
+tLoli = TKind k . TCon $ "(-o)"
   where k = KArr KPop (KArr KPop KPop)
 
 
@@ -84,19 +77,12 @@ instance HasKind Type where
 -- -----------------------------------------------------------------------------
 -- | Instances
 
-instance Binary Tyvar
-instance Binary Tycon
 instance Binary Type
 
 
 instance Default Type where
   def = tUnit
 
-instance PP.Pretty Tyvar where
-  pretty (Tyvar n) =  PP.textStrict n
-
-instance PP.Pretty Tycon where
-  pretty (Tycon n) =  PP.textStrict n
 
 instance PP.Pretty Type where
     pretty = \case
@@ -110,7 +96,7 @@ instance PP.Pretty Type where
         PP.pretty a PP.<+> PP.pretty b
 
       TKind k t ->
-        PP.pretty t PP.<+> PP.textStrict ":" PP.<+> PP.pretty t
+        PP.pretty t PP.<+> PP.textStrict ":" PP.<+> PP.pretty k
         
 
 

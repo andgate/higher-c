@@ -36,57 +36,51 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 -- -----------------------------------------------------------------------------
 -- | Expression
 
-data Exp b
-  = EVar  b
-  | EApp  (Exp b) (Exp b)
-  | ELam  b (Exp b)
-  | ELet  (b, Exp b) (Exp b)
+data Exp
+  = EVar  Text
+  | EApp  Exp Exp
+  | ELam  Text Exp
+  | ELet  (Text, Exp) Exp
   | ELit  Lit
-  | ECon  Con
+  | ECon  Text
   | EPrim PrimInstr
-  | EIf   (Exp b) (Exp b) (Exp b)
-  | EDup  (Exp b)
-  | EFree b (Exp b)
+  | EIf   Exp Exp Exp
+  | EDup  Exp
+  | EFree Text Exp
 
   -- Hints
-  | EType Type (Exp b)
-  | ETLit TLit (Exp b)
-  | ELoc  Location (Exp b)
-  deriving(Functor, Foldable, Traversable, Data, Typeable)
+  | EType Type Exp
+  | ETLit TLit Exp
+  | ELoc  Location Exp
+  | EParen Exp
+  deriving(Eq, Ord, Read, Show, Generic, Data, Typeable)
 
 -- -----------------------------------------------------------------------------
 -- | Instances
 
-instance Default (Exp b) where
-  def = ECon . Con $ "()"
+instance Default Exp where
+  def = ECon "()"
 
 
-deriving instance (Eq b) => Eq (Exp b)
-deriving instance (Ord b) => Ord (Exp b)
-deriving instance (Read b) => Read (Exp b)
-deriving instance (Show b) => Show (Exp b)
-deriving instance (Generic b) => Generic (Exp b)
-instance (Generic b, Binary b) => Binary (Exp b)
-
-instance Data b => Plated (Exp b)
-
+instance Binary Exp
+instance Plated Exp
 
 
 -- -----------------------------------------------------------------------------
 -- | "Smart" Constructors
 
 
-lam_ :: b -> Exp b -> Exp b
+lam_ :: Text -> Exp -> Exp
 lam_ b e@(ELoc l _)
   = ELoc l $ ELam b e
 
-let_ :: [(b, Exp b)] -> Exp b -> Exp b
+let_ :: [(Text, Exp)] -> Exp -> Exp
 let_ bs e = foldr elet' e (reverse bs)
   where
     elet' a@(_, (ELoc l1 _)) b@(ELoc l2 _)
       = ELoc (l1 <> l2) $ ELet a b
 
-eapp_ :: Exp b -> [Exp b] -> Exp b
+eapp_ :: Exp -> [Exp] -> Exp
 eapp_ f = foldr eapp' f . reverse
   where
     eapp' b@(ELoc l1 _) a@(ELoc l2 _)
@@ -94,19 +88,19 @@ eapp_ f = foldr eapp' f . reverse
               (EApp a b)
 
 
-mkOp1 :: L Text -> Exp Var -> Exp Var
+mkOp1 :: L Text -> Exp -> Exp
 mkOp1 (L l1 name) e@(ELoc l2 _) 
   = ELoc l3 $ EApp v e
   where
-    v = ELoc l1 $ EVar (Var name)
+    v = ELoc l1 $ EVar name
     l3 = l1 <> l2
 
 
-mkOp2 :: L Text -> Exp Var -> Exp Var -> Exp Var
+mkOp2 :: L Text -> Exp -> Exp -> Exp
 mkOp2 (L l0@(Loc fp r1) name) lhs rhs
   = ELoc l2 (EApp (ELoc l1 $ EApp v lhs) rhs)
   where
-    v = ELoc l0 $ EVar (Var name)
+    v = ELoc l0 $ EVar name
     (ELoc (Loc _ r2) _) = lhs
     (ELoc (Loc _ r3) _) = rhs
     l1 = Loc fp (r1 <> r2)
@@ -115,7 +109,7 @@ mkOp2 (L l0@(Loc fp r1) name) lhs rhs
 -- -----------------------------------------------------------------------------
 -- | Class Instances
 
-instance PP.Pretty b => PP.Pretty (Exp b) where
+instance PP.Pretty Exp where
     pretty (ELit lit) =
       PP.textStrict "Literal:" PP.<+> PP.pretty lit
 

@@ -2,16 +2,18 @@
 module Language.Hawk.Syntax.Decl where
 
 import Data.Text
-import Language.Hawk.Syntax.Term
+import Language.Hawk.Syntax.DataDecl
+import Language.Hawk.Syntax.Expression
+import Language.Hawk.Syntax.Type
 import GHC.Generics (Generic)
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
 data Decl
-  = Sig TName Term
-  | Def TName Term
-  | RecDef TName Term
+  = Sig Text Type
+  | Def Text Exp
+  | DataD DataDecl
   | Foreign Foreign
   | Fixity Fixity Int [Text]
   | EmptyDecl
@@ -58,15 +60,6 @@ instance PP.Pretty Decl where
 
     Def n t ->
       PP.textStrict "Definition"
-      PP.<$>
-      PP.indent 2
-      ( PP.textStrict "Name:" PP.<+> PP.pretty n
-        PP.<$>
-        PP.textStrict "Def:" PP.<+> PP.pretty t
-      )
-
-    RecDef n t ->
-      PP.textStrict "Recursive Definition"
       PP.<$>
       PP.indent 2
       ( PP.textStrict "Name:" PP.<+> PP.pretty n

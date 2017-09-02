@@ -5,7 +5,7 @@
 module Language.Hawk.TypeCheck.Error where
 
 import Control.Lens
-import Language.Hawk.Syntax.Term (Type)
+import Language.Hawk.Syntax.Type (Type)
 import Language.Hawk.Syntax.Location
 import Text.PrettyPrint.Leijen.Text (Pretty(..))
 

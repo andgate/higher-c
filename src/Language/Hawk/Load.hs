@@ -15,15 +15,12 @@ import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Trans.Control
 import Data.Bag
-import Data.Text (Text)
-import Data.Default.Instances.Text ()
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.State
 import Language.Hawk.Load.Error
 import Language.Hawk.Load.Message
 import System.IO.Error
 
-import qualified Data.Text.IO as T
 
 load
   :: ( MonadReader c m, HasHkcConfig c
@@ -45,9 +42,9 @@ loadFile
         , MonadChronicle (Bag (WithTimestamp e)) m, AsLoadErr e
         , MonadIO m
         )
-  => FilePath -> m (FilePath, Text)
+  => FilePath -> m (FilePath, String)
 loadFile fp = do
-  srcOrExc <- liftIO . try . T.readFile $ fp
+  srcOrExc <- liftIO . try . readFile $ fp
   case srcOrExc of
       Left ex ->
         discloseNow $ mkLoadErr fp ex

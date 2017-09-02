@@ -6,9 +6,9 @@ module Language.Hawk.Syntax.DataDecl where
 
 import Data.Binary
 import Data.Data
+import Data.Text
 import GHC.Generics (Generic)
-import Language.Hawk.Syntax.Name
-import Language.Hawk.Syntax.Term
+import Language.Hawk.Syntax.Type
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
@@ -16,17 +16,17 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 -- Types -----------------------------------------------------------------------
 data DataDecl
     = DataDecl
-      { _dataName :: Name
+      { _dataName :: Text
       , _dataBody :: [ConDecl]
       } deriving (Show, Generic)
 
 data ConDecl
-    = ConDecl Name [Term]
-    | RecDecl Name [RecField]
+    = ConDecl Text [Type]
+    | RecDecl Text [RecField]
     deriving (Show, Generic)
 
 data RecField =
-    RecField Name Term
+    RecField Text Type
     deriving (Show, Generic)
 
 

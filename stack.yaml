@@ -1,6 +1,9 @@
-resolver: lts-9.1
+resolver: lts-9.2
 packages:
 - '.'
 extra-deps:
 - data-default-instances-text-0.0.1
 - megaparsec-6.1.1
+nix:
+  enable: true
+  packages: [llvm, zlib]
