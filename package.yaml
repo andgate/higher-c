@@ -12,12 +12,16 @@ category: Compilers
 version: '0.0.0'
 license: MIT
 
+build-tools:
+  - alex
+
 extra-source-files:
   - CHANGELOG.md
   - LICENSE.md
   - package.yaml
   - README.md
   - stack.yaml
+  - src/Language/Hawk/Parse/Lex.x
 
 ghc-options: 
   - -Wall
@@ -59,6 +63,7 @@ library:
     - data-default-instances-text
     - deriving-compat
     - directory
+    - Earley
     - edit-distance
     - either
     - exceptions
@@ -69,7 +74,6 @@ library:
     - lifted-async
     - logging-effect
     - llvm-hs-pure
-    - megaparsec
     - mmorph
     - monad-control
     - monad-logger
@@ -112,11 +116,15 @@ library:
     - Language.Hawk.Namespace
     
     - Language.Hawk.Parse
-    - Language.Hawk.Parse.Decl
     - Language.Hawk.Parse.Error
+    - Language.Hawk.Parse.Grammar
     - Language.Hawk.Parse.Helpers
+    - Language.Hawk.Parse.Lex
+    - Language.Hawk.Parse.Lex.Error
+    - Language.Hawk.Parse.Lex.Format
+    - Langauge.Hawk.Parse.Lex.State
     - Language.Hawk.Parse.Message
-    - Language.Hawk.Parse.Term
+    - Language.Hawk.Parse.Token
 
     - Language.Hawk.Syntax
     - Language.Hawk.Syntax.Decl
@@ -126,7 +134,6 @@ library:
     - Language.Hawk.Syntax.Pass
     - Language.Hawk.Syntax.Prim
     - Language.Hawk.Syntax.Type
-    # - Language.Hawk.Syntax.Term
 
     # - Language.Hawk.Target.LLVM.Codegen
     # - Language.Hawk.Target.LLVM.Emit

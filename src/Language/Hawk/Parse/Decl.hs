@@ -24,19 +24,32 @@ import qualified Text.Megaparsec.Char       as P
 import qualified Text.Megaparsec.Char.Lexer as L
 
 
+hkP :: MonadParser m
+    => m [Decl]
+hkP =
+  scn *> declsP scn
+
+
+declsP :: MonadParser m
+       => m () -> m [Decl]
+declsP ws =
+  P.many $ scn *> L.lineFold ws declP
+
 declP :: MonadParser m
      => m () -> m Decl
 declP ws = 
-      sigP ws
-  <|> defP ws
-  <|> foreignP ws
+      foreignP ws
   <|> fixityP ws
+  <|> sigP ws
+  <|> defP ws
 
 
 sigP :: MonadParser m
      => m () -> m Decl
-sigP ws =
-  Sig <$> varName ws <*> typeP ws
+sigP ws = do
+  n <- P.try (varName ws <* colon ws)
+    
+  Sig n <$> typeP ws
 
 fixityP :: MonadParser m => m () -> m Decl
 fixityP ws = do
@@ -73,7 +86,8 @@ infixrP ws =
 foreignP :: MonadParser m
          => m () -> m Decl
 foreignP ws = 
-  Foreign <$> foreignImportP ws
+  Foreign <$> (foreignImportP ws <|> foreignExportP ws)
+
 
 foreignImportP :: MonadParser m
                => m () -> m Foreign
@@ -82,6 +96,16 @@ foreignImportP ws = do
     rsvp ws "foreign"
     rsvp ws "import"
   ForeignImport <$> foreignTypeP ws <*> stringP' ws <*> varName ws <*> (colon ws *> typeP ws)
+
+
+foreignExportP :: MonadParser m
+               => m () -> m Foreign
+foreignExportP ws = do
+  P.try $ do
+    rsvp ws "foreign"
+    rsvp ws "export"
+  ForeignExport <$> foreignTypeP ws <*> varName ws
+
 
 foreignTypeP :: MonadParser m
              => m() -> m ForeignType
@@ -95,5 +119,3 @@ defP ws =
   Def <$> varName ws <*> defBody
   where
     defBody = foldr lam_ <$> expP ws <*> P.manyTill (varName ws) (equals ws)
-
-

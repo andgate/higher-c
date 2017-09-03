@@ -1,7 +1,7 @@
 -- Simple program that computes a fibbonacci number and prints it
 
 -- Link to printd from c
-foreign ccall "printd" printd : Float -> ()
+foreign import ccall "printd" printd : Float -> ()
 
 -- Set the infix for operators
 infix 4 <
@@ -9,7 +9,6 @@ infixl 6 + -
 
 (+) : Float -> Float -> Float
 (+) x y = #fadd x y
-noconsume (+)
 
 (-) : Float -> Float -> Float
 (-) x y = #fsub x y

@@ -82,7 +82,7 @@ parse =
     parseDecl =
       handleResult . parser
       
-    parser (fp, str) = P.runParser (P.many $ declP sc) fp str
+    parser (fp, str) = P.runParser hkP fp str
     
     handleResult = either handleParseError handleSuccess
     handleSuccess m
