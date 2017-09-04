@@ -6,7 +6,7 @@
            , BangPatterns
            , DeriveDataTypeable
   #-}
-module Language.Hawk.Parse.Lexer.Token where
+module Language.Hawk.Parse.Token where
 
 import Control.Lens
 import Data.Binary hiding (encode)
@@ -16,8 +16,6 @@ import GHC.Generics (Generic)
 import Language.Hawk.Syntax.Location
 import Text.PrettyPrint.Leijen.Text (pretty, (<+>))
 
-import qualified Text.Megaparsec.Prim           as P
-import qualified Text.Megaparsec.Pos            as P
 import qualified Text.PrettyPrint.Leijen.Text   as PP
 
 -- -----------------------------------------------------------------------------
@@ -27,7 +25,7 @@ import qualified Text.PrettyPrint.Leijen.Text   as PP
 data Token = Token
     { _tokClass     :: !TokenClass
     , _tokText      :: !Text
-    , _tokLoc       :: !Location
+    , _tokLoc       :: !Loc
     } deriving (Eq, Show, Ord, Data, Typeable, Generic)
 
 -- The token type:
@@ -37,14 +35,7 @@ data TokenClass
 
   | TokenVarId Text
   | TokenConId Text
-  | TokenModId Text
   | TokenOpId Text
-  
-  | TokenQVarId Text
-  | TokenQConId Text
-  | TokenQModId Text
-  | TokenQOpId Text
-
   
   | TokenInteger Integer
   | TokenDouble Double
@@ -63,8 +54,8 @@ data TokenClass
 
 makeLenses ''Token
 
-instance HasLocation Token where
-    location = tokLoc
+instance HasLoc Token where
+    loc = tokLoc
 
 instance HasRegion Token where
     region = tokLoc . region
@@ -89,32 +80,3 @@ instance PP.Pretty TokenClass where
 
 instance Binary Token
 instance Binary TokenClass
-
-
--- -----------------------------------------------------------------------------
--- Megaparsec Stream Instance
-type HkToken = Token
-
-instance P.Stream [HkToken] where
-    type Token [HkToken] = HkToken
-    uncons [] = Nothing
-    uncons (t:ts) = Just (t, ts)
-    {-# INLINE uncons #-}
-    updatePos = const tokUpdatePos
-    {-# INLINE updatePos #-}
-    
-
-tokUpdatePos
-  :: P.Pos               -- ^ Tab width
-  -> P.SourcePos         -- ^ Last position
-  -> Token               -- ^ Current token
-  -> (P.SourcePos, P.SourcePos) -- ^ Last position and Current position
-tokUpdatePos _ apos@(P.SourcePos fp _ _) t
-  = (apos, npos) -- Don't use megaparsec's position tracking
-  where
-  npos = p2ps $ t ^. regStart
-  {-# INLINE p2ps #-}
-  p2ps (P l c) = P.SourcePos fp
-                             (P.unsafePos . fromIntegral $ l + 1)
-                             (P.unsafePos . fromIntegral $ c + 1)
-{-# INLINE tokUpdatePos #-}

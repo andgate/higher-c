@@ -9,8 +9,8 @@ import Control.Lens
 import Control.Monad (when, unless, void)
 import Control.Monad.State.Strict (State, evalState)
 import Safe (headDef)
-import Language.Hawk.Parse.Lexer.Token
-import Language.Hawk.Syntax.Location (Location(..), Region)
+import Language.Hawk.Parse.Token
+import Language.Hawk.Syntax.Location (Loc(..), Region)
 
 import qualified Language.Hawk.Syntax.Location  as L
 
@@ -49,8 +49,9 @@ data LayoutState =
     , _layRegion :: Region
     , _layStack :: [Cell]
     , _blkTriggered :: Bool
-    , _layIn :: [Token]
-    , _layOut :: [Token]
+    , _layToks :: [Token]
+    , _layToks' :: [Token]
+    , _layResults :: [[Token]]
     } deriving (Eq, Ord, Show)
 
 makeLenses ''LayoutState
@@ -58,7 +59,7 @@ makeLenses ''LayoutState
 type Layout = State LayoutState
 
 mkLayout :: [Token] -> LayoutState
-mkLayout input = LayoutState  "" mempty [defCell] False input []
+mkLayout input = LayoutState  "" mempty [defCell] False input [] []
 
 
 -- -----------------------------------------------------------------------------
@@ -68,19 +69,19 @@ mkLayout input = LayoutState  "" mempty [defCell] False input []
 -- This would be more performant with a foldM in the State monad
 -- Since this was originally implemented with conduit, using recursion in a state monad that
 -- maintains input/out lists was easier.
-layout :: [Token] -> [Token]
+layout :: [Token] -> [[Token]]
 layout =
   evalState layoutDriver . mkLayout
 
-layoutDriver :: Layout [Token]
+layoutDriver :: Layout [[Token]]
 layoutDriver = do
-  ts <- use layIn
+  ts <- use layToks
   case ts of
-    (t:ts') -> do layIn .= ts'
+    (t:ts') -> do layToks .= ts'
                   updateLocation t
                   handleTok t
                   layoutDriver
-    [] -> reverse <$> use layOut
+    [] -> reverse <$> use layResults
 
 handleTok :: Token -> Layout ()
 handleTok t
@@ -109,8 +110,16 @@ handleTok t
   
 
 yieldTok :: Token -> Layout ()
-yieldTok t =
-  layOut %= (t:)
+yieldTok t = do
+  layToks' %= (t:)
+  
+  when ( (t ^. L.regStart . L.posColumn) == 0
+         && (t ^. tokClass == TokenLn')
+       )
+       $ do ts <- use layToks'
+            layResults %= (reverse ts:)
+            return ()
+
 
 closeStack :: Layout ()
 closeStack = do
@@ -209,14 +218,14 @@ peekCell =
   uses layStack (headDef defCell)
 
     
-openTok :: Location -> Cell -> Token
+openTok :: Loc -> Cell -> Token
 openTok loc cl =
   case cl ^. cellType of
       Block -> Token TokenBlk "" loc
       LineFold -> Token TokenLn "" loc
 
 
-closeTok :: Location -> Cell -> Token
+closeTok :: Loc -> Cell -> Token
 closeTok loc cl =
   case cl ^. cellType of
       Block -> Token TokenBlk' "" loc

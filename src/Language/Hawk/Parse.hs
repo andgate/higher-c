@@ -21,6 +21,8 @@
   #-}
 module Language.Hawk.Parse where
 
+import Prelude hiding (lex)
+
 import Control.Lens
 import Control.Lens.Internal.Zoom
 import Control.Monad (mapM, (<=<))
@@ -37,21 +39,20 @@ import Data.Set (Set)
 import Data.Text (Text, pack)
 import Data.Void (Void)
 import Text.PrettyPrint.Leijen.Text (pretty)
+import Text.Earley (Report (..), Prod)
 
 import Language.Hawk.Compile.State
-import Language.Hawk.Parse.Decl
 import Language.Hawk.Parse.Error
-import Language.Hawk.Parse.Helpers (MonadParser, sc)
+import Language.Hawk.Parse.Grammar
 import Language.Hawk.Parse.Message
-import Language.Hawk.Parse.Term
+import Language.Hawk.Parse.Lex (lexer)
 import Language.Hawk.Syntax
 
 import qualified Data.List.NonEmpty     as NE
 import qualified Data.Map.Lazy          as Map
 import qualified Data.Set               as Set
 import qualified Data.Text              as Text
-import qualified Text.Megaparsec        as P
-import qualified Text.Megaparsec.Error  as P
+import qualified Text.Earley            as E
 
 
 parse :: ( MonadState s m, HasHkcState s
@@ -59,9 +60,10 @@ parse :: ( MonadState s m, HasHkcState s
          , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
          , MonadIO m
          )
-         => m ()
-parse =
-  (traverseOf_ each (processDecls <=< parseDecl)) =<< use hkcFileTexts
+         => (FilePath, Text) -> m [Decl]
+parse src = do
+  lexer >=> parseDecl
+  processDecls
 
   where
     processDecls =
@@ -73,22 +75,26 @@ parse =
 
       Def n e ->
         hkcDefs . at n <>= Just [e]
-
-      DataD dd ->
+        
+      DataD dd -> do
         processDataDecl dd
 
       _ -> return ()
 
     parseDecl =
       handleResult . parser
-      
-    parser (fp, str) = P.runParser hkP fp str
+     
+    parser =
+      map (E.fullParses (E.parser toplevel)) <$> lexer
     
-    handleResult = either handleParseError handleSuccess
-    handleSuccess m
-      = do
-          -- logInfo =<< timestamp (_ParseSuccess # "")
-          return m
+    handleResult (parses, r@(Report _ expected unconsumed)) =
+      case parses of
+        []  -> discloseNow (_UnexpectedToken # (head unconsumed))
+        [p] -> do logInfo =<< timestamp (_ParseSuccess # "") -- Need fill path for this message
+                  return p
+                   
+        -- This will only happen if the grammar is wrong
+        ps -> discloseNow (_AmbiguousGrammar # ps)
 
 
 processDataDecl :: ( MonadState s m, HasHkcState s
@@ -99,20 +105,6 @@ processDataDecl :: ( MonadState s m, HasHkcState s
          => DataDecl -> m ()
 processDataDecl dd@(DataDecl n cd) = do
   hkcDatas . at n .= Just dd
-  return ()
   where
-    processConDecl cd = undefined
-       
+    processConDecl cd = undefined       
 
--- -----------------------------------------------------------------------------
--- Error Handling
-
-handleParseError :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
-                    , MonadIO m, Default a
-                    )
-            => P.ParseError Char Void -> m a
-handleParseError e =
-  let
-    msg = pack $ P.parseErrorPretty e
-  in
-    discloseNow (_ParseFailed # msg)

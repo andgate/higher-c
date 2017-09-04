@@ -5,188 +5,145 @@
 module Language.Hawk.Parse.Grammar where
 
 import Control.Applicative
+import Data.Bifunctor
+import Data.Monoid
 import Data.Text (pack)
 import Language.Hawk.Parse.Helpers
-import Language.Hawk.Parse.Lexer.Token (Token)
+import Language.Hawk.Parse.Token (Token)
 import Language.Hawk.Syntax
-import Language.Hawk.Syntax.Operator
-import Language.Hawk.Syntax.Prim
 import Text.Earley
 import Text.Earley.Mixfix
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-toplevel :: Grammar r (Prod r Token Token ItemPs)
+toplevel :: Grammar r (Prod r Token Token Decl)
 toplevel = mdo
         
 -- -----------------------------------------------------------------------------
--- Item Rules
-    item <- rule $ linefold $
-          (DepItem <$> depDecl)
-      <|> (ForeignItem <$> forgn)
-      <|> (ExposeItem <$> expose)
-      <|> (SigItem <$> tySig)
-      <|> (VowItem <$> vow)
-      <|> (VarItem <$> var)
-      <|> (ValItem <$> val)
-      <|> (FunItem <$> fun)
-      <|> (NewTyItem <$> newType)
-      <|> (TyAliasItem <$> typeAlias)
-      <|> (TyClassItem <$> typeClass)
-      <|> (TyInstItem <$> typeClassInst)
-      <|> (DataItem <$> dataType)
-
+-- Declaration Rules
     
-
-    nestedItem <- rule $
-      (NestedVar <$> var)
-      <|> (NestedVal <$> val)
-      <|> (NestedFun <$> fun)
-      <|> (NestedVow <$> vow)
-      <|> (NestedSig <$> tySig)
-
-
--- -----------------------------------------------------------------------------
--- Name rules
-
-    modNameText <- rule $
-        _nameText <$> modName
-
-    conNameText' <- rule $
-        _nameText <$> conName'
-
-    varNameText <- rule $ 
-        _nameText <$> varName
-
-    opNameText <- rule $
-        _nameText <$> opName
-
--- -----------------------------------------------------------------------------
--- Dependency Rules
-    depDecl <- rule $
-        Dep <$> depQual <*> depPath <*> depAlias
-
-    depQual <- rule $
-          (rsvp "->"  *> pure False)
-      <|> (rsvp "=>" *> pure True)
-
-    depAlias <- rule $
-          (rsvp "@" *> fmap Just modNameText)
-      <|> pure Nothing
-
-
--- -----------------------------------------------------------------------------
--- Dependency Path Rules
-
-    depPath <- rule $
-        depPath'
-        <|> (DepBase <$> modNameText)
-
-
-    depPath' <- rule $
-        DepPath <$> modNameText
-                <*> depPathNext
-    
-    depPathNext <- rule $
-        rsvp "." *> (depPath' <|> depBase <|> depSpecify)
-
-
-    depBase <- rule $
-        DepBase <$> (varNameText <|> modNameText <|> conNameText')
-    
-
-    depSpecify <- rule $
-        parens (DepSpecify <$> depHide0 <*> some depSpecifiers)
-
-    depSpecifiers <- rule $
-        depPath' <|> depBase
-    
-    depHide0 <- rule $ 
-        depHide <|> pure False
-        
-    depHide <- rule $
-        rsvp "\\" *> pure True
+    decl <- rule $
+          forgn
+      <|> fixity
+      <|> sig
+      <|> def
+      -- <|> dataDef
+      -- <|> classDef
+      -- <|> instDef
 
 -- -----------------------------------------------------------------------------
 -- Foreign Rules
 
     forgn <- rule $
-      rsvp "foreign" *> forgn'
+      Foreign <$> forgn'
 
     forgn' <- rule $
-      Foreign <$> forgnType <*> (pack <$> tString) <*> tySig'
+      rsvp "foreign" *>
+        (forgnImport <|> forgnExport)
+
+    forgnImport <- rule $
+      let extract ft (srcN, _) (hkN, _) ty
+            = ForeignImport ft (pack srcN) hkN ty
+      in extract <$> (rsvp "import" *> forgnType) <*> strLit <*> (varId <|> conId <|> opId) <*>  typ
+
+    forgnExport <- rule $
+      let extract ft (n, _)
+            = ForeignExport ft n
+      in extract <$> (rsvp "export" *> forgnType) <*> (varId <|> conId <|> opId)
 
     forgnType <- rule $
       rsvp "ccall" *> pure ForeignC
 
--- -----------------------------------------------------------------------------
--- Expose Rules
 
-    expose <- rule $
-      Expose <$> (rsvp "expose" *> varName)
+-- -----------------------------------------------------------------------------
+-- Fixity Rules
+
+    fixity <- rule $
+      let ex fx (p, _) ops =
+            Fixity fx (fromIntegral p) (map fst ops)
+      in ex <$> fixity' <*> intLit <*> some opId
+
+    fixity' <- rule $
+      infixL <|> infixR <|> infixN
+
+    infixL <- rule $
+      rsvp "infixl" *> pure InfixL
+      
+    infixR <- rule $
+      rsvp "infixr" *> pure InfixR
+      
+    infixN <- rule $
+      rsvp "infix" *> pure InfixN
+
+
+-- -----------------------------------------------------------------------------
+-- Type Signature Declaration Rules
+
+    sig <- rule $
+      let ex (n, _) ty = Sig n ty
+      in ex <$> (varId <|> parens (fst <$> opId))
+            <*> (rsvp ":" *> typ)
+
+
+-- -----------------------------------------------------------------------------
+-- Definition Declaration Rules
+
+    def <- rule $
+      let ex (n, _) e = Def n e
+      in ex <$> varId <*> exp
+
 
 -- -----------------------------------------------------------------------------
 -- Literal Rules
 
     lit <- rule $
-            ( IntLit () <$> tInteger )
-        <|> ( DblLit () <$> tReal )
-        <|> ( ChrLit () <$> tChar )
-        <|> ( StrLit () <$> tString )
-        <|> ( BoolLit () <$> tBool )
+            ( first IntLit <$> intLit )
+        <|> ( first FloatLit <$> floatLit )
+        <|> ( first CharLit <$> charLit )
+        <|> ( first BoolLit <$> boolLit )
 
 -- -----------------------------------------------------------------------------
 -- Type Rules
     
     typ <- rule $
-      (TyFun () <$> btyp <*> (rsvp "->" *> typ))
-      <|> btyp
+      let ex1 a@(TLoc l1 _) b@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TArr a b
+          ex2 a@(TLoc l1 _) b@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TLoli a b
+      in
+           (ex1 <$> btyp <*> (rsvp "->" *> typ))
+       <|> (ex2 <$> btyp <*> (rsvp "-o" *> typ))
+       <|> btyp
+   
 
     btyp <- rule $
-      TyApp () <$> atyp <*> many atyp
+      let ex a@(TLoc l1 _) b@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TApp a b
+
+      in   (ex <$> atyp <*> btyp)
+       <|> atyp
 
     atyp <- rule $
       gtyCon
       <|> tyVar
-      <|> tyTuple
-      <|> tyList
-      <|> parens typ
+      <|> (fst <$> parens typ)
     
     gtyCon <- rule $
       tyCon
-      <|> tyUnitCon
-      <|> tyFunCon
-      <|> tyListCon
-      <|> tyTupleCon
 
     tyCon <- rule $
-      TyCon () <$> conName
-
-    tyUnitCon <- rule $ 
-      mkUnitTyCon <$> rsvp "(" <*> rsvp ")"
-
-    tyFunCon <- rule $ 
-      mkFunTyCon <$> rsvp "(" <*> rsvp "->" <*> rsvp ")"
-
-    tyListCon <- rule $
-       mkListTyCon <$> rsvp "[" <*> rsvp "]"
-
-    tyTupleCon <- rule $
-       mkTupleTyCon <$> rsvp "(" <*> some (rsvp ",") <*> rsvp ")"
+      let ex (n, l) = TLoc l $ TCon n
+      in ex <$> conId
 
     tyVar <- rule $
-      TyVar () <$> varName
+      let ex (n, l) = TLoc l $ TVar n
+      in ex <$> varId
       
-    tyTuple <- rule $ 
-      TyTuple () <$> parens (sep (rsvp ",") typ)
-
-    tyList <- rule $
-      sqrBrackets typ
-
 
 -- -----------------------------------------------------------------------------
 -- Type Context Rules
 
+{-
     qtyp0 <- rule $
         qtyp 
         <|> (QType (TyContext []) <$> typ)
@@ -207,20 +164,17 @@ toplevel = mdo
     tyAssert <- rule $
         TyAssert <$> conName <*> many atyp
 
-
+-}
 -- -----------------------------------------------------------------------------
 -- Expression Rules
 
     -- The expression chain, starting at aexp as the base with the highest precedence.
     exp <- rule $
-          expDo
-      <|> dexp
+      cexp
 
-    dexp <- rule $
-          expTypeHint
-      <|> cexp
-
-    cexp <- mixfixExpressionSeparate exprOpTable bexp
+    cexp <- rule $
+          expType
+      <|> bexp
 
     bexp <- rule $
       expApp
@@ -228,145 +182,44 @@ toplevel = mdo
       <|> aexp
 
     aexp <- rule $
-          parens dexp
+          (fst <$> parens cexp)
       <|> expVar
       <|> expLit
-      <|> expBottom
+
+    expFree <- rule $
+      let ex (_,l1) v e@(ELoc l2 _)  = ELoc (l1<>l2) $ EFree v e
+      in ex <$> rsvp "free" <*> fmap fst varId <*> (rsvp "in" *> exp)
 
 
     -- Expression forms
-    expTypeHint <- rule $
-      ETypeHint () <$> exp <*> (rsvp "?" *> qtyp0)
-
-    expDo <- rule $ 
-      rsvp "do" *> expDo'
-
-    expDo' <- rule $
-      EDo () <$> (rsvp ":" *> stmtblk)
-
-    expPrim <- rule $
-      EPrim () <$> primInstr <*> aexp <*> aexp
+    expType <- rule $
+      let
+        ex e@(ELoc l1 _) ty@(TLoc l2 _)
+          = ELoc (l1<>l2) $ EType ty e
+      in
+        ex <$> exp <*> (rsvp ":" *> typ)
 
     expApp <- rule $
-      EApp () <$> aexp <*> some aexp
+      let ex a@(ELoc l1 _) b@(ELoc l2 _)
+            = ELoc (l1<>l2) $ EApp a b
+      in ex <$> aexp <*> aexp
 
     expVar <- rule $
-      EVar () <$> varName
+      let ex (v, l) = ELoc l $ EVar v
+      in ex <$> varId
 
     expLit <- rule $
-      ELit () <$> lit
+      let ex (lit, l) = ELoc l $ ELit lit
+      in ex <$> lit
     
-    expBottom <- rule $
-        rsvp "_" *> pure (EBottom ())
+    expPrim <- rule $
+      let ex (txt, l) = ELoc l $ EPrim (readPrim txt)
+      in ex <$> primText
 
 
--- -----------------------------------------------------------------------------
--- Primitive Instruction Rules
+    return decl
 
-    primInstr <- rule $
-          (prim "#add" *> pure PrimAdd)
-      <|> (prim "#fadd" *> pure PrimFAdd)
-      <|> (prim "#sub" *> pure PrimSub)
-      <|> (prim "#fsub" *> pure PrimFSub)
-      <|> (prim "#mul" *> pure PrimMul)
-      <|> (prim "#fmul" *> pure PrimFMul)
-      <|> (prim "#div" *> pure PrimDiv)
-      <|> (prim "#udiv" *> pure PrimUDiv)
-      <|> (prim "#sdiv" *> pure PrimSDiv)
-      <|> (prim "#fdiv" *> pure PrimFDiv)
-
--- -----------------------------------------------------------------------------
--- Statement Rules   
-    stmtblk <- rule $ block stmt
-     
-    stmt <- rule $
-          (StmtExpr <$> exp)
-      <|> (StmtExpr <$> stmtIf)
-      <|> stmtReturn
-      <|> (StmtDecl <$> nestedItem)
-
-    stmtReturn <- rule $
-      StmtExpr . EReturn () <$> (rsvp "return" *> exp)
-    
-    stmtIf <- rule $
-      EIf () <$> (rsvp "if" *> dexp) <*> expDo' <*> stmtIfTail
-
-    stmtElif <- rule $
-      EIf () <$> (rsvp "elif" *> dexp) <*> expDo' <*> stmtIfTail
-
-    stmtElse <- rule $
-      rsvp "else" *> expDo'
-
-    stmtIfTail <- rule $ optional $
-      (ln' *> ln) *> (stmtElif <|> stmtElse)
-
-
--- -----------------------------------------------------------------------------
--- Body Rules
-
-    body <- rule $
-            bodyBlock
-        <|> bodyExpr
-
-    bodyBlock <- rule $
-      BodyBlock <$> (rsvp ":" *> stmtblk)
-
-    bodyExpr <- rule $
-      BodyExpr <$> (rsvp "=" *> exp)
-
-
--- -----------------------------------------------------------------------------
--- Variable Rules
-
-    var <- rule $
-      rsvp "var" *> var'
-
-    var' <- rule $
-      Var <$> varName <*> optional body
-
-
--- -----------------------------------------------------------------------------
--- Value Rules
-
-    val <- rule $
-      rsvp "val" *> val'
-
-    val' <- rule $
-      Val <$> varName <*> body
-
--- -----------------------------------------------------------------------------
--- Function Rules
-
-    fun <- rule $
-      rsvp "fun" *> fun'
-
-    fun' <- rule $
-      Fun <$> varName <*> many varName <*> body
-
--- -----------------------------------------------------------------------------
--- Vow Rules
-
-    vow <- rule $
-      rsvp "vow" *> vow'
-
-    vow' <- rule $
-      Vow <$> varName <*> many vowType
-
-    vowType <- rule $
-      (rsvp "var" *> pure VowVar)
-      <|> (rsvp "val" *> pure VowVal)
-      <|> (rsvp "ref" *> pure VowRef)
-
--- -----------------------------------------------------------------------------
--- Type Signature Rules
-
-    tySig <- rule $
-      rsvp "sig" *> tySig'
-
-    tySig' <- rule $
-      TypeSig <$> varName <*> (rsvp "?" *> qtyp0)
-
-
+{-
 -- -----------------------------------------------------------------------------
 -- New Type Rules
 
@@ -416,4 +269,4 @@ toplevel = mdo
         <*> (rsvp ":" *> block tySig')
 
 
-    return item
+-}

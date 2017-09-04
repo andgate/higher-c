@@ -4,7 +4,7 @@ module Language.Hawk.Parse.Lex.State where
 import Control.Lens
 import Data.Default.Class
 import Language.Hawk.Syntax.Location
-import Language.Hawk.Parse.Lex.Token (Token)
+import Language.Hawk.Parse.Token (Token)
 
 data LexState =
   LexState  { _lexTokAcc :: [Token]

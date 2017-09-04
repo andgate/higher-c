@@ -16,7 +16,7 @@ import qualified Data.Map.Lazy as Map
 
 data HkcState = 
   HkcState
-    { _hkcFileTexts :: [(FilePath, String)]
+    { _hkcFileTexts :: [(FilePath, Text)]
     , _hkcTypes :: Map Text Scheme
     , _hkcDefs :: Map Text [Exp]
     , _hkcDatas :: Map Text DataDecl

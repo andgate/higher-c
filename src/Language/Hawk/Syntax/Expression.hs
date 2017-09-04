@@ -51,7 +51,7 @@ data Exp
   -- Hints
   | EType Type Exp
   | ETLit TLit Exp
-  | ELoc  Location Exp
+  | ELoc  Loc Exp
   | EParen Exp
   deriving(Eq, Ord, Read, Show, Generic, Data, Typeable)
 

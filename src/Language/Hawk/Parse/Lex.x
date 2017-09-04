@@ -5,7 +5,7 @@
              , NoMonomorphismRestriction
   #-}
 
-module Language.Hawk.Parse.Lexer where
+module Language.Hawk.Parse.Lex where
 
 import Control.Lens
 import Control.Monad
@@ -21,16 +21,15 @@ import Data.Default.Class
 import Data.Text (Text)
 import Data.Word (Word8)
 import Language.Hawk.Compile.State
-import Language.Hawk.Parse.Lexer.Error
-import Language.Hawk.Parse.Lexer.State
-import Language.Hawk.Parse.Lexer.Token
-import Language.Hawk.Parse.State
+import Language.Hawk.Parse.Lex.Error
+import Language.Hawk.Parse.Lex.State
+import Language.Hawk.Parse.Token
 import Language.Hawk.Syntax.Location
 import System.FilePath (FilePath)
 
 import qualified Data.Text                        as T
 import qualified Data.Text.Read                   as T
-import qualified Language.Hawk.Parse.Lexer.Layout as LO
+import qualified Language.Hawk.Parse.Lex.Format   as Fmt
 import qualified System.FilePath                  as Filesystem
 
 }
@@ -58,7 +57,6 @@ $whiteNoNewline = $white # \n
 
 -- Basic Ids
 @primid = \# $small+
-@modid = $large $idchar*
 @varid = $small $idcharsym*
 @conid = $large $idcharsym*
 @opid  = $opchar+
@@ -100,10 +98,9 @@ hawk :-
   \\                              { rsvp }
   \@                              { rsvp }
 
-  "noconsume"                     { rsvp }
-
-  "expose"                        { rsvp }
   "foreign"                       { rsvp }
+  "import"                        { rsvp }
+  "export"			  { rsvp }
   "ccall"                         { rsvp }
   
   "infix"                         { rsvp }
@@ -119,6 +116,7 @@ hawk :-
   "do"                            { rsvp }
   "where"                         { rsvp }
   "free"                          { rsvp }
+  "dup"				  { rsvp }
   "so"                            { rsvp }
 
   "if"                            { rsvp }
@@ -131,7 +129,6 @@ hawk :-
   
   @primid                         { \text -> yieldTokAt (TokenPrim text) text }
 
-  @modid                          { \text -> yieldTokAt (TokenModId text) text }
   @conid                          { \text -> yieldTokAt (TokenConId text) text }
   @varid                          { \text -> yieldTokAt (TokenVarId text) text }
   @opid                           { \text -> yieldTokAt (TokenOpId text) text }
@@ -407,22 +404,18 @@ alexInputPrevChar = prevChar
 
 {-| Convert a text representation of a module into a stream of tokens
 
-    `lexModl` keeps track of position and returns the remainder of the input if
+    `lexer` keeps track of position and returns the remainder of the input if
     lexing fails.
 -}
-lexer :: ( MonadState s m, HasHkcState s, HasParseState s
-         , MonadChronicle (Bag (WithTimestamp e)) m, AsLexErr e
-         , MonadIO m
-         )
-      => m ()
-lexer =
-  psToks <~ (mapM lexText =<< use hkcFileTexts)
+lexer :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsLexErr e
+       , MonadIO m
+       )
+    => (FilePath, Text) -> m [[Token]]
+lexer src =
+  Fmt.layout <$> lexText src
 
   where
-    lexText t =
-      LO.layout <$> lexText' t
-    
-    lexText' (fp, text) =
+    lexText (fp, text) =
       evalStateT (start text)
                  ((def :: LexState) & lexFilePath .~ fp)
 

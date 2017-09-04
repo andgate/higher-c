@@ -2,12 +2,12 @@
             , TemplateHaskell
             , LambdaCase
   #-}
-module Language.Hawk.Parse.Lexer.Error where
+module Language.Hawk.Parse.Lex.Error where
 
 import Control.Lens
 
-import Language.Hawk.Parse.Lexer.Token
-import Language.Hawk.Syntax (Item)
+import Language.Hawk.Parse.Token
+import Language.Hawk.Syntax (Decl)
 import Language.Hawk.Syntax.Location
 import Data.Text (Text, pack)
 import Text.PrettyPrint.Leijen.Text (Pretty(..), (<+>), (<>))

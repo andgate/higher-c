@@ -18,11 +18,11 @@ import qualified Text.PrettyPrint.Leijen.Text as P
 
 
 -- Location wrapper
-data L a = L Location a
+data L a = L Loc a
   deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
 
 
-data Location
+data Loc
   = Loc
     { _locPath  :: !FilePath
     , _locReg   :: {-# UNPACK #-} !Region 
@@ -52,14 +52,14 @@ instance Ord Position where
       | otherwise = l1 `compare` l2
 
 
-makeClassy ''Location
+makeClassy ''Loc
 makeClassy ''Region
 makeClassy ''Position
 
 -- -----------------------------------------------------------------------------
 -- Classy Instances  
 
-instance HasRegion Location where
+instance HasRegion Loc where
     region = locReg . region
 
 -- Can't make a HasPosition instance for region, since it has two positions!
@@ -79,7 +79,7 @@ stretch a n = mkRegion p1 p2
 -- -----------------------------------------------------------------------------
 -- Helper Instances,
 
-instance Monoid Location where
+instance Monoid Loc where
     mempty = Loc "" mempty
     mappend (Loc fp r1) (Loc _ r2)
       = Loc fp (r1 <> r2)
@@ -103,7 +103,7 @@ instance P.Pretty a => P.Pretty (L a) where
        P.textStrict "located at" P.<+> P.pretty loc
 
 
-instance P.Pretty Location where
+instance P.Pretty Loc where
     pretty loc =
        P.textStrict (pack $ loc^.locPath) P.<> P.textStrict ":" P.<> P.pretty (loc^.locReg)
 
@@ -125,6 +125,6 @@ instance P.Pretty Position where
 -- Binary Instances
 
 instance Binary a => Binary (L a)
-instance Binary Location
+instance Binary Loc
 instance Binary Region
 instance Binary Position

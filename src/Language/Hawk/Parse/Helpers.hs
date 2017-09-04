@@ -9,196 +9,168 @@ module Language.Hawk.Parse.Helpers where
 
 import Control.Applicative
 import Control.Monad (void)
+import Data.Monoid
 import Data.Text (Text, pack)
 import Data.Void (Void)
+import Language.Hawk.Parse.Token
 import Language.Hawk.Syntax
-
-import Text.Megaparsec (MonadParsec(..))
-
-import qualified Text.Megaparsec            as P
-import qualified Text.Megaparsec.Char       as P
-import qualified Text.Megaparsec.Char.Lexer as L
+import Text.Earley
 
 
 -- -----------------------------------------------------------------------------
--- Parser Monad Class
+-- Terminal Production Helpers
 
-type MonadParser m = (Functor m, Applicative m, Monad m, MonadParsec Void String m)
+match :: TokenClass -> Prod r e Token (Token, Loc)
+match c = extract <$> satisfy p
+  where p (Token c' _ _) = c == c
+        extract t@(Token _ _ l) = (t, l)
 
-type Parser = P.Parsec Void String
+rsvp :: Text -> Prod r e Token (Token, Loc)
+rsvp =
+  match . TokenRsvp
 
-
--- -----------------------------------------------------------------------------
--- Comments and Whitespace
-
-lnCmt :: MonadParser m => m ()
-lnCmt = L.skipLineComment "--"
-
-blkCmt :: MonadParser m => m ()
-blkCmt = L.skipBlockCommentNested "--|" "|--"
-
--- Whitespace w/ newline
-scn :: MonadParser m => m ()
-scn = L.space P.space1 lnCmt blkCmt
-
-
--- Whitespace w/out newline
-sc :: MonadParser m => m ()
-sc = L.space (void $ takeWhile1P Nothing f) lnCmt blkCmt
-  where
-    f x = x == ' ' || x == '\t'
+prim :: Text -> Prod r e Token (Token, Loc)
+prim =
+  match . TokenPrim
 
 
 -- -----------------------------------------------------------------------------
--- Reserved words and Identifiers
+-- Terminal Productions Helpers for Name Tokens
 
-reserved :: [String]
-reserved = [ "let", "in"
-           , "free", "copy"
-           , "if", "then", "else"
-           , "infix", "infixl", "infixr"
-           ]
-
-reservedOps :: [String]
-reservedOps =
-  [ "="
-  , ":"
-  ]
-
-rsvp :: MonadParser m => m () -> String -> m ()
-rsvp ws w = L.lexeme ws (P.string w *> P.notFollowedBy P.alphaNumChar)
-
-symbol :: MonadParser m => m () -> String -> m String
-symbol = L.symbol 
-
-varName :: MonadParser m => m () -> m Text
-varName ws = pack <$> varid ws
-
-conName :: MonadParser m => m () -> m Text
-conName ws = pack <$> conid ws
-
-opName :: MonadParser m => m () -> m Text
-opName ws = pack <$> opid ws
-  
-
-varid :: MonadParser m => m () -> m String
-varid ws = (L.lexeme ws . try) (p >>= check)
+varId :: Prod r e Token (Text, Loc)
+varId = unsafeExtract <$> satisfy p
   where
-    p       = (:) <$> P.lowerChar <*> many (P.alphaNumChar <|> P.char '_' <|> P.char '\'')
-    check x = if x `elem` reserved
-                then fail $ "keyword " ++ show x ++ " cannot be an variable identifier"
-                else return x
+    p (Token (TokenVarId _) _ _) = True
+    p  _                         = False
+    unsafeExtract (Token (TokenVarId n) _ l) = (n, l)
 
 
-conid :: MonadParser m => m () -> m String
-conid ws = (L.lexeme ws . try) p
+conId :: Prod r e Token (Text, Loc)
+conId = unsafeExtract <$> satisfy p
   where
-    p       = (:) <$> P.upperChar <*> many (P.alphaNumChar <|> P.char '_' <|> P.char '\'')
+    p (Token (TokenConId _) _ _) = True
+    p  _                         = False
+    unsafeExtract (Token (TokenConId n) _ l) = (n, l)
 
 
-opid :: MonadParser m => m () -> m String
-opid ws = (L.lexeme ws . try) (p >>= check)
+opId :: Prod r e Token (Text, Loc)
+opId = unsafeExtract <$> satisfy p
   where
-    p       = some P.symbolChar
-    check x = if x `elem` reservedOps
-                then fail $ "keyword " ++ show x ++ " is reserved and cannot be an operator"
-                else return x
-                     
+    p (Token (TokenOpId _) _ _) = True
+    p  _                        = False
+    unsafeExtract (Token (TokenOpId n) _ l) = (n, l)
+
+primText :: Prod r e Token (Text, Loc)
+primText = unsafeExtract <$> satisfy p
+  where
+    p (Token (TokenPrim _) _ _) = True
+    p _                         = False
+    unsafeExtract (Token (TokenPrim n) _ l) = (n, l)
+
+-- -----------------------------------------------------------------------------
+-- Terminal Productions Helpers for Literal Tokens
+intLit :: Prod r e Token (Integer, Loc)
+intLit = unsafeExtract <$> satisfy p
+  where
+    p (Token (TokenInteger _) _ _) = True
+    p  _                           = False
+    unsafeExtract (Token (TokenInteger v) _ l) = (v, l)
+
+floatLit :: Prod r e Token (Double, Loc)
+floatLit = unsafeExtract <$> satisfy p
+  where
+    p (Token (TokenDouble _) _ _) = True
+    p  _                          = False
+    unsafeExtract (Token (TokenDouble v) _ l) = (v, l)
+
+charLit :: Prod r e Token (Char, Loc)
+charLit = unsafeExtract <$> satisfy p
+  where
+    p (Token (TokenChar _) _ _) = True
+    p  _                             = False
+    unsafeExtract (Token (TokenChar v) _ l) = (v, l)
+
+strLit :: Prod r e Token (String, Loc)
+strLit = unsafeExtract <$> satisfy p
+  where
+    p (Token (TokenString _) _ _) = True
+    p  _                             = False
+    unsafeExtract (Token (TokenString v) _ l) = (v, l)
+
+boolLit :: Prod r e Token (Bool, Loc)
+boolLit = unsafeExtract <$> satisfy p
+  where
+    p (Token (TokenBool _) _ _) = True
+    p  _                             = False
+    unsafeExtract (Token (TokenBool v) _ l) = (v, l)
+
+
+-- -----------------------------------------------------------------------------
+-- Layout Helpers
+
+eof :: Prod r e Token (Token, Loc)
+eof = match TokenEof
+
+block :: Prod r e Token a -> Prod r e Token [a]
+block p = blk *> linefolds p <* blk'
+
+linefolds0 :: Prod r e Token a -> Prod r e Token [a]
+linefolds0 p = many $ linefold p
+
+linefolds :: Prod r e Token a -> Prod r e Token [a]
+linefolds p = some $ linefold p
+
+linefold :: Prod r e Token a -> Prod r e Token a
+linefold p = ln *> p <* ln'
+
+
+blk :: Prod r e Token (Token, Loc)
+blk = match TokenBlk
+
+blk' :: Prod r e Token (Token, Loc)
+blk' = match TokenBlk'
+
+
+ln :: Prod r e Token (Token, Loc)
+ln = match TokenLn
+
+ln' :: Prod r e Token (Token, Loc)
+ln' = match TokenLn'
+
 
 -- -----------------------------------------------------------------------------
 -- Symbols
 
-parens :: MonadParser m => m () -> m a -> m a
-parens ws = P.between (L.symbol ws "(") (L.symbol ws ")")
+parens :: Prod r e Token a -> Prod r e Token (a, Loc)
+parens p =
+  let ex (_, l1) r (_, l2) = (r, l1 <> l2)
+  in ex <$> rsvp "(" <*> p <*> rsvp ")"
 
-braces :: MonadParser m => m () -> m a -> m a
-braces ws = P.between (L.symbol ws "{") (L.symbol ws "}")
+braces :: Prod r e Token a -> Prod r e Token a
+braces p =
+  rsvp "[" *> p <* rsvp "]"
 
-angles :: MonadParser m => m () -> m a -> m a
-angles ws = P.between (L.symbol ws "<") (L.symbol ws ">")
+curlys :: Prod r e Token a -> Prod r e Token a
+curlys p =
+  rsvp "{" *> p <* rsvp "}"
 
-brackets :: MonadParser m => m () -> m a -> m a
-brackets ws = P.between (L.symbol ws "[") (L.symbol ws "]")
+angled :: Prod r e Token a -> Prod r e Token a
+angled p =
+  rsvp "<" *> p <* rsvp ">"
 
-semicolon :: MonadParser m => m () -> m String
-semicolon ws = L.symbol ws ";"
-
-comma :: MonadParser m => m () -> m String
-comma ws = L.symbol ws ","
-
-colon :: MonadParser m => m () -> m String
-colon ws = L.symbol ws ":"
-
-dot :: MonadParser m => m () -> m String
-dot ws = L.symbol ws "."
-
-equals :: MonadParser m => m () -> m String
-equals ws = L.symbol ws "="
-
-arrowr :: MonadParser m => m () -> m String
-arrowr ws = L.symbol ws "->"
-
-arrowl :: MonadParser m => m () -> m String
-arrowl ws = L.symbol ws "<-"
-
-
-backslash :: MonadParser m => m () -> m String
-backslash ws = L.symbol ws "\\"
-
-
-commaSep1 :: MonadParser m => m () -> m a -> m [a]
-commaSep1 ws p = P.sepBy1 p (comma ws) 
-
--- -----------------------------------------------------------------------------
--- Literals
-
-integerP :: MonadParser m => m () -> m Integer
-integerP ws = L.lexeme ws L.decimal
-
-doubleP :: MonadParser m => m () -> m Double
-doubleP ws = L.lexeme ws L.float
-
-charP :: MonadParser m => m () -> m Char
-charP ws =
-  L.lexeme ws $
-    P.char '\'' *>  L.charLiteral <* P.char '\''
-
-stringP' :: MonadParser m => m () -> m Text
-stringP' ws =
-  pack <$> stringP ws
-
-stringP :: MonadParser m => m () -> m String
-stringP ws =
-  L.lexeme ws $
-    P.char '"' >> P.manyTill L.charLiteral (P.char '"')
            
--- -----------------------------------------------------------------------------
--- Location Helpers
-
-
-peekPos :: MonadParser m => m (FilePath, Position)
-peekPos = do
-  P.SourcePos fp ln col <- P.getPosition
-  let ln' = P.unPos ln
-      col' = P.unPos col
-  return (fp, P ln' col')
-
-
-locP :: MonadParser m
-     => m a -> m (L a)
-locP m = do
-  (fp, p1) <- peekPos
-  x <- m
-  withRecovery (\_ -> return $ L (Loc fp $ R p1 p1) x) $ do
-    (_, p2) <- peekPos
-    return $ L (Loc fp $ R p1 p2) x
-
--- | Wrap an expression with a location
-elocP :: MonadParser m
-         => m Exp -> m Exp
-elocP m = do
-  (fp, p1) <- peekPos
-  t <- m
-  withRecovery (\_ -> return $ ELoc (Loc fp $ R p1 p1) t) $ do
-    (_, p2) <- peekPos
-    return $ ELoc (Loc fp $ R p1 p2) t
+sep :: Prod r e Token b -> Prod r e Token a -> Prod r e Token [a]
+sep s p =
+  (:) <$> p <*> many (s *> p)
+  
+sep' :: Prod r e Token b -> Prod r e Token a -> Prod r e Token [a]
+sep' s p =
+  sep s p <|> pure []
+  
+mono :: Prod r e Token a -> Prod r e Token [a]
+mono =
+  fmap (:[])
+  
+prepend :: Prod r e Token a -> Prod r e Token [a] -> Prod r e Token [a]  
+prepend =
+  liftA2 (:)

@@ -7,6 +7,7 @@ import Data.Default.Class
 import Data.Text
 import GHC.Generics (Generic)
 
+import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Kind
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
@@ -18,7 +19,10 @@ data Type
   = TVar Text
   | TCon Text
   | TApp Type Type
+  | TArr Type Type
+  | TLoli Type Type
   | TKind Kind Type
+  | TLoc Loc Type
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 
@@ -72,6 +76,7 @@ instance HasKind Type where
                   (KArr _ k) -> k
                   k          -> k
     TKind k _ -> k
+    TLoc _ t  -> kind t
 
 
 -- -----------------------------------------------------------------------------

@@ -1,9 +1,9 @@
-{-# LANGUAGE DeriveGeneric, DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric, DeriveDataTypeable, LambdaCase #-}
 module Language.Hawk.Syntax.Prim where
 
 import Data.Binary
 import Data.Data
-import Data.Text (pack)
+import Data.Text (Text, pack)
 import GHC.Generics (Generic)
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
@@ -23,6 +23,7 @@ data PrimInstr
   | PrimUDiv
   | PrimSDiv
   | PrimFDiv
+  | PrimBad
   deriving (Read, Show, Eq, Ord, Enum, Data, Typeable, Generic)
 
 
@@ -58,6 +59,8 @@ instance PP.Pretty PrimInstr where
       PP.textStrict . pack . show
 
 
+
+
 -- Binary ---------------------------------------------------------------------
 
 instance Binary PrimInstr where
@@ -66,3 +69,21 @@ instance Binary PrimInstr where
       
   put =
     putWord8 . fromIntegral . fromEnum
+
+
+-- String
+
+readPrim :: Text -> PrimInstr
+readPrim = \case
+  "#add"  -> PrimAdd
+  "#fadd" -> PrimFAdd
+  "#sub"  -> PrimSub
+  "#fsub" -> PrimFSub
+  "#mul"  -> PrimMul
+  "#fmul" -> PrimFMul
+  "#div"  -> PrimDiv
+  "#udiv" -> PrimUDiv
+  "#sdiv" -> PrimSDiv
+  "#fdiv" -> PrimFDiv
+  
+  _ -> PrimBad
