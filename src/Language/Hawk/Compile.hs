@@ -22,6 +22,8 @@ import Data.Foldable
 
 import Language.Hawk.Load
 import Language.Hawk.Parse
+import Language.Hawk.Parse.Lex
+import Language.Hawk.Parse.Lex.Error
 import Language.Hawk.Syntax
 
 import Language.Hawk.TypeCheck
@@ -49,23 +51,25 @@ compile
      , MonadReader c m , HasHkcConfig c
      , MonadLog (WithSeverity (WithTimestamp msg)) m, AsHkcMsg msg, AsLoadMsg msg, AsParseMsg msg
      , MonadChronicle (Bag (WithTimestamp e)) m
-     , AsHkcErr e, AsLoadErr e, AsParseErr e, AsNameCheckError e, AsTcErr e
+     , AsHkcErr e, AsLoadErr e, AsParseErr e, AsLexErr e, AsNameCheckError e, AsTcErr e
      , MonadIO m, MonadBaseControl IO m
      )
   => m ()
 compile = do
   condemn $ do
     load
-    parse
+    xs <- use hkcFileTexts
+    docToks <- mapM lexer xs
+    forM_ docToks $ \declsToks ->
+        forM_ declsToks $ \declToks -> do
+            liftIO . print . pretty $ declToks
+            parse declToks
+              >>= liftIO . print . pretty
 
   --namecheck
 
   -- typecheck
     
-  liftIO . print . pretty . Map.toList =<< use hkcDefs
-  liftIO . print . pretty . Map.toList =<< use hkcTypes
-  
-  
   --optimize
   --codegen
   return ()

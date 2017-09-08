@@ -22,7 +22,7 @@ import Text.Earley
 
 match :: TokenClass -> Prod r e Token (Token, Loc)
 match c = extract <$> satisfy p
-  where p (Token c' _ _) = c == c
+  where p (Token c' _ _) = c == c'
         extract t@(Token _ _ l) = (t, l)
 
 rsvp :: Text -> Prod r e Token (Token, Loc)
@@ -157,7 +157,6 @@ curlys p =
 angled :: Prod r e Token a -> Prod r e Token a
 angled p =
   rsvp "<" *> p <* rsvp ">"
-
            
 sep :: Prod r e Token b -> Prod r e Token a -> Prod r e Token [a]
 sep s p =

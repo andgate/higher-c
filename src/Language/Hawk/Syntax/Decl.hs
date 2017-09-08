@@ -1,6 +1,7 @@
 {-# Language DeriveGeneric, LambdaCase, OverloadedStrings #-}
 module Language.Hawk.Syntax.Decl where
 
+import Data.Default.Class
 import Data.Text
 import Language.Hawk.Syntax.DataDecl
 import Language.Hawk.Syntax.Expression
@@ -18,6 +19,10 @@ data Decl
   | Fixity Fixity Int [Text]
   | EmptyDecl
   deriving (Show, Generic)
+
+
+instance Default Decl where
+  def = EmptyDecl
 
 
 -- -----------------------------------------------------------------------------

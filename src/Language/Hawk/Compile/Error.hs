@@ -11,6 +11,7 @@ module Language.Hawk.Compile.Error
 import Control.Lens
 import Language.Hawk.Load.Error
 import Language.Hawk.Parse.Error
+import Language.Hawk.Parse.Lex.Error
 import Language.Hawk.NameCheck.Error
 import Language.Hawk.TypeCheck.Error
 import Text.PrettyPrint.Leijen.Text (Pretty(..))
@@ -18,6 +19,7 @@ import Text.PrettyPrint.Leijen.Text (Pretty(..))
 data HkcErr
   = HkcLoadErr LoadErr
   | HkcParseErr ParseErr
+  | HkcLexErr LexErr
   | HkcNameCheckError NameCheckError
   | HkcTcErr TcErr
   deriving (Show)
@@ -29,6 +31,9 @@ instance AsLoadErr HkcErr where
 
 instance AsParseErr HkcErr where
   _ParseErr = _HkcParseErr
+
+instance AsLexErr HkcErr where
+  _LexErr = _HkcLexErr
 
 instance AsNameCheckError HkcErr where
   _NameCheckError = _HkcNameCheckError

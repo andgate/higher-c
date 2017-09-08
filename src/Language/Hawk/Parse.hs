@@ -45,7 +45,9 @@ import Language.Hawk.Compile.State
 import Language.Hawk.Parse.Error
 import Language.Hawk.Parse.Grammar
 import Language.Hawk.Parse.Message
+import Language.Hawk.Parse.Token
 import Language.Hawk.Parse.Lex (lexer)
+import Language.Hawk.Parse.Lex.Error
 import Language.Hawk.Syntax
 
 import qualified Data.List.NonEmpty     as NE
@@ -56,41 +58,20 @@ import qualified Text.Earley            as E
 
 
 parse :: ( MonadState s m, HasHkcState s
-         , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
+         , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e, AsLexErr e
          , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
          , MonadIO m
          )
-         => (FilePath, Text) -> m [Decl]
-parse src = do
-  lexer >=> parseDecl
-  processDecls
+         => [Token] -> m Decl
+parse toks = do
+  let rs = E.fullParses (E.parser toplevel) toks
+  handleResult rs
 
   where
-    processDecls =
-      mapM_ processDecl
-      
-    processDecl = \case
-      Sig n t ->
-        hkcTypes . at n .= Just (Forall [] t)
-
-      Def n e ->
-        hkcDefs . at n <>= Just [e]
-        
-      DataD dd -> do
-        processDataDecl dd
-
-      _ -> return ()
-
-    parseDecl =
-      handleResult . parser
-     
-    parser =
-      map (E.fullParses (E.parser toplevel)) <$> lexer
-    
     handleResult (parses, r@(Report _ expected unconsumed)) =
       case parses of
-        []  -> discloseNow (_UnexpectedToken # (head unconsumed))
-        [p] -> do logInfo =<< timestamp (_ParseSuccess # "") -- Need fill path for this message
+        []  -> discloseNow (_UnexpectedToken # unconsumed)
+        [p] -> do logInfo =<< timestamp (_ParseSuccess # (head toks ^. locPath)) -- Need fill path for this message
                   return p
                    
         -- This will only happen if the grammar is wrong

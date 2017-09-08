@@ -1,4 +1,4 @@
-resolver: lts-9.2
+resolver: lts-9.3
 packages:
 - '.'
 extra-deps:
@@ -6,4 +6,4 @@ extra-deps:
 - megaparsec-6.1.1
 nix:
   enable: true
-  packages: [llvm, zlib]
+  packages: [llvm_4, zlib]

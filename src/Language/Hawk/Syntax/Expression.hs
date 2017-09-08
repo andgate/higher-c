@@ -70,9 +70,13 @@ instance Plated Exp
 -- | "Smart" Constructors
 
 
-lam_ :: Text -> Exp -> Exp
-lam_ b e@(ELoc l _)
-  = ELoc l $ ELam b e
+var_ :: Text -> Loc -> Exp
+var_ n l = ELoc l $ EVar n
+
+lam_ :: (Text, Loc) -> Exp -> Exp
+lam_ (b, l1) e@(ELoc l2 _)
+  = ELoc (l1<>l2) $ ELam b e
+
 
 let_ :: [(Text, Exp)] -> Exp -> Exp
 let_ bs e = foldr elet' e (reverse bs)
@@ -208,3 +212,6 @@ instance PP.Pretty Exp where
           PP.<$>
           PP.textStrict "exp:" PP.<+> PP.pretty e
         )
+
+    pretty (EParen e) =
+      PP.parens $ PP.pretty e

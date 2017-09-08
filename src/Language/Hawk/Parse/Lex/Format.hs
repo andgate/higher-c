@@ -118,6 +118,7 @@ yieldTok t = do
        )
        $ do ts <- use layToks'
             layResults %= (reverse ts:)
+            layToks' .= []
             return ()
 
 

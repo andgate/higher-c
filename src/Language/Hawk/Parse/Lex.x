@@ -408,9 +408,9 @@ alexInputPrevChar = prevChar
     lexing fails.
 -}
 lexer :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsLexErr e
-       , MonadIO m
-       )
-    => (FilePath, Text) -> m [[Token]]
+         , MonadIO m
+         )
+      => (FilePath, Text) -> m [[Token]]
 lexer src =
   Fmt.layout <$> lexText src
 

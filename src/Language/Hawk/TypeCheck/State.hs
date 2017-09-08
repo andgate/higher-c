@@ -4,17 +4,19 @@ module Language.Hawk.TypeCheck.State where
 import Control.Lens
 import Data.Default.Class
 
+import Language.Hawk.Syntax.Location
 
-data TypeCheckState
-  = TypeCheckState
-    { _tcFoo :: Bool
+
+data TCState
+  = TCState
+    { _tcLocs :: [Loc]
     }
 
-makeClassy ''TypeCheckState
+makeClassy ''TCState
 
 
-instance Default TypeCheckState where
+instance Default TCState where
   def = 
-    TypeCheckState
-      { _tcFoo = False
+    TCState
+      { _tcLocs = []
       }

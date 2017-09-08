@@ -48,7 +48,6 @@ type Inch = Int
 -- New types are not treated as interchangable.
 alias Size = Int
 
-  |--
 
 -- Declare data structures with the data keyword
 data Color
@@ -58,6 +57,8 @@ data Color
       , blue  : Float
       }
 
+|--
+
 --|   This creates a record with one constructor, Color.
     My color has three field accessors red, green, and blue.
     These are functions that when used on a variable of type
@@ -65,7 +66,7 @@ data Color
   |--
 
 
-
+--|
 -- Here is a function that produces a new 
 -- color with the values inverted
 invert : Color -> Color
@@ -74,6 +75,8 @@ invert c =
       g' = #fsub 1.0 (green c)
       b' = #fsub 1.0 (blue c)
   in Color r' g' b'
+
+  |--
 
 
 --|   This is a good opportunity to explain Hawk's memory model.

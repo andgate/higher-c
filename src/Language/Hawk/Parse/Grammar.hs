@@ -22,7 +22,7 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Declaration Rules
     
-    decl <- rule $
+    decl <- rule $ linefold $
           forgn
       <|> fixity
       <|> sig
@@ -42,14 +42,14 @@ toplevel = mdo
         (forgnImport <|> forgnExport)
 
     forgnImport <- rule $
-      let extract ft (srcN, _) (hkN, _) ty
+      let ex ft (srcN, _) (hkN, _) ty
             = ForeignImport ft (pack srcN) hkN ty
-      in extract <$> (rsvp "import" *> forgnType) <*> strLit <*> (varId <|> conId <|> opId) <*>  typ
+      in ex <$> (rsvp "import" *> forgnType) <*> strLit <*> (varId <|> conId <|> opId) <*> (rsvp ":" *> typ)
 
     forgnExport <- rule $
-      let extract ft (n, _)
+      let ex ft (n, _)
             = ForeignExport ft n
-      in extract <$> (rsvp "export" *> forgnType) <*> (varId <|> conId <|> opId)
+      in ex <$> (rsvp "export" *> forgnType) <*> (varId <|> conId <|> opId)
 
     forgnType <- rule $
       rsvp "ccall" *> pure ForeignC
@@ -89,8 +89,12 @@ toplevel = mdo
 -- Definition Declaration Rules
 
     def <- rule $
-      let ex (n, _) e = Def n e
-      in ex <$> varId <*> exp
+      let ex (n, _) vs e = Def n (foldr lam_ e vs)
+      in ex <$> defName <*> many varId <*> (rsvp "=" *> exp)
+
+
+    defName <- rule $
+      varId <|> parens (fst <$> opId)
 
 
 -- -----------------------------------------------------------------------------
@@ -104,15 +108,30 @@ toplevel = mdo
 
 -- -----------------------------------------------------------------------------
 -- Type Rules
-    
+
+
+    qtyp <- rule $
+      (:=>) <$> (mono ptyp <|> ptyps) <*> (rsvp "=>" *> typ)
+
+
+    ptyps <- rule $
+      fmap fst $ parens $ sep' (rsvp ",") ptyp
+
+    ptyp <- rule $
+      let ex (n, _) ty = IsIn n ty
+      in ex <$> conId <*> some atyp 
+
     typ <- rule $
+      ctyp
+    
+    ctyp <- rule $
       let ex1 a@(TLoc l1 _) b@(TLoc l2 _) =
             TLoc (l1<>l2) $ TArr a b
           ex2 a@(TLoc l1 _) b@(TLoc l2 _) =
             TLoc (l1<>l2) $ TLoli a b
       in
-           (ex1 <$> btyp <*> (rsvp "->" *> typ))
-       <|> (ex2 <$> btyp <*> (rsvp "-o" *> typ))
+           (ex1 <$> ctyp <*> (rsvp "->" *> btyp))
+       <|> (ex2 <$> ctyp <*> (rsvp "-o" *> btyp))
        <|> btyp
    
 
@@ -120,16 +139,22 @@ toplevel = mdo
       let ex a@(TLoc l1 _) b@(TLoc l2 _) =
             TLoc (l1<>l2) $ TApp a b
 
-      in   (ex <$> atyp <*> btyp)
+      in   (ex <$> btyp <*> atyp)
        <|> atyp
 
     atyp <- rule $
-      gtyCon
+          gtyCon
       <|> tyVar
-      <|> (fst <$> parens typ)
+      <|> tyParens
     
     gtyCon <- rule $
-      tyCon
+          tyCon
+      <|> tyUnit
+
+
+    tyUnit <- rule $
+      let ex (_, l1) (_, l2) = TLoc (l1<>l2) $ TCon "()"
+      in ex <$> rsvp "(" <*> rsvp ")"
 
     tyCon <- rule $
       let ex (n, l) = TLoc l $ TCon n
@@ -138,6 +163,10 @@ toplevel = mdo
     tyVar <- rule $
       let ex (n, l) = TLoc l $ TVar n
       in ex <$> varId
+
+    tyParens <- rule $
+      let ex (e, l) = TLoc l $ TParen e
+      in ex <$> parens typ
       
 
 -- -----------------------------------------------------------------------------
@@ -170,25 +199,47 @@ toplevel = mdo
 
     -- The expression chain, starting at aexp as the base with the highest precedence.
     exp <- rule $
-      cexp
+      dexp
+
+    dexp <- rule $
+          expType
+      <|> cexp
 
     cexp <- rule $
-          expType
+          expFree
+      <|> expIf
+      <|> expLet
       <|> bexp
 
     bexp <- rule $
-      expApp
-      <|> expPrim
+          expApp
       <|> aexp
 
     aexp <- rule $
-          (fst <$> parens cexp)
+          expParen
       <|> expVar
+      <|> expPrim
       <|> expLit
 
+
+    expLet <- rule $
+      let ex (_, l1) vs _ e@(ELoc l2 _) = ELoc (l1 <> l2) $ foldr ELet e vs
+      in ex <$> rsvp "let" <*> block expLetBind  <*> rsvp "in" <*> exp
+
+    expLetBind <- rule $
+      (,) <$> (fst <$> varId) <*> (rsvp "=" *> exp)
+
+    expIf <- rule $
+      let ex (_, l1) p a b@(ELoc l2 _) = ELoc (l1<>l2) $ EIf p a b
+      in ex <$> rsvp "if" <*> exp <*> (rsvp "then" *> exp) <*> (rsvp "else" *> exp)
+
+
     expFree <- rule $
-      let ex (_,l1) v e@(ELoc l2 _)  = ELoc (l1<>l2) $ EFree v e
-      in ex <$> rsvp "free" <*> fmap fst varId <*> (rsvp "in" *> exp)
+      let
+        ex (_, l1) v e@(ELoc l2 _)
+            = ELoc (l1<>l2) $ EFree v e
+      in
+        ex <$> rsvp "free" <*> fmap fst varId <*> (rsvp "in" *> exp)
 
 
     -- Expression forms
@@ -197,12 +248,17 @@ toplevel = mdo
         ex e@(ELoc l1 _) ty@(TLoc l2 _)
           = ELoc (l1<>l2) $ EType ty e
       in
-        ex <$> exp <*> (rsvp ":" *> typ)
+        ex <$> bexp <*> (rsvp ":" *> typ)
+
+
+    expOp <- rule $
+      let ex = undefined
+      in ex <$> undefined
 
     expApp <- rule $
       let ex a@(ELoc l1 _) b@(ELoc l2 _)
             = ELoc (l1<>l2) $ EApp a b
-      in ex <$> aexp <*> aexp
+      in ex <$> bexp <*> aexp
 
     expVar <- rule $
       let ex (v, l) = ELoc l $ EVar v
@@ -215,6 +271,10 @@ toplevel = mdo
     expPrim <- rule $
       let ex (txt, l) = ELoc l $ EPrim (readPrim txt)
       in ex <$> primText
+
+    expParen <- rule $
+      let ex (e, l) = ELoc l $ EParen e
+      in ex <$> parens exp
 
 
     return decl
@@ -259,14 +319,16 @@ toplevel = mdo
         <*> some atyp
         <*> (rsvp ":" *> block fun')
 
+
 -- -----------------------------------------------------------------------------
 -- Data Type Rules
 
     dataType <- rule $
-      DataType
+      DataDecl
         <$> (rsvp "data" *> conName)
         <*> many varName
         <*> (rsvp ":" *> block tySig')
 
-
+    conDecl <- rule $
+      
 -}
