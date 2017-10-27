@@ -51,8 +51,9 @@ merge e1 e2 =
   e1 & env . types %~ Map.union (e2 ^. env . types)
 
 
-mergeMany :: [Env] -> Env
-mergeMany = foldr merge empty
+mergeMany :: HasEnv e => [e] -> Env
+mergeMany = foldr (merge . view env) empty
+
 
 mergeSome :: HasEnv e => [e] -> e
 mergeSome = foldr1 merge

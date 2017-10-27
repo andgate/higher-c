@@ -17,6 +17,7 @@ module Language.Hawk.TypeCheck where
 import Control.Lens
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Except
 import Control.Monad.Chronicle
 import Control.Monad.Chronicle.Extra
 import Control.Monad.Log
@@ -53,14 +54,8 @@ import qualified Language.Hawk.TypeCheck.Environment as Env
 -- Classes
 -----------------------------------------------------------------------
 
-newtype Infer a = Infer { unInfer :: ReaderT (Set Text) (StateT InferState (Except TypeError)) a }
-  deriving (Functor, Applicative, Monad, MonadReader (Set Text), MonadState InferState)
-
-
-data InferState = InferState { count :: Int }
-
-initInfer :: InferState
-initInfer = InferState { count = 0 }
+newtype Infer a = Infer { unInfer :: ReaderT (Set Text) (StateT InferState (Except TcErr)) a }
+  deriving (Functor, Applicative, Monad, MonadReader (Set Text), MonadState InferState, MonadError TcErr)
 
 
 class Substitutable a where
@@ -68,8 +63,8 @@ class Substitutable a where
 
 
 instance Substitutable Type where
-  apply (Subst s) = \case
-    t@(TVar a)   -> Map.findWithDefault t a s
+  apply s@(Subst s_map) = \case
+    t@(TVar a)   -> Map.findWithDefault t a s_map
     TCon n       -> TCon n
     TApp t1 t2   -> apply s t1 `TApp` apply s t2
     TArr t1 t2   -> apply s t1 `TArr` apply s t2
@@ -80,15 +75,15 @@ instance Substitutable Type where
 
 
 instance Substitutable Scheme where
-  apply (Subst s) (Forall as t) = Forall as $ apply s t
-    where s' = Subst $ foldr Map.delete s as
+  apply s@(Subst s_map) (Forall as t) = Forall as $ apply s t
+    where s' = Subst $ foldr Map.delete s_map as
 
 
 instance Substitutable Constraint where
   apply s = \case
     EqConst t1 t2          -> EqConst (apply s t1) (apply s t2)
     ExpInstConst t sc      -> ExpInstConst (apply s t) (apply s sc)
-    ImpInstConst t1 ms t2  -> ImmpInstConst (apply s t1) (apply s ms) (apply s t2)
+    ImpInstConst t1 ms t2  -> ImpInstConst (apply s t1) (apply s ms) (apply s t2)
 
 
 instance Substitutable a => Substitutable [a] where
@@ -96,7 +91,7 @@ instance Substitutable a => Substitutable [a] where
 
 
 instance (Ord a, Substitutable a) => Substitutable (Set a) where
-  apply = Set.map apply
+  apply = Set.map . apply
 
 
 
@@ -137,7 +132,7 @@ instance ActiveTypeVars Constraint where
     ExpInstConst t s       -> ftv t `Set.union` ftv s 
 
 
-instance ActiveTypeVars => ActiveTypeVars [a] where
+instance ActiveTypeVars a => ActiveTypeVars [a] where
   atv = foldr (Set.union . atv) Set.empty
 
 
@@ -145,6 +140,7 @@ instance ActiveTypeVars => ActiveTypeVars [a] where
 -- Inference
 -----------------------------------------------------------------------
 
+-- | Run the inference monad
 runInfer :: Infer a -> Either TcErr a
 runInfer (Infer m) = runExcept $ evalStateT (runReaderT m Set.empty) initInfer
 
@@ -154,11 +150,57 @@ inferType env ex = do
   (as, cs, t) <- infer ex
   let unbounds = Set.fromList (As.keys as) `Set.difference` Set.fromList (Env.keys env)
   unless (Set.null unbounds) $ throwError $ UnboundVariable (Set.findMin unbounds)
-  let cs' = [ExpConst t s | (x, s) <- Env.toList env, t <- As.lookup x as]
-  subst <- solve (cs ++ cs')
-  return (subst, apply subst t)
+  let cs' = [ExpInstConst t s | (x, s) <- Env.toList env, t <- As.lookup x as]
+  return undefined
+  -- subst <- solve (cs ++ cs')
+  -- return (subst, apply subst t)
+
+
+-- | Solve for the toplevel type of an expression
+inferExp :: Env -> Exp -> Either TcErr Scheme
+inferExp env ex = case runInfer (inferType env ex) of
+  Left err -> Left err
+  Right (subst, ty) -> Right $ closeOver $ apply subst ty
+
+
+-- | Cannonicalize and return the polymorphic toplevel type.
+closeOver :: Type -> Scheme
+closeOver = normalize . generalize Set.empty
+
+
+extendMSet :: Text -> Infer a -> Infer a
+extendMSet x = local (Set.insert x)
+
+
+letters :: [String]
+letters = [1..] >>= flip replicateM ['a'..'z']
+
+genFreeVar :: Int -> Type
+genFreeVar n =
+  TVar $ pack (letters !! n)
+
+fresh :: Infer Type
+fresh = do
+  countfv += 1
+  uses countfv genFreeVar
+
+
+instantiate :: Scheme -> Infer Type
+instantiate (Forall as t) = do
+  as' <- mapM (const fresh) as
+  let s = Subst $ Map.fromList $ zip as as'
+  return $ apply s t
+
+
+generalize :: Set Text -> Type -> Scheme
+generalize free t = Forall as t
+  where as = Set.toList $ ftv t `Set.difference` free
+
+
+ops :: Operator -> Type
 
 
 infer :: Exp -> Infer (Assumption, [Constraint], Type)
 infer = \case
   _ -> undefined
+

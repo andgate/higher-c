@@ -7,16 +7,16 @@ import Data.Default.Class
 import Language.Hawk.Syntax.Location
 
 
-data TCState
-  = TCState
-    { _tcLocs :: [Loc]
-    }
+data InferState = InferState { _countfv :: Int }
 
-makeClassy ''TCState
+initInfer :: InferState
+initInfer = InferState { _countfv = 0 }
 
 
-instance Default TCState where
+makeClassy ''InferState
+
+instance Default InferState where
   def = 
-    TCState
-      { _tcLocs = []
+    InferState
+      { _countfv = 0
       }
