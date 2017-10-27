@@ -1,6 +1,7 @@
-{-# LANGUAGE LambdaCase, DeriveGeneric, DeriveDataTypeable, OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell, LambdaCase, DeriveGeneric, DeriveDataTypeable, OverloadedStrings #-}
 module Language.Hawk.Syntax.Type where
 
+import Control.Lens
 import Data.Binary
 import Data.Data
 import Data.Default.Class
@@ -17,6 +18,8 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 -- -----------------------------------------------------------------------------
 -- | Type
 
+data K = K Kind Type
+
 data Type
   = TVar Text
   | TCon Text
@@ -29,28 +32,11 @@ data Type
   deriving (Eq, Ord, Show, Read, Data, Typeable, Generic)
 
 
+makeClassyPrisms ''Type
+
 data Scheme = Forall [Text] Type
   deriving (Show, Eq, Ord)
 
-data Qual t =
-  [Pred] :=> t
-  deriving(Eq)
-
-data Pred
-  = IsIn Text [Type]
-  deriving(Eq)
-
-
-type Class = ([Text], [Inst])
-type Inst = Qual Pred
-
-
-data ClassEnv
-  = ClassEnv
-    { classes :: Text -> Maybe Class
-    , defaults :: [Type]
-    }
-    
 
 -- -----------------------------------------------------------------------------
 -- | "Smart" Constructors
@@ -92,75 +78,6 @@ instance HasKind Type where
     TKind k _ -> k
     TLoc _ t  -> kind t
 
-
-super :: ClassEnv -> Text -> [Text]
-super ce n =
-  concatMap fst . maybeToList $ classes ce n
-
-insts :: ClassEnv -> Text -> [Inst]
-insts ce n =
-  concatMap snd . maybeToList $ classes ce n
-
-
-defined :: Maybe a -> Bool
-defined (Just _) = True
-defined Nothing = False
-
-modify :: ClassEnv -> Text -> Class -> ClassEnv
-modify ce n c = ce { classes = \m -> if n == m then Just c else classes ce  m }
-
-
-initialEnv :: ClassEnv
-initialEnv
-  = ClassEnv
-    { classes = \n -> undefined -- class not defined
-    , defaults = [tInt, tFloat]
-    }
-
-
-type EnvTransformer =
-  ClassEnv -> Maybe ClassEnv
-
-
-infixr 5 <:>
-(<:>) :: EnvTransformer -> EnvTransformer -> EnvTransformer
-(f <:> g) ce = do ce' <- f ce
-                  g ce'
-
-
-addClass :: Text -> [Text] -> EnvTransformer
-addClass n ns ce
-  | defined (classes ce n) = undefined -- class already defined
-  | any (not . defined . classes ce) ns = undefined -- superclass not defined
-  | otherwise = return $ modify ce n (ns, [])
-
-
-addPreludeClasses :: EnvTransformer
-addPreludeClasses = addCoreClasses <:> addNumClasses
-
-
-addCoreClasses :: EnvTransformer
-addCoreClasses
-  =   addClass "Eq" []
-  <:> addClass "Ord" ["Eq"]
-  <:> addClass "Show" []
-  <:> addClass "Read" []
-  <:> addClass "Bounded" []
-  <:> addClass "Enum" []
-  <:> addClass "Functor" []
-  <:> addClass "Monad" []
-
-
-addNumClasses :: EnvTransformer
-addNumClasses
-  =   addClass "Num" ["Eq", "Show"]
-  <:> addClass "Real" ["Num", "Ord"]
-  <:> addClass "Fractional" ["Num"]
-  <:> addClass "Integral" ["Real", "Enum"]
-  <:> addClass "RealFrac" ["Real", "Fractional"]
-  <:> addClass "Floating" ["Fractional"]
-  <:> addClass "RealFloat" ["RealFrac", "Floating"]
-  
 
 -- -----------------------------------------------------------------------------
 -- | Instances

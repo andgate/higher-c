@@ -110,17 +110,6 @@ toplevel = mdo
 -- Type Rules
 
 
-    qtyp <- rule $
-      (:=>) <$> (mono ptyp <|> ptyps) <*> (rsvp "=>" *> typ)
-
-
-    ptyps <- rule $
-      fmap fst $ parens $ sep' (rsvp ",") ptyp
-
-    ptyp <- rule $
-      let ex (n, _) ty = IsIn n ty
-      in ex <$> conId <*> some atyp 
-
     typ <- rule $
       ctyp
     
@@ -220,6 +209,7 @@ toplevel = mdo
       <|> expVar
       <|> expPrim
       <|> expLit
+
 
 
     expLet <- rule $

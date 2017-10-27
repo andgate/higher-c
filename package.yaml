@@ -143,7 +143,10 @@ library:
     # - Language.Hawk.Target.LLVM.Types
 
     - Language.Hawk.TypeCheck
+    - Language.Hawk.TypeCheck.Assumption
+    - Language.Hawk.TypeCheck.Environment
     - Language.Hawk.TypeCheck.Error
+    - Language.Hawk.TypeCheck.Types
 
     ## Extra, possibly seperate packages or upstream merges
     - Data.Bag

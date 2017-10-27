@@ -8,6 +8,7 @@
             , RankNTypes
             , TemplateHaskell
             , GeneralizedNewtypeDeriving
+            , TypeSynonymInstances
             , UndecidableInstances
             , StandaloneDeriving
   #-}
@@ -34,155 +35,130 @@ import Text.PrettyPrint.Leijen.Text (pretty)
 
 import Language.Hawk.Compile.State
 import Language.Hawk.Syntax
+import Language.Hawk.TypeCheck.Assumption (Assumption)
+import Language.Hawk.TypeCheck.Environment (Env)
 import Language.Hawk.TypeCheck.Error
 import Language.Hawk.TypeCheck.State
+import Language.Hawk.TypeCheck.Types
 
 import qualified Data.Map   as Map
 import qualified Data.Set   as Set
 import qualified Data.Text  as T
+import qualified Language.Hawk.TypeCheck.Assumption as As
+import qualified Language.Hawk.TypeCheck.Environment as Env
 
 
-type Subst = [(Text, Type)]
 
-nullSubst :: Subst
-nullSubst = []
+-----------------------------------------------------------------------
+-- Classes
+-----------------------------------------------------------------------
 
-(+->) :: Text -> Type -> Subst
-(+->) v ty = [(v, ty)]
-
-
-class Types t where
-  apply :: Subst -> t -> t
-  tv :: t -> [Text]
+newtype Infer a = Infer { unInfer :: ReaderT (Set Text) (StateT InferState (Except TypeError)) a }
+  deriving (Functor, Applicative, Monad, MonadReader (Set Text), MonadState InferState)
 
 
-instance Types Type where
+data InferState = InferState { count :: Int }
+
+initInfer :: InferState
+initInfer = InferState { count = 0 }
+
+
+class Substitutable a where
+  apply :: Subst -> a -> a
+
+
+instance Substitutable Type where
+  apply (Subst s) = \case
+    t@(TVar a)   -> Map.findWithDefault t a s
+    TCon n       -> TCon n
+    TApp t1 t2   -> apply s t1 `TApp` apply s t2
+    TArr t1 t2   -> apply s t1 `TArr` apply s t2
+    TLoli t1 t2  -> apply s t1 `TLoli` apply s t2
+    TKind k t    -> TKind k $ apply s t
+    TLoc l t     -> TLoc l $ apply s t
+    TParen t     -> TParen $ apply s t
+
+
+instance Substitutable Scheme where
+  apply (Subst s) (Forall as t) = Forall as $ apply s t
+    where s' = Subst $ foldr Map.delete s as
+
+
+instance Substitutable Constraint where
   apply s = \case
-    TVar v -> case lookup v s of
-                Just t  -> t
-                Nothing -> TVar v
+    EqConst t1 t2          -> EqConst (apply s t1) (apply s t2)
+    ExpInstConst t sc      -> ExpInstConst (apply s t) (apply s sc)
+    ImpInstConst t1 ms t2  -> ImmpInstConst (apply s t1) (apply s ms) (apply s t2)
 
-    TApp a b -> TApp (apply s a) (apply s b)
-    TArr a b -> TArr (apply s a) (apply s b)
-    TLoli a b -> TLoli (apply s a) (apply s b)
 
-    TKind k ty -> TKind k (apply s ty)
-    TLoc  l ty -> TLoc l (apply s ty)
-    TParen ty  -> TParen (apply s ty)
+instance Substitutable a => Substitutable [a] where
+  apply = map . apply
 
-    t -> t
 
-  tv = \case
-    TVar v -> [v]
-
-    TApp a b -> tv a `union` tv b
-    TArr a b -> tv a `union` tv b
-    TLoli a b -> tv a `union` tv b
-
-    TKind _ ty -> tv ty
-    TLoc _ ty -> tv ty
-    TParen ty -> tv ty
-
-    _ -> []
+instance (Ord a, Substitutable a) => Substitutable (Set a) where
+  apply = Set.map apply
 
 
 
-instance Types a => Types [a] where
-  apply s = map (apply s)
-
-  tv = nub . concatMap tv
+class FreeTypeVars a where
+  ftv :: a -> Set Text
 
 
-instance Types t => Types (Qual t) where
-  apply s (ps :=> t)  = apply s ps :=> apply s t
-  tv (ps :=> t)       = tv ps `union` tv t
+instance FreeTypeVars Type where
+  ftv = \case
+    TVar a -> Set.singleton a
+    TCon _ -> Set.empty
+    TApp t1 t2   -> ftv t1 `Set.union` ftv t2
+    TArr t1 t2   -> ftv t1 `Set.union` ftv t2
+    TLoli t1 t2  -> ftv t1 `Set.union` ftv t2
+    TKind _ t    -> ftv t
+    TLoc _ t     -> ftv t
+    TParen t     -> ftv t
 
 
-instance Types Pred where
-  apply s (IsIn i t)  = IsIn i (apply s t)
-  tv (IsIn i t)       = tv t
+instance FreeTypeVars Scheme where
+  ftv (Forall as t) = ftv t `Set.difference` Set.fromList as
 
 
-infixr 4 @@
-(@@) :: Subst -> Subst -> Subst
-s1 @@ s2 = [(u, apply s1 t) | (u, t) <- s2] ++ s1
+instance FreeTypeVars a => FreeTypeVars [a] where
+  ftv = foldr (Set.union . ftv) Set.empty
+
+instance FreeTypeVars a => FreeTypeVars (Set a) where
+  ftv = foldr (Set.union . ftv) Set.empty
 
 
-merge :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
-         )
-      => Subst -> Subst -> m Subst
-merge s1 s2 = if agree then return (s1++s2) else undefined
-  where
-    agree = all (\v -> apply s1 (TVar v) == apply s2 (TVar v))
-                (map fst s1 `intersect` map fst s2)
+class ActiveTypeVars a where
+  atv :: a -> Set Text
+
+instance ActiveTypeVars Constraint where
+  atv = \case
+    EqConst t1 t2          -> ftv t1 `Set.union` ftv t2
+    ImpInstConst t1 ms t2  -> ftv t1 `Set.union` (ftv ms `Set.intersection` ftv t2) 
+    ExpInstConst t s       -> ftv t `Set.union` ftv s 
 
 
-mgu :: ( MonadState s m, HasTCState s
-       , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
-       )
-    => (Type, Type) -> m Subst
-mgu = \case
-  (TApp l r, TApp l' r') -> do
-    s1 <- mgu (l, l')
-    s2 <- mgu (apply s1 r, apply s1 r')
-    return (s2 @@ s1)
-  (TVar n, t) -> varBind n t
-  (t, TVar n) -> varBind n t
-  (TCon n1, TCon n2)
-    | n1 == n2 -> return nullSubst
-
-  (t1, t2) -> undefined -- types do not unify
-                              
-                              
-varBind :: ( MonadState s m, HasTCState s
-           , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
-           )
-        => Text -> Type -> m Subst
-varBind n ty
-  | ty == TVar n       = return nullSubst
-  | n `elem` tv ty     = undefined -- occurs check fails
---  | kind n /= kind ty  = undefined -- kinds do not match
-  | otherwise          = return (n +-> ty)
+instance ActiveTypeVars => ActiveTypeVars [a] where
+  atv = foldr (Set.union . atv) Set.empty
 
 
-match :: ( MonadState s m, HasTCState s
-         , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
-         )
-      => (Type, Type) -> m Subst
-match = \case
-  (TApp l r, TApp l' r') -> do
-    sl <- match (l, l')
-    sr <- match (r, r')
-    merge sl sr
+-----------------------------------------------------------------------
+-- Inference
+-----------------------------------------------------------------------
 
---  (TVar n, t)
---    | kind n == kind t -> return nullSubst
-
-  (TCon n1, TCon n2)
-    | n1 == n2 -> return nullSubst
-
-  (t1, t2) -> undefined -- types do not match
+runInfer :: Infer a -> Either TcErr a
+runInfer (Infer m) = runExcept $ evalStateT (runReaderT m Set.empty) initInfer
 
 
-
-mguPred :: ( MonadState s m, HasTCState s
-           , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
-           )
-        => Pred -> Pred -> m Subst
-mguPred = liftPred mgu
-
-
-matchPred :: ( MonadState s m, HasTCState s
-             , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
-             )
-          => Pred -> Pred -> m Subst
-matchPred = liftPred match
+inferType :: Env -> Exp -> Infer (Subst, Type)
+inferType env ex = do
+  (as, cs, t) <- infer ex
+  let unbounds = Set.fromList (As.keys as) `Set.difference` Set.fromList (Env.keys env)
+  unless (Set.null unbounds) $ throwError $ UnboundVariable (Set.findMin unbounds)
+  let cs' = [ExpConst t s | (x, s) <- Env.toList env, t <- As.lookup x as]
+  subst <- solve (cs ++ cs')
+  return (subst, apply subst t)
 
 
-liftPred :: ( MonadState s m, HasTCState s
-            , MonadChronicle (Bag (WithTimestamp e)) m, AsTcErr e
-            )
-         => ((Type,Type) -> m Subst) -> Pred -> Pred -> m Subst
-liftPred m (IsIn i ts1) (IsIn i' ts2)
-  | i == i' = foldM merge nullSubst =<< zipWithM (curry m) ts1 ts2
-  | otherwise = undefined -- classes differ
+infer :: Exp -> Infer (Assumption, [Constraint], Type)
+infer = \case
+  _ -> undefined

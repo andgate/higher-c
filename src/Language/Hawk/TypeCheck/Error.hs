@@ -5,16 +5,21 @@
 module Language.Hawk.TypeCheck.Error where
 
 import Control.Lens
+import Data.Text (Text)
 import Language.Hawk.Syntax.Type (Type)
 import Language.Hawk.Syntax.Location
+import Language.Hawk.TypeCheck.Types
 import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
 import qualified Text.PrettyPrint.Leijen.Text as P
 
 
 data TcErr
-  = TypeMismatch String String
-  | UnboundVariable String
+  = UnificationFail Type Type
+  | InfiniteType String Type
+  | UnboundVariable Text
+  | AmbiguousType [Constraint]
+  | UnificationMismatch [Type] [Type]
   | FoundBox
   deriving(Show)
 
@@ -22,7 +27,7 @@ makeClassyPrisms ''TcErr
 
 instance Pretty TcErr where
     pretty = \case
-      TypeMismatch have want ->
+      UnificationMismatch have want ->
         P.textStrict "Type mismatch:"
         P.<$>
         P.indent 2 
@@ -33,6 +38,3 @@ instance Pretty TcErr where
 
       UnboundVariable v ->
         P.textStrict "Unbound variable encountered:" P.<+> pretty v
-      
-      FoundBox ->
-        P.textStrict "Encountered Box"
