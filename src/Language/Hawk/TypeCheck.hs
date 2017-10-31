@@ -21,8 +21,8 @@ import Control.Monad.Except
 import Control.Monad.Chronicle
 import Control.Monad.Chronicle.Extra
 import Control.Monad.Log
-import Control.Monad.Reader (MonadReader, ReaderT, runReaderT, local)
-import Control.Monad.State (MonadState, StateT, evalStateT)
+import Control.Monad.Reader
+import Control.Monad.State
 import Data.Bag
 import Data.Default.Class
 import Data.List (lookup, union, concatMap, nub, find, delete, intersect)
@@ -61,6 +61,11 @@ newtype Infer a = Infer { unInfer :: ReaderT (Set Text) (StateT InferState (Exce
 class Substitutable a where
   apply :: Subst -> a -> a
 
+
+instance Substitutable Text where
+  apply (Subst s) a = tv
+    where t = TVar a
+          (TVar tv) = Map.findWithDefault t a s
 
 instance Substitutable Type where
   apply s@(Subst s_map) = \case
@@ -111,6 +116,10 @@ instance FreeTypeVars Type where
     TParen t     -> ftv t
 
 
+instance FreeTypeVars Text where
+  ftv = Set.singleton
+
+
 instance FreeTypeVars Scheme where
   ftv (Forall as t) = ftv t `Set.difference` Set.fromList as
 
@@ -118,8 +127,10 @@ instance FreeTypeVars Scheme where
 instance FreeTypeVars a => FreeTypeVars [a] where
   ftv = foldr (Set.union . ftv) Set.empty
 
-instance FreeTypeVars a => FreeTypeVars (Set a) where
+
+instance (Ord a, FreeTypeVars a) => FreeTypeVars (Set a) where
   ftv = foldr (Set.union . ftv) Set.empty
+
 
 
 class ActiveTypeVars a where
@@ -175,14 +186,14 @@ extendMSet x = local (Set.insert x)
 letters :: [String]
 letters = [1..] >>= flip replicateM ['a'..'z']
 
-genFreeVar :: Int -> Type
-genFreeVar n =
+genftv :: Int -> Type
+genftv n =
   TVar $ pack (letters !! n)
 
 fresh :: Infer Type
 fresh = do
   countfv += 1
-  uses countfv genFreeVar
+  uses countfv genftv
 
 
 instantiate :: Scheme -> Infer Type
@@ -197,10 +208,64 @@ generalize free t = Forall as t
   where as = Set.toList $ ftv t `Set.difference` free
 
 
-ops :: Operator -> Type
+normalize :: Scheme -> Scheme
+normalize (Forall _ body) = Forall (map (pack . snd) ord) (normtype body)
+  where
+    ord = zip (nub $ fv body) letters
+
+    fv (TVar a)   = [a]
+    fv (TArr a b) = fv a ++ fv b
+    fv (TCon _)   = []
+
+
+    normtype (TArr a b) = TArr (normtype a) (normtype b)
+    normtype (TCon a) = TCon a
+    normtype (TVar a) =
+      case Prelude.lookup a ord of
+        Just x -> TVar (pack x)
+        Nothing -> error "type variable not in signature."
+
+--ops :: Operator -> Type
 
 
 infer :: Exp -> Infer (Assumption, [Constraint], Type)
 infer = \case
-  _ -> undefined
+  EVar x -> do
+    tv <- fresh
+    return (As.singleton x tv, [], tv)
 
+
+  EApp e1 e2 -> do
+    (as1, cs1, t1) <- infer e1
+    (as2, cs2, t2) <- infer e2
+    tv <- fresh
+    return ( as1 `As.merge` as2
+           , cs1 ++ cs2 ++ [EqConst t1 (t2 `TArr` tv)]
+           , tv
+           )
+
+
+  ELam x e -> do
+    tv@(TVar a) <- fresh
+    (as, cs, t) <- extendMSet a (infer e)
+    return ( as `As.remove` x
+           , cs ++ [EqConst t' tv | t' <- As.lookup x as]
+           , tv `TArr` t
+           )
+    
+
+  ELet (x, e1) e2 -> do
+    (as1, cs1, t1) <- infer e1
+    (as2, cs2, t2) <- infer e2
+    ms <- ask
+    return ( as1 `As.merge` as2 `As.remove` x
+           , cs1 ++ cs2 ++ [ImpInstConst t' ms t1 | t' <- As.lookup x as2]
+           , t2
+           )
+
+inferTop :: Env -> [(Text, Exp)] -> Either TcErr Env
+inferTop env [] = Right env
+inferTop env ((name, ex):xs) =
+  case inferExp env ex of
+    Left err -> Left err
+    Right ty -> inferTop (Env.extend env (name, ty)) xs
