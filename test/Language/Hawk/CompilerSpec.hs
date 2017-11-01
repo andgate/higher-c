@@ -16,7 +16,7 @@ spec = do
       hkc $ HkcConfig
             { _hkcSrcFiles = ["example/Example.hk", "example/Fib.hk"]
             , _hkcOutFile = ""
-            , _hkcProd = undefined
+            , _hkcProd = Bin
             , _hkcExAst = []
             , _hkcExLib = []
             , _hkcOpts = undefined

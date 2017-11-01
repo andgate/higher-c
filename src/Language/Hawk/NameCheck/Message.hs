@@ -6,13 +6,13 @@ module Language.Hawk.NameCheck.Message where
 import Control.Lens
 import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
-data NameCheckMessage
+data NcMsg
   = NcSuccess
   | NcFailed
   deriving(Show)
 
-makeClassyPrisms ''NameCheckMessage
+makeClassyPrisms ''NcMsg
 
-instance Pretty NameCheckMessage where
+instance Pretty NcMsg where
     pretty msg =
       undefined

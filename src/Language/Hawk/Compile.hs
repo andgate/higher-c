@@ -51,9 +51,9 @@ hkc = runHkc compile
 compile
   :: ( MonadState s m, HasHkcState s
      , MonadReader c m , HasHkcConfig c
-     , MonadLog (WithSeverity (WithTimestamp msg)) m, AsHkcMsg msg, AsLoadMsg msg, AsParseMsg msg
+     , MonadLog (WithSeverity (WithTimestamp msg)) m, AsHkcMsg msg, AsLoadMsg msg, AsParseMsg msg, AsNcMsg msg
      , MonadChronicle (Bag (WithTimestamp e)) m
-     , AsHkcErr e, AsLoadErr e, AsParseErr e, AsLexErr e, AsNcErr e, AsTcErr e
+     , AsHkcErr e, AsLoadErr e, AsParseErr e, AsLexErr e , AsNcErr e, AsTcErr e
      , MonadIO m, MonadBaseControl IO m
      )
   => m ()
@@ -69,9 +69,10 @@ compile = do
               >>= liftIO . print . pretty
 
   -- Name Checking
-  env <- (NcEnv.fromList . Map.keys) <$> use hkcDefs
-  es <- (concat . Map.elems) <$> use hkcDefs
-  let r = map (Nc.namecheck env) es
+  defs <- use hkcDefs
+  let env = NcEnv.fromList . Map.keys $ defs
+      es = concat . Map.elems $ defs
+  condemn $ mapM_ (Nc.namecheck env) es
 
   -- Type Checking
   case Tc.inferTop TcEnv.empty [] of

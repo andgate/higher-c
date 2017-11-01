@@ -22,7 +22,7 @@ data HkcMsg
   = HkcErrMsg HkcErr
   | HkcLoadMsg LoadMsg
   | HkcPsMsg ParseMsg
-  | HkcNcMsg NameCheckMessage
+  | HkcNcMsg NcMsg
   | HkcTcMsg TypeCheckMessage
   deriving(Show)
 
@@ -37,8 +37,8 @@ instance AsLoadMsg HkcMsg where
 instance AsParseMsg HkcMsg where
   _ParseMsg = _HkcPsMsg
 
-instance AsNameCheckMessage HkcMsg where
-  _NameCheckMessage = _HkcNcMsg
+instance AsNcMsg HkcMsg where
+  _NcMsg = _HkcNcMsg
 
 instance AsTypeCheckMessage HkcMsg where
   _TypeCheckMessage = _HkcTcMsg
