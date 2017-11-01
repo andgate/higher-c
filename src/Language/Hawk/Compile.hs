@@ -72,10 +72,14 @@ compile = do
       es = concat . Map.elems $ defs
   condemn $ mapM_ (Nc.namecheck env) es
 
+  liftIO $ print "names are okay"
+
   -- Type Checking
   case Tc.inferTop TcEnv.empty [] of
     Left e -> error $ show e
     Right r -> liftIO $ print r
+
+  liftIO $ print "types are okay"
     
   -- Code Generation
   --codegen

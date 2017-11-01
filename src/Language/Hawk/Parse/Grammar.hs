@@ -207,6 +207,7 @@ toplevel = mdo
     aexp <- rule $
           expParen
       <|> expVar
+      <|> expOp
       <|> expPrim
       <|> expLit
 
@@ -242,8 +243,8 @@ toplevel = mdo
 
 
     expOp <- rule $
-      let ex = undefined
-      in ex <$> undefined
+      let ex (n, l) = ELoc l $ EVar n
+      in ex <$> opId
 
     expApp <- rule $
       let ex a@(ELoc l1 _) b@(ELoc l2 _)
