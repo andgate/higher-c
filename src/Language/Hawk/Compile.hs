@@ -63,10 +63,8 @@ compile = do
     xs <- use hkcFileTexts
     docToks <- mapM lexer xs
     forM_ docToks $ \declsToks ->
-        forM_ declsToks $ \declToks -> do
-            liftIO . print . pretty $ declToks
+        forM_ declsToks $ \declToks ->
             parse declToks
-              >>= liftIO . print . pretty
 
   -- Name Checking
   defs <- use hkcDefs
@@ -76,7 +74,7 @@ compile = do
 
   -- Type Checking
   case Tc.inferTop TcEnv.empty [] of
-    Left e -> liftIO $ print e
+    Left e -> error $ show e
     Right r -> liftIO $ print r
     
   -- Code Generation
