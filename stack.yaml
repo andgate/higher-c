@@ -1,8 +1,8 @@
-resolver: lts-9.10
+resolver: nightly-2017-10-31
 packages:
 - '.'
 extra-deps:
 - data-default-instances-text-0.0.1
 nix:
   enable: true
-  packages: [llvm_4, zlib]
+  packages: [binutils, llvm_5, zlib]

@@ -27,6 +27,7 @@ import Language.Hawk.Parse.Lex.Error
 import Language.Hawk.Syntax
 
 import Language.Hawk.TypeCheck
+import qualified Language.Hawk.TypeCheck.Environment as Env
 
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.Error
@@ -66,9 +67,18 @@ compile = do
             parse declToks
               >>= liftIO . print . pretty
 
-  --namecheck
+  let nameEnv = NcEnv.empty
+  map (namecheck nameEnv) es
+  -- build global table of names
+  -- go through ast, check names against set of global names in table
+  -- also, add names to a stack of name frames
+  -- checks name frame stack, recursively then global names
+  
 
   -- typecheck
+  case inferTop Env.empty [] of
+    Left e -> print e
+    Right r -> print r
     
   --optimize
   --codegen

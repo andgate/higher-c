@@ -16,7 +16,7 @@ import qualified Text.PrettyPrint.Leijen.Text as P
 
 data TcErr
   = UnificationFail Type Type
-  | InfiniteType String Type
+  | InfiniteType Text Type
   | UnboundVariable Text
   | AmbiguousType [Constraint]
   | UnificationMismatch [Type] [Type]

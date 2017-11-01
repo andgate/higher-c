@@ -1,15 +1,22 @@
-{-# LANGUAGE  TemplateHaskell #-}
+{-# LANGUAGE  TemplateHaskell, LambdaCase, OverloadedStrings #-}
 module Language.Hawk.NameCheck.Error where
 
 import Control.Lens
+import Data.Text
+import Language.Hawk.Syntax.Expression
 import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
-data NameCheckError
-  = SomeNameCheckError
-  | UndeclaredVariable
+import qualified Text.PrettyPrint.Leijen.Text as PP
+
+data NcErr
+  = UndeclaredNameFound Text Exp
+  | UnknownNcErr
   deriving(Show)
 
-makeClassyPrisms ''NameCheckError
+makeClassyPrisms ''NcErr
 
-instance Pretty NameCheckError where
-    pretty e = undefined
+instance Pretty NcErr where
+    pretty = \case
+      UndeclaredNameFound n e -> PP.text "undeclared name found"
+
+      UnknownNcErr -> PP.text "unknown namechecker error"

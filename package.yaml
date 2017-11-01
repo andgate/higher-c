@@ -115,7 +115,10 @@ library:
     - Language.Hawk.Load.Message
     - Language.Hawk.Load.Error
 
-    - Language.Hawk.NameCheck.Message
+    - Language.Hawk.NameCheck
+    - Language.Hawk.NameCheck.Environment
+    - Language.Hawk.NameCheck.Error
+    - Language.Hawk.NameCheck.State
     - Language.Hawk.Namespace
     
     - Language.Hawk.Parse

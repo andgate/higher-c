@@ -20,7 +20,7 @@ data HkcErr
   = HkcLoadErr LoadErr
   | HkcParseErr ParseErr
   | HkcLexErr LexErr
-  | HkcNameCheckError NameCheckError
+  | HkcNcErr NcErr
   | HkcTcErr TcErr
   deriving (Show)
 
@@ -35,8 +35,8 @@ instance AsParseErr HkcErr where
 instance AsLexErr HkcErr where
   _LexErr = _HkcLexErr
 
-instance AsNameCheckError HkcErr where
-  _NameCheckError = _HkcNameCheckError
+instance AsNcErr HkcErr where
+  _NcErr = _HkcNcErr
 
 instance AsTcErr HkcErr where
   _TcErr = _HkcTcErr
@@ -46,5 +46,5 @@ instance AsTcErr HkcErr where
 instance Pretty HkcErr where
     pretty (HkcLoadErr err) = pretty err
     pretty (HkcParseErr err) = pretty err
-    pretty (HkcNameCheckError err) = pretty err
+    pretty (HkcNcErr err) = pretty err
     pretty (HkcTcErr err) = pretty err

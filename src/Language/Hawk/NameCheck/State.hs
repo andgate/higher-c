@@ -3,17 +3,22 @@ module Language.Hawk.NameCheck.State where
 
 import Control.Lens
 import Data.Default.Class
+import Data.Text
 
-data NameCheckState
-  = NameCheckState
-    { _ncFoo :: Bool
+
+data NameFrame = NameFrame [Text]
+data NameStack = NameStack [NameFrame]
+
+data NcState
+  = NcState
+    { _ncstk :: NameStack
     }
 
-makeClassy ''NameCheckState
+makeClassy ''NcState
 
 
-instance Default NameCheckState where
+instance Default NcState where
     def =
-      NameCheckState
-        { _ncFoo = False
+      NcState
+        { _ncstk = NameStack []
         }

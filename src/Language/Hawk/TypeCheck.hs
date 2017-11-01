@@ -269,3 +269,79 @@ inferTop env ((name, ex):xs) =
   case inferExp env ex of
     Left err -> Left err
     Right ty -> inferTop (Env.extend env (name, ty)) xs
+
+
+
+-------------------------------------------------------------------------------
+-- Constraint Solver
+-------------------------------------------------------------------------------
+
+
+-- | The empty substitution
+emptySubst :: Subst
+emptySubst = mempty
+
+
+-- | Compose substitutions
+compose :: Subst -> Subst -> Subst
+compose (Subst s1) (Subst s2) =
+  Subst $ Map.map (apply (Subst s1)) s2 `Map.union` s1
+
+
+unifyMany :: [Type] -> [Type] -> Infer Subst
+unifyMany [] [] = return emptySubst
+unifyMany (t1:ts1) (t2:ts2) =
+  do su1 <- unifies t1 t2
+     su2 <- unifyMany (apply su1 ts1) (apply su1 ts2)
+     return $ su2 `compose` su1
+
+unifyMany t1 t2 = throwError $ UnificationMismatch t1 t2
+
+
+unifies :: Type -> Type -> Infer Subst
+unifies t1 t2
+  | t1 == t2 = return emptySubst
+  | otherwise = case (t1, t2) of
+      (TVar v, t) -> v `bind` t
+      (t, TVar v) -> v `bind` t
+      (TArr t1 t2, TArr t3 t4) -> unifyMany [t1,t2] [t3,t4]
+      (t1, t2) -> throwError $ UnificationFail t1 t2
+
+
+bind :: Text -> Type -> Infer Subst
+bind a t | t == TVar a     = return emptySubst
+         | occursCheck a t = throwError $ InfiniteType a t
+         | otherwise       = return (Subst $ Map.singleton a t)
+     
+
+occursCheck :: FreeTypeVars a => Text -> a -> Bool
+occursCheck a t = a `Set.member` ftv t
+
+
+nextSolvable :: [Constraint] -> (Constraint, [Constraint])
+nextSolvable xs = fromJust (find solvable (chooseOne xs))
+  where
+    chooseOne xs = [(x, ys) | x <- xs, let ys = delete x xs]
+    solvable (EqConst{}, _)      = True
+    solvable (ExpInstConst{}, _) = True
+    solvable (ImpInstConst ts ms t2, cs) = Set.null ((ftv t2 `Set.difference` ms) `Set.intersection` atv cs)
+
+
+solve :: [Constraint] -> Infer Subst
+solve [] = return emptySubst
+solve cs = solve' (nextSolvable cs)
+
+
+solve' :: (Constraint, [Constraint]) -> Infer Subst
+solve' = \case
+  (EqConst t1 t2, cs) -> do
+    su1 <- unifies t1 t2
+    su2 <- solve (apply su1 cs)
+    return (su2 `compose` su1)
+
+  (ImpInstConst t1 ms t2, cs) ->
+    solve (ExpInstConst t1 (generalize ms t2) : cs)
+
+  (ExpInstConst t s, cs) -> do
+    s' <- instantiate s
+    solve (EqConst t s' : cs)
