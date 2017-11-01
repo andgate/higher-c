@@ -18,11 +18,16 @@ check :: Env -> Text -> Bool
 check (Env fs) n =
   foldr (\f r -> r || Set.member n f) False fs 
 
-insert :: Env -> Text -> Env
-insert (Env []) n = Env [Set.singleton n]
-insert (Env (f:fs)) n = Env (f':fs)
+insert :: Text -> Env -> Env
+insert n (Env []) = Env [Set.singleton n]
+insert n (Env (f:fs)) = Env (f':fs)
   where
     f' = Set.insert n f
+
+
+insertMany :: Env -> [Text] -> Env
+insertMany =
+  foldr insert
 
 
 delete :: Text -> Env -> Env
@@ -45,3 +50,6 @@ pop (Env (f:fs)) = Env fs
 
 
 
+fromList :: [Text] -> Env
+fromList =
+  insertMany empty

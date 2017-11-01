@@ -2,14 +2,14 @@
 module Language.Hawk.NameCheck where
 
 import Control.Monad.Except
-import Data.Text
+import Data.Text (Text)
 
 import Language.Hawk.NameCheck.State
 import Language.Hawk.NameCheck.Environment (Env)
 import Language.Hawk.NameCheck.Error
 import Language.Hawk.Syntax.Expression
 
-
+import qualified Data.Text as Text
 import qualified Language.Hawk.NameCheck.Environment as Env
 
 
@@ -25,12 +25,12 @@ namecheck env = \case
     namecheck env e2
 
   ELam n e -> do
-    let env' = Env.insert (Env.push env) n
+    let env' = Env.insert n (Env.push env)
     namecheck env' e
 
   ELet (n, e1) e2 -> do
     namecheck env e1
-    let env' = Env.insert (Env.push env) n
+    let env' = Env.insert n (Env.push env)
     namecheck env' e2
 
   ELit _ -> return () -- Literals cannot contain names

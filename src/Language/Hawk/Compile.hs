@@ -26,9 +26,6 @@ import Language.Hawk.Parse.Lex
 import Language.Hawk.Parse.Lex.Error
 import Language.Hawk.Syntax
 
-import Language.Hawk.TypeCheck
-import qualified Language.Hawk.TypeCheck.Environment as Env
-
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.Error
 import Language.Hawk.Compile.Message
@@ -40,8 +37,12 @@ import Text.PrettyPrint.Leijen.Text (pretty)
 
 import qualified Data.Text             as T
 import qualified Data.Vector           as V
-import qualified Data.Map.Lazy         as Map
+import qualified Data.Map.Strict       as Map
 import qualified Language.Hawk.Parse   as P
+import qualified Language.Hawk.TypeCheck as Tc
+import qualified Language.Hawk.TypeCheck.Environment as TcEnv
+import qualified Language.Hawk.NameCheck as Nc
+import qualified Language.Hawk.NameCheck.Environment as NcEnv
 
 
 hkc :: HkcConfig -> IO ()
@@ -52,7 +53,7 @@ compile
      , MonadReader c m , HasHkcConfig c
      , MonadLog (WithSeverity (WithTimestamp msg)) m, AsHkcMsg msg, AsLoadMsg msg, AsParseMsg msg
      , MonadChronicle (Bag (WithTimestamp e)) m
-     , AsHkcErr e, AsLoadErr e, AsParseErr e, AsLexErr e, AsNameCheckError e, AsTcErr e
+     , AsHkcErr e, AsLoadErr e, AsParseErr e, AsLexErr e, AsNcErr e, AsTcErr e
      , MonadIO m, MonadBaseControl IO m
      )
   => m ()
@@ -67,19 +68,17 @@ compile = do
             parse declToks
               >>= liftIO . print . pretty
 
-  let nameEnv = NcEnv.empty
-  map (namecheck nameEnv) es
-  -- build global table of names
-  -- go through ast, check names against set of global names in table
-  -- also, add names to a stack of name frames
-  -- checks name frame stack, recursively then global names
-  
+  -- Name Checking
+  env <- (NcEnv.fromList . Map.keys) <$> use hkcDefs
+  es <- (concat . Map.elems) <$> use hkcDefs
+  let r = map (Nc.namecheck env) es
 
-  -- typecheck
-  case inferTop Env.empty [] of
-    Left e -> print e
-    Right r -> print r
+  -- Type Checking
+  case Tc.inferTop TcEnv.empty [] of
+    Left e -> liftIO $ print e
+    Right r -> liftIO $ print r
     
-  --optimize
+  -- Code Generation
   --codegen
+  
   return ()

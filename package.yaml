@@ -157,52 +157,15 @@ library:
 
 tests:
   spec:
-    source-dirs: test-suite
+    source-dirs: test
     main: Spec.hs
     dependencies:
       - base
       - data-default-class
       - hawk
-      - tasty
-      - tasty-hspec
+      - hspec
     ghc-options:
       - -rtsopts
       - -threaded
       - -with-rtsopts=-N
 
-#  doctest:
-#    source-dirs: test-suite
-#    main: DocTest.hs
-#    dependencies:
-#      - base
-#      - doctest
-#      - Glob
-#    ghc-options:
-#      - -rtsopts
-#      - -threaded
-#      - -with-rtsopts=-N
-
-#  hlint:
-#    source-dirs: test-suite
-#    main: HLint.hs
-#    dependencies:
-#      - base
-#      - hlint
-#    ghc-options:
-#      - -rtsopts
-#      - -threaded
-#      - -with-rtsopts=-N
-    
-
-benchmarks:
-  criterion:
-    source-dirs: benchmark
-    main: Main.hs
-    dependencies:
-      - base
-      - hawk
-      - criterion
-    ghc-options:
-      - -rtsopts
-      - -threaded
-      - -with-rtsopts=-N
