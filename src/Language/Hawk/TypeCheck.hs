@@ -23,6 +23,8 @@ import Control.Monad.Chronicle.Extra
 import Control.Monad.Log
 import Control.Monad.Reader
 import Control.Monad.State
+import Control.Monad.Trans.Control
+
 import Data.Bag
 import Data.Default.Class
 import Data.List (lookup, union, concatMap, nub, find, delete, intersect)
@@ -39,8 +41,10 @@ import Language.Hawk.Syntax
 import Language.Hawk.TypeCheck.Assumption (Assumption)
 import Language.Hawk.TypeCheck.Environment (Env)
 import Language.Hawk.TypeCheck.Error
+import Language.Hawk.TypeCheck.Message
 import Language.Hawk.TypeCheck.State
 import Language.Hawk.TypeCheck.Types
+
 
 import qualified Data.Map   as Map
 import qualified Data.Set   as Set
@@ -156,7 +160,12 @@ runInfer :: Infer a -> Either TcErr a
 runInfer (Infer m) = runExcept $ evalStateT (runReaderT m Set.empty) initInfer
 
 
-inferType :: Env -> Exp -> Infer (Subst, Type)
+inferType :: ( MonadReader r m, HasInferState r
+             , MonadLog (WithSeverity msg) m, AsTcMsg msg
+             , MonadChronicle (Bag e) m, AsTcErr e
+             , MonadIO m
+             )
+          => Env -> Exp -> m (Subst, Type)
 inferType env ex = do
   (as, cs, t) <- infer ex
   let unbounds = Set.fromList (As.keys as) `Set.difference` Set.fromList (Env.keys env)

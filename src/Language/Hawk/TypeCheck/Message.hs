@@ -6,13 +6,13 @@ module Language.Hawk.TypeCheck.Message where
 import Control.Lens
 import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
-data TypeCheckMessage
+data TcMsg
   = TypeCheckFail
   | TypeCheckSuccess
   deriving(Show)
 
-makeClassyPrisms ''TypeCheckMessage
+makeClassyPrisms ''TcMsg
 
-instance Pretty TypeCheckMessage where
+instance Pretty TcMsg where
     pretty msg =
       undefined

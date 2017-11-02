@@ -50,7 +50,7 @@ loadFile fp = do
   srcOrExc <- liftIO . try . T.readFile $ fp
   case srcOrExc of
       Left ex ->
-        discloseNow $ mkLoadErr fp ex
+        disclose $ mkLoadErr fp ex
         
       Right src -> do
         logInfo =<< timestamp (_FileFound # fp)

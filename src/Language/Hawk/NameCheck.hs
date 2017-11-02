@@ -28,15 +28,14 @@ import qualified Language.Hawk.NameCheck.Environment as Env
 
 
 
-namecheck :: ( MonadLog (WithSeverity (WithTimestamp msg)) m, AsNcMsg msg
-             , MonadChronicle (Bag (WithTimestamp e)) m, AsNcErr e
-             , MonadIO m
+namecheck :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
+             , MonadChronicle (Bag e) m, AsNcErr e
              ) => Env -> Exp -> m  ()
 namecheck env = \case
   e@(EVar n) ->
     if env `Env.check` n 
       then return ()
-      else discloseNow (_UndeclaredNameFound # (n, e))
+      else disclose $ One (_UndeclaredNameFound # (n, e))
 
   EApp e1 e2 -> do
     namecheck env e1
@@ -56,7 +55,7 @@ namecheck env = \case
   e@(ECon n) ->
     if env `Env.check` n
        then return ()
-       else discloseNow (_UndeclaredNameFound # (n, e))
+       else disclose $ One (_UndeclaredNameFound # (n, e))
             
   EPrim _ -> return () -- Primitive instructions cannot contain names
 

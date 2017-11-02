@@ -119,7 +119,6 @@ library:
     - Language.Hawk.NameCheck.Environment
     - Language.Hawk.NameCheck.Error
     - Language.Hawk.NameCheck.State
-    - Language.Hawk.Namespace
     
     - Language.Hawk.Parse
     - Language.Hawk.Parse.Error

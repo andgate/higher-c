@@ -21,20 +21,20 @@ import Data.These
 -------------------------------------------------------------------------------
 -- Helpers
 
-discloseNow :: (MonadChronicle (Bag (WithTimestamp c)) m  -- Is there a better way to handle semigroup?
-               , MonadIO m, Default a
-               ) => c -> m a
-discloseNow c = do
-    c' <- timestamp c
-    disclose (One c')
+--discloseNow :: (MonadChronicle (Bag (WithTimestamp c)) m  -- Is there a better way to handle semigroup?
+--               , MonadIO m, Default a
+--               ) => c -> m a
+--discloseNow c = do
+--    c' <- timestamp c
+--    disclose (One c')
 
 
-confessNow :: (MonadChronicle (Bag (WithTimestamp c)) m  -- Is there a better way to handle semigroup?
-              , MonadIO m
-              ) => c -> m a
-confessNow c = do
-    c' <- timestamp c
-    confess (One c')
+--confessNow :: (MonadChronicle (Bag (WithTimestamp c)) m  -- Is there a better way to handle semigroup?
+--              , MonadIO m
+--              ) => c -> m a
+--confessNow c = do
+--    c' <- timestamp c
+--    confess (One c')
 
 
 conceal :: (MonadChronicle (Bag (WithTimestamp c)) m  -- Is there a better way to handle semigroup?

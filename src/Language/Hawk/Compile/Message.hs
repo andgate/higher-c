@@ -23,7 +23,7 @@ data HkcMsg
   | HkcLoadMsg LoadMsg
   | HkcPsMsg ParseMsg
   | HkcNcMsg NcMsg
-  | HkcTcMsg TypeCheckMessage
+  | HkcTcMsg TcMsg
   deriving(Show)
 
 makeClassyPrisms ''HkcMsg
@@ -40,8 +40,8 @@ instance AsParseMsg HkcMsg where
 instance AsNcMsg HkcMsg where
   _NcMsg = _HkcNcMsg
 
-instance AsTypeCheckMessage HkcMsg where
-  _TypeCheckMessage = _HkcTcMsg
+instance AsTcMsg HkcMsg where
+  _TcMsg = _HkcTcMsg
 
 
 instance Pretty HkcMsg where

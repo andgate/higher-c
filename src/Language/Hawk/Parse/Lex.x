@@ -407,9 +407,7 @@ alexInputPrevChar = prevChar
     `lexer` keeps track of position and returns the remainder of the input if
     lexing fails.
 -}
-lexer :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsLexErr e
-         , MonadIO m
-         )
+lexer :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsLexErr e )
       => (FilePath, Text) -> m [[Token]]
 lexer src =
   Fmt.layout <$> lexText src
@@ -429,10 +427,10 @@ lexer src =
             reverse <$> use lexTokAcc
 
         AlexError (AlexInput p cs text) ->
-            discloseNow (_UnproducibleToken # (p, show cs, text))
+            disclose (_UnproducibleToken # (p, show cs, text))
         
         AlexSkip  input' len           -> do
-            discloseNow (_IllegalLexerSkip # ())
+            disclose (_IllegalLexerSkip # ())
         
         AlexToken input' len act       -> do
             act (T.take (fromIntegral len) (currInput input)) (fromIntegral len)

@@ -32,13 +32,13 @@ import System.IO
 
 -------------------------------------------------------------------------------
 -- Compiler Monad
-newtype Hkc a = Hkc { unHkc :: StateT HkcState (ReaderT HkcConfig (ChronicleT (Bag (WithTimestamp HkcErr)) (LoggingT (WithSeverity (WithTimestamp HkcMsg)) IO))) a }
+newtype Hkc a = Hkc { unHkc :: StateT HkcState (ReaderT HkcConfig (ChronicleT (Bag HkcErr) (LoggingT (WithSeverity HkcMsg) IO))) a }
     deriving
      ( Functor, Applicative, Monad
      , MonadState HkcState
      , MonadReader  HkcConfig
-     , MonadLog (WithSeverity (WithTimestamp HkcMsg))
-     , MonadChronicle (Bag (WithTimestamp HkcErr))
+     , MonadLog (WithSeverity HkcMsg)
+     , MonadChronicle (Bag HkcErr)
      , MonadBase IO
      , MonadIO
      , MonadThrow
