@@ -15,14 +15,14 @@ import Text.PrettyPrint.Leijen.Text (Pretty(..), (<+>), (<>))
 import qualified Text.PrettyPrint.Leijen.Text as P
 
 
-data ParseErr
+data PsErr
   = UnexpectedToken [Token]
   | AmbiguousGrammar [Decl]
   deriving(Show)
 
-makeClassyPrisms ''ParseErr
+makeClassyPrisms ''PsErr
 
-instance Pretty ParseErr where
+instance Pretty PsErr where
     pretty = \case
       UnexpectedToken ts ->
           P.textStrict "Unexpected tokens:" P.<+> P.dquotes (P.pretty ts)

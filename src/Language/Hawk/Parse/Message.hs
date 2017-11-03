@@ -10,15 +10,15 @@ import System.FilePath (FilePath)
 
 import qualified Text.PrettyPrint.Leijen.Text as P
 
-data ParseMsg
+data PsMsg
   = ParseSuccess FilePath
   | UndefinedParseMsg
   deriving(Show)
 
-makeClassyPrisms ''ParseMsg
+makeClassyPrisms ''PsMsg
 
 
-instance Pretty ParseMsg where
+instance Pretty PsMsg where
     pretty msg =
       case msg of
         ParseSuccess fp ->

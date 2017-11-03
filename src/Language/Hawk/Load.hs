@@ -28,8 +28,8 @@ import qualified Data.Text.IO as T
 load
   :: ( MonadReader c m, HasHkcConfig c
      , MonadState s m, HasHkcState s
-     , MonadLog (WithSeverity (WithTimestamp msg)) m, AsLoadMsg msg
-     , MonadChronicle (Bag (WithTimestamp e)) m, AsLoadErr e
+     , MonadLog (WithSeverity msg) m, AsLdMsg msg
+     , MonadChronicle (Bag e) m, AsLdErr e
      , MonadIO m, MonadBaseControl IO m
      )
   => m ()
@@ -41,8 +41,8 @@ load =
 
 loadFile
     ::  ( MonadReader c m, HasHkcConfig c
-        , MonadLog (WithSeverity (WithTimestamp msg)) m, AsLoadMsg msg
-        , MonadChronicle (Bag (WithTimestamp e)) m, AsLoadErr e
+        , MonadLog (WithSeverity msg) m, AsLdMsg msg
+        , MonadChronicle (Bag e) m, AsLdErr e
         , MonadIO m
         )
   => FilePath -> m (FilePath, Text)
@@ -50,14 +50,14 @@ loadFile fp = do
   srcOrExc <- liftIO . try . T.readFile $ fp
   case srcOrExc of
       Left ex ->
-        disclose $ mkLoadErr fp ex
+        disclose $ One $ mkLoadErr fp ex
         
       Right src -> do
-        logInfo =<< timestamp (_FileFound # fp)
+        logInfo (_FileFound # fp)
         return (fp, src)
 
 
-mkLoadErr :: (AsLoadErr e) => FilePath -> IOException -> e
+mkLoadErr :: (AsLdErr e) => FilePath -> IOException -> e
 mkLoadErr fp ex
   | isDoesNotExistError ex =
       _FileNotFound # fp

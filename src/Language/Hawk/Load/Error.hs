@@ -10,17 +10,17 @@ import System.FilePath
 
 import qualified Text.PrettyPrint.Leijen.Text as P
 
-data LoadErr
+data LdErr
   = FileNotFound FilePath
   | FileInUse FilePath
   | PermissionDenied FilePath
   | UnexpectedLoadErr FilePath
   deriving(Show)
 
-makeClassyPrisms ''LoadErr
+makeClassyPrisms ''LdErr
 
 
-instance Pretty LoadErr where
+instance Pretty LdErr where
     pretty err =
       case err of
         FileNotFound fp ->

@@ -54,27 +54,21 @@ runHkc m conf =
     runLoggingT (logErrors =<< runChronicleT (runReaderT (evalStateT (unHkc m) def) conf))
                 (\msg ->
                     case msgSeverity msg of
-                      Error -> stderrHandler $ renderWithTimestamp (formatTime defaultTimeLocale rfc822DateFormat)
-                                                                   pretty
-                                                                   (discardSeverity msg)
-                      
-                      _     -> stdoutHandler $ renderWithSeverity (\msg' ->
-                                                                    renderWithTimestamp (formatTime defaultTimeLocale rfc822DateFormat) pretty msg'
-                                                                  )
-                                                                  msg
+                      Error -> stderrHandler $ pretty $ discardSeverity msg                  
+                      _     -> stdoutHandler $ renderWithSeverity pretty msg
                 )
       
           
 
-logErrors :: (MonadLog (WithSeverity (WithTimestamp HkcMsg)) m)
-          => These (Bag (WithTimestamp HkcErr)) a -> m ()
+logErrors :: (MonadLog (WithSeverity HkcMsg) m)
+          => These (Bag HkcErr) a -> m ()
 logErrors = 
   these (\errs -> mapM_ logErr errs)
         (\_ -> return ())
         (\errs _ -> mapM_ logErr errs)
   where
     logErr err = 
-      logError $ fmap HkcErrMsg err
+      logError $ HkcErrMsg err
 
 
 
@@ -82,7 +76,7 @@ logErrors =
 -- Helper instances
 
 instance MonadBaseControl IO Hkc where
-    type StM Hkc a = These (Bag (WithTimestamp HkcErr)) (a, HkcState)
+    type StM Hkc a = These (Bag HkcErr) (a, HkcState)
     liftBaseWith f = Hkc $ liftBaseWith $ \q -> f (q . unHkc)
     restoreM = Hkc . restoreM
     {-# INLINABLE liftBaseWith #-}

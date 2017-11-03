@@ -58,9 +58,8 @@ import qualified Text.Earley            as E
 
 
 parse :: ( MonadState s m, HasHkcState s
-         , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e, AsLexErr e
-         , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
-         , MonadIO m
+         , MonadChronicle (Bag e) m, AsPsErr e, AsLexErr e
+         , MonadLog (WithSeverity msg) m, AsPsMsg msg
          )
          => [Token] -> m Decl
 parse toks = do
@@ -70,20 +69,19 @@ parse toks = do
   where
     handleResult (parses, r@(Report _ expected unconsumed)) =
       case parses of
-        []  -> discloseNow (_UnexpectedToken # unconsumed)
-        [p] -> do logInfo =<< timestamp (_ParseSuccess # (head toks ^. locPath)) -- Need fill path for this message
+        []  -> disclose $ One (_UnexpectedToken # unconsumed)
+        [p] -> do logInfo (_ParseSuccess # (head toks ^. locPath)) -- Need fill path for this message
                   return p
                    
         -- This will only happen if the grammar is wrong
-        ps -> discloseNow (_AmbiguousGrammar # ps)
+        ps -> disclose $ One (_AmbiguousGrammar # ps)
 
 
 processDataDecl :: ( MonadState s m, HasHkcState s
-                , MonadChronicle (Bag (WithTimestamp e)) m, AsParseErr e
-                , MonadLog (WithSeverity (WithTimestamp msg)) m, AsParseMsg msg
-                , MonadIO m
-                )
-         => DataDecl -> m ()
+                   , MonadChronicle (Bag e) m, AsPsErr e
+                   , MonadLog (WithSeverity msg) m, AsPsMsg msg
+                   )
+                => DataDecl -> m ()
 processDataDecl dd@(DataDecl n cd) = do
   hkcDatas . at n .= Just dd
   where

@@ -17,8 +17,8 @@ import Language.Hawk.TypeCheck.Error
 import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
 data HkcErr
-  = HkcLoadErr LoadErr
-  | HkcParseErr ParseErr
+  = HkcLdErr LdErr
+  | HkcPsErr PsErr
   | HkcLexErr LexErr
   | HkcNcErr NcErr
   | HkcTcErr TcErr
@@ -26,11 +26,11 @@ data HkcErr
 
 makeClassyPrisms ''HkcErr
 
-instance AsLoadErr HkcErr where
-  _LoadErr = _HkcLoadErr
+instance AsLdErr HkcErr where
+  _LdErr = _HkcLdErr
 
-instance AsParseErr HkcErr where
-  _ParseErr = _HkcParseErr
+instance AsPsErr HkcErr where
+  _PsErr = _HkcPsErr
 
 instance AsLexErr HkcErr where
   _LexErr = _HkcLexErr
@@ -44,7 +44,7 @@ instance AsTcErr HkcErr where
 
 
 instance Pretty HkcErr where
-    pretty (HkcLoadErr err) = pretty err
-    pretty (HkcParseErr err) = pretty err
+    pretty (HkcLdErr err) = pretty err
+    pretty (HkcPsErr err) = pretty err
     pretty (HkcNcErr err) = pretty err
     pretty (HkcTcErr err) = pretty err

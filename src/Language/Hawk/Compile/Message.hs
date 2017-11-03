@@ -20,8 +20,8 @@ import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
 data HkcMsg
   = HkcErrMsg HkcErr
-  | HkcLoadMsg LoadMsg
-  | HkcPsMsg ParseMsg
+  | HkcLdMsg LdMsg
+  | HkcPsMsg PsMsg
   | HkcNcMsg NcMsg
   | HkcTcMsg TcMsg
   deriving(Show)
@@ -31,11 +31,11 @@ makeClassyPrisms ''HkcMsg
 instance AsHkcErr HkcMsg where
   _HkcErr = _HkcErrMsg
 
-instance AsLoadMsg HkcMsg where
-  _LoadMsg = _HkcLoadMsg
+instance AsLdMsg HkcMsg where
+  _LdMsg = _HkcLdMsg
 
-instance AsParseMsg HkcMsg where
-  _ParseMsg = _HkcPsMsg
+instance AsPsMsg HkcMsg where
+  _PsMsg = _HkcPsMsg
 
 instance AsNcMsg HkcMsg where
   _NcMsg = _HkcNcMsg
@@ -46,7 +46,7 @@ instance AsTcMsg HkcMsg where
 
 instance Pretty HkcMsg where
     pretty (HkcErrMsg msg) = pretty msg
-    pretty (HkcLoadMsg msg) = pretty msg
+    pretty (HkcLdMsg msg) = pretty msg
     pretty (HkcPsMsg msg) = pretty msg
     pretty (HkcNcMsg msg) = pretty msg
     pretty (HkcTcMsg msg) = pretty msg

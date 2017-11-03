@@ -15,7 +15,7 @@ import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Log
 import Control.Monad.State.Strict (MonadState, StateT, evalStateT)
 import Data.Bits (shiftR, (.&.))
-import Data.Bag (Bag)
+import Data.Bag (Bag (..))
 import Data.Char (digitToInt, ord)
 import Data.Default.Class
 import Data.Text (Text)
@@ -278,8 +278,7 @@ escapeString text len = do
     
 
 handleChar :: ( MonadState s m, HasLexState s, HasRegion s
-              , MonadChronicle (Bag (WithTimestamp e)) m, AsLexErr e
-              , MonadIO m
+              , MonadChronicle (Bag e) m, AsLexErr e
               )
            => LexAction m
 handleChar text len = do
@@ -291,7 +290,7 @@ handleChar text len = do
       "\t"   -> yieldCharAt '\t'
       "\r"   -> yieldCharAt '\r'
       "\'"   -> yieldCharAt '\''
-      _      -> discloseNow (_InvalidCharLit # text)
+      _      -> disclose $ One (_InvalidCharLit # text)
 
 
 beginComment :: (MonadState s m, HasLexState s, HasRegion s)
@@ -407,7 +406,7 @@ alexInputPrevChar = prevChar
     `lexer` keeps track of position and returns the remainder of the input if
     lexing fails.
 -}
-lexer :: ( MonadChronicle (Bag (WithTimestamp e)) m, AsLexErr e )
+lexer :: ( MonadChronicle (Bag e) m, AsLexErr e )
       => (FilePath, Text) -> m [[Token]]
 lexer src =
   Fmt.layout <$> lexText src
@@ -427,10 +426,10 @@ lexer src =
             reverse <$> use lexTokAcc
 
         AlexError (AlexInput p cs text) ->
-            disclose (_UnproducibleToken # (p, show cs, text))
+            disclose $ One (_UnproducibleToken # (p, show cs, text))
         
         AlexSkip  input' len           -> do
-            disclose (_IllegalLexerSkip # ())
+            disclose $ One (_IllegalLexerSkip # ())
         
         AlexToken input' len act       -> do
             act (T.take (fromIntegral len) (currInput input)) (fromIntegral len)

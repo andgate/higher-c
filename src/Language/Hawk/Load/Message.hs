@@ -10,15 +10,15 @@ import System.FilePath (FilePath)
 
 import qualified Text.PrettyPrint.Leijen.Text as P
 
-data LoadMsg
+data LdMsg
   = FileFound FilePath
   | UndefinedLoadMsg
   deriving(Show)
 
-makeClassyPrisms ''LoadMsg
+makeClassyPrisms ''LdMsg
 
 
-instance Pretty LoadMsg where
+instance Pretty LdMsg where
     pretty err =
       case err of
         FileFound fp ->
