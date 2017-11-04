@@ -4,13 +4,13 @@
   #-}
 module Language.Hawk.TypeCheck.Types where
 
+import Data.Default.Class
 import Data.Map (Map)
-import Data.Monoid
 import Data.Set (Set)
 import Data.Text (Text)
 
 import Language.Hawk.Syntax.Type
-
+import qualified Data.Map as Map
 
 data Constraint
   = EqConst Type Type
@@ -21,3 +21,7 @@ data Constraint
 
 newtype Subst = Subst (Map Text Type)
   deriving (Eq, Ord, Show, Monoid)
+
+
+instance Default Subst where
+  def = Subst Map.empty

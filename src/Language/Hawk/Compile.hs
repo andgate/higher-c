@@ -51,9 +51,9 @@ hkc = runHkc compile
 compile
   :: ( MonadState s m, HasHkcState s
      , MonadReader c m , HasHkcConfig c
-     , MonadLog (WithSeverity (WithTimestamp msg)) m, AsHkcMsg msg, AsLoadMsg msg, AsParseMsg msg, AsNcMsg msg
-     , MonadChronicle (Bag (WithTimestamp e)) m
-     , AsHkcErr e, AsLoadErr e, AsParseErr e, AsLexErr e , AsNcErr e, AsTcErr e
+     , MonadLog (WithSeverity msg) m, AsHkcMsg msg, AsLdMsg msg, AsPsMsg msg, AsNcMsg msg, AsTcMsg msg
+     , MonadChronicle (Bag e) m
+     , AsHkcErr e, AsLdErr e, AsPsErr e, AsLexErr e , AsNcErr e, AsTcErr e
      , MonadIO m, MonadBaseControl IO m
      )
   => m ()
@@ -75,9 +75,8 @@ compile = do
   liftIO $ print "names are okay"
 
   -- Type Checking
-  case Tc.inferTop TcEnv.empty [] of
-    Left e -> error $ show e
-    Right r -> liftIO $ print r
+  r <- Tc.inferTop TcEnv.empty []
+  liftIO $ print r
 
   liftIO $ print "types are okay"
     

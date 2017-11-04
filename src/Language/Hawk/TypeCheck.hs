@@ -58,9 +58,6 @@ import qualified Language.Hawk.TypeCheck.Environment as Env
 -- Classes
 -----------------------------------------------------------------------
 
-newtype Infer a = Infer { unInfer :: ReaderT (Set Text) (StateT InferState (Except TcErr)) a }
-  deriving (Functor, Applicative, Monad, MonadReader (Set Text), MonadState InferState, MonadError TcErr)
-
 
 class Substitutable a where
   apply :: Subst -> a -> a
@@ -156,31 +153,40 @@ instance ActiveTypeVars a => ActiveTypeVars [a] where
 -----------------------------------------------------------------------
 
 -- | Run the inference monad
-runInfer :: Infer a -> Either TcErr a
-runInfer (Infer m) = runExcept $ evalStateT (runReaderT m Set.empty) initInfer
+runInfer :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
+            , MonadChronicle (Bag e) m, AsTcErr e
+            )
+         => ReaderT (Set Text) (StateT InferState m) a -> m a
+runInfer m = evalStateT (runReaderT m Set.empty) initInfer
 
 
-inferType :: ( MonadReader r m, HasInferState r
+
+inferType :: ( MonadReader (Set Text) m
+             , MonadState s m, HasInferState s
              , MonadLog (WithSeverity msg) m, AsTcMsg msg
              , MonadChronicle (Bag e) m, AsTcErr e
-             , MonadIO m
              )
           => Env -> Exp -> m (Subst, Type)
 inferType env ex = do
   (as, cs, t) <- infer ex
   let unbounds = Set.fromList (As.keys as) `Set.difference` Set.fromList (Env.keys env)
-  unless (Set.null unbounds) $ throwError $ UnboundVariable (Set.findMin unbounds)
+  unless (Set.null unbounds)
+         $ disclose $ One (_UnboundVariable # Set.findMin unbounds)
   let cs' = [ExpInstConst t s | (x, s) <- Env.toList env, t <- As.lookup x as]
-  return undefined
-  -- subst <- solve (cs ++ cs')
-  -- return (subst, apply subst t)
+
+  subst <- solve (cs ++ cs')
+  return (subst, apply subst t)
 
 
 -- | Solve for the toplevel type of an expression
-inferExp :: Env -> Exp -> Either TcErr Scheme
-inferExp env ex = case runInfer (inferType env ex) of
-  Left err -> Left err
-  Right (subst, ty) -> Right $ closeOver $ apply subst ty
+inferExp :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
+            , MonadChronicle (Bag e) m, AsTcErr e
+            )
+         => Env -> Exp -> m Scheme
+inferExp env ex = do
+  (subst, ty) <- runInfer (inferType env ex)
+  return $ closeOver $ apply subst ty
+  
 
 
 -- | Cannonicalize and return the polymorphic toplevel type.
@@ -188,7 +194,8 @@ closeOver :: Type -> Scheme
 closeOver = normalize . generalize Set.empty
 
 
-extendMSet :: Text -> Infer a -> Infer a
+extendMSet :: MonadReader (Set Text) m
+           => Text -> m a -> m a
 extendMSet x = local (Set.insert x)
 
 
@@ -199,13 +206,15 @@ genftv :: Int -> Type
 genftv n =
   TVar $ pack (letters !! n)
 
-fresh :: Infer Type
+fresh :: (MonadState s m, HasInferState s)
+      => m Type
 fresh = do
   countfv += 1
   uses countfv genftv
 
 
-instantiate :: Scheme -> Infer Type
+instantiate :: (MonadState s m, HasInferState s)
+            => Scheme -> m Type
 instantiate (Forall as t) = do
   as' <- mapM (const fresh) as
   let s = Subst $ Map.fromList $ zip as as'
@@ -237,7 +246,12 @@ normalize (Forall _ body) = Forall (map (pack . snd) ord) (normtype body)
 --ops :: Operator -> Type
 
 
-infer :: Exp -> Infer (Assumption, [Constraint], Type)
+infer :: ( MonadReader (Set Text) m
+         , MonadState s m, HasInferState s
+         , MonadLog (WithSeverity msg) m, AsTcMsg msg
+         , MonadChronicle (Bag e) m, AsTcErr e
+         )
+      => Exp -> m (Assumption, [Constraint], Type)
 infer = \case
   EVar x -> do
     tv <- fresh
@@ -272,12 +286,13 @@ infer = \case
            , t2
            )
 
-inferTop :: Env -> [(Text, Exp)] -> Either TcErr Env
-inferTop env [] = Right env
-inferTop env ((name, ex):xs) =
-  case inferExp env ex of
-    Left err -> Left err
-    Right ty -> inferTop (Env.extend env (name, ty)) xs
+inferTop :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
+            , MonadChronicle (Bag e) m, AsTcErr e )
+         => Env -> [(Text, Exp)] -> m Env
+inferTop env [] = return env
+inferTop env ((name, ex):xs) = do
+  ty <- inferExp env ex
+  inferTop (Env.extend env (name, ty)) xs
 
 
 
@@ -297,29 +312,32 @@ compose (Subst s1) (Subst s2) =
   Subst $ Map.map (apply (Subst s1)) s2 `Map.union` s1
 
 
-unifyMany :: [Type] -> [Type] -> Infer Subst
+unifyMany :: (MonadChronicle (Bag e) m, AsTcErr e)
+          => [Type] -> [Type] -> m Subst
 unifyMany [] [] = return emptySubst
 unifyMany (t1:ts1) (t2:ts2) =
   do su1 <- unifies t1 t2
      su2 <- unifyMany (apply su1 ts1) (apply su1 ts2)
      return $ su2 `compose` su1
 
-unifyMany t1 t2 = throwError $ UnificationMismatch t1 t2
+unifyMany t1 t2 = disclose $ One (_UnificationMismatch # (t1, t2))
 
 
-unifies :: Type -> Type -> Infer Subst
+unifies :: (MonadChronicle (Bag e) m, AsTcErr e)
+        => Type -> Type -> m Subst
 unifies t1 t2
   | t1 == t2 = return emptySubst
   | otherwise = case (t1, t2) of
       (TVar v, t) -> v `bind` t
       (t, TVar v) -> v `bind` t
       (TArr t1 t2, TArr t3 t4) -> unifyMany [t1,t2] [t3,t4]
-      (t1, t2) -> throwError $ UnificationFail t1 t2
+      (t1, t2) -> disclose $ One (_UnificationFail # (t1, t2))
 
 
-bind :: Text -> Type -> Infer Subst
+bind :: (MonadChronicle (Bag e) m, AsTcErr e)
+     => Text -> Type -> m Subst
 bind a t | t == TVar a     = return emptySubst
-         | occursCheck a t = throwError $ InfiniteType a t
+         | occursCheck a t = disclose $ One (_InfiniteType # (a, t))
          | otherwise       = return (Subst $ Map.singleton a t)
      
 
@@ -336,12 +354,18 @@ nextSolvable xs = fromJust (find solvable (chooseOne xs))
     solvable (ImpInstConst ts ms t2, cs) = Set.null ((ftv t2 `Set.difference` ms) `Set.intersection` atv cs)
 
 
-solve :: [Constraint] -> Infer Subst
+solve :: ( MonadState s m, HasInferState s
+         , MonadChronicle (Bag e) m, AsTcErr e
+         )
+      => [Constraint] -> m Subst
 solve [] = return emptySubst
 solve cs = solve' (nextSolvable cs)
 
 
-solve' :: (Constraint, [Constraint]) -> Infer Subst
+solve' :: ( MonadState s m, HasInferState s
+          , MonadChronicle (Bag e) m, AsTcErr e
+          )
+       => (Constraint, [Constraint]) -> m Subst
 solve' = \case
   (EqConst t1 t2, cs) -> do
     su1 <- unifies t1 t2
