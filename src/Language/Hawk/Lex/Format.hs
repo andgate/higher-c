@@ -3,13 +3,13 @@
            , RankNTypes
            , TemplateHaskell
   #-}
-module Language.Hawk.Parse.Lex.Format where
+module Language.Hawk.Lex.Format where
 
 import Control.Lens
 import Control.Monad (when, unless, void)
 import Control.Monad.State.Strict (State, evalState)
 import Safe (headDef)
-import Language.Hawk.Parse.Token
+import Language.Hawk.Lex.Token
 import Language.Hawk.Syntax.Location (Loc(..), Region)
 
 import qualified Language.Hawk.Syntax.Location  as L

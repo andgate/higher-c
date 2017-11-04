@@ -6,7 +6,7 @@
            , BangPatterns
            , DeriveDataTypeable
   #-}
-module Language.Hawk.Parse.Token where
+module Language.Hawk.Lex.Token where
 
 import Control.Lens
 import Data.Binary hiding (encode)

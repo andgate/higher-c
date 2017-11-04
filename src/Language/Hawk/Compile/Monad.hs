@@ -32,11 +32,9 @@ import System.IO
 
 -------------------------------------------------------------------------------
 -- Compiler Monad
-newtype Hkc a = Hkc { unHkc :: StateT HkcState (ReaderT HkcConfig (ChronicleT (Bag HkcErr) (LoggingT (WithSeverity HkcMsg) IO))) a }
+newtype Hkc a = Hkc { unHkc :: ChronicleT (Bag HkcErr) (LoggingT (WithSeverity HkcMsg) IO) a }
     deriving
      ( Functor, Applicative, Monad
-     , MonadState HkcState
-     , MonadReader  HkcConfig
      , MonadLog (WithSeverity HkcMsg)
      , MonadChronicle (Bag HkcErr)
      , MonadBase IO
@@ -46,12 +44,12 @@ newtype Hkc a = Hkc { unHkc :: StateT HkcState (ReaderT HkcConfig (ChronicleT (B
      )
 
 
-runHkc :: Hkc a -> HkcConfig -> IO ()
-runHkc m conf =
+runHkc :: Hkc a -> IO ()
+runHkc m =
   void $
     withFDHandler defaultBatchingOptions stderr 0.4 80 $ \stderrHandler ->
     withFDHandler defaultBatchingOptions stdout 0.4 80 $ \stdoutHandler ->
-    runLoggingT (logErrors =<< runChronicleT (runReaderT (evalStateT (unHkc m) def) conf))
+    runLoggingT (logErrors =<< runChronicleT unHkc m)
                 (\msg ->
                     case msgSeverity msg of
                       Error -> stderrHandler $ pretty $ discardSeverity msg                  

@@ -46,17 +46,15 @@ import qualified Language.Hawk.NameCheck.Environment as NcEnv
 
 
 hkc :: HkcConfig -> IO ()
-hkc = runHkc compile
+hkc cfg = runHkc (compile cfg)
+
 
 compile
-  :: ( MonadState s m, HasHkcState s
-     , MonadReader c m , HasHkcConfig c
-     , MonadLog (WithSeverity msg) m, AsHkcMsg msg, AsLdMsg msg, AsPsMsg msg, AsNcMsg msg, AsTcMsg msg
-     , MonadChronicle (Bag e) m
-     , AsHkcErr e, AsLdErr e, AsPsErr e, AsLexErr e , AsNcErr e, AsTcErr e
+  :: ( MonadLog (WithSeverity msg) m, AsHkcMsg msg, AsLdMsg msg, AsPsMsg msg, AsNcMsg msg, AsTcMsg msg
+     , MonadChronicle (Bag e) m, AsHkcErr e, AsLdErr e, AsPsErr e, AsLexErr e , AsNcErr e, AsTcErr e
      , MonadIO m, MonadBaseControl IO m
      )
-  => m ()
+  => HkcConfig -> m ()
 compile = do
   condemn $ do
     load

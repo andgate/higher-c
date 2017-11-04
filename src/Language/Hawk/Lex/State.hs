@@ -1,10 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Language.Hawk.Parse.Lex.State where
+module Language.Hawk.Lex.State where
 
 import Control.Lens
 import Data.Default.Class
 import Language.Hawk.Syntax.Location
-import Language.Hawk.Parse.Token (Token)
+import Language.Hawk.Lex.Token (Token)
 
 data LexState =
   LexState  { _lexTokAcc :: [Token]

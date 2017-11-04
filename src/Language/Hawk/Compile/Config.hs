@@ -9,25 +9,38 @@ import Data.Default.Class
 import Data.Text (Text)
 import System.FilePath (FilePath)
 
-import Language.Hawk.Compile.Options
-
-
 data HkcConfig
   = HkcConfig
-    { _hkcSrcFiles  :: [FilePath]
-    , _hkcOutFile   :: FilePath
-    , _hkcProd      :: HkcProduct
-    , _hkcExAst     :: [FilePath] -- List of serialized ast files (hkast)
-    , _hkcExLib     :: [FilePath] -- List of library files (.dll or .so)
-    , _hkcOpts      :: Opts
+    { _hkcSrcFiles     :: [FilePath]
+    , _hkcOutType      :: HkcOutputType
+    , _hkcOutFile      :: FilePath
+    , _hkcDumpToks     :: Bool
+    , _hkcDumpParsed   :: Bool
+    , _hkcDumpNamed    :: Bool
+    , _hkcDumpTyped    :: Bool
+    , _hkcDumpKinded   :: Bool
+    , _hkcDumpLLVM     :: Bool
     }
 
 
-data HkcProduct
+data HkcOutputType
     = Bin
     | Lib
-    | Ast
     deriving(Show, Eq)
 
 makeClassy ''HkcConfig
-makeClassyPrisms ''HkcProduct
+makeClassyPrisms ''HkcOutputType
+
+
+instance Default HkcConfig where
+  def = HkcConfig 
+    { _hkcSrcFiles     = []
+    , _hkcOutType      = Bin
+    , _hkcOutFile      = ""
+    , _hkcDumpToks     = False
+    , _hkcDumpParsed   = False
+    , _hkcDumpNamed    = False
+    , _hkcDumpTyped    = False
+    , _hkcDumpKinded   = False
+    , _hkcDumpLLVM     = False
+    }

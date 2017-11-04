@@ -5,7 +5,7 @@
              , NoMonomorphismRestriction
   #-}
 
-module Language.Hawk.Parse.Lex where
+module Language.Hawk.Lex where
 
 import Control.Lens
 import Control.Monad
@@ -20,17 +20,16 @@ import Data.Char (digitToInt, ord)
 import Data.Default.Class
 import Data.Text (Text)
 import Data.Word (Word8)
-import Language.Hawk.Compile.State
-import Language.Hawk.Parse.Lex.Error
-import Language.Hawk.Parse.Lex.State
-import Language.Hawk.Parse.Token
+import Language.Hawk.Lex.Error
+import Language.Hawk.Lex.State
+import Language.Hawk.Lex.Token
 import Language.Hawk.Syntax.Location
 import System.FilePath (FilePath)
 
-import qualified Data.Text                        as T
-import qualified Data.Text.Read                   as T
-import qualified Language.Hawk.Parse.Lex.Format   as Fmt
-import qualified System.FilePath                  as Filesystem
+import qualified Data.Text           as T
+import qualified Data.Text.Read      as T
+import qualified Language.Hawk.Lex.Format as Fmt
+import qualified System.FilePath     as Filesystem
 
 }
 

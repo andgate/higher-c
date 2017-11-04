@@ -17,8 +17,6 @@ import Control.Monad.Trans.Control
 import Data.Bag
 import Data.Default.Instances.Text
 import Data.Text (Text)
-import Language.Hawk.Compile.Config
-import Language.Hawk.Compile.State
 import Language.Hawk.Load.Error
 import Language.Hawk.Load.Message
 import System.IO.Error
@@ -26,9 +24,7 @@ import System.IO.Error
 import qualified Data.Text.IO as T
 
 load
-  :: ( MonadReader c m, HasHkcConfig c
-     , MonadState s m, HasHkcState s
-     , MonadLog (WithSeverity msg) m, AsLdMsg msg
+  :: ( MonadLog (WithSeverity msg) m, AsLdMsg msg
      , MonadChronicle (Bag e) m, AsLdErr e
      , MonadIO m, MonadBaseControl IO m
      )
@@ -40,8 +36,7 @@ load =
 
 
 loadFile
-    ::  ( MonadReader c m, HasHkcConfig c
-        , MonadLog (WithSeverity msg) m, AsLdMsg msg
+    ::  ( MonadLog (WithSeverity msg) m, AsLdMsg msg
         , MonadChronicle (Bag e) m, AsLdErr e
         , MonadIO m
         )

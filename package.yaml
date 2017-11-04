@@ -21,7 +21,7 @@ extra-source-files:
   - package.yaml
   - README.md
   - stack.yaml
-  - src/Language/Hawk/Parse/Lex.x
+  - src/Language/Hawk/Lex.x
 
 ghc-options: 
   - -Wall
@@ -102,12 +102,8 @@ library:
     - Language.Hawk.Compile
     - Language.Hawk.Compile.Config
     - Language.Hawk.Compile.Error
-    - Language.Hawk.Compile.Flags
     - Language.Hawk.Compile.Message
     - Language.Hawk.Compile.Monad
-    - Language.Hawk.Compile.Options
-    - Language.Hawk.Compile.PhaseStatus
-    - Language.Hawk.Compile.State
 
     - Language.Hawk.Eval
 
@@ -124,12 +120,14 @@ library:
     - Language.Hawk.Parse.Error
     - Language.Hawk.Parse.Grammar
     - Language.Hawk.Parse.Helpers
-    - Language.Hawk.Parse.Lex
-    - Language.Hawk.Parse.Lex.Error
-    - Language.Hawk.Parse.Lex.Format
-    - Language.Hawk.Parse.Lex.State
     - Language.Hawk.Parse.Message
-    - Language.Hawk.Parse.Token
+    
+    - Language.Hawk.Lex
+    - Language.Hawk.Lex.Error
+    - Language.Hawk.Lex.Format
+    - Language.Hawk.Lex.Message
+    - Language.Hawk.Lex.State
+    - Language.Hawk.Lex.Token
 
     - Language.Hawk.Syntax
     - Language.Hawk.Syntax.Decl
