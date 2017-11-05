@@ -3,14 +3,13 @@ module Main where
 import Control.Applicative
 import Data.Monoid
 import Language.Hawk.Compile.Config
+import Language.Hawk.Compile (hkc)
 import Options.Applicative
 
 
 main :: IO ()
 main = do
-    opts <- execParser optsParser
-    -- Run compiler with given options
-    return ()
+    hkc =<< execParser optsParser 
   where
     optsParser =
         info
@@ -18,40 +17,27 @@ main = do
             (fullDesc <> progDesc "hkc" <>
              header
                  "hkc - a compiler for the Hawk programming language")
-    versionOption = infoOption "0.0" (long "version" <> help "Show version")
+    versionOption = infoOption "0.1.0" (long "version" <> help "Show version")
     programOptions =
-        Opts  <$> hsubparser (buildCommand <> cleanCommand)
-
-              <*> option auto (long "verbosity" <> short 'v' <> value 1 <> metavar "LEVEL" <> help "Compiler message verbosity")
-              <*> option auto (long "warnings" <> short 'w' <> value 1 <> metavar "LEVEL" <> help "Compiler warning verbosity")
-              <*> msgFlags [ (infoFileFoundFlag, "file found messages")
-                           , (infoDirFoundFlag, "directory found messages")
-                           , (infoFreshModuleFoundFlag, "fresh module found messages")
-                           , (infoModulePreservedFlag, "preserved module messages")
-                           , (warnFileIgnoredFlag, "file ignored warnings")
-                           , (warnDirIgnoredFlag, "directory ignored warnings")
-                           , (warnSymLinkIgnoredFlag, "symlink ignored warnings")
-                           ]
-
-    msgFlags fls = 
-        many (foldr1 (<|>) . map msgFlag $ fls)
-    
-    msgFlag (flagStr, desc) =
-        let on = mkFlagOff flagStr
-            off = mkFlagOff flagStr
-        in    flag' on (long on <> help ("Enable " ++ desc))
-          <|> flag' off (long off <> help ("Disable " ++ desc))
-
-    buildCommand =
-        command
-            "build"
-            (info buildOptions (progDesc "Build source files"))
-
-    buildOptions =
-        Build <$>
-        strArgument (metavar "PATH" <> help "Path of package to build")
-
-    cleanCommand =
-        command
-            "clean"
-            (info (pure Clean) (progDesc "Clean all packages"))
+        HkcConfig
+          -- Source files
+          <$> some (argument str (metavar "FILES..."))
+          -- Output file
+          <*> strOption ( long "output" <> short 'o' <> metavar "FILENAME")
+          -- Output type
+          <*> (flag' HkcOutBin (long "bin") <|> flag' HkcOutLib (long "lib") <|> pure HkcOutBin) 
+          -- Dump Lexical Output 
+          <*> (flag' (Just AstPretty) (long "dump-tokens" <> help "Dump tokens produced by hkc's lexer.") <|> pure Nothing)
+          -- Dump Parser Output 
+          <*> (flag' (Just AstPretty) (long "dump-tokens" <> help "Dump tokens produced by hkc's lexer.") <|> pure Nothing)
+          -- Dump Name Checked Ast 
+          <*> (flag' (Just AstPretty) (long "dump-tokens" <> help "Dump tokens produced by hkc's lexer.") <|> pure Nothing)
+          -- Dump Type Checked Ast
+          <*> (flag' (Just AstPretty) (long "dump-tokens" <> help "Dump tokens produced by hkc's lexer.") <|> pure Nothing)
+          -- Dump Kinds Checked Ast 
+          <*> (flag' (Just AstPretty) (long "dump-tokens" <> help "Dump tokens produced by hkc's lexer.") <|> pure Nothing)
+          -- Dump Generated LLVM
+          <*> switch (long "dump-llvm")
+          -- Interactive Mode
+          <*> switch ( long "interactive" <> short 'i' <> help "Run hkc in interactive-mode." )
+          

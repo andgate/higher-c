@@ -42,6 +42,7 @@ data HkcConfig
     , _hkcDumpTc       :: Maybe HkcAstFmt
     , _hkcDumpKc       :: Maybe HkcAstFmt
     , _hkcDumpLLVM     :: Bool
+    , _hkcInteractive  :: Bool
     }    
 
 makeClassy ''HkcConfig
@@ -60,4 +61,5 @@ instance Default HkcConfig where
     , _hkcDumpTc       = Nothing
     , _hkcDumpKc       = Nothing
     , _hkcDumpLLVM     = False
+    , _hkcInteractive  = False
     }
