@@ -6,8 +6,7 @@
   #-}
 module Language.Hawk.Compile
         ( hkc
-        , HkcConfig(..)
-        , HkcProduct(..)
+        , module Language.Hawk.Compile.Config
         ) where
 
 import Control.Lens
@@ -19,19 +18,18 @@ import Control.Monad.State (MonadState)
 import Control.Monad.Trans.Control
 import Data.Bag
 import Data.Foldable
+import Data.Maybe (isJust)
 
 import Language.Hawk.Load
 import Language.Hawk.Parse
-import Language.Hawk.Parse.Lex
-import Language.Hawk.Parse.Lex.Error
+import Language.Hawk.Lex.Token
+import Language.Hawk.Lex
 import Language.Hawk.Syntax
 
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.Error
 import Language.Hawk.Compile.Message
 import Language.Hawk.Compile.Monad
-import Language.Hawk.Compile.State
-import Language.Hawk.Compile.Options
 import Text.PrettyPrint.Leijen.Text (pretty)
 
 
@@ -50,35 +48,30 @@ hkc cfg = runHkc (compile cfg)
 
 
 compile
-  :: ( MonadLog (WithSeverity msg) m, AsHkcMsg msg, AsLdMsg msg, AsPsMsg msg, AsNcMsg msg, AsTcMsg msg
-     , MonadChronicle (Bag e) m, AsHkcErr e, AsLdErr e, AsPsErr e, AsLexErr e , AsNcErr e, AsTcErr e
-     , MonadIO m, MonadBaseControl IO m
+  :: ( MonadLog (WithSeverity msg) m, AsHkcMsg msg, AsLdMsg msg, AsLxMsg msg, AsPsMsg msg, AsNcMsg msg, AsTcMsg msg
+     , MonadChronicle (Bag e) m, AsHkcErr e, AsLdErr e, AsPsErr e, AsLxErr e , AsNcErr e, AsTcErr e
+     , MonadIO m
      )
   => HkcConfig -> m ()
-compile = do
+compile conf = do
   condemn $ do
-    load
-    xs <- use hkcFileTexts
-    docToks <- mapM lexer xs
-    forM_ docToks $ \declsToks ->
-        forM_ declsToks $ \declToks ->
-            parse declToks
+    txts <- loadFiles (_hkcSrcFiles conf)
 
-  -- Name Checking
-  defs <- use hkcDefs
-  let env = NcEnv.fromList . Map.keys $ defs
-      es = concat . Map.elems $ defs
-  condemn $ mapM_ (Nc.namecheck env) es
+    tks <- concat <$> mapM lexer txts
+    when (isJust $ _hkcDumpLx conf)
+         (dumpLx tks)  
 
-  liftIO $ print "names are okay"
-
-  -- Type Checking
-  r <- Tc.inferTop TcEnv.empty []
-  liftIO $ print r
-
-  liftIO $ print "types are okay"
-    
-  -- Code Generation
-  --codegen
+    ps <- mapM parse tks
+    when (isJust $ _hkcDumpPs conf)
+         (dumpPs ps)
   
+  return ()
+
+dumpLx :: MonadIO m => [(FilePath, [Token])] -> m ()
+dumpLx tks =
+  return ()
+
+
+dumpPs :: MonadIO m => [(FilePath, Decl)] -> m ()
+dumpPs ps =
   return ()

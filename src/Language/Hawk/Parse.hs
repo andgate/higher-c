@@ -41,13 +41,10 @@ import Data.Void (Void)
 import Text.PrettyPrint.Leijen.Text (pretty)
 import Text.Earley (Report (..), Prod)
 
-import Language.Hawk.Compile.State
+import Language.Hawk.Lex.Token
 import Language.Hawk.Parse.Error
 import Language.Hawk.Parse.Grammar
 import Language.Hawk.Parse.Message
-import Language.Hawk.Parse.Token
-import Language.Hawk.Parse.Lex (lexer)
-import Language.Hawk.Parse.Lex.Error
 import Language.Hawk.Syntax
 
 import qualified Data.List.NonEmpty     as NE
@@ -57,12 +54,11 @@ import qualified Data.Text              as Text
 import qualified Text.Earley            as E
 
 
-parse :: ( MonadState s m, HasHkcState s
-         , MonadChronicle (Bag e) m, AsPsErr e, AsLexErr e
+parse :: ( MonadChronicle (Bag e) m, AsPsErr e
          , MonadLog (WithSeverity msg) m, AsPsMsg msg
          )
-         => [Token] -> m Decl
-parse toks = do
+         => (FilePath, [Token]) -> m (FilePath, Decl)
+parse (fp, toks) = do
   let rs = E.fullParses (E.parser toplevel) toks
   handleResult rs
 
@@ -70,20 +66,9 @@ parse toks = do
     handleResult (parses, r@(Report _ expected unconsumed)) =
       case parses of
         []  -> disclose $ One (_UnexpectedToken # unconsumed)
-        [p] -> do logInfo (_ParseSuccess # (head toks ^. locPath)) -- Need fill path for this message
-                  return p
+        [p] -> do logInfo (_ParseSuccess # fp) -- Need fullpath for this message
+                  return (fp, p)
                    
         -- This will only happen if the grammar is wrong
         ps -> disclose $ One (_AmbiguousGrammar # ps)
-
-
-processDataDecl :: ( MonadState s m, HasHkcState s
-                   , MonadChronicle (Bag e) m, AsPsErr e
-                   , MonadLog (WithSeverity msg) m, AsPsMsg msg
-                   )
-                => DataDecl -> m ()
-processDataDecl dd@(DataDecl n cd) = do
-  hkcDatas . at n .= Just dd
-  where
-    processConDecl cd = undefined       
 

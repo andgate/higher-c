@@ -15,15 +15,15 @@ import Text.PrettyPrint.Leijen.Text (Pretty(..), (<+>), (<>))
 import qualified Text.PrettyPrint.Leijen.Text as P
 
 
-data LexErr
+data LxErr
   = UnproducibleToken Char String Text
   | InvalidCharLit Text
   | IllegalLexerSkip
   deriving(Show)
 
-makeClassyPrisms ''LexErr
+makeClassyPrisms ''LxErr
 
-instance Pretty LexErr where
+instance Pretty LxErr where
     pretty = \case
       UnproducibleToken p cs rest  ->
           P.textStrict "Lexical cannot produce token."

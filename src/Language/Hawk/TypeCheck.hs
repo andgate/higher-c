@@ -36,7 +36,6 @@ import Data.Set (Set, (\\))
 import Data.Text (Text, pack)
 import Text.PrettyPrint.Leijen.Text (pretty)
 
-import Language.Hawk.Compile.State
 import Language.Hawk.Syntax
 import Language.Hawk.TypeCheck.Assumption (Assumption)
 import Language.Hawk.TypeCheck.Environment (Env)

@@ -9,7 +9,7 @@ import Data.Bifunctor
 import Data.Monoid
 import Data.Text (pack)
 import Language.Hawk.Parse.Helpers
-import Language.Hawk.Parse.Token (Token)
+import Language.Hawk.Lex.Token (Token)
 import Language.Hawk.Syntax
 import Text.Earley
 import Text.Earley.Mixfix

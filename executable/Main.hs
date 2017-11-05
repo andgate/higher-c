@@ -2,8 +2,7 @@ module Main where
 
 import Control.Applicative
 import Data.Monoid
-import Language.Hawk.Compile.Flags
-import Language.Hawk.Compile.Options
+import Language.Hawk.Compile.Config
 import Options.Applicative
 
 

@@ -25,7 +25,6 @@ import Data.Default.Class
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.Error
 import Language.Hawk.Compile.Message
-import Language.Hawk.Compile.State
 import Text.PrettyPrint.Leijen.Text
 import System.IO
 
@@ -49,7 +48,7 @@ runHkc m =
   void $
     withFDHandler defaultBatchingOptions stderr 0.4 80 $ \stderrHandler ->
     withFDHandler defaultBatchingOptions stdout 0.4 80 $ \stdoutHandler ->
-    runLoggingT (logErrors =<< runChronicleT unHkc m)
+    runLoggingT (logErrors =<< runChronicleT (unHkc m))
                 (\msg ->
                     case msgSeverity msg of
                       Error -> stderrHandler $ pretty $ discardSeverity msg                  
@@ -74,19 +73,8 @@ logErrors =
 -- Helper instances
 
 instance MonadBaseControl IO Hkc where
-    type StM Hkc a = These (Bag HkcErr) (a, HkcState)
+    type StM Hkc a = These (Bag HkcErr) a
     liftBaseWith f = Hkc $ liftBaseWith $ \q -> f (q . unHkc)
     restoreM = Hkc . restoreM
     {-# INLINABLE liftBaseWith #-}
     {-# INLINABLE restoreM #-}
-
-
-{--
-runHkc
-  :: HkcState
-  -> Compiler ()
-  -> IO ()
-runCompiler = flip evalStateT
-
---}
-

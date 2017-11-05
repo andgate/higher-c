@@ -6,7 +6,7 @@ module Language.Hawk.Parse.Error where
 
 import Control.Lens
 
-import Language.Hawk.Parse.Token
+import Language.Hawk.Lex.Token
 import Language.Hawk.Syntax.Decl
 import Language.Hawk.Syntax.Location
 import Data.Text (Text, pack)

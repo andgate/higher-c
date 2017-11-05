@@ -5,7 +5,7 @@ module Language.Hawk.Lex.Message where
 
 import Control.Lens
 
-import Text.PrettyPrint.Leijin.Text (Pretty(..))
+import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
 
 data LxMsg

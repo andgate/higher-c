@@ -1,9 +1,10 @@
-compiler-check: match-exact
-resolver: nightly-2017-11-01
+resolver: lts-9.11
+
 packages:
 - '.'
 extra-deps:
 - data-default-instances-text-0.0.1
 nix:
   enable: true
-  packages: [binutils, llvm_5, zlib]
+  pure: true
+  packages: [binutils, llvm_4, zlib, ]

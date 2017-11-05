@@ -23,16 +23,13 @@ import System.IO.Error
 
 import qualified Data.Text.IO as T
 
-load
+loadFiles
   :: ( MonadLog (WithSeverity msg) m, AsLdMsg msg
      , MonadChronicle (Bag e) m, AsLdErr e
-     , MonadIO m, MonadBaseControl IO m
+     , MonadIO m
      )
-  => m ()
-load =
-  condemn $
-    hkcFileTexts <~ (mapM loadFile =<< view hkcSrcFiles)
-    
+  => [FilePath] -> m [(FilePath, Text)]
+loadFiles = mapM loadFile
 
 
 loadFile

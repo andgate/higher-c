@@ -277,7 +277,7 @@ escapeString text len = do
     
 
 handleChar :: ( MonadState s m, HasLexState s, HasRegion s
-              , MonadChronicle (Bag e) m, AsLexErr e
+              , MonadChronicle (Bag e) m, AsLxErr e
               )
            => LexAction m
 handleChar text len = do
@@ -405,10 +405,11 @@ alexInputPrevChar = prevChar
     `lexer` keeps track of position and returns the remainder of the input if
     lexing fails.
 -}
-lexer :: ( MonadChronicle (Bag e) m, AsLexErr e )
-      => (FilePath, Text) -> m [[Token]]
-lexer src =
-  Fmt.layout <$> lexText src
+lexer :: ( MonadChronicle (Bag e) m, AsLxErr e )
+      => (FilePath, Text) -> m [(FilePath, [Token])]
+lexer src@(fp,_) = do
+  tks <- Fmt.layout <$> lexText src
+  return $ map (fp,) tks
 
   where
     lexText (fp, text) =

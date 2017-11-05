@@ -12,7 +12,7 @@ import Control.Monad (void)
 import Data.Monoid
 import Data.Text (Text, pack)
 import Data.Void (Void)
-import Language.Hawk.Parse.Token
+import Language.Hawk.Lex.Token
 import Language.Hawk.Syntax
 import Text.Earley
 
