@@ -6,5 +6,5 @@ hk.db
 /*.cabal
 /*.tix
 /*.hpc
-/*.hkc
+/.hkc
 TAGS
