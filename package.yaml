@@ -107,6 +107,18 @@ library:
 
     - Language.Hawk.Eval
 
+    - Language.Hawk.KindsCheck
+    - Language.Hawk.KindsCheck.Environment
+    - Language.Hawk.KindsCheck.Error
+    - Language.Hawk.KindsCheck.Message
+    - Language.Hawk.KindsCheck.State
+
+    - Language.Hawk.LinearCheck
+    - Language.Hawk.LinearCheck.Environment
+    - Language.Hawk.LinearCheck.Error
+    - Language.Hawk.LinearCheck.Message
+    - Language.Hawk.LinearCheck.State
+
     - Language.Hawk.Load
     - Language.Hawk.Load.Message
     - Language.Hawk.Load.Error

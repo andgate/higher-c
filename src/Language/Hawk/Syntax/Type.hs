@@ -18,8 +18,6 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 -- -----------------------------------------------------------------------------
 -- | Type
 
-data K = K Kind Type
-
 data Type
   = TVar Text
   | TCon Text
@@ -36,6 +34,23 @@ makeClassyPrisms ''Type
 
 data Scheme = Forall [Text] Type
   deriving (Show, Eq, Ord)
+
+
+instance HasKind Type where
+  kind = \case
+    TVar _ -> error "unknown kind"
+    TCon _ -> error "unknown kind"
+    TApp t _ -> case kind t of
+                  KArr _ b -> b
+                  k        -> k
+    TArr _ _  -> KPop
+    TLoli _ _ -> KPop
+    TKind k _ -> k
+    TLoc _ t -> kind t
+    TParen t -> kind t
+
+
+
 
 
 -- -----------------------------------------------------------------------------
@@ -67,16 +82,6 @@ tArr  = TKind k . TCon $ "(->)"
 tLoli = TKind k . TCon $ "(-o)"
   where k = KArr KPop (KArr KPop KPop)
 
-
-instance HasKind Type where
-  kind = \case
-    TVar _  -> error "Type without kind"
-    TCon _  -> error "Type without kind"
-    TApp t _ -> case kind t of
-                  (KArr _ k) -> k
-                  k          -> k
-    TKind k _ -> k
-    TLoc _ t  -> kind t
 
 
 -- -----------------------------------------------------------------------------

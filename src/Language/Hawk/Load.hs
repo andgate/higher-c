@@ -16,11 +16,14 @@ import Control.Monad.Reader
 import Control.Monad.Trans.Control
 import Data.Bag
 import Data.Default.Instances.Text
+import Data.List (nub, groupBy)
+import Data.Map (Map)
 import Data.Text (Text)
 import Language.Hawk.Load.Error
 import Language.Hawk.Load.Message
 import System.IO.Error
 
+import qualified Data.Map.Strict as Map
 import qualified Data.Text.IO as T
 
 loadFiles
@@ -28,8 +31,10 @@ loadFiles
      , MonadChronicle (Bag e) m, AsLdErr e
      , MonadIO m
      )
-  => [FilePath] -> m [(FilePath, Text)]
-loadFiles = mapM loadFile
+  => [FilePath] -> m (Map FilePath Text)
+loadFiles fps = do
+  kvs <- mapM loadFile (nub fps)
+  return $ Map.fromList kvs
 
 
 loadFile

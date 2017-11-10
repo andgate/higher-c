@@ -69,9 +69,10 @@ mkLayout input = LayoutState  "" mempty [defCell] False input [] []
 -- This would be more performant with a foldM in the State monad
 -- Since this was originally implemented with conduit, using recursion in a state monad that
 -- maintains input/out lists was easier.
-layout :: [Token] -> [[Token]]
-layout =
-  evalState layoutDriver . mkLayout
+layout :: (FilePath, [Token]) -> (FilePath, [[Token]])
+layout (fp, toks) =
+  let toks' = evalState layoutDriver (mkLayout toks)
+  in (fp, toks')
 
 layoutDriver :: Layout [[Token]]
 layoutDriver = do

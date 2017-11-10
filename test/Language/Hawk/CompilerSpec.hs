@@ -17,6 +17,5 @@ spec = do
       hkc $ def
             { _hkcSrcFiles = ["example/Example.hk", "example/Fib.hk"]
             , _hkcOutFile = "example"
-            , _hkcDumpLx = Just AstPretty
-            , _hkcDumpPs = Just AstPretty
+            , _hkcDumpLxBin = True
             }

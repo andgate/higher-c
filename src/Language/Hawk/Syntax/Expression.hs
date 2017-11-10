@@ -28,6 +28,7 @@ import Language.Hawk.Syntax.Name
 import Language.Hawk.Syntax.Pass
 import Language.Hawk.Syntax.Prim
 import Language.Hawk.Syntax.Type
+import Language.Hawk.Syntax.Kind
 import Language.Hawk.Syntax.TypeLiteral
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
@@ -54,6 +55,16 @@ data Exp
   | ELoc  Loc Exp
   | EParen Exp
   deriving(Eq, Ord, Read, Show, Generic, Data, Typeable)
+
+
+
+instance HasKind Exp where
+  kind = \case
+    EType t _ -> kind t
+    ELoc _ e -> kind e
+    EParen e -> kind e
+    _ -> error "no kind"
+
 
 -- -----------------------------------------------------------------------------
 -- | Instances

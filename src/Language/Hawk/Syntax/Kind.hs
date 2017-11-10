@@ -20,6 +20,20 @@ data Kind
 class HasKind t where
   kind :: t -> Kind
 
+
+instance HasKind Kind where
+  kind = id
+
+
+ksub :: Kind -> Kind -> Bool
+ksub KStar KStar = True
+ksub KPop  KPop  = True
+ksub KPop  KStar = True
+ksub KStar KPop  = False
+ksub (KArr a1 a2) (KArr b1 b2) = ksub a1 b1 && ksub a2 b2
+ksub _ _ = False
+
+
 instance Binary Kind
 
 

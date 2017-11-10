@@ -35,6 +35,7 @@ import Data.Bag
 import Data.Default.Class
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Foldable
+import Data.Map.Strict
 import Data.Set (Set)
 import Data.Text (Text, pack)
 import Data.Void (Void)
@@ -48,17 +49,33 @@ import Language.Hawk.Parse.Message
 import Language.Hawk.Syntax
 
 import qualified Data.List.NonEmpty     as NE
-import qualified Data.Map.Lazy          as Map
+import qualified Data.Map.Strict        as Map
 import qualified Data.Set               as Set
 import qualified Data.Text              as Text
 import qualified Text.Earley            as E
 
 
+
+parseMany :: ( MonadChronicle (Bag e) m, AsPsErr e
+             , MonadLog (WithSeverity msg) m, AsPsMsg msg )
+          => Map FilePath [[Token]] -> m (Map FilePath [Decl])
+parseMany toks =
+  Map.fromList <$> mapM parseFile (Map.toList toks)
+
+
+parseFile :: ( MonadChronicle (Bag e) m, AsPsErr e
+             , MonadLog (WithSeverity msg) m, AsPsMsg msg )
+          => (FilePath, [[Token]]) -> m (FilePath, [Decl])
+parseFile (fp, toks) = do
+  decls <- mapM (parse fp) toks
+  return (fp, decls)
+
+
 parse :: ( MonadChronicle (Bag e) m, AsPsErr e
          , MonadLog (WithSeverity msg) m, AsPsMsg msg
          )
-         => (FilePath, [Token]) -> m (FilePath, Decl)
-parse (fp, toks) = do
+         => FilePath -> [Token] -> m Decl
+parse fp toks = do
   let rs = E.fullParses (E.parser toplevel) toks
   handleResult rs
 
@@ -67,7 +84,7 @@ parse (fp, toks) = do
       case parses of
         []  -> disclose $ One (_UnexpectedToken # unconsumed)
         [p] -> do logInfo (_ParseSuccess # fp) -- Need fullpath for this message
-                  return (fp, p)
+                  return p
                    
         -- This will only happen if the grammar is wrong
         ps -> disclose $ One (_AmbiguousGrammar # ps)

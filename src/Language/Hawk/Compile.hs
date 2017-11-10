@@ -17,7 +17,9 @@ import Control.Monad.Reader
 import Control.Monad.State (MonadState)
 import Control.Monad.Trans.Control
 import Data.Bag
+import Data.Binary
 import Data.Foldable
+import Data.Map.Strict (Map)
 import Data.Maybe (isJust)
 
 import Language.Hawk.Load
@@ -33,6 +35,7 @@ import Language.Hawk.Compile.Monad
 import Text.PrettyPrint.Leijen.Text (pretty)
 
 
+import qualified Data.ByteString       as BS
 import qualified Data.Text             as T
 import qualified Data.Vector           as V
 import qualified Data.Map.Strict       as Map
@@ -54,24 +57,35 @@ compile
      )
   => HkcConfig -> m ()
 compile conf = do
-  condemn $ do
-    txts <- loadFiles (_hkcSrcFiles conf)
+  condemn $
+    loadFiles (_hkcSrcFiles conf)
+      >>= lexer
+      >>= dumpLx conf
+      >>= parseMany
 
-    tks <- concat <$> mapM lexer txts
-    when (isJust $ _hkcDumpLx conf)
-         (dumpLx tks)  
-
-    ps <- mapM parse tks
-    when (isJust $ _hkcDumpPs conf)
-         (dumpPs ps)
-  
-  return ()
-
-dumpLx :: MonadIO m => [(FilePath, [Token])] -> m ()
-dumpLx tks =
   return ()
 
 
-dumpPs :: MonadIO m => [(FilePath, Decl)] -> m ()
-dumpPs ps =
-  return ()
+
+
+dumpLx :: ( MonadIO m, Binary a)
+        => HkcConfig -> Map FilePath a -> m (Map FilePath a)
+dumpLx conf t = do
+  when (conf^.hkcDumpLxBin) (dumpBinaries (conf^.hkcBuildDir) t)
+  return t
+
+
+dumpBinaries :: (MonadIO m, Binary a)
+           => FilePath -> Map FilePath a -> m ()
+dumpBinaries dir =
+  mapM_ (dumpBinary dir) . Map.toList
+
+
+dumpBinary :: (MonadIO m, Binary a)
+           => FilePath -> (FilePath, a) -> m (FilePath, a)
+dumpBinary dir i@(fp, o) = do
+  liftIO $ encodeFile fp o
+  return i
+  where
+    fp' = undefined           
+

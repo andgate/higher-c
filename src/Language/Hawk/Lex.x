@@ -18,6 +18,7 @@ import Data.Bits (shiftR, (.&.))
 import Data.Bag (Bag (..))
 import Data.Char (digitToInt, ord)
 import Data.Default.Class
+import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Data.Word (Word8)
 import Language.Hawk.Lex.Error
@@ -26,6 +27,7 @@ import Language.Hawk.Lex.Token
 import Language.Hawk.Syntax.Location
 import System.FilePath (FilePath)
 
+import qualified Data.Map	     as Map
 import qualified Data.Text           as T
 import qualified Data.Text.Read      as T
 import qualified Language.Hawk.Lex.Format as Fmt
@@ -406,17 +408,19 @@ alexInputPrevChar = prevChar
     lexing fails.
 -}
 lexer :: ( MonadChronicle (Bag e) m, AsLxErr e )
-      => (FilePath, Text) -> m [(FilePath, [Token])]
-lexer src@(fp,_) = do
-  tks <- Fmt.layout <$> lexText src
-  return $ map (fp,) tks
+      => Map FilePath Text -> m (Map FilePath [[Token]])
+lexer src = do
+  let src' = Map.toList src
+  result <- mapM (fmap Fmt.layout . lexText) src'
+  return $ Map.fromList result
 
   where
-    lexText (fp, text) =
-      evalStateT (start text)
-                 ((def :: LexState) & lexFilePath .~ fp)
+    lexText (fp, text) = do
+      toks <- evalStateT (start text)
+                         ((def :: LexState) & lexFilePath .~ fp)
+      return (fp, toks)	   
 
-    start = go . AlexInput '\n' []
+    start = go .       AlexInput '\n' []
 
     go input = do
       sc <- use lexStartcode
