@@ -18,4 +18,5 @@ spec = do
             { _hkcSrcFiles = ["example/Example.hk", "example/Fib.hk"]
             , _hkcOutFile = "example"
             , _hkcDumpLxBin = True
+            , _hkcDumpPsPretty = True
             }

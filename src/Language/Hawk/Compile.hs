@@ -35,9 +35,10 @@ import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.Error
 import Language.Hawk.Compile.Message
 import Language.Hawk.Compile.Monad
-import Text.PrettyPrint.Leijen.Text (pretty)
+import System.Directory (createDirectoryIfMissing)
 import System.FilePath ((</>), (<.>), takeBaseName)
 import System.IO (hClose, openFile, IOMode(..))
+import Text.PrettyPrint.Leijen.Text (pretty)
 
 
 import qualified Data.Aeson            as JSN
@@ -70,6 +71,7 @@ compile conf = do
     loadFiles (conf^.hkcSrcFiles)
       >>= lexMany    >>= dumpLx conf
       >>= parseMany  >>= dumpPs conf
+      
 
   return ()
 
@@ -96,6 +98,53 @@ dumpPs conf t = do
   when (conf^.hkcDumpPsYaml)   (dumpYamls odir t)
   return t
 
+
+dumpNc :: ( MonadIO m, HasHkcConfig c
+          , Binary a, PP.Pretty a, ToJSON a )
+       => c -> Map FilePath a -> m (Map FilePath a)
+dumpNc conf t = do
+  let odir = (conf^.hkcBuildDir) </> "named"
+  when (conf^.hkcDumpNcPretty) (dumpPretties odir t)
+  when (conf^.hkcDumpNcBin)    (dumpBinaries odir t)
+  when (conf^.hkcDumpNcJson)   (dumpJsons odir t)
+  when (conf^.hkcDumpNcYaml)   (dumpYamls odir t)
+  return t
+
+
+dumpTc :: ( MonadIO m, HasHkcConfig c
+          , Binary a, PP.Pretty a, ToJSON a )
+       => c -> Map FilePath a -> m (Map FilePath a)
+dumpTc conf t = do
+  let odir = (conf^.hkcBuildDir) </> "typed"
+  when (conf^.hkcDumpTcPretty) (dumpPretties odir t)
+  when (conf^.hkcDumpTcBin)    (dumpBinaries odir t)
+  when (conf^.hkcDumpTcJson)   (dumpJsons odir t)
+  when (conf^.hkcDumpTcYaml)   (dumpYamls odir t)
+  return t
+
+
+dumpKc :: ( MonadIO m, HasHkcConfig c
+          , Binary a, PP.Pretty a, ToJSON a )
+       => c -> Map FilePath a -> m (Map FilePath a)
+dumpKc conf t = do
+  let odir = (conf^.hkcBuildDir) </> "kinded"
+  when (conf^.hkcDumpKcPretty) (dumpPretties odir t)
+  when (conf^.hkcDumpKcBin)    (dumpBinaries odir t)
+  when (conf^.hkcDumpKcJson)   (dumpJsons odir t)
+  when (conf^.hkcDumpKcYaml)   (dumpYamls odir t)
+  return t
+
+
+dumpLc :: ( MonadIO m, HasHkcConfig c
+          , Binary a, PP.Pretty a, ToJSON a )
+       => c -> Map FilePath a -> m (Map FilePath a)
+dumpLc conf t = do
+  let odir = (conf^.hkcBuildDir) </> "linear"
+  when (conf^.hkcDumpLcPretty) (dumpPretties odir t)
+  when (conf^.hkcDumpLcBin)    (dumpBinaries odir t)
+  when (conf^.hkcDumpLcJson)   (dumpJsons odir t)
+  when (conf^.hkcDumpLcYaml)   (dumpYamls odir t)
+  return t
 
 
 dumpPretties :: (MonadIO m, PP.Pretty a)
@@ -126,9 +175,10 @@ dumpPretty :: (MonadIO m, PP.Pretty a)
            => FilePath -> (FilePath, a) -> m (FilePath, a)
 dumpPretty odir i@(fp, o) = do
   let fp' = odir </> takeBaseName fp <.> "txt"
-  liftIO $ bracket
-    (openFile fp' WriteMode) hClose
-    (\h -> PP.hPutDoc h (PP.pretty o))
+  liftIO $ do
+    createDirectoryIfMissing True odir 
+    bracket (openFile fp' WriteMode) hClose
+            (\h -> PP.hPutDoc h (PP.pretty o))
     
   return i
 
@@ -136,22 +186,28 @@ dumpPretty odir i@(fp, o) = do
 dumpBinary :: (MonadIO m, Binary a)
            => FilePath -> (FilePath, a) -> m (FilePath, a)
 dumpBinary odir i@(fp, o) = do
-  let fp' = odir </> takeBaseName fp 
-  liftIO $ encodeFile fp' o
+  let fp' = odir </> takeBaseName fp <.> "bin"
+  liftIO $ do
+    createDirectoryIfMissing True odir 
+    encodeFile fp' o
   return i
 
 
 dumpJson :: (MonadIO m, ToJSON a)
          => FilePath -> (FilePath, a) -> m (FilePath, a)
 dumpJson odir i@(fp, o) = do
-  let fp' = odir </> takeBaseName fp <.> ".json"
-  liftIO $ LBS.writeFile fp' (JSN.encode o)
+  let fp' = odir </> takeBaseName fp <.> "json"
+  liftIO $ do
+    createDirectoryIfMissing True odir 
+    LBS.writeFile fp' (JSN.encode o)
   return i
 
 
 dumpYaml :: (MonadIO m, ToJSON a)
          => FilePath -> (FilePath, a) -> m (FilePath, a)
 dumpYaml odir i@(fp, o) = do
-  let fp' = odir </> takeBaseName fp <.> ".yaml"
-  liftIO $ Y.encodeFile fp' o
+  let fp' = odir </> takeBaseName fp <.> "yaml"
+  liftIO $ do
+    createDirectoryIfMissing True odir 
+    Y.encodeFile fp' o
   return i
