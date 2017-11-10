@@ -8,6 +8,7 @@
 module Language.Hawk.Syntax.Location where
 
 import Control.Lens
+import Data.Aeson
 import Data.Binary
 import Data.Data
 import Data.Monoid
@@ -125,6 +126,17 @@ instance P.Pretty Position where
 -- Binary Instances
 
 instance Binary a => Binary (L a)
+instance FromJSON a => FromJSON (L a)
+instance ToJSON a => ToJSON (L a)
+
 instance Binary Loc
+instance FromJSON Loc
+instance ToJSON Loc
+
 instance Binary Region
+instance FromJSON Region
+instance ToJSON Region
+
 instance Binary Position
+instance FromJSON Position
+instance ToJSON Position

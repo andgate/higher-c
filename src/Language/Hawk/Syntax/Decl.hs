@@ -1,6 +1,8 @@
 {-# Language DeriveGeneric, LambdaCase, OverloadedStrings #-}
 module Language.Hawk.Syntax.Decl where
 
+import Data.Aeson
+import Data.Binary
 import Data.Default.Class
 import Data.Text
 import Language.Hawk.Syntax.DataDecl
@@ -21,6 +23,10 @@ data Decl
   deriving (Show, Generic)
 
 
+instance Binary Decl
+instance FromJSON Decl
+instance ToJSON Decl
+
 instance Default Decl where
   def = EmptyDecl
 
@@ -33,10 +39,18 @@ data Foreign
   | ForeignExport ForeignType Text
   deriving (Show, Generic)
 
+instance Binary Foreign
+instance FromJSON Foreign
+instance ToJSON Foreign
+
 
 data ForeignType =
   ForeignC
   deriving (Show, Eq, Generic)
+
+instance Binary ForeignType
+instance FromJSON ForeignType
+instance ToJSON ForeignType
 
 -- -----------------------------------------------------------------------------
 -- | Fixity
@@ -48,6 +62,10 @@ data Fixity
   | Prefix
   | Postfix
   deriving (Show, Eq, Generic)
+
+instance Binary Fixity
+instance FromJSON Fixity
+instance ToJSON Fixity
 
 
 -- -----------------------------------------------------------------------------

@@ -2,6 +2,7 @@
 module Language.Hawk.Syntax.Type where
 
 import Control.Lens
+import Data.Aeson
 import Data.Binary
 import Data.Data
 import Data.Default.Class
@@ -32,8 +33,10 @@ data Type
 
 makeClassyPrisms ''Type
 
-data Scheme = Forall [Text] Type
-  deriving (Show, Eq, Ord)
+instance Binary Type
+instance Plated Type
+instance FromJSON Type
+instance ToJSON Type
 
 
 instance HasKind Type where
@@ -49,9 +52,13 @@ instance HasKind Type where
     TLoc _ t -> kind t
     TParen t -> kind t
 
+  
+data Scheme = Forall [Text] Type
+  deriving (Show, Eq, Ord, Generic)
 
-
-
+instance Binary Scheme
+instance FromJSON Scheme
+instance ToJSON Scheme
 
 -- -----------------------------------------------------------------------------
 -- | "Smart" Constructors
@@ -86,9 +93,6 @@ tLoli = TKind k . TCon $ "(-o)"
 
 -- -----------------------------------------------------------------------------
 -- | Instances
-
-instance Binary Type
-
 
 instance Default Type where
   def = tUnit

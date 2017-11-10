@@ -57,6 +57,7 @@ data HkcConfig
     , _hkcDumpLLVM     :: Bool
     }    
 
+
 makeClassy ''HkcConfig
 
 

@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, DeriveDataTypeable, LambdaCase #-}
 module Language.Hawk.Syntax.Prim where
 
+import Data.Aeson
 import Data.Binary
 import Data.Data
 import Data.Text (Text, pack)
@@ -61,15 +62,11 @@ instance PP.Pretty PrimInstr where
 
 
 
--- Binary ---------------------------------------------------------------------
+-- Serialize ---------------------------------------------------------------------
 
-instance Binary PrimInstr where
-  get =
-    toEnum . fromIntegral <$> getWord8
-      
-  put =
-    putWord8 . fromIntegral . fromEnum
-
+instance Binary PrimInstr
+instance FromJSON PrimInstr
+instance ToJSON PrimInstr
 
 -- String
 

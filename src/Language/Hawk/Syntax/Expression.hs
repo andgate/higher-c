@@ -14,6 +14,7 @@
 module Language.Hawk.Syntax.Expression where
 
 import Control.Lens
+import Data.Aeson
 import Data.Binary (Binary)
 import Data.Data
 import Data.Data.Lens (uniplate)
@@ -75,7 +76,8 @@ instance Default Exp where
 
 instance Binary Exp
 instance Plated Exp
-
+instance FromJSON Exp
+instance ToJSON Exp
 
 -- -----------------------------------------------------------------------------
 -- | "Smart" Constructors

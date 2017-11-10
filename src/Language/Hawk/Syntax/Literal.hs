@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric, DeriveDataTypeable, LambdaCase #-}
 module Language.Hawk.Syntax.Literal where
 
+import Data.Aeson
 import Data.Binary
 import Data.Data
 import GHC.Generics (Generic)
@@ -17,7 +18,11 @@ data Lit
   deriving (Show, Read, Eq, Ord, Data, Typeable, Generic)
 
 
+-- Serialization
 instance Binary Lit
+instance FromJSON Lit
+instance ToJSON Lit
+
 
 instance Pretty Lit where
   pretty = \case

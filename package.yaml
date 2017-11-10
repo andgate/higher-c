@@ -54,6 +54,7 @@ executables:
 library:
   source-dirs: src
   dependencies:
+    - aeson
     - array
     - base
     - binary
@@ -97,6 +98,7 @@ library:
     - utf8-string
     - vector
     - wl-pprint-text
+    - yaml
 
   exposed-modules:
     - Language.Hawk.Compile

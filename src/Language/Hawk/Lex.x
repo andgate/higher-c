@@ -7,6 +7,8 @@
 
 module Language.Hawk.Lex where
 
+
+import Prelude hiding (lex)
 import Control.Lens
 import Control.Monad
 import Control.Monad.Chronicle
@@ -402,30 +404,27 @@ alexInputPrevChar :: AlexInput -> Char
 alexInputPrevChar = prevChar              
 
 
-{-| Convert a text representation of a module into a stream of tokens
 
-    `lexer` keeps track of position and returns the remainder of the input if
-    lexing fails.
--}
-lexer :: ( MonadChronicle (Bag e) m, AsLxErr e )
+lexMany :: ( MonadChronicle (Bag e) m, AsLxErr e )
       => Map FilePath Text -> m (Map FilePath [[Token]])
-lexer src = do
-  let src' = Map.toList src
-  result <- mapM (fmap Fmt.layout . lexText) src'
-  return $ Map.fromList result
+lexMany src =
+  Map.fromList <$> mapM (fmap Fmt.layout . lexFile) (Map.toList src)
+
+-- Simple token lexing
+lexFile :: ( MonadChronicle (Bag e) m, AsLxErr e )
+      => (FilePath, Text) -> m (FilePath, [Token])
+lexFile (fp, text) = do
+  toks <- evalStateT (start text)
+                     ((def :: LexState) & lexFilePath .~ fp)
+  return (fp, toks)
 
   where
-    lexText (fp, text) = do
-      toks <- evalStateT (start text)
-                         ((def :: LexState) & lexFilePath .~ fp)
-      return (fp, toks)	   
-
-    start = go .       AlexInput '\n' []
+    start = go . AlexInput '\n' []
 
     go input = do
       sc <- use lexStartcode
       case alexScan input sc of
-        AlexEOF                        -> do
+        AlexEOF                         -> do
             yieldTaggedTok TokenEof ""
             reverse <$> use lexTokAcc
 

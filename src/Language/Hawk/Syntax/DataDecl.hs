@@ -4,6 +4,7 @@
   #-}
 module Language.Hawk.Syntax.DataDecl where
 
+import Data.Aeson
 import Data.Binary
 import Data.Data
 import Data.Text
@@ -34,10 +35,24 @@ data RecField =
 
 
 -- Helper Instances -----------------------------------------------------------------------
+
+-- Binary Serialization
 instance Binary DataDecl
 instance Binary ConDecl
 instance Binary RecField
 
+-- From JSON
+instance FromJSON DataDecl
+instance FromJSON ConDecl
+instance FromJSON RecField
+
+-- To JSON
+instance ToJSON DataDecl
+instance ToJSON ConDecl
+instance ToJSON RecField
+
+
+-- Pretty Printing
 instance PP.Pretty DataDecl where
     pretty (DataDecl name body) =
       PP.textStrict "Data Decl:"

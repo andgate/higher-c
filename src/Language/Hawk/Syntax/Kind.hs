@@ -1,6 +1,8 @@
 {-# LANGUAGE LambdaCase, DeriveGeneric, DeriveDataTypeable, OverloadedStrings #-}
- module Language.Hawk.Syntax.Kind where
+module Language.Hawk.Syntax.Kind where
 
+import Control.Lens
+import Data.Aeson
 import Data.Binary
 import Data.Data
 import GHC.Generics (Generic)
@@ -35,6 +37,9 @@ ksub _ _ = False
 
 
 instance Binary Kind
+instance Plated Kind
+instance FromJSON Kind
+instance ToJSON Kind
 
 
 instance PP.Pretty Kind where
