@@ -9,14 +9,16 @@ module Language.Hawk.Compile
         , module Language.Hawk.Compile.Config
         ) where
 
-import Control.Lens
+
+import Control.Exception
+import Control.Lens hiding ((<.>))
 import Control.Monad.Chronicle
 import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Log
 import Control.Monad.Reader
 import Control.Monad.State (MonadState)
 import Control.Monad.Trans.Control
-import Data.Aeson
+import Data.Aeson (ToJSON, FromJSON)
 import Data.Bag
 import Data.Binary
 import Data.Foldable
@@ -34,8 +36,12 @@ import Language.Hawk.Compile.Error
 import Language.Hawk.Compile.Message
 import Language.Hawk.Compile.Monad
 import Text.PrettyPrint.Leijen.Text (pretty)
+import System.FilePath ((</>), (<.>), takeBaseName)
+import System.IO (hClose, openFile, IOMode(..))
 
 
+import qualified Data.Aeson            as JSN
+import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.ByteString       as BS
 import qualified Data.Text             as T
 import qualified Data.Text.IO          as T
@@ -67,12 +73,11 @@ compile conf = do
 
   return ()
 
-
 dumpLx :: ( MonadIO m, HasHkcConfig c
           , Binary a, PP.Pretty a, ToJSON a )
-        => c -> Map FilePath a -> m (Map FilePath a)
+       => c -> Map FilePath a -> m (Map FilePath a)
 dumpLx conf t = do
-  let odir = conf ^. hkcBuildDir
+  let odir = (conf^.hkcBuildDir) </> "lex"
   when (conf^.hkcDumpLxPretty) (dumpPretties odir t)
   when (conf^.hkcDumpLxBin)    (dumpBinaries odir t)
   when (conf^.hkcDumpLxJson)   (dumpJsons odir t)
@@ -84,7 +89,7 @@ dumpPs :: ( MonadIO m, HasHkcConfig c
           , Binary a, PP.Pretty a, ToJSON a )
        => c -> Map FilePath a -> m (Map FilePath a)
 dumpPs conf t = do
-  let odir = conf ^. hkcBuildDir
+  let odir = (conf^.hkcBuildDir) </> "parse"
   when (conf^.hkcDumpPsPretty) (dumpPretties odir t)
   when (conf^.hkcDumpPsBin)    (dumpBinaries odir t)
   when (conf^.hkcDumpPsJson)   (dumpJsons odir t)
@@ -108,20 +113,21 @@ dumpBinaries odir =
 dumpJsons :: (MonadIO m, ToJSON a)
            => FilePath -> Map FilePath a -> m ()
 dumpJsons odir =
-  undefined
+  mapM_ (dumpJson odir) . Map.toList
 
 
 dumpYamls :: (MonadIO m, ToJSON a)
            => FilePath -> Map FilePath a -> m ()
 dumpYamls odir =
-  undefined
-
+  mapM_ (dumpYaml odir) . Map.toList
+  
 
 dumpPretty :: (MonadIO m, PP.Pretty a)
            => FilePath -> (FilePath, a) -> m (FilePath, a)
 dumpPretty odir i@(fp, o) = do
+  let fp' = odir </> takeBaseName fp <.> "txt"
   liftIO $ bracket
-    (openFile (odir</>fp) WriteMode) hclose
+    (openFile fp' WriteMode) hClose
     (\h -> PP.hPutDoc h (PP.pretty o))
     
   return i
@@ -130,5 +136,22 @@ dumpPretty odir i@(fp, o) = do
 dumpBinary :: (MonadIO m, Binary a)
            => FilePath -> (FilePath, a) -> m (FilePath, a)
 dumpBinary odir i@(fp, o) = do
-  liftIO $ encodeFile fp o
+  let fp' = odir </> takeBaseName fp 
+  liftIO $ encodeFile fp' o
+  return i
+
+
+dumpJson :: (MonadIO m, ToJSON a)
+         => FilePath -> (FilePath, a) -> m (FilePath, a)
+dumpJson odir i@(fp, o) = do
+  let fp' = odir </> takeBaseName fp <.> ".json"
+  liftIO $ LBS.writeFile fp' (JSN.encode o)
+  return i
+
+
+dumpYaml :: (MonadIO m, ToJSON a)
+         => FilePath -> (FilePath, a) -> m (FilePath, a)
+dumpYaml odir i@(fp, o) = do
+  let fp' = odir </> takeBaseName fp <.> ".yaml"
+  liftIO $ Y.encodeFile fp' o
   return i

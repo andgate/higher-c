@@ -9,6 +9,7 @@
 module Language.Hawk.Lex.Token where
 
 import Control.Lens
+import Data.Aeson
 import Data.Binary hiding (encode)
 import Data.Data
 import Data.Text (Text, pack)
@@ -76,7 +77,12 @@ instance PP.Pretty TokenClass where
 
 
 -- -----------------------------------------------------------------------------
--- Binary Instances
+-- Serialization Instances
 
 instance Binary Token
+instance FromJSON Token
+instance ToJSON Token
+
 instance Binary TokenClass
+instance FromJSON TokenClass
+instance ToJSON TokenClass
