@@ -18,8 +18,8 @@ makeClassyPrisms ''NcErr
 instance Pretty NcErr where
     pretty = \case
       UndeclaredNameFound n l ->
-        PP.textStrict "Undeclared name found"
+        PP.pretty l
+          PP.<+> PP.textStrict ": Undeclared name found"
           PP.<+> PP.dquotes (PP.textStrict n)
-          PP.<+> PP.pretty l
 
       UnknownNcErr -> PP.text "unknown namechecker error"
