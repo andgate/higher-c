@@ -66,10 +66,9 @@ instance HasRegion Token where
 
 instance PP.Pretty Token where
     pretty t =
-      PP.textStrict "Token"
-        <+> pretty (t^.tokClass)
-        <+> PP.dquotes (PP.textStrict (t^.tokText))
-        <+> PP.dquotes (pretty (t^.tokLoc))
+      PP.dquotes (PP.textStrict (t^.tokText))
+        PP.<> PP.textStrict ":"
+        PP.<> pretty (t^.tokLoc)
 
 instance PP.Pretty TokenClass where
     pretty tc =

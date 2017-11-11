@@ -1,4 +1,4 @@
-resolver: lts-9.12
+resolver: nightly-2017-11-10
 
 packages:
 - '.'
@@ -7,4 +7,4 @@ extra-deps:
 nix:
   enable: true
   pure: true
-  packages: [binutils, llvm_4, zlib, ]
+  packages: [binutils, llvm_5, zlib, ]

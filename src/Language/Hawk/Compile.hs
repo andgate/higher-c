@@ -27,8 +27,8 @@ import Data.Maybe (isJust)
 
 import Language.Hawk.Load
 import Language.Hawk.Parse
-import Language.Hawk.Lex.Token
 import Language.Hawk.Lex
+import Language.Hawk.Lex.Token
 import Language.Hawk.Syntax
 
 import Language.Hawk.Compile.Config
@@ -69,8 +69,9 @@ compile
 compile conf = do
   condemn $
     loadFiles (conf^.hkcSrcFiles)
-      >>= lexMany    >>= dumpLx conf
-      >>= parseMany  >>= dumpPs conf
+      >>= lexMany             >>= dumpLx conf
+      >>= parseMany           >>= dumpPs conf
+      >>= Nc.namecheck        >>= dumpNc conf
       
 
   return ()

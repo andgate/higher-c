@@ -428,8 +428,11 @@ lexFile (fp, text) = do
             yieldTaggedTok TokenEof ""
             reverse <$> use lexTokAcc
 
-        AlexError (AlexInput p cs text) ->
-            disclose $ One (_UnproducibleToken # (p, show cs, text))
+        AlexError (AlexInput p cs text) -> do
+	    fp <- use lexFilePath
+	    r  <- use lexRegion
+	    let l = Loc fp r
+            disclose $ One (_UnproducibleToken # (show cs, l))
         
         AlexSkip  input' len           -> do
             disclose $ One (_IllegalLexerSkip # ())
