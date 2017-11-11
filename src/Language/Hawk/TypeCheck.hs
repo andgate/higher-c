@@ -357,8 +357,8 @@ inferTop env ((name, ex):xs) = do
 
 
 typecheck :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
-            , MonadChronicle (Bag e) m, AsTcErr e )
-         => Map FilePath [Decl] -> m (Map FilePath [Decl])
+             , MonadChronicle (Bag e) m, AsTcErr e )
+          => Map FilePath [Decl] -> m (Map FilePath [Decl])
 typecheck ds = do
   let exSig (Sig n ty) ns = (n, Forall [] ty):ns
       exSig _          ns = ns
@@ -371,6 +371,7 @@ typecheck ds = do
       env = Env.fromList ts
       
   env' <- inferTop env es
+  logInfo (_TcComplete # ())
   return ds
 
 
@@ -406,9 +407,27 @@ unifies :: (MonadChronicle (Bag e) m, AsTcErr e)
 unifies t1 t2
   | t1 == t2 = return emptySubst
   | otherwise = case (t1, t2) of
+      -- Unify variables
       (TVar v, t) -> v `bind` t
       (t, TVar v) -> v `bind` t
+
+      -- Unify arrows
       (TArr t1 t2, TArr t3 t4) -> unifyMany [t1,t2] [t3,t4]
+      (TLoli t1 t2, TLoli t3 t4) -> unifyMany [t1,t2] [t3,t4]
+
+      -- Unify kinded types
+      -- This should probably test kinds too
+      (TKind k t1, t2) -> unifies t1 t2
+      (t1, TKind k t2) -> unifies t1 t2
+
+      -- Unify located types
+      (TLoc l t1, t2) -> unifies t1 t2
+      (t1, TLoc l t2) -> unifies t1 t2
+
+      -- Unify types in parens
+      (TParen t1, t2) -> unifies t1 t2
+      (t1, TParen t2) -> unifies t1 t2
+
       (t1, t2) -> disclose $ One (_UnificationFail # (t1, t2))
 
 

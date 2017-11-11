@@ -1,18 +1,25 @@
 {-# LANGUAGE  OverloadedStrings
             , TemplateHaskell
+            , LambdaCase
   #-}
 module Language.Hawk.TypeCheck.Message where
 
 import Control.Lens
 import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
+import qualified Text.PrettyPrint.Leijen.Text as P
+
 data TcMsg
-  = TypeCheckFail
-  | TypeCheckSuccess
+  = TcComplete
+  | TcUndefined
   deriving(Show)
 
 makeClassyPrisms ''TcMsg
 
 instance Pretty TcMsg where
-    pretty msg =
-      undefined
+    pretty = \case
+      TcComplete ->
+        P.textStrict "Typechecker has completed."
+
+      TcUndefined ->
+        undefined
