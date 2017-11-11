@@ -60,9 +60,9 @@ parseMany :: ( MonadChronicle (Bag e) m, AsPsErr e
              , MonadLog (WithSeverity msg) m, AsPsMsg msg )
           => Map FilePath [[Token]] -> m (Map FilePath [Decl])
 parseMany toks = do
-  decls <- Map.fromList <$> mapM parseFile (Map.toList toks)
+  decls <- mapM parseFile (Map.toList toks)
   logInfo (_ParseFinished # ())
-  return decls
+  return $ Map.fromList decls
 
 
 parseFile :: ( MonadChronicle (Bag e) m, AsPsErr e

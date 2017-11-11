@@ -40,10 +40,13 @@ namecheck ds = do
       exExp (Def n e) es = e:es
       exExp _         es = es
 
-      env = Env.fromList $ foldr exName [] $ concat $ Map.elems ds
+      ns = foldr exName [] $ concat $ Map.elems ds
+      env = Env.fromList ns
       es = foldr exExp [] $ concat $ Map.elems ds
 
+  logInfo (_NcStarted # ns)
   mapM_ (validate (env,mempty)) es
+  logInfo (_NcFinished # ())
   return ds
 
 
@@ -62,11 +65,13 @@ validate s@(env, l) = \case
 
   ELam n e -> do
     let env' = Env.insert n (Env.push env)
+    logInfo (_NcHit # (n, l))
     validate (env', l) e
 
   ELet (n, e1) e2 -> do
     validate s e1
     let env' = Env.insert n (Env.push env)
+    logInfo (_NcHit # (n, l))
     validate (env', l) e2
 
   ELit _ -> return () -- Literals cannot contain names
