@@ -41,56 +41,54 @@ namecheck ds = do
       env = Env.fromList $ foldr exName [] $ concat $ Map.elems ds
       es = foldr exExp [] $ concat $ Map.elems ds
 
-  mapM_ (validate env) es 
+  mapM_ (validate (env,mempty)) es
   return ds
 
 
 validate :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
-             , MonadChronicle (Bag e) m, AsNcErr e
-             ) => Env -> Exp -> m  ()
-validate env = \case
-  e@(EVar n) ->
+            , MonadChronicle (Bag e) m, AsNcErr e
+            ) => (Env, Loc) -> Exp -> m  ()
+validate s@(env, l) = \case
+  EVar n ->
     if env `Env.check` n 
       then return ()
-      else confess $ One (_UndeclaredNameFound # (n, e))
+      else confess $ One (_UndeclaredNameFound # (n, l))
 
   EApp e1 e2 -> do
-    validate env e1
-    validate env e2
+    validate s e1
+    validate s e2
 
   ELam n e -> do
     let env' = Env.insert n (Env.push env)
-    validate env' e
+    validate (env', l) e
 
   ELet (n, e1) e2 -> do
-    validate env e1
+    validate s e1
     let env' = Env.insert n (Env.push env)
-    validate env' e2
+    validate (env', l) e2
 
   ELit _ -> return () -- Literals cannot contain names
 
-  e@(ECon n) ->
+  ECon n ->
     if env `Env.check` n
        then return ()
-       else confess $ One (_UndeclaredNameFound # (n, e))
+       else confess $ One (_UndeclaredNameFound # (n, l))
             
   EPrim _ -> return () -- Primitive instructions cannot contain names
 
   EIf e1 e2 e3 -> do
-    validate env e1
-    validate env e2
-    validate env e3
+    validate s e1
+    validate s e2
+    validate s e3
 
 
-  EDup e -> validate env e
+  EDup e -> validate s e
 
-  EFree n e ->
-    let env' = Env.delete n env
-    in validate env' e
+  EFree n -> validate s e
 
-  EType _ e -> validate env e
+  EType _ e -> validate s e
 
-  ETLit _ e -> validate env e
-  ELoc _ e -> validate env e
+  ETLit _ e -> validate s e
+  ELoc l' e -> validate (env, l') e
 
-  EParen e -> validate env e
+  EParen e -> validate s e
