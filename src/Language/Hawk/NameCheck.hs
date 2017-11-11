@@ -33,6 +33,8 @@ namecheck :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
              ) => Map FilePath [Decl] -> m (Map FilePath [Decl])
 namecheck ds = do
   let exName (Def n _) ns = n:ns
+      exName (Foreign (ForeignImport _ _ n _)) ns
+                          = n:ns
       exName _         ns = ns
   
       exExp (Def n e) es = e:es

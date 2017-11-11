@@ -59,8 +59,10 @@ import qualified Text.Earley            as E
 parseMany :: ( MonadChronicle (Bag e) m, AsPsErr e
              , MonadLog (WithSeverity msg) m, AsPsMsg msg )
           => Map FilePath [[Token]] -> m (Map FilePath [Decl])
-parseMany toks =
-  Map.fromList <$> mapM parseFile (Map.toList toks)
+parseMany toks = do
+  decls <- Map.fromList <$> mapM parseFile (Map.toList toks)
+  logInfo (_ParseFinished # ())
+  return decls
 
 
 parseFile :: ( MonadChronicle (Bag e) m, AsPsErr e
@@ -68,6 +70,7 @@ parseFile :: ( MonadChronicle (Bag e) m, AsPsErr e
           => (FilePath, [[Token]]) -> m (FilePath, [Decl])
 parseFile (fp, toks) = do
   decls <- mapM (parse fp) toks
+  logInfo (_ParseSuccess # fp)
   return (fp, decls)
 
 
@@ -83,8 +86,7 @@ parse fp toks = do
     handleResult (parses, r@(Report _ expected unconsumed)) =
       case parses of
         []  -> disclose $ One (_UnexpectedToken # unconsumed)
-        [p] -> do logInfo (_ParseSuccess # fp) -- Need fullpath for this message
-                  return p
+        [p] -> return p
                    
         -- This will only happen if the grammar is wrong
         ps -> disclose $ One (_AmbiguousGrammar # ps)

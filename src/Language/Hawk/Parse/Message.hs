@@ -12,6 +12,7 @@ import qualified Text.PrettyPrint.Leijen.Text as P
 
 data PsMsg
   = ParseSuccess FilePath
+  | ParseFinished
   | UndefinedParseMsg
   deriving(Show)
 
@@ -22,7 +23,12 @@ instance Pretty PsMsg where
     pretty msg =
       case msg of
         ParseSuccess fp ->
-            P.textStrict "Parsed" <+> P.textStrict (pack fp)
+            P.textStrict "Parsed"
+              P.<+> P.dquotes (P.textStrict (pack fp))
+              P.<>  P.textStrict "."
+
+        ParseFinished ->
+            P.textStrict "Parsing completed."
     
         UndefinedParseMsg ->
             undefined
