@@ -84,7 +84,9 @@ validate s@(env, l) = \case
 
   EDup e -> validate s e
 
-  EFree n -> validate s e
+  EFree n e ->
+    let env' = Env.insert n env
+    in validate (env', l) e
 
   EType _ e -> validate s e
 

@@ -19,7 +19,7 @@ instance Pretty NcErr where
     pretty = \case
       UndeclaredNameFound n l ->
         PP.pretty l
-          PP.<+> PP.textStrict ": Unknown symbol encountered"
+          PP.<> PP.textStrict ": Unknown symbol encountered"
           PP.<+> PP.dquotes (PP.textStrict n)
 
-      UnknownNcErr -> PP.text "unknown namechecker error"
+      UnknownNcErr -> PP.text "Unknown namechecker error."

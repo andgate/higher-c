@@ -59,6 +59,16 @@ data Exp
 
 
 
+class HasVar a where
+  var :: a -> Maybe Text
+
+instance HasVar Exp where
+  var = \case
+    EVar n -> Just n
+    ECon n -> Just n
+    _      -> Nothing
+
+
 instance HasKind Exp where
   kind = \case
     EType t _ -> kind t
