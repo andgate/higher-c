@@ -245,6 +245,28 @@ normalize (Forall _ body) = Forall (map (pack . snd) ord) (normtype body)
 --ops :: Operator -> Type
 
 
+inferLit :: Lit -> Type
+inferLit = \case
+  IntLit _   -> TCon "Int"
+  FloatLit _ -> TCon "Float"
+  CharLit _  -> TCon "Char"
+  BoolLit _  -> TCon "Bool"
+
+
+inferPrimInstr :: PrimInstr -> Type
+inferPrimInstr = \case
+  PrimAdd  -> tFun2 tInt tInt tInt
+  PrimFAdd -> tFun2 tFloat tFloat tFloat
+  PrimSub  -> tFun2 tInt tInt tInt
+  PrimFSub -> tFun2 tFloat tFloat tFloat
+  PrimMul  -> tFun2 tInt tInt tInt
+  PrimFMul -> tFun2 tFloat tFloat tFloat
+  PrimDiv  -> tFun2 tInt tInt tInt
+  PrimUDiv -> error "Unsigned division not implemented in typechecker."
+  PrimSDiv -> error "Short division not implemented in typechecker."
+  PrimFDiv -> tFun2 tFloat tFloat tFloat
+  PrimBad  -> error "Type checker encountered bad primitive instruction."
+
 infer :: ( MonadReader (Set Text) m
          , MonadState s m, HasInferState s
          , MonadLog (WithSeverity msg) m, AsTcMsg msg
@@ -285,6 +307,46 @@ infer = \case
            , t2
            )
 
+
+  ELit l ->
+    let t = inferLit l
+    in return (As.empty, [], t)
+    -- Maybe in the future, literals can take on multiple possible
+    -- types through constraints? So '32' can be use as a double or int.
+
+
+  ECon n -> do
+    tv <- fresh
+    -- Should this try to find the constructors type??
+    return (As.singleton n tv, [], tv)
+
+  EPrim i ->
+    let t = inferPrimInstr i
+    in return (As.empty, [], t)
+
+  EIf e1 e2 e3 -> do
+    (as1, cs1, t1) <- infer e1
+    (as2, cs2, t2) <- infer e2
+    (as3, cs3, t3) <- infer e3
+    return ( as1 `As.merge` as2 `As.merge` as3
+           , cs1 ++ cs2 ++ cs3 ++ [EqConst t1 tBool, EqConst t2 t3]
+           , t2
+           )
+
+  EDup e -> infer e
+
+  EFree n e -> infer e
+
+  EType t e -> do
+    (as, cs, t') <- infer e
+    return (as, cs ++ [EqConst t t'], t)
+
+  ETLit tlit e -> error "Type inferenece doesn't work on type literals"
+
+  ELoc l e -> infer e
+
+  EParen e -> infer e
+
 inferTop :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
             , MonadChronicle (Bag e) m, AsTcErr e )
          => Env -> [(Text, Exp)] -> m Env
@@ -293,6 +355,23 @@ inferTop env ((name, ex):xs) = do
   ty <- inferExp env ex
   inferTop (Env.extend env (name, ty)) xs
 
+
+typecheck :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
+            , MonadChronicle (Bag e) m, AsTcErr e )
+         => Map FilePath [Decl] -> m (Map FilePath [Decl])
+typecheck ds = do
+  let exSig (Sig n ty) ns = (n, Forall [] ty):ns
+      exSig _          ns = ns
+
+      exExp (Def n e) es = (n, e):es
+      exExp _         es = es
+
+      ts = foldr exSig [] $ concat $ Map.elems ds
+      es = foldr exExp [] $ concat $ Map.elems ds
+      env = Env.fromList ts
+      
+  env' <- inferTop env es
+  return ds
 
 
 -------------------------------------------------------------------------------

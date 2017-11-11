@@ -67,27 +67,27 @@ tcon_ :: Text -> Type
 tcon_ = TCon
 
 tFun1 :: Type -> Type -> Type
-tFun1 a b = TApp a (TApp tArr b)
+tFun1 = tArr
 
 tFun2 :: Type -> Type -> Type -> Type
 tFun2 a b c = tFun1 a (tFun1 b c)
 
 tLnFun1 :: Type -> Type -> Type
-tLnFun1 a b = TApp a (TApp tLoli b)
+tLnFun1 = tLoli
 
 tLnFun2 :: Type -> Type -> Type -> Type
 tLnFun2 a b c = tLnFun1 a (tLnFun1 b c)
 
-tUnit, tInt, tFloat, tChar, tArr, tLoli :: Type
+tUnit, tInt, tFloat, tChar, tBool :: Type
 tUnit  = TKind KPop . TCon $ "()"
 tInt   = TKind KPop . TCon $ "Int"
 tFloat = TKind KPop . TCon $ "Float"
 tChar  = TKind KPop . TCon $ "Char"
+tBool  = TKind KPop . TCon $ "Bool"
 
-tArr  = TKind k . TCon $ "(->)"
-  where k = KArr KStar (KArr KPop KPop)
-tLoli = TKind k . TCon $ "(-o)"
-  where k = KArr KPop (KArr KPop KPop)
+tArr, tLoli :: Type -> Type -> Type
+tArr  = TArr
+tLoli = TLoli
 
 
 

@@ -72,6 +72,7 @@ compile conf = do
       >>= lexMany             >>= dumpLx conf
       >>= parseMany           >>= dumpPs conf
       >>= Nc.namecheck        >>= dumpNc conf
+      >>= Tc.typecheck        >>= dumpTc conf
       
 
   return ()

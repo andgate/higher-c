@@ -16,25 +16,39 @@ import qualified Text.PrettyPrint.Leijen.Text as P
 
 data TcErr
   = UnificationFail Type Type
+  | UnificationMismatch [Type] [Type]
   | InfiniteType Text Type
   | UnboundVariable Text
   | AmbiguousType [Constraint]
-  | UnificationMismatch [Type] [Type]
-  | FoundBox
   deriving(Show)
 
 makeClassyPrisms ''TcErr
 
 instance Pretty TcErr where
     pretty = \case
+      UnificationFail have want ->
+        P.textStrict "Unification fail:"
+          P.<$>
+          P.indent 2
+          ( P.textStrict "have:" P.<+> pretty have
+            P.<$>
+            P.textStrict "want:" P.<+> pretty want
+          )
+      
       UnificationMismatch have want ->
         P.textStrict "Type mismatch:"
         P.<$>
         P.indent 2 
         ( P.textStrict "actual:" P.<+> pretty have
           P.<$>
-          P.textStrict "expected" P.<+> pretty want
+          P.textStrict "expected:" P.<+> pretty want
         )
+
+      InfiniteType n t ->
+        P.textStrict "Infinite type undefined"
 
       UnboundVariable v ->
         P.textStrict "Unbound variable encountered:" P.<+> pretty v
+
+      AmbiguousType cs ->
+        P.textStrict "ambigiuous type??"      
