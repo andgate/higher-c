@@ -165,26 +165,27 @@ inferType :: ( MonadReader (Set Text) m
              , MonadLog (WithSeverity msg) m, AsTcMsg msg
              , MonadChronicle (Bag e) m, AsTcErr e
              )
-          => Env -> Exp -> m (Subst, Type)
+          => Env -> Exp -> m (Subst, Type, Exp)
 inferType env ex = do
-  (as, cs, t) <- infer ex
+  (as, cs, t, ex') <- infer ex
   let unbounds = Set.fromList (As.keys as) `Set.difference` Set.fromList (Env.keys env)
   unless (Set.null unbounds)
          $ disclose $ One (_UnboundVariable # Set.findMin unbounds)
-  let cs' = [ExpInstConst t s | (x, s) <- Env.toList env, t <- As.lookup x as]
+  let cs' = [ ExpInstConst t s | (x, s) <- Env.toList env
+                               , t <- As.lookup x as ]
 
   subst <- solve (cs ++ cs')
-  return (subst, apply subst t)
+  return (subst, apply subst t, ex')
 
 
 -- | Solve for the toplevel type of an expression
 inferExp :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
             , MonadChronicle (Bag e) m, AsTcErr e
             )
-         => Env -> Exp -> m Scheme
+         => Env -> Exp -> m (Exp, Scheme)
 inferExp env ex = do
-  (subst, ty) <- runInfer (inferType env ex)
-  return $ closeOver $ apply subst ty
+  (subst, ty, ex') <- runInfer (inferType env ex)
+  return (ex', closeOver $ apply subst ty)
   
 
 
@@ -272,87 +273,106 @@ infer :: ( MonadReader (Set Text) m
          , MonadLog (WithSeverity msg) m, AsTcMsg msg
          , MonadChronicle (Bag e) m, AsTcErr e
          )
-      => Exp -> m (Assumption, [Constraint], Type)
+      => Exp -> m (Assumption, [Constraint], Type, Exp)
 infer = \case
   EVar x -> do
     tv <- fresh
-    return (As.singleton x tv, [], tv)
+    -- Couldn't this lookup a variables type here,
+    -- instead of introducing another variable for the constraint solver?
+    return (As.singleton x tv, [], tv, EType tv $ EVar x)
 
 
   EApp e1 e2 -> do
-    (as1, cs1, t1) <- infer e1
-    (as2, cs2, t2) <- infer e2
+    (as1, cs1, t1, e1') <- infer e1
+    (as2, cs2, t2, e2') <- infer e2
     tv <- fresh
     return ( as1 `As.merge` as2
            , cs1 ++ cs2 ++ [EqConst t1 (t2 `TArr` tv)]
            , tv
+           , EType tv $ EApp e1' e2'
            )
 
 
   ELam x e -> do
     tv@(TVar a) <- fresh
-    (as, cs, t) <- extendMSet a (infer e)
+    (as, cs, t, e') <- extendMSet a (infer e)
     return ( as `As.remove` x
            , cs ++ [EqConst t' tv | t' <- As.lookup x as]
            , tv `TArr` t
+           , EType (tv `TArr` t) $ ELam x e'
            )
     
 
   ELet (x, e1) e2 -> do
-    (as1, cs1, t1) <- infer e1
-    (as2, cs2, t2) <- infer e2
+    (as1, cs1, t1, e1') <- infer e1
+    (as2, cs2, t2, e2') <- infer e2
     ms <- ask
     return ( as1 `As.merge` as2 `As.remove` x
            , cs1 ++ cs2 ++ [ImpInstConst t' ms t1 | t' <- As.lookup x as2]
            , t2
+           , EType t2 $ ELet (x, e1') e2'
            )
 
 
   ELit l ->
     let t = inferLit l
-    in return (As.empty, [], t)
+    in return (As.empty, [], t, EType t $ ELit l)
     -- Maybe in the future, literals can take on multiple possible
     -- types through constraints? So '32' can be use as a double or int.
 
 
   ECon n -> do
     tv <- fresh
-    -- Should this try to find the constructors type??
-    return (As.singleton n tv, [], tv)
+    -- Should look up constructors type here!
+    return (As.singleton n tv, [], tv, EType tv $ ECon n)
 
   EPrim i ->
     let t = inferPrimInstr i
-    in return (As.empty, [], t)
+    in return (As.empty, [], t, EType t $ EPrim i)
 
   EIf e1 e2 e3 -> do
-    (as1, cs1, t1) <- infer e1
-    (as2, cs2, t2) <- infer e2
-    (as3, cs3, t3) <- infer e3
+    (as1, cs1, t1, e1') <- infer e1
+    (as2, cs2, t2, e2') <- infer e2
+    (as3, cs3, t3, e3') <- infer e3
     return ( as1 `As.merge` as2 `As.merge` as3
            , cs1 ++ cs2 ++ cs3 ++ [EqConst t1 tBool, EqConst t2 t3]
            , t2
+           , EType t2 $ EIf e1' e2' e3'
            )
 
-  EDup e -> infer e
+  EDup e -> do
+    (as, cs, t, e') <- infer e
+    return (as, cs, t, EType t $ EDup e')
 
-  EFree n e -> infer e
+  EFree n e -> do
+    (as, cs, t, e') <- infer e
+    return (as, cs, t, EType t $ EFree n e')
 
   EType t e -> do
-    (as, cs, t') <- infer e
-    return (as, cs ++ [EqConst t t'], t)
+    (as, cs, t', e') <- infer e
+    return (as, cs ++ [EqConst t t'], t, e')
 
   ETLit tlit e -> error "Type inferenece doesn't work on type literals"
 
-  ELoc l e -> infer e
+  ELoc l e -> do
+    (as, cs, t, e') <- infer e
+    return (as, cs, t, ELoc l e')
 
-  EParen e -> infer e
+  EParen e -> do
+    (as, cs, t, e') <- infer e
+    return (as, cs, t, EType t $ EParen e')
+
+
+
 
 inferTop :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
             , MonadChronicle (Bag e) m, AsTcErr e )
-         => Env -> [(Text, Exp)] -> m Env
-inferTop env [] = return env
+         => Env -> [(Text, Exp)] -> m (Map Text (Exp, Type))
+-- Base case takes an environment and produces a map of text to exp, type
+inferTop env [] = return Map.empty
+-- Recursive part continuously 
 inferTop env ((name, ex):xs) = do
-  ty <- inferExp env ex
+  (e, ty) <- inferExp env ex
   inferTop (Env.extend env (name, ty)) xs
 
 
@@ -464,14 +484,22 @@ solve' :: ( MonadState s m, HasInferState s
           )
        => (Constraint, [Constraint]) -> m Subst
 solve' = \case
+  -- Equality Constraint
   (EqConst t1 t2, cs) -> do
+    -- Unify t1 with t2.
     su1 <- unifies t1 t2
     su2 <- solve (apply su1 cs)
     return (su2 `compose` su1)
 
+  -- Implicit Instance Constraint
   (ImpInstConst t1 ms t2, cs) ->
+    -- Generalize t2 with tvar set ms, and
+    -- add new constraint equating the two.
     solve (ExpInstConst t1 (generalize ms t2) : cs)
 
+  -- Explicit Instance Constraint
   (ExpInstConst t s, cs) -> do
-    s' <- instantiate s
-    solve (EqConst t s' : cs)
+    -- Instantiate the given scheme to a type.
+    t' <- instantiate s
+    -- Unify the instantiated scheme with type t.
+    solve (EqConst t t' : cs)
