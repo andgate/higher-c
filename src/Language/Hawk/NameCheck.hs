@@ -57,7 +57,7 @@ validate s@(env, l) = \case
   EVar n ->
     if env `Env.check` n 
       then return ()
-      else confess $ One (_UndeclaredNameFound # (n, l))
+      else disclose $ One (_UndeclaredNameFound # (n, l))
 
   EApp e1 e2 -> do
     validate s e1
@@ -79,7 +79,7 @@ validate s@(env, l) = \case
   ECon n ->
     if env `Env.check` n
        then return ()
-       else confess $ One (_UndeclaredNameFound # (n, l))
+       else disclose $ One (_UndeclaredNameFound # (n, l))
             
   EPrim _ -> return () -- Primitive instructions cannot contain names
 

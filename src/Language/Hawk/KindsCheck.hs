@@ -68,10 +68,10 @@ inferExp env = \case
   EType t e -> do
     (_, t') <- inferType env t
     e' <- inferExp env e
-    return $ EType t' e'
-    
+    return $ EType t' e'    
     
   e -> return e
+
 
 
 inferType :: (MonadChronicle (Bag e) m, AsKcErr e)

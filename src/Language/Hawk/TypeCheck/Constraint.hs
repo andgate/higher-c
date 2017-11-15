@@ -1,16 +1,10 @@
-{-# LANGUAGE  FlexibleInstances
-            , TypeSynonymInstances
-            , GeneralizedNewtypeDeriving
-  #-}
-module Language.Hawk.TypeCheck.Types where
+{-# LANGUAGE DeriveGeneric  #-}
+module Language.Hawk.TypeCheck.Constraint where
 
-import Data.Default.Class
-import Data.Map (Map)
 import Data.Set (Set)
 import Data.Text (Text)
-
+import GHC.Generics (Generic)
 import Language.Hawk.Syntax.Type
-import qualified Data.Map as Map
 
 data Constraint
 
@@ -28,12 +22,5 @@ data Constraint
     -- be instantiated.
   | ImpInstConst Type (Set Text) Type
 
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Generic)
 
-
-newtype Subst = Subst (Map Text Type)
-  deriving (Eq, Ord, Show, Monoid)
-
-
-instance Default Subst where
-  def = Subst Map.empty

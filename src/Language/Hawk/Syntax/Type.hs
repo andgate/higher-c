@@ -7,13 +7,16 @@ import Data.Binary
 import Data.Data
 import Data.Default.Class
 import Data.List (concatMap)
+import Data.Map (Map)
 import Data.Maybe (maybeToList)
+import Data.Set (Set)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Kind
 
+import qualified Data.Map as Map
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
 -- -----------------------------------------------------------------------------
@@ -59,6 +62,11 @@ data Scheme = Forall [Text] Type
 instance Binary Scheme
 instance FromJSON Scheme
 instance ToJSON Scheme
+
+
+
+
+
 
 -- -----------------------------------------------------------------------------
 -- | "Smart" Constructors

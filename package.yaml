@@ -158,9 +158,11 @@ library:
 
     - Language.Hawk.TypeCheck
     - Language.Hawk.TypeCheck.Assumption
+    - Language.Hawk.TypeCheck.Constraint
     - Language.Hawk.TypeCheck.Environment
     - Language.Hawk.TypeCheck.Error
-    - Language.Hawk.TypeCheck.Types
+    - Language.Hawk.TypeCheck.State
+    - Language.Hawk.TypeCheck.Substitution
 
     ## Extra, possibly seperate packages or upstream merges
     - Data.Bag

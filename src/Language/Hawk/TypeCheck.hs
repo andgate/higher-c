@@ -42,7 +42,7 @@ import Language.Hawk.TypeCheck.Environment (Env)
 import Language.Hawk.TypeCheck.Error
 import Language.Hawk.TypeCheck.Message
 import Language.Hawk.TypeCheck.State
-import Language.Hawk.TypeCheck.Types
+import Language.Hawk.TypeCheck.Substitution (Subst(..))
 
 
 import qualified Data.Map   as Map
@@ -50,55 +50,13 @@ import qualified Data.Set   as Set
 import qualified Data.Text  as T
 import qualified Language.Hawk.TypeCheck.Assumption as As
 import qualified Language.Hawk.TypeCheck.Environment as Env
+import qualified Language.Hawk.TypeCheck.Substitution as Subst
 
 
 
 -----------------------------------------------------------------------
--- Classes
+-- Free Type Variables
 -----------------------------------------------------------------------
-
-
-class Substitutable a where
-  apply :: Subst -> a -> a
-
-
-instance Substitutable Text where
-  apply (Subst s) a = tv
-    where t = TVar a
-          (TVar tv) = Map.findWithDefault t a s
-
-instance Substitutable Type where
-  apply s@(Subst s_map) = \case
-    t@(TVar a)   -> Map.findWithDefault t a s_map
-    TCon n       -> TCon n
-    TApp t1 t2   -> apply s t1 `TApp` apply s t2
-    TArr t1 t2   -> apply s t1 `TArr` apply s t2
-    TLoli t1 t2  -> apply s t1 `TLoli` apply s t2
-    TKind k t    -> TKind k $ apply s t
-    TLoc l t     -> TLoc l $ apply s t
-    TParen t     -> TParen $ apply s t
-
-
-instance Substitutable Scheme where
-  apply s@(Subst s_map) (Forall as t) = Forall as $ apply s t
-    where s' = Subst $ foldr Map.delete s_map as
-
-
-instance Substitutable Constraint where
-  apply s = \case
-    EqConst t1 t2          -> EqConst (apply s t1) (apply s t2)
-    ExpInstConst t sc      -> ExpInstConst (apply s t) (apply s sc)
-    ImpInstConst t1 ms t2  -> ImpInstConst (apply s t1) (apply s ms) (apply s t2)
-
-
-instance Substitutable a => Substitutable [a] where
-  apply = map . apply
-
-
-instance (Ord a, Substitutable a) => Substitutable (Set a) where
-  apply = Set.map . apply
-
-
 
 class FreeTypeVars a where
   ftv :: a -> Set Text
@@ -132,6 +90,9 @@ instance (Ord a, FreeTypeVars a) => FreeTypeVars (Set a) where
   ftv = foldr (Set.union . ftv) Set.empty
 
 
+-----------------------------------------------------------------------
+-- Active Type Variables
+-----------------------------------------------------------------------
 
 class ActiveTypeVars a where
   atv :: a -> Set Text
@@ -148,34 +109,54 @@ instance ActiveTypeVars a => ActiveTypeVars [a] where
 
 
 -----------------------------------------------------------------------
--- Inference
+-- Constraint Generation
 -----------------------------------------------------------------------
+
+data TypeResult
+  = TypeResult
+      { constraints :: [Constraint]
+      , assumptions :: Assumption
+      } deriving(Show)
+
+
+instance Monoid TypeResult where
+  mempty = TypeResult
+           { constraints = mempty
+           , assumptions = As.empty
+           }
+
+  mappend (TypeResult cs1 as1) (TypeResult cs2 as2)
+    = TypeResult
+        { constraints = cs1 `mappend` cs2
+        , assumptions = as1 `As.merge` as2
+        }
+
 
 -- | Run the inference monad
 runInfer :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
             , MonadChronicle (Bag e) m, AsTcErr e
             )
-         => ReaderT (Set Text) (StateT InferState m) a -> m a
-runInfer m = evalStateT (runReaderT m Set.empty) initInfer
+         => ReaderT (Set Text) (StateT TypeState m) a -> m a
+runInfer m = evalStateT (runReaderT m Set.empty) def
 
 
 
 inferType :: ( MonadReader (Set Text) m
-             , MonadState s m, HasInferState s
+             , MonadState s m, HasTypeState s
              , MonadLog (WithSeverity msg) m, AsTcMsg msg
              , MonadChronicle (Bag e) m, AsTcErr e
              )
           => Env -> Exp -> m (Subst, Type, Exp)
 inferType env ex = do
-  (as, cs, t, ex') <- infer ex
+  (t, e', TypeResult cs as) <- generateConstraints ex
   let unbounds = Set.fromList (As.keys as) `Set.difference` Set.fromList (Env.keys env)
   unless (Set.null unbounds)
          $ disclose $ One (_UnboundVariable # Set.findMin unbounds)
   let cs' = [ ExpInstConst t s | (x, s) <- Env.toList env
                                , t <- As.lookup x as ]
 
-  subst <- solve (cs ++ cs')
-  return (subst, apply subst t, ex')
+  s <- solve (cs ++ cs')
+  return (s, Subst.apply s t, Subst.apply s e')
 
 
 -- | Solve for the toplevel type of an expression
@@ -183,9 +164,9 @@ inferExp :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
             , MonadChronicle (Bag e) m, AsTcErr e
             )
          => Env -> Exp -> m (Exp, Scheme)
-inferExp env ex = do
-  (subst, ty, ex') <- runInfer (inferType env ex)
-  return (ex', closeOver $ apply subst ty)
+inferExp env e = do
+  (s, t, e') <- runInfer (inferType env e)
+  return (Subst.apply s e', closeOver $ Subst.apply s t)
   
 
 
@@ -206,19 +187,20 @@ genftv :: Int -> Type
 genftv n =
   TVar $ pack (letters !! n)
 
-fresh :: (MonadState s m, HasInferState s)
+
+fresh :: (MonadState s m, HasTypeState s)
       => m Type
 fresh = do
   countfv += 1
   uses countfv genftv
 
 
-instantiate :: (MonadState s m, HasInferState s)
+instantiate :: (MonadState s m, HasTypeState s)
             => Scheme -> m Type
 instantiate (Forall as t) = do
   as' <- mapM (const fresh) as
   let s = Subst $ Map.fromList $ zip as as'
-  return $ apply s t
+  return $ Subst.apply s t
 
 
 generalize :: Set Text -> Type -> Scheme
@@ -243,8 +225,6 @@ normalize (Forall _ body) = Forall (map (pack . snd) ord) (normtype body)
         Just x -> TVar (pack x)
         Nothing -> error "type variable not in signature."
 
---ops :: Operator -> Type
-
 
 inferLit :: Lit -> Type
 inferLit = \case
@@ -268,112 +248,132 @@ inferPrimInstr = \case
   PrimFDiv -> tFun2 tFloat tFloat tFloat
   PrimBad  -> error "Type checker encountered bad primitive instruction."
 
-infer :: ( MonadReader (Set Text) m
-         , MonadState s m, HasInferState s
-         , MonadLog (WithSeverity msg) m, AsTcMsg msg
-         , MonadChronicle (Bag e) m, AsTcErr e
-         )
-      => Exp -> m (Assumption, [Constraint], Type, Exp)
-infer = \case
+
+generateConstraints
+  :: ( MonadReader (Set Text) m
+     , MonadState s m, HasTypeState s
+     , MonadLog (WithSeverity msg) m, AsTcMsg msg
+     , MonadChronicle (Bag e) m, AsTcErr e )
+  => Exp -> m (Type, Exp, TypeResult)
+generateConstraints = \case
   EVar x -> do
     tv <- fresh
-    -- Couldn't this lookup a variables type here,
-    -- instead of introducing another variable for the constraint solver?
-    return (As.singleton x tv, [], tv, EType tv $ EVar x)
+    return ( tv
+           , EType tv $ EVar x
+           , TypeResult { constraints = []
+                        , assumptions = As.singleton x tv })
 
 
   EApp e1 e2 -> do
-    (as1, cs1, t1, e1') <- infer e1
-    (as2, cs2, t2, e2') <- infer e2
     tv <- fresh
-    return ( as1 `As.merge` as2
-           , cs1 ++ cs2 ++ [EqConst t1 (t2 `TArr` tv)]
-           , tv
+    (t1, e1', r1) <- generateConstraints e1
+    (t2, e2', r2) <- generateConstraints e2
+    return ( tv
            , EType tv $ EApp e1' e2'
+           , r1 <> r2 <> TypeResult { constraints = [EqConst t1 (t2 `TArr` tv)]
+                                    , assumptions = As.empty }
            )
 
 
   ELam x e -> do
     tv@(TVar a) <- fresh
-    (as, cs, t, e') <- extendMSet a (infer e)
-    return ( as `As.remove` x
-           , cs ++ [EqConst t' tv | t' <- As.lookup x as]
-           , tv `TArr` t
+    (t, e', TypeResult cs as) <- extendMSet a $ generateConstraints e
+    let as' = as `As.remove` x 
+    return ( tv `TArr` t
            , EType (tv `TArr` t) $ ELam x e'
+           , TypeResult { constraints = cs ++ [EqConst t' tv | t' <- As.lookup x as]
+                        , assumptions = as' }
            )
     
 
   ELet (x, e1) e2 -> do
-    (as1, cs1, t1, e1') <- infer e1
-    (as2, cs2, t2, e2') <- infer e2
+    (t1, e1', TypeResult cs1 as1) <- generateConstraints e1
+    (t2, e2', TypeResult cs2 as2) <- generateConstraints e2
     ms <- ask
-    return ( as1 `As.merge` as2 `As.remove` x
-           , cs1 ++ cs2 ++ [ImpInstConst t' ms t1 | t' <- As.lookup x as2]
-           , t2
+    return ( t2
            , EType t2 $ ELet (x, e1') e2'
+           , TypeResult { constraints = cs1 ++ cs2 ++ [ImpInstConst t' ms t1 | t' <- As.lookup x as2]
+                        , assumptions = as1 `As.merge` as2 `As.remove` x }
            )
 
 
   ELit l ->
     let t = inferLit l
-    in return (As.empty, [], t, EType t $ ELit l)
+    in return ( t
+              , EType t $ ELit l
+              , mempty)
     -- Maybe in the future, literals can take on multiple possible
     -- types through constraints? So '32' can be use as a double or int.
 
 
   ECon n -> do
     tv <- fresh
-    -- Should look up constructors type here!
-    return (As.singleton n tv, [], tv, EType tv $ ECon n)
+    -- Should look up constructors type here?
+    return ( tv
+           , EType tv $ ECon n
+           , TypeResult
+             { constraints = []
+             , assumptions = As.singleton n tv })
 
   EPrim i ->
     let t = inferPrimInstr i
-    in return (As.empty, [], t, EType t $ EPrim i)
+    in return ( t
+              , EType t $ EPrim i
+              , mempty)
 
   EIf e1 e2 e3 -> do
-    (as1, cs1, t1, e1') <- infer e1
-    (as2, cs2, t2, e2') <- infer e2
-    (as3, cs3, t3, e3') <- infer e3
-    return ( as1 `As.merge` as2 `As.merge` as3
-           , cs1 ++ cs2 ++ cs3 ++ [EqConst t1 tBool, EqConst t2 t3]
-           , t2
+    (t1, e1', r1) <- generateConstraints e1
+    (t2, e2', r2) <- generateConstraints e2
+    (t3, e3', r3) <- generateConstraints e3
+    return ( t2
            , EType t2 $ EIf e1' e2' e3'
+           , r1 <> r2 <> r2
+                <> TypeResult [EqConst t1 tBool, EqConst t2 t3] As.empty
            )
 
   EDup e -> do
-    (as, cs, t, e') <- infer e
-    return (as, cs, t, EType t $ EDup e')
+    (t, e', r) <- generateConstraints e
+    return ( t
+           , EType t $ EDup e'
+           , r )
 
   EFree n e -> do
-    (as, cs, t, e') <- infer e
-    return (as, cs, t, EType t $ EFree n e')
+    (t, e', r) <- generateConstraints e
+    return ( t
+           , EType t $ EFree n e'
+           , r)
 
   EType t e -> do
-    (as, cs, t', e') <- infer e
-    return (as, cs ++ [EqConst t t'], t, e')
+    (t', e', r) <- generateConstraints e
+    return ( t
+           , EType t e
+           , r <> TypeResult [EqConst t t'] As.empty)
 
   ETLit tlit e -> error "Type inferenece doesn't work on type literals"
 
   ELoc l e -> do
-    (as, cs, t, e') <- infer e
-    return (as, cs, t, ELoc l e')
+    (t, e', r) <- generateConstraints e
+    return (t, ELoc l e', r)
 
   EParen e -> do
-    (as, cs, t, e') <- infer e
-    return (as, cs, t, EType t $ EParen e')
-
+    (t, e', r) <- generateConstraints e
+    return ( t
+           , EType t $ EParen e'
+           , r)
 
 
 
 inferTop :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
             , MonadChronicle (Bag e) m, AsTcErr e )
-         => Env -> [(Text, Exp)] -> m (Map Text (Exp, Type))
+         => Env -> [(Text, Exp)] -> m ([(Text, Exp)], Env)
 -- Base case takes an environment and produces a map of text to exp, type
-inferTop env [] = return Map.empty
 -- Recursive part continuously 
-inferTop env ((name, ex):xs) = do
-  (e, ty) <- inferExp env ex
-  inferTop (Env.extend env (name, ty)) xs
+inferTop env = do
+  foldM (\(es, env') (n, e) -> do
+            (e', ty) <- inferExp env e
+            let env' = Env.extend env (n, ty)
+            return ((n, e'):es, env')
+        ) ([], env)
 
 
 typecheck :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
@@ -390,34 +390,25 @@ typecheck ds = do
       es = foldr exExp [] $ concat $ Map.elems ds
       env = Env.fromList ts
       
-  env' <- inferTop env es
+  (es, env') <- inferTop env es
   logInfo (_TcComplete # ())
   return ds
 
 
 -------------------------------------------------------------------------------
--- Constraint Solver
+-- Constraint Solving
 -------------------------------------------------------------------------------
 
 
--- | The empty substitution
-emptySubst :: Subst
-emptySubst = mempty
-
-
--- | Compose substitutions
-compose :: Subst -> Subst -> Subst
-compose (Subst s1) (Subst s2) =
-  Subst $ Map.map (apply (Subst s1)) s2 `Map.union` s1
 
 
 unifyMany :: (MonadChronicle (Bag e) m, AsTcErr e)
           => [Type] -> [Type] -> m Subst
-unifyMany [] [] = return emptySubst
+unifyMany [] [] = return Subst.empty
 unifyMany (t1:ts1) (t2:ts2) =
   do su1 <- unifies t1 t2
-     su2 <- unifyMany (apply su1 ts1) (apply su1 ts2)
-     return $ su2 `compose` su1
+     su2 <- unifyMany (Subst.apply su1 ts1) (Subst.apply su1 ts2)
+     return $ su2 `Subst.compose` su1
 
 unifyMany t1 t2 = disclose $ One (_UnificationMismatch # (t1, t2))
 
@@ -425,7 +416,7 @@ unifyMany t1 t2 = disclose $ One (_UnificationMismatch # (t1, t2))
 unifies :: (MonadChronicle (Bag e) m, AsTcErr e)
         => Type -> Type -> m Subst
 unifies t1 t2
-  | t1 == t2 = return emptySubst
+  | t1 == t2 = return Subst.empty
   | otherwise = case (t1, t2) of
       -- Unify variables
       (TVar v, t) -> v `bind` t
@@ -437,23 +428,25 @@ unifies t1 t2
 
       -- Unify kinded types
       -- This should probably test kinds too
-      (TKind k t1, t2) -> unifies t1 t2
-      (t1, TKind k t2) -> unifies t1 t2
+      ts@(TKind k1 t1, TKind k2 t2) -> do
+        unless (k1 `ksub` kind t2)
+               (confess $ One (_UnificationFail # ts))
+        unifies t1 t2
 
       -- Unify located types
-      (TLoc l t1, t2) -> unifies t1 t2
-      (t1, TLoc l t2) -> unifies t1 t2
+      (t1, TLoc _ t2) -> unifies t1 t2
+      (TLoc _ t1, t2) -> unifies t1 t2
 
       -- Unify types in parens
       (TParen t1, t2) -> unifies t1 t2
       (t1, TParen t2) -> unifies t1 t2
 
-      (t1, t2) -> disclose $ One (_UnificationFail # (t1, t2))
+      (t1, t2) -> confess $ One (_UnificationFail # (t1, t2))
 
 
 bind :: (MonadChronicle (Bag e) m, AsTcErr e)
      => Text -> Type -> m Subst
-bind a t | t == TVar a     = return emptySubst
+bind a t | t == TVar a     = return Subst.empty
          | occursCheck a t = disclose $ One (_InfiniteType # (a, t))
          | otherwise       = return (Subst $ Map.singleton a t)
      
@@ -471,15 +464,15 @@ nextSolvable xs = fromJust (find solvable (chooseOne xs))
     solvable (ImpInstConst ts ms t2, cs) = Set.null ((ftv t2 `Set.difference` ms) `Set.intersection` atv cs)
 
 
-solve :: ( MonadState s m, HasInferState s
+solve :: ( MonadState s m, HasTypeState s
          , MonadChronicle (Bag e) m, AsTcErr e
          )
       => [Constraint] -> m Subst
-solve [] = return emptySubst
+solve [] = return Subst.empty
 solve cs = solve' (nextSolvable cs)
 
 
-solve' :: ( MonadState s m, HasInferState s
+solve' :: ( MonadState s m, HasTypeState s
           , MonadChronicle (Bag e) m, AsTcErr e
           )
        => (Constraint, [Constraint]) -> m Subst
@@ -488,8 +481,8 @@ solve' = \case
   (EqConst t1 t2, cs) -> do
     -- Unify t1 with t2.
     su1 <- unifies t1 t2
-    su2 <- solve (apply su1 cs)
-    return (su2 `compose` su1)
+    su2 <- solve (Subst.apply su1 cs)
+    return (su2 `Subst.compose` su1)
 
   -- Implicit Instance Constraint
   (ImpInstConst t1 ms t2, cs) ->

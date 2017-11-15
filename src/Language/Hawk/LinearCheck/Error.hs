@@ -8,7 +8,6 @@ import Control.Lens
 import Data.Text (Text)
 import Language.Hawk.Syntax.Type (Type)
 import Language.Hawk.Syntax.Location
-import Language.Hawk.TypeCheck.Types
 import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
 import qualified Text.PrettyPrint.Leijen.Text as P

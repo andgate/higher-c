@@ -3,20 +3,22 @@ module Language.Hawk.TypeCheck.State where
 
 import Control.Lens
 import Data.Default.Class
-
+import Data.Map.Strict (Map)
 import Language.Hawk.Syntax.Location
 
-
-data InferState = InferState { _countfv :: Int }
-
-initInfer :: InferState
-initInfer = InferState { _countfv = 0 }
+import qualified Data.Map.Strict as Map
 
 
-makeClassy ''InferState
+data TypeState
+  = TypeState
+      { _countfv :: Int
+      }
 
-instance Default InferState where
+
+makeClassy ''TypeState
+
+instance Default TypeState where
   def = 
-    InferState
+    TypeState
       { _countfv = 0
       }
