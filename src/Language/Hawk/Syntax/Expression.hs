@@ -133,6 +133,20 @@ mkOp2 (L l0@(Loc fp r1) name) lhs rhs
     l1 = Loc fp (r1 <> r2)
     l2 = Loc fp (r1 <> r3)
 
+
+
+unlocate :: Exp -> Exp
+unlocate = transform $ \case
+  ELoc _ e -> e
+  e -> e
+  
+
+untype :: Exp -> Exp
+untype = transform $ \case
+  EType _ e -> e
+  e -> e
+
+
 -- -----------------------------------------------------------------------------
 -- | Class Instances
 

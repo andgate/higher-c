@@ -25,11 +25,23 @@ import Data.Foldable
 import Data.Map.Strict (Map)
 import Data.Maybe (isJust)
 
-import Language.Hawk.Load
-import Language.Hawk.Parse
-import Language.Hawk.Lex
-import Language.Hawk.Lex.Token
 import Language.Hawk.Syntax
+import Language.Hawk.Load
+import Language.Hawk.Load.Result (LdResult)
+import Language.Hawk.Lex
+import Language.Hawk.Lex.Result (LxResult)
+import Language.Hawk.Lex.Token
+import Language.Hawk.Parse
+import Language.Hawk.Parse.Result (PsResult)
+import Language.Hawk.NameCheck
+import Language.Hawk.NameCheck.Result (NcResult)
+import Language.Hawk.TypeCheck
+import Language.Hawk.TypeCheck.Result (TcResult)
+import Language.Hawk.KindsCheck
+import Language.Hawk.KindsCheck.Result (KcResult)
+import Language.Hawk.LinearCheck
+import Language.Hawk.LinearCheck.Result (LcResult)
+
 
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.Error
@@ -49,7 +61,9 @@ import qualified Data.Text.IO          as T
 import qualified Data.Vector           as V
 import qualified Data.Map.Strict       as Map
 import qualified Language.Hawk.Parse   as P
+import qualified Language.Hawk.Parse.Result as PsR
 import qualified Language.Hawk.TypeCheck as Tc
+import qualified Language.Hawk.TypeCheck.Result as TcR
 import qualified Language.Hawk.TypeCheck.Environment as TcEnv
 import qualified Language.Hawk.NameCheck as Nc
 import qualified Language.Hawk.NameCheck.Environment as NcEnv
@@ -77,76 +91,70 @@ compile conf = do
 
   return ()
 
-dumpLx :: ( MonadIO m, HasHkcConfig c
-          , Binary a, PP.Pretty a, ToJSON a )
-       => c -> Map FilePath a -> m (Map FilePath a)
-dumpLx conf t = do
+dumpLx :: ( MonadIO m, HasHkcConfig c )
+       => c -> LxResult -> m LxResult
+dumpLx conf r = do
   let odir = (conf^.hkcBuildDir) </> "lex"
-  when (conf^.hkcDumpLxPretty) (dumpPretties odir t)
-  when (conf^.hkcDumpLxBin)    (dumpBinaries odir t)
-  when (conf^.hkcDumpLxJson)   (dumpJsons odir t)
-  when (conf^.hkcDumpLxYaml)   (dumpYamls odir t)
-  return t
+  when (conf^.hkcDumpLxPretty) (dumpPretties odir r)
+  when (conf^.hkcDumpLxBin)    (dumpBinaries odir r)
+  when (conf^.hkcDumpLxJson)   (dumpJsons odir r)
+  when (conf^.hkcDumpLxYaml)   (dumpYamls odir r)
+  return r
 
 
-dumpPs :: ( MonadIO m, HasHkcConfig c
-          , Binary a, PP.Pretty a, ToJSON a )
-       => c -> Map FilePath a -> m (Map FilePath a)
-dumpPs conf t = do
+dumpPs :: ( MonadIO m, HasHkcConfig c )
+       => c -> PsResult -> m PsResult
+dumpPs conf r = do
   let odir = (conf^.hkcBuildDir) </> "parse"
-  when (conf^.hkcDumpPsPretty) (dumpPretties odir t)
-  when (conf^.hkcDumpPsBin)    (dumpBinaries odir t)
-  when (conf^.hkcDumpPsJson)   (dumpJsons odir t)
-  when (conf^.hkcDumpPsYaml)   (dumpYamls odir t)
-  return t
+  when (conf^.hkcDumpPsPretty) (dumpPretties odir r)
+  when (conf^.hkcDumpPsBin)    (dumpBinaries odir r)
+  when (conf^.hkcDumpPsJson)   (dumpJsons odir r)
+  when (conf^.hkcDumpPsYaml)   (dumpYamls odir r)
+  return r
 
 
-dumpNc :: ( MonadIO m, HasHkcConfig c
-          , Binary a, PP.Pretty a, ToJSON a )
-       => c -> Map FilePath a -> m (Map FilePath a)
-dumpNc conf t = do
+dumpNc :: ( MonadIO m, HasHkcConfig c )
+       => c -> NcResult -> m NcResult
+dumpNc conf r = do
   let odir = (conf^.hkcBuildDir) </> "named"
-  when (conf^.hkcDumpNcPretty) (dumpPretties odir t)
-  when (conf^.hkcDumpNcBin)    (dumpBinaries odir t)
-  when (conf^.hkcDumpNcJson)   (dumpJsons odir t)
-  when (conf^.hkcDumpNcYaml)   (dumpYamls odir t)
-  return t
+  when (conf^.hkcDumpNcPretty) (dumpPretties odir r)
+  when (conf^.hkcDumpNcBin)    (dumpBinaries odir r)
+  when (conf^.hkcDumpNcJson)   (dumpJsons odir r)
+  when (conf^.hkcDumpNcYaml)   (dumpYamls odir r)
+  return r
 
 
-dumpTc :: ( MonadIO m, HasHkcConfig c
-          , Binary a, PP.Pretty a, ToJSON a )
-       => c -> Map FilePath a -> m (Map FilePath a)
-dumpTc conf t = do
+dumpTc :: ( MonadIO m, HasHkcConfig c )
+       => c -> TcResult -> m TcResult
+dumpTc conf r = do
   let odir = (conf^.hkcBuildDir) </> "typed"
-  when (conf^.hkcDumpTcPretty) (dumpPretties odir t)
-  when (conf^.hkcDumpTcBin)    (dumpBinaries odir t)
-  when (conf^.hkcDumpTcJson)   (dumpJsons odir t)
-  when (conf^.hkcDumpTcYaml)   (dumpYamls odir t)
-  return t
+  when (conf^.hkcDumpTcPretty) (dumpPretties odir r)
+  when (conf^.hkcDumpTcBin)    (dumpBinaries odir r)
+  when (conf^.hkcDumpTcJson)   (dumpJsons odir r)
+  when (conf^.hkcDumpTcYaml)   (dumpYamls odir r)
+  return r
 
 
-dumpKc :: ( MonadIO m, HasHkcConfig c
-          , Binary a, PP.Pretty a, ToJSON a )
-       => c -> Map FilePath a -> m (Map FilePath a)
-dumpKc conf t = do
+dumpKc :: ( MonadIO m, HasHkcConfig c )
+       => c -> KcResult -> m KcResult
+dumpKc conf r = do
   let odir = (conf^.hkcBuildDir) </> "kinded"
-  when (conf^.hkcDumpKcPretty) (dumpPretties odir t)
-  when (conf^.hkcDumpKcBin)    (dumpBinaries odir t)
-  when (conf^.hkcDumpKcJson)   (dumpJsons odir t)
-  when (conf^.hkcDumpKcYaml)   (dumpYamls odir t)
-  return t
+  when (conf^.hkcDumpKcPretty) (dumpPretties odir r)
+  when (conf^.hkcDumpKcBin)    (dumpBinaries odir r)
+  when (conf^.hkcDumpKcJson)   (dumpJsons odir r)
+  when (conf^.hkcDumpKcYaml)   (dumpYamls odir r)
+  return r
 
 
-dumpLc :: ( MonadIO m, HasHkcConfig c
-          , Binary a, PP.Pretty a, ToJSON a )
-       => c -> Map FilePath a -> m (Map FilePath a)
-dumpLc conf t = do
+dumpLc :: ( MonadIO m, HasHkcConfig c )
+       => c -> LcResult -> m LcResult
+dumpLc conf r = do
   let odir = (conf^.hkcBuildDir) </> "linear"
-  when (conf^.hkcDumpLcPretty) (dumpPretties odir t)
-  when (conf^.hkcDumpLcBin)    (dumpBinaries odir t)
-  when (conf^.hkcDumpLcJson)   (dumpJsons odir t)
-  when (conf^.hkcDumpLcYaml)   (dumpYamls odir t)
-  return t
+  when (conf^.hkcDumpLcPretty) (dumpPretties odir r)
+  when (conf^.hkcDumpLcBin)    (dumpBinaries odir r)
+  when (conf^.hkcDumpLcJson)   (dumpJsons odir r)
+  when (conf^.hkcDumpLcYaml)   (dumpYamls odir r)
+  return r
 
 
 dumpPretties :: (MonadIO m, PP.Pretty a)

@@ -5,10 +5,10 @@ import Data.Aeson
 import Data.Binary
 import Data.Default.Class
 import Data.Text
+import GHC.Generics (Generic)
 import Language.Hawk.Syntax.DataDecl
 import Language.Hawk.Syntax.Expression
 import Language.Hawk.Syntax.Type
-import GHC.Generics (Generic)
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 

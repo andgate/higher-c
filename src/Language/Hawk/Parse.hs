@@ -26,6 +26,7 @@ import Prelude hiding (lex)
 import Control.Lens
 import Control.Lens.Internal.Zoom
 import Control.Monad (mapM, (<=<))
+import Control.Monad.Extra (mconcatMapM)
 import Control.Monad.State (MonadState, execState)
 import Control.Monad.Identity (runIdentity)
 import Control.Monad.Log
@@ -36,54 +37,53 @@ import Data.Default.Class
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Foldable
 import Data.Map.Strict
+import Data.Monoid
 import Data.Set (Set)
 import Data.Text (Text, pack)
 import Data.Void (Void)
 import Text.PrettyPrint.Leijen.Text (pretty)
 import Text.Earley (Report (..), Prod)
 
+import Language.Hawk.Lex.Result (LxResult)
 import Language.Hawk.Lex.Token
 import Language.Hawk.Parse.Error
 import Language.Hawk.Parse.Grammar
 import Language.Hawk.Parse.Message
+import Language.Hawk.Parse.Result (PsResult)
 import Language.Hawk.Syntax
 
-import qualified Data.List.NonEmpty     as NE
-import qualified Data.Map.Strict        as Map
-import qualified Data.Set               as Set
-import qualified Data.Text              as Text
-import qualified Text.Earley            as E
+import qualified Data.List.NonEmpty             as NE
+import qualified Data.Map.Strict                as Map
+import qualified Data.Set                       as Set
+import qualified Data.Text                      as Text
+import qualified Language.Hawk.Lex.Result       as LxR
+import qualified Language.Hawk.Parse.Result     as R
+import qualified Text.Earley                    as E
 
 
 
 parseMany :: ( MonadChronicle (Bag e) m, AsPsErr e
              , MonadLog (WithSeverity msg) m, AsPsMsg msg )
-          => Map FilePath [[Token]] -> m (Map FilePath [Decl])
-parseMany toks = do
-  decls <- mapM parseFile (Map.toList toks)
+          => LxResult -> m PsResult
+parseMany r = do
+  let toks = LxR.toList r
+      f (fp, toks) = do
+        r <- mconcatMapM (parse fp) toks
+        logInfo (_ParseSuccess # fp)
+        return r
+  r' <- mconcatMapM f toks
   logInfo (_ParseFinished # ())
-  return $ Map.fromList decls
+  return r'
 
 
-parseFile :: ( MonadChronicle (Bag e) m, AsPsErr e
-             , MonadLog (WithSeverity msg) m, AsPsMsg msg )
-          => (FilePath, [[Token]]) -> m (FilePath, [Decl])
-parseFile (fp, toks) = do
-  decls <- mapM (parse fp) toks
-  logInfo (_ParseSuccess # fp)
-  return (fp, decls)
-
-
-parse :: ( MonadChronicle (Bag e) m, AsPsErr e
-         , MonadLog (WithSeverity msg) m, AsPsMsg msg
-         )
-         => FilePath -> [Token] -> m Decl
+parse :: ( MonadChronicle (Bag e) m, AsPsErr e )
+         => FilePath -> [Token] -> m PsResult
 parse fp toks = do
   let rs = E.fullParses (E.parser toplevel) toks
-  handleResult rs
+  handleParser rs
 
   where
-    handleResult (parses, r@(Report _ expected unconsumed)) =
+    handleParser (parses, r@(Report _ expected unconsumed)) =
       case parses of
         []  -> disclose $ One (_UnexpectedToken # unconsumed)
         [p] -> return p

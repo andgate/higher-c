@@ -21,20 +21,23 @@ import Data.Map (Map)
 import Data.Text (Text)
 import Language.Hawk.Load.Error
 import Language.Hawk.Load.Message
+import Language.Hawk.Load.Result (LdResult)
 import System.IO.Error
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Text.IO as T
+import qualified Language.Hawk.Load.Result as R
 
 loadFiles
   :: ( MonadLog (WithSeverity msg) m, AsLdMsg msg
      , MonadChronicle (Bag e) m, AsLdErr e
      , MonadIO m
      )
-  => [FilePath] -> m (Map FilePath Text)
-loadFiles fps = do
-  kvs <- mapM loadFile (nub fps)
-  return $ Map.fromList kvs
+  => [FilePath] -> m LdResult
+loadFiles fps =
+  foldM (\r fp -> mappend r <$> loadFile fp)
+        mempty
+        (nub fps)
 
 
 loadFile
@@ -42,7 +45,7 @@ loadFile
         , MonadChronicle (Bag e) m, AsLdErr e
         , MonadIO m
         )
-  => FilePath -> m (FilePath, Text)
+  => FilePath -> m LdResult
 loadFile fp = do
   srcOrExc <- liftIO . try . T.readFile $ fp
   case srcOrExc of
@@ -51,7 +54,7 @@ loadFile fp = do
         
       Right src -> do
         logInfo (_FileFound # fp)
-        return (fp, src)
+        return $ R.singleton fp src
 
 
 mkLoadErr :: (AsLdErr e) => FilePath -> IOException -> e

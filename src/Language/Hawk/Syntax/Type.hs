@@ -16,7 +16,8 @@ import GHC.Generics (Generic)
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Kind
 
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
 -- -----------------------------------------------------------------------------
@@ -65,9 +66,6 @@ instance ToJSON Scheme
 
 
 
-
-
-
 -- -----------------------------------------------------------------------------
 -- | "Smart" Constructors
 
@@ -96,6 +94,42 @@ tBool  = TKind KPop . TCon $ "Bool"
 tArr, tLoli :: Type -> Type -> Type
 tArr  = TArr
 tLoli = TLoli
+
+
+
+-- -----------------------------------------------------------------------------
+-- | Free Type Variables
+
+class FreeTypeVars a where
+  ftv :: a -> Set Text
+
+
+instance FreeTypeVars Type where
+  ftv = \case
+    TVar a -> Set.singleton a
+    TCon _ -> Set.empty
+    TApp t1 t2   -> ftv t1 `Set.union` ftv t2
+    TArr t1 t2   -> ftv t1 `Set.union` ftv t2
+    TLoli t1 t2  -> ftv t1 `Set.union` ftv t2
+    TKind _ t    -> ftv t
+    TLoc _ t     -> ftv t
+    TParen t     -> ftv t
+
+
+instance FreeTypeVars Text where
+  ftv = Set.singleton
+
+
+instance FreeTypeVars Scheme where
+  ftv (Forall as t) = ftv t `Set.difference` Set.fromList as
+
+
+instance FreeTypeVars a => FreeTypeVars [a] where
+  ftv = foldr (Set.union . ftv) Set.empty
+
+
+instance (Ord a, FreeTypeVars a) => FreeTypeVars (Set a) where
+  ftv = foldr (Set.union . ftv) Set.empty
 
 
 

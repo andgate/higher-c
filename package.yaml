@@ -70,6 +70,7 @@ library:
     - edit-distance
     - either
     - exceptions
+    - extra
     - filepath
     - ghc-prim
     - lens
@@ -113,21 +114,25 @@ library:
     - Language.Hawk.KindsCheck.Environment
     - Language.Hawk.KindsCheck.Error
     - Language.Hawk.KindsCheck.Message
+    - Language.Hawk.KindsCheck.Result
     - Language.Hawk.KindsCheck.State
 
     - Language.Hawk.LinearCheck
     - Language.Hawk.LinearCheck.Environment
     - Language.Hawk.LinearCheck.Error
     - Language.Hawk.LinearCheck.Message
+    - Language.Hawk.LinearCheck.Result
     - Language.Hawk.LinearCheck.State
 
     - Language.Hawk.Load
     - Language.Hawk.Load.Message
     - Language.Hawk.Load.Error
+    - Language.Hawk.Load.Result
 
     - Language.Hawk.NameCheck
     - Language.Hawk.NameCheck.Environment
     - Language.Hawk.NameCheck.Error
+    - Language.Hawk.NameCheck.Result
     - Language.Hawk.NameCheck.State
     
     - Language.Hawk.Parse
@@ -135,11 +140,13 @@ library:
     - Language.Hawk.Parse.Grammar
     - Language.Hawk.Parse.Helpers
     - Language.Hawk.Parse.Message
+    - Language.Hawk.Parse.Result
     
     - Language.Hawk.Lex
     - Language.Hawk.Lex.Error
     - Language.Hawk.Lex.Format
     - Language.Hawk.Lex.Message
+    - Language.Hawk.Lex.Result
     - Language.Hawk.Lex.State
     - Language.Hawk.Lex.Token
 
@@ -161,6 +168,7 @@ library:
     - Language.Hawk.TypeCheck.Constraint
     - Language.Hawk.TypeCheck.Environment
     - Language.Hawk.TypeCheck.Error
+    - Language.Hawk.TypeCheck.Result
     - Language.Hawk.TypeCheck.State
     - Language.Hawk.TypeCheck.Substitution
 

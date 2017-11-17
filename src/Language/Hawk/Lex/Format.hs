@@ -8,10 +8,14 @@ module Language.Hawk.Lex.Format where
 import Control.Lens
 import Control.Monad (when, unless, void)
 import Control.Monad.State.Strict (State, evalState)
-import Safe (headDef)
+import Data.Map.Strict (Map)
+import Language.Hawk.Lex.Result (LxResult (..), lxTokens)
 import Language.Hawk.Lex.Token
 import Language.Hawk.Syntax.Location (Loc(..), Region)
+import Safe (headDef)
 
+import qualified Data.Map.Strict as Map
+import qualified Language.Hawk.Lex.Result as R
 import qualified Language.Hawk.Syntax.Location  as L
 
 
@@ -69,10 +73,14 @@ mkLayout input = LayoutState  "" mempty [defCell] False input [] []
 -- This would be more performant with a foldM in the State monad
 -- Since this was originally implemented with conduit, using recursion in a state monad that
 -- maintains input/out lists was easier.
-layout :: (FilePath, [Token]) -> (FilePath, [[Token]])
-layout (fp, toks) =
-  let toks' = evalState layoutDriver (mkLayout toks)
-  in (fp, toks')
+layout :: LxResult -> LxResult
+layout r = LxResult { _lxTokens = toks' }
+  where
+    toks = r^.lxTokens      
+    toks' = Map.map f toks
+    f [toks] =
+      let toks' = evalState layoutDriver (mkLayout toks)
+      in  toks'
 
 layoutDriver :: Layout [[Token]]
 layoutDriver = do

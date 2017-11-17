@@ -13,6 +13,7 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.Chronicle
 import Control.Monad.Chronicle.Extra
+import Control.Monad.Extra (mconcatMapM)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Log
 import Control.Monad.State.Strict (MonadState, StateT, evalStateT)
@@ -21,9 +22,12 @@ import Data.Bag (Bag (..))
 import Data.Char (digitToInt, ord)
 import Data.Default.Class
 import Data.Map.Strict (Map)
+import Data.Monoid
 import Data.Text (Text)
 import Data.Word (Word8)
+import Language.Hawk.Load.Result (LdResult, ldFiles)
 import Language.Hawk.Lex.Error
+import Language.Hawk.Lex.Result (LxResult)
 import Language.Hawk.Lex.State
 import Language.Hawk.Lex.Token
 import Language.Hawk.Syntax.Location
@@ -32,7 +36,9 @@ import System.FilePath (FilePath)
 import qualified Data.Map	     as Map
 import qualified Data.Text           as T
 import qualified Data.Text.Read      as T
+import qualified Language.Hawk.Load.Result as LdR
 import qualified Language.Hawk.Lex.Format as Fmt
+import qualified Language.Hawk.Lex.Result as R
 import qualified System.FilePath     as Filesystem
 
 }
@@ -406,17 +412,17 @@ alexInputPrevChar = prevChar
 
 
 lexMany :: ( MonadChronicle (Bag e) m, AsLxErr e )
-      => Map FilePath Text -> m (Map FilePath [[Token]])
-lexMany src =
-  Map.fromList <$> mapM (fmap Fmt.layout . lexFile) (Map.toList src)
+      => LdResult -> m LxResult
+lexMany =
+  mconcatMapM (uncurry lex) . LdR.toList
 
 -- Simple token lexing
-lexFile :: ( MonadChronicle (Bag e) m, AsLxErr e )
-      => (FilePath, Text) -> m (FilePath, [Token])
-lexFile (fp, text) = do
+lex :: ( MonadChronicle (Bag e) m, AsLxErr e )
+      => FilePath -> Text -> m LxResult
+lex fp text = do
   toks <- evalStateT (start text)
                      ((def :: LexState) & lexFilePath .~ fp)
-  return (fp, toks)
+  return . Fmt.layout $ R.singleton fp [toks]
 
   where
     start = go . AlexInput '\n' []

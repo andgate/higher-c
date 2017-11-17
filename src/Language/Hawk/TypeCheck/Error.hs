@@ -6,8 +6,9 @@ module Language.Hawk.TypeCheck.Error where
 
 import Control.Lens
 import Data.Text (Text)
-import Language.Hawk.Syntax.Type (Type, Constraint)
+import Language.Hawk.Syntax.Type (Type)
 import Language.Hawk.Syntax.Location
+import Language.Hawk.TypeCheck.Constraint
 import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
 import qualified Text.PrettyPrint.Leijen.Text as P
