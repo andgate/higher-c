@@ -17,5 +17,9 @@ spec = do
       hkc $ def
             { _hkcSrcFiles = ["example/Example.hk"]
             , _hkcOutFile = "example"
+            , _hkcDumpLxPretty = True
             , _hkcDumpPsPretty = True
+            , _hkcDumpTcPretty = True
+            , _hkcDumpKcPretty = True
+            , _hkcDumpLcPretty = True
             }

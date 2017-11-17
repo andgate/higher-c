@@ -6,6 +6,8 @@ module Language.Hawk.Compile.Error
     , module Language.Hawk.Parse.Error
     , module Language.Hawk.NameCheck.Error
     , module Language.Hawk.TypeCheck.Error
+    , module Language.Hawk.KindsCheck.Error
+    , module Language.Hawk.LinearCheck.Error
     ) where
 
 
@@ -15,6 +17,8 @@ import Language.Hawk.Lex.Error
 import Language.Hawk.Parse.Error
 import Language.Hawk.NameCheck.Error
 import Language.Hawk.TypeCheck.Error
+import Language.Hawk.KindsCheck.Error
+import Language.Hawk.LinearCheck.Error
 import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
 data HkcErr
@@ -23,6 +27,8 @@ data HkcErr
   | HkcPsErr PsErr
   | HkcNcErr NcErr
   | HkcTcErr TcErr
+  | HkcKcErr KcErr
+  | HkcLcErr LcErr
   deriving (Show)
 
 makeClassyPrisms ''HkcErr
@@ -42,6 +48,11 @@ instance AsNcErr HkcErr where
 instance AsTcErr HkcErr where
   _TcErr = _HkcTcErr
 
+instance AsKcErr HkcErr where
+  _KcErr = _HkcKcErr
+
+instance AsLcErr HkcErr where
+  _LcErr = _HkcLcErr
 
 
 instance Pretty HkcErr where
@@ -50,3 +61,5 @@ instance Pretty HkcErr where
     pretty (HkcPsErr err) = pretty err
     pretty (HkcNcErr err) = pretty err
     pretty (HkcTcErr err) = pretty err
+    pretty (HkcKcErr err) = pretty err
+    pretty (HkcLcErr err) = pretty err

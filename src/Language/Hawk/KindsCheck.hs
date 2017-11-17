@@ -40,12 +40,32 @@ import Language.Hawk.Syntax
 import Language.Hawk.KindsCheck.Environment (Env)
 import Language.Hawk.KindsCheck.Error
 import Language.Hawk.KindsCheck.Message
+import Language.Hawk.KindsCheck.Result (KcResult (..))
+import Language.Hawk.TypeCheck.Result (TcResult, tcSigs, tcDecls)
 
 import qualified Data.Map   as Map
 import qualified Data.Set   as Set
 import qualified Data.Text  as T
 import qualified Language.Hawk.KindsCheck.Environment as Env
+import qualified Language.Hawk.KindsCheck.Result as R
+import qualified Language.Hawk.TypeCheck.Result as TcR
 
+
+-----------------------------------------------------------------------
+-- Kinds Checking
+-----------------------------------------------------------------------
+
+kindscheck :: ( MonadLog (WithSeverity msg) m, AsKcMsg msg
+              , MonadChronicle (Bag e) m, AsKcErr e )
+           => TcResult -> m KcResult
+kindscheck r = do
+
+  ds' <- mapM (mapM (inferExp Env.empty)) (r^.tcDecls)
+  
+  logInfo (_KcComplete # ())
+  return KcResult { _kcSigs = r^.tcSigs
+                  , _kcDecls = ds'
+                  }
 
 
 inferExp :: ( MonadChronicle (Bag e) m, AsKcErr e )

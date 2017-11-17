@@ -9,6 +9,8 @@ module Language.Hawk.Compile.Message
     , module Language.Hawk.Parse.Message
     , module Language.Hawk.NameCheck.Message
     , module Language.Hawk.TypeCheck.Message
+    , module Language.Hawk.KindsCheck.Message
+    , module Language.Hawk.LinearCheck.Message
     ) where
 
 import Control.Lens
@@ -18,6 +20,8 @@ import Language.Hawk.Lex.Message
 import Language.Hawk.Parse.Message
 import Language.Hawk.NameCheck.Message
 import Language.Hawk.TypeCheck.Message
+import Language.Hawk.KindsCheck.Message
+import Language.Hawk.LinearCheck.Message
 import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
 data HkcMsg
@@ -27,6 +31,8 @@ data HkcMsg
   | HkcPsMsg PsMsg
   | HkcNcMsg NcMsg
   | HkcTcMsg TcMsg
+  | HkcKcMsg KcMsg
+  | HkcLcMsg LcMsg
   deriving(Show)
 
 makeClassyPrisms ''HkcMsg
@@ -49,6 +55,12 @@ instance AsNcMsg HkcMsg where
 instance AsTcMsg HkcMsg where
   _TcMsg = _HkcTcMsg
 
+instance AsKcMsg HkcMsg where
+  _KcMsg = _HkcKcMsg
+
+instance AsLcMsg HkcMsg where
+  _LcMsg = _HkcLcMsg
+
 
 instance Pretty HkcMsg where
     pretty (HkcErrMsg msg) = pretty msg
@@ -57,3 +69,5 @@ instance Pretty HkcMsg where
     pretty (HkcPsMsg msg) = pretty msg
     pretty (HkcNcMsg msg) = pretty msg
     pretty (HkcTcMsg msg) = pretty msg
+    pretty (HkcKcMsg msg) = pretty msg
+    pretty (HkcLcMsg msg) = pretty msg

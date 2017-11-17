@@ -17,7 +17,7 @@ import Language.Hawk.KindsCheck.Result (KcResult)
 import Language.Hawk.LinearCheck.Result (LcResult)
 
 import System.Directory (createDirectoryIfMissing)
-import System.FilePath ((</>), (<.>), takeBaseName)
+import System.FilePath ((</>), (<.>), takeBaseName, takeDirectory)
 import System.IO (hClose, openFile, IOMode(..))
 import Text.PrettyPrint.Leijen.Text (pretty)
 
@@ -35,7 +35,7 @@ import qualified Data.Yaml as Y
 dumpLx :: ( MonadIO m, HasHkcConfig c )
        => c -> LxResult -> m LxResult
 dumpLx conf r = do
-  let fp = dumpPath conf "lex"
+  let fp = dumpPath conf "lex" 
   dump fp r ( conf^.hkcDumpLxPretty
             , conf^.hkcDumpLxBin
             , conf^.hkcDumpLxJson
@@ -111,6 +111,7 @@ dump :: ( MonadIO m
         , Binary a, PP.Pretty a, ToJSON a, FromJSON a )
      => FilePath -> a -> (Bool, Bool, Bool, Bool) -> m a
 dump fp o (p, b, j, y) = do
+  liftIO $ createDirectoryIfMissing True (takeDirectory fp)
   when p $ dumpPretty fp o
   when b $ dumpBinary fp o
   when j $ dumpJson fp o
@@ -126,8 +127,7 @@ dumpPretty :: (MonadIO m, PP.Pretty a)
            => FilePath -> a -> m ()
 dumpPretty fp o = do
   let fp' = fp <.> "txt"
-  liftIO $ do
-    createDirectoryIfMissing True fp 
+  liftIO $
     bracket (openFile fp' WriteMode) hClose
             (\h -> PP.hPutDoc h (PP.pretty o))
   return ()
@@ -137,9 +137,7 @@ dumpBinary :: (MonadIO m, Binary a)
            => FilePath -> a -> m ()
 dumpBinary fp o = do
   let fp' = fp <.> "bin"
-  liftIO $ do
-    createDirectoryIfMissing True fp 
-    encodeFile fp' o
+  liftIO $ encodeFile fp' o
   return ()
 
 
@@ -147,9 +145,7 @@ dumpJson :: (MonadIO m, ToJSON a)
          => FilePath -> a -> m ()
 dumpJson fp o = do
   let fp' = fp <.> "json"
-  liftIO $ do
-    createDirectoryIfMissing True fp 
-    LBS.writeFile fp' (JSN.encode o)
+  liftIO $ LBS.writeFile fp' (JSN.encode o)
   return ()
 
 
@@ -157,7 +153,5 @@ dumpYaml :: (MonadIO m, ToJSON a)
          => FilePath -> a -> m ()
 dumpYaml fp o = do
   let fp' = fp <.> "yaml"
-  liftIO $ do
-    createDirectoryIfMissing True fp 
-    Y.encodeFile fp' o
+  liftIO $ Y.encodeFile fp' o
   return ()

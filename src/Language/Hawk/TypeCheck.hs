@@ -315,14 +315,9 @@ generalize free t = Forall as t
 
 
 normalize :: Scheme -> Scheme
-normalize (Forall _ body) = Forall (map (pack . snd) ord) (normtype body)
+normalize (Forall _ body) = Forall (map (pack . snd) ord) body
   where
-    ord = zip (nub $ fv body) letters
-
-    fv (TVar a)   = [a]
-    fv (TArr a b) = fv a ++ fv b
-    fv (TCon _)   = []
-
+    ord = zip (nub . Set.toList $ ftv body) letters
 
     normtype (TArr a b) = TArr (normtype a) (normtype b)
     normtype (TCon a) = TCon a

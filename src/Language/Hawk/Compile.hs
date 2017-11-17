@@ -36,8 +36,8 @@ hkc cfg = runHkc (compile cfg)
 
 
 compile
-  :: ( MonadLog (WithSeverity msg) m, AsHkcMsg msg, AsLdMsg msg, AsLxMsg msg, AsPsMsg msg, AsNcMsg msg, AsTcMsg msg
-     , MonadChronicle (Bag e) m, AsHkcErr e, AsLdErr e, AsPsErr e, AsLxErr e , AsNcErr e, AsTcErr e
+  :: ( MonadLog (WithSeverity msg) m, AsHkcMsg msg, AsLdMsg msg, AsLxMsg msg, AsPsMsg msg, AsNcMsg msg, AsTcMsg msg, AsKcMsg msg, AsLcMsg msg
+     , MonadChronicle (Bag e) m, AsHkcErr e, AsLdErr e, AsLxErr e, AsPsErr e, AsNcErr e, AsTcErr e, AsKcErr e, AsLcErr e
      , MonadIO m, HasHkcConfig c
      )
   => c -> m ()
@@ -47,7 +47,8 @@ compile conf = do
       >>= lexMany             >>= dumpLx conf
       >>= parseMany           >>= dumpPs conf
       >>= namecheck           >>= dumpNc conf
-      >>= typecheckMany       >>= dumpTc conf  
+      >>= typecheckMany       >>= dumpTc conf
+      >>= kindscheck          >>= dumpKc conf
 
   return ()
 
