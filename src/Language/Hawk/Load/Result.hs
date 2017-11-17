@@ -11,6 +11,7 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 
 import qualified Data.Map.Strict as Map
+import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
 -------------------------------------------------------------------------------
@@ -45,6 +46,14 @@ instance Monoid LdResult where
 
   mappend r1 r2 = LdResult { _ldFiles = _ldFiles r1 <> _ldFiles r2
                            }
+
+-------------------------------------------------------------------------------
+-- Pretty
+-------------------------------------------------------------------------------
+
+instance PP.Pretty LdResult where
+  pretty r =
+    PP.pretty $ Map.toList (r^.ldFiles)
 
 
 -------------------------------------------------------------------------------

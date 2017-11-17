@@ -12,6 +12,7 @@ import GHC.Generics (Generic)
 import Language.Hawk.Syntax
 
 import qualified Data.Map.Strict as Map
+import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
 -----------------------------------------------------------------------
@@ -53,6 +54,19 @@ instance Monoid TcResult where
       }
     where
       (<<>>) = Map.unionWith (++)
+
+
+-----------------------------------------------------------------------
+-- Pretty
+-----------------------------------------------------------------------
+
+instance PP.Pretty TcResult where
+  pretty r =
+    PP.textStrict "Signatures"
+      PP.<$> PP.pretty (Map.toList $ _tcSigs r)
+      PP.<$> PP.textStrict "Declarations"
+      PP.<$> PP.pretty (Map.toList $ _tcDecls r)  
+
 
       
 -----------------------------------------------------------------------

@@ -1,4 +1,4 @@
-{-# LANGUAGE  DeriveGeneric, TemplateHaskell #-}
+{-# LANGUAGE  DeriveGeneric, TemplateHaskell, OverloadedStrings #-}
 module Language.Hawk.Parse.Result where
 
 import Control.Lens
@@ -15,6 +15,7 @@ import Language.Hawk.Syntax
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import qualified Data.Set as Set
+import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
 -----------------------------------------------------------------------
@@ -47,6 +48,20 @@ instance Default PsResult where
 instance Monoid PsResult where
   mempty = empty
   mappend = merge
+
+
+-----------------------------------------------------------------------
+-- Pretty
+-----------------------------------------------------------------------
+
+instance PP.Pretty PsResult where
+  pretty r =
+    PP.textStrict "Names"
+      PP.<$> PP.pretty (Set.toList $ _psNames r)
+      PP.<$> PP.textStrict "Signatures"
+      PP.<$> PP.pretty (Map.toList $ _psSigs r)
+      PP.<$> PP.textStrict "Declarations"
+      PP.<$> PP.pretty (Map.toList $ _psDecls r)  
 
 
 -----------------------------------------------------------------------

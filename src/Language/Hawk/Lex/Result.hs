@@ -16,6 +16,7 @@ import Language.Hawk.Syntax
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import qualified Data.Set as Set
+import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
 -----------------------------------------------------------------------
@@ -53,6 +54,15 @@ instance Monoid LxResult where
     where
       (<<>>) = Map.unionWith (++)
 
+
+
+-----------------------------------------------------------------------
+-- Pretty
+-----------------------------------------------------------------------
+
+instance PP.Pretty LxResult where
+  pretty =
+    PP.pretty . Map.toList . _lxTokens
 
 
 -----------------------------------------------------------------------

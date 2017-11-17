@@ -12,8 +12,13 @@ import GHC.Generics (Generic)
 import Language.Hawk.Syntax
 
 import qualified Data.Map.Strict as Map
+import qualified Text.PrettyPrint.Leijen.Text as PP
 
-  
+
+-----------------------------------------------------------------------
+-- Linear Check Result
+-----------------------------------------------------------------------
+
 data LcResult
   = LcResult
     { _lcSigs :: Map Text Scheme
@@ -27,6 +32,10 @@ instance Binary LcResult
 instance FromJSON LcResult
 instance ToJSON LcResult
 
+
+-----------------------------------------------------------------------
+-- Helper Instances
+-----------------------------------------------------------------------
 
 instance Default LcResult where
   def = LcResult
@@ -44,6 +53,21 @@ instance Monoid LcResult where
       , _lcDecls = _lcDecls r1 <> _lcDecls r2
       }
 
+-----------------------------------------------------------------------
+-- Pretty
+-----------------------------------------------------------------------
+
+instance PP.Pretty LcResult where
+  pretty r =
+    PP.textStrict "Signatures"
+      PP.<$> PP.pretty (Map.toList $ _lcSigs r)
+      PP.<$> PP.textStrict "Declarations"
+      PP.<$> PP.pretty (Map.toList $ _lcDecls r)
+
+
+-----------------------------------------------------------------------
+-- Helpers
+-----------------------------------------------------------------------
 
 singleton :: Text -> Scheme -> [Exp] -> LcResult
 singleton n t es =

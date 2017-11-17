@@ -1,4 +1,4 @@
-{-# LANGUAGE  DeriveGeneric, TemplateHaskell #-}
+{-# LANGUAGE  DeriveGeneric, TemplateHaskell, OverloadedStrings #-}
 module Language.Hawk.NameCheck.Result where
 
 import Control.Lens
@@ -15,6 +15,7 @@ import Language.Hawk.Syntax
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import qualified Data.Set as Set
+import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
 -----------------------------------------------------------------------
@@ -54,6 +55,20 @@ instance Monoid NcResult where
                }
       where
         (<<>>) = Map.unionWith (<>)
+
+
+-----------------------------------------------------------------------
+-- Pretty
+-----------------------------------------------------------------------
+
+instance PP.Pretty NcResult where
+  pretty r =
+    PP.textStrict "Names"
+      PP.<$> PP.pretty (Set.toList $ _ncNames r)
+      PP.<$> PP.textStrict "Signatures"
+      PP.<$> PP.pretty (Map.toList $ _ncSigs r)
+      PP.<$> PP.textStrict "Declarations"
+      PP.<$> PP.pretty (Map.toList $ _ncDecls r)  
 
 
 -----------------------------------------------------------------------
