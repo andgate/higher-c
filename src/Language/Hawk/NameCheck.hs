@@ -20,34 +20,40 @@ import Language.Hawk.NameCheck.Environment (Env)
 import Language.Hawk.NameCheck.Error
 import Language.Hawk.NameCheck.Message
 import Language.Hawk.NameCheck.State
+import Language.Hawk.NameCheck.Result (NcResult (..))
+import Language.Hawk.Parse.Result (PsResult, psNames, psSigs, psDecls)
 import Language.Hawk.Syntax
 
 import qualified Data.Map as Map
 import qualified Data.Text as Text
 import qualified Language.Hawk.NameCheck.Environment as Env
+import qualified Language.Hawk.NameCheck.Result as R
+import qualified Language.Hawk.Parse.Result as PsR
 
 
+-----------------------------------------------------------------------
+-- Name Check
+-----------------------------------------------------------------------
 
 namecheck :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
              , MonadChronicle (Bag e) m, AsNcErr e
-             ) => Map FilePath [Decl] -> m (Map FilePath [Decl])
-namecheck ds = do
-  let exName (Def n _) ns = n:ns
-      exName (Foreign (ForeignImport _ _ n _)) ns
-                          = n:ns
-      exName _         ns = ns
-  
-      exExp (Def n e) es = e:es
-      exExp _         es = es
-
-      ns = foldr exName [] $ concat $ Map.elems ds
-      env = Env.fromList ns
-      es = foldr exExp [] $ concat $ Map.elems ds
+             ) => PsResult -> m NcResult
+namecheck r = do
+  let ns = r^.psNames
+      ts = r^.psSigs
+      ds = r^.psDecls
+      
+      es = concat $ Map.elems ds
+      env = Env.fromSet (r^.psNames)
 
   logInfo (_NcStarted # ns)
   mapM_ (validate (env,mempty)) es
   logInfo (_NcFinished # ())
-  return ds
+
+  return NcResult { _ncNames = ns
+                  , _ncSigs = ts
+                  , _ncDecls = ds
+                  }
 
 
 validate :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg

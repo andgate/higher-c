@@ -18,6 +18,7 @@ import Control.Lens
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Except
+import Control.Monad.Extra (mconcatMapM)
 import Control.Monad.Chronicle
 import Control.Monad.Chronicle.Extra
 import Control.Monad.Log
@@ -37,12 +38,13 @@ import Data.Text (Text, pack)
 import Text.PrettyPrint.Leijen.Text (pretty)
 
 import Language.Hawk.Syntax
+import Language.Hawk.NameCheck.Result (NcResult(..), ncNames, ncSigs, ncDecls)
 import Language.Hawk.TypeCheck.Assumption (Assumption)
 import Language.Hawk.TypeCheck.Constraint
 import Language.Hawk.TypeCheck.Environment (Env)
 import Language.Hawk.TypeCheck.Error
 import Language.Hawk.TypeCheck.Message
-import Language.Hawk.TypeCheck.Result
+import Language.Hawk.TypeCheck.Result (TcResult(..))
 import Language.Hawk.TypeCheck.State
 import Language.Hawk.TypeCheck.Substitution (Subst(..))
 
@@ -50,9 +52,10 @@ import Language.Hawk.TypeCheck.Substitution (Subst(..))
 import qualified Data.Map.Strict as Map
 import qualified Data.Set   as Set
 import qualified Data.Text  as T
+import qualified Language.Hawk.NameCheck.Result as NcR
 import qualified Language.Hawk.TypeCheck.Assumption as As
 import qualified Language.Hawk.TypeCheck.Environment as Env
-import qualified Language.Hawk.TypeCheck.Result as Res
+import qualified Language.Hawk.TypeCheck.Result as R
 import qualified Language.Hawk.TypeCheck.Substitution as Subst
 
 
@@ -61,44 +64,35 @@ import qualified Language.Hawk.TypeCheck.Substitution as Subst
 -- Type Checking
 -----------------------------------------------------------------------
 
-typecheckPsResult :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
-             , MonadChronicle (Bag e) m, AsTcErr e )
-          => Map FilePath [Decl] -> m TcResult
-typecheckPsResult ds = do
-  let exSig (Sig n ty) ns = (n, Forall [] ty):ns
-      exSig _          ns = ns
-
-      exExp (Def n e) es = (n, e):es
-      exExp _         es = es
-
-      ts = foldr exSig [] $ concat $ Map.elems ds
-      es = foldr exExp [] $ concat $ Map.elems ds
-      env = Env.fromList ts
-      
-  r <- typecheckMany env es
-  logInfo (_TcComplete # ())
-  return r
-
-  
-
 typecheckMany :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
-                 , MonadChronicle (Bag e) m, AsTcErr e )
-                 => Env -> [(Text, Exp)] -> m TcResult
-typecheckMany env es =
-  evalStateT go env
+                    , MonadChronicle (Bag e) m, AsTcErr e )
+                 => NcResult -> m TcResult
+typecheckMany r = evalStateT m env
   where
-    go = foldM go' mempty es
-    go' r (n, e) = do
-      (e, t) <- typecheck env n e
-      let env' = Env.extend env (n, t)
-      return $ r <> Res.singleton n t [e]
+    es = Map.toList (r^.ncDecls)
+    ts = Map.map closeOver (r^.ncSigs)
+    env = Env.fromMap ts
 
+    m = do
+      r <- mconcatMapM f es
+      logInfo (_TcComplete # ())
+      return r
+      
+    
+    f (n, es') =
+      mconcatMapM (g n) es'
+
+    g n e = do
+      env <- get
+      (r, env') <- typecheck env n e
+      put env'
+      return r
 
 
 typecheck :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
              , MonadChronicle (Bag e) m, AsTcErr e
              )
-          => Env -> Text -> Exp -> m (Exp, Scheme)
+          => Env -> Text -> Exp -> m (TcResult, Env)
 typecheck env n e = run $ do
   (t, e', InferResult cs as) <- inferConstraints e
   let unbounds = Set.fromList (As.keys as) `Set.difference` Set.fromList (Env.keys env)
@@ -108,7 +102,10 @@ typecheck env n e = run $ do
                                , t <- As.lookup x as ]
 
   s <- solve (cs ++ cs')
-  return (Subst.apply s e', closeOver $ Subst.apply s t)
+  let e'' = Subst.apply s e'
+      t'  = closeOver $ Subst.apply s t
+      env' = Env.extend env (n, t')
+  return (R.singleton n t' [e''], env')
 
   where
     run m = evalStateT (runReaderT m Set.empty) (def :: TypeState)

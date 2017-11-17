@@ -13,7 +13,11 @@ import Language.Hawk.Syntax
 
 import qualified Data.Map.Strict as Map
 
-  
+
+-----------------------------------------------------------------------
+-- Type Check Result
+-----------------------------------------------------------------------
+ 
 data TcResult
   = TcResult
     { _tcSigs :: Map Text Scheme
@@ -28,6 +32,10 @@ instance FromJSON TcResult
 instance ToJSON TcResult
 
 
+-----------------------------------------------------------------------
+-- Helper Instances
+-----------------------------------------------------------------------
+
 instance Default TcResult where
   def = TcResult
         { _tcSigs = Map.empty
@@ -41,9 +49,15 @@ instance Monoid TcResult where
   mappend r1 r2
     = TcResult
       { _tcSigs = _tcSigs r1 <> _tcSigs r2
-      , _tcDecls = _tcDecls r1 <> _tcDecls r2
+      , _tcDecls = _tcDecls r1 <<>> _tcDecls r2
       }
+    where
+      (<<>>) = Map.unionWith (++)
 
+      
+-----------------------------------------------------------------------
+-- Helpers
+-----------------------------------------------------------------------
 
 singleton :: Text -> Scheme -> [Exp] -> TcResult
 singleton n t es =

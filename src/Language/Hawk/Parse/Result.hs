@@ -79,6 +79,8 @@ merge :: PsResult -> PsResult -> PsResult
 merge r1 r2 =
   PsResult { _psNames = _psNames r1 <> _psNames r2
            , _psSigs  = _psSigs  r1 <> _psSigs  r2
-           , _psDecls = _psDecls r1 <> _psDecls r2
+           , _psDecls = _psDecls r1 <<>> _psDecls r2
            }
+  where
+    (<<>>) = Map.unionWith (++)
   

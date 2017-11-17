@@ -53,3 +53,8 @@ pop (Env (f:fs)) = Env fs
 fromList :: [Text] -> Env
 fromList =
   insertMany empty
+
+
+fromSet :: Set Text -> Env
+fromSet ns =
+  Env { _envFrame = [ns] }

@@ -22,6 +22,15 @@ data Env = TypeEnv { _types :: Map Text Scheme }
 makeClassy ''Env
 
 
+instance Monoid Env where
+  mempty = empty
+  mappend = merge
+  
+
+-------------------------------------------------------------------------------
+-- Helpers
+-------------------------------------------------------------------------------
+
 empty :: Env
 empty = TypeEnv Map.empty
 
@@ -73,7 +82,9 @@ fromList = TypeEnv . Map.fromList
 toList :: HasEnv e => e -> [(Text, Scheme)]
 toList = Map.toList . view (env . types)
 
+fromMap :: Map Text Scheme -> Env
+fromMap ts =
+  TypeEnv { _types = ts }
 
-instance Monoid Env where
-  mempty = empty
-  mappend = merge
+toMap :: HasEnv e => e -> Map Text Scheme
+toMap = view (env .types)

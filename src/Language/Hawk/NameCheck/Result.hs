@@ -36,31 +36,49 @@ instance FromJSON NcResult
 instance ToJSON NcResult
 
 
-instance Default NcResult where
-  def = NcResult
-        { _ncNames = Set.empty
-        , _ncSigs = Map.empty
-        , _ncDecls = Map.empty
-        }
+-----------------------------------------------------------------------
+-- Helper Instances
+-----------------------------------------------------------------------
 
+instance Default NcResult where
+  def = empty
+        
 
 instance Monoid NcResult where
-  mempty = def
+  mempty = empty
 
-  mappend r1 r2 = NcResult { _ncNames = _ncNames r1 <> _ncNames r2
-                           , _ncSigs  = _ncSigs r1 <> _ncSigs r2
-                           , _ncDecls = _ncDecls r1 <> _ncDecls r2
-                           }
+  mappend r1 r2
+    = NcResult { _ncNames = _ncNames r1 <> _ncNames r2
+               , _ncSigs  = _ncSigs r1 <> _ncSigs r2
+               , _ncDecls = _ncDecls r1 <<>> _ncDecls r2
+               }
+      where
+        (<<>>) = Map.unionWith (<>)
+
+
+-----------------------------------------------------------------------
+-- Helpers
+-----------------------------------------------------------------------
+
+empty :: NcResult
+empty =
+  NcResult
+    { _ncNames = Set.empty
+    , _ncSigs = Map.empty
+    , _ncDecls = Map.empty
+    }
 
 
 singleton :: Text -> Maybe Type -> Maybe Exp -> NcResult
 singleton n may_t may_e =
   NcResult
-  { _ncNames = Set.singleton n
-  , _ncSigs = case may_t of
-                Just t -> Map.singleton n t
-                Nothing -> Map.empty
-  , _ncDecls = case may_e of
-                 Just e -> Map.singleton n [e]
-                 Nothing -> Map.empty
-  }
+    { _ncNames = Set.singleton n
+    , _ncSigs = case may_t of
+                  Just t -> Map.singleton n t
+                  Nothing -> Map.empty
+    , _ncDecls = case may_e of
+                  Just e -> Map.singleton n [e]
+                  Nothing -> Map.empty
+    }
+
+

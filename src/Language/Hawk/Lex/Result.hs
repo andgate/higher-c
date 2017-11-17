@@ -49,9 +49,9 @@ instance Monoid LxResult where
 
   mappend r1 r2
     = LxResult
-      { _lxTokens = _lxTokens r1 `merge` _lxTokens r2 }
+      { _lxTokens = _lxTokens r1 <<>> _lxTokens r2 }
     where
-      merge = Map.unionWith (++)
+      (<<>>) = Map.unionWith (++)
 
 
 
