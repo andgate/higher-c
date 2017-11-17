@@ -49,6 +49,7 @@ compile conf = do
       >>= namecheck           >>= dumpNc conf
       >>= typecheckMany       >>= dumpTc conf
       >>= kindscheck          >>= dumpKc conf
+      >>= linearcheck         >>= dumpLc conf
 
   return ()
 

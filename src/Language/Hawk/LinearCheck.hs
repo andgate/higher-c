@@ -37,10 +37,12 @@ import Data.Text (Text, pack)
 import Text.PrettyPrint.Leijen.Text (pretty)
 
 import Language.Hawk.Syntax
+import Language.Hawk.KindsCheck.Result (KcResult, kcSigs, kcDecls)
 import Language.Hawk.LinearCheck.Environment (Env)
 import Language.Hawk.LinearCheck.Error
 import Language.Hawk.LinearCheck.Message
 import Language.Hawk.LinearCheck.State
+import Language.Hawk.LinearCheck.Result (LcResult (..))
 
 
 import qualified Data.Map   as Map
@@ -50,5 +52,14 @@ import qualified Language.Hawk.LinearCheck.Environment as Env
 
 
 -----------------------------------------------------------------------
--- Classes
+-- Linearity Check
 -----------------------------------------------------------------------
+
+linearcheck :: ( MonadLog (WithSeverity msg) m, AsLcMsg msg
+               , MonadChronicle (Bag e) m, AsLcErr e )
+            => KcResult -> m LcResult
+linearcheck r = do
+  logInfo (_LcComplete # ())
+  return LcResult { _lcSigs = r^.kcSigs
+                  , _lcDecls = r^.kcDecls
+                  }
