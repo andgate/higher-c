@@ -42,7 +42,6 @@ import Language.Hawk.KindsCheck.Result (KcResult)
 import Language.Hawk.LinearCheck
 import Language.Hawk.LinearCheck.Result (LcResult)
 
-
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.Error
 import Language.Hawk.Compile.Message
@@ -86,138 +85,133 @@ compile conf = do
       >>= lexMany             >>= dumpLx conf
       >>= parseMany           >>= dumpPs conf
       >>= Nc.namecheck        >>= dumpNc conf
-      >>= Tc.typecheck        >>= dumpTc conf
-      
+      >>= Tc.typecheckMany    >>= dumpTc conf  
 
   return ()
+
+
+
+dumpPath :: HasHkcConfig c => c -> FilePath -> FilePath
+dumpPath conf dumpDir =
+  (conf^.hkcBuildDir) </> dumpDir </> takeBaseName (conf^.hkcOutFile)
+
+
 
 dumpLx :: ( MonadIO m, HasHkcConfig c )
        => c -> LxResult -> m LxResult
 dumpLx conf r = do
-  let odir = (conf^.hkcBuildDir) </> "lex"
-  when (conf^.hkcDumpLxPretty) (dumpPretties odir r)
-  when (conf^.hkcDumpLxBin)    (dumpBinaries odir r)
-  when (conf^.hkcDumpLxJson)   (dumpJsons odir r)
-  when (conf^.hkcDumpLxYaml)   (dumpYamls odir r)
-  return r
-
+  let fp = dumpPath conf "lex"
+  dump fp r ( conf^.hkcDumpLxPretty
+            , conf^.hkcDumpLxBin
+            , conf^.hkcDumpLxJson
+            , conf^.hkcDumpLxYaml
+            )
+    
 
 dumpPs :: ( MonadIO m, HasHkcConfig c )
        => c -> PsResult -> m PsResult
 dumpPs conf r = do
-  let odir = (conf^.hkcBuildDir) </> "parse"
-  when (conf^.hkcDumpPsPretty) (dumpPretties odir r)
-  when (conf^.hkcDumpPsBin)    (dumpBinaries odir r)
-  when (conf^.hkcDumpPsJson)   (dumpJsons odir r)
-  when (conf^.hkcDumpPsYaml)   (dumpYamls odir r)
-  return r
+  let fp = dumpPath conf "parse"
+  dump fp r ( conf^.hkcDumpPsPretty
+            , conf^.hkcDumpPsBin
+            , conf^.hkcDumpPsJson
+            , conf^.hkcDumpPsYaml
+            )
 
 
 dumpNc :: ( MonadIO m, HasHkcConfig c )
        => c -> NcResult -> m NcResult
 dumpNc conf r = do
-  let odir = (conf^.hkcBuildDir) </> "named"
-  when (conf^.hkcDumpNcPretty) (dumpPretties odir r)
-  when (conf^.hkcDumpNcBin)    (dumpBinaries odir r)
-  when (conf^.hkcDumpNcJson)   (dumpJsons odir r)
-  when (conf^.hkcDumpNcYaml)   (dumpYamls odir r)
-  return r
+  let fp = dumpPath conf "named"
+  dump fp r ( conf^.hkcDumpNcPretty
+            , conf^.hkcDumpNcBin
+            , conf^.hkcDumpNcJson
+            , conf^.hkcDumpNcYaml
+            )
 
 
 dumpTc :: ( MonadIO m, HasHkcConfig c )
        => c -> TcResult -> m TcResult
 dumpTc conf r = do
-  let odir = (conf^.hkcBuildDir) </> "typed"
-  when (conf^.hkcDumpTcPretty) (dumpPretties odir r)
-  when (conf^.hkcDumpTcBin)    (dumpBinaries odir r)
-  when (conf^.hkcDumpTcJson)   (dumpJsons odir r)
-  when (conf^.hkcDumpTcYaml)   (dumpYamls odir r)
-  return r
+  let fp = dumpPath conf "typed"
+  dump fp r ( conf^.hkcDumpTcPretty
+            , conf^.hkcDumpTcBin
+            , conf^.hkcDumpTcJson
+            , conf^.hkcDumpTcYaml
+            )
 
 
 dumpKc :: ( MonadIO m, HasHkcConfig c )
        => c -> KcResult -> m KcResult
 dumpKc conf r = do
-  let odir = (conf^.hkcBuildDir) </> "kinded"
-  when (conf^.hkcDumpKcPretty) (dumpPretties odir r)
-  when (conf^.hkcDumpKcBin)    (dumpBinaries odir r)
-  when (conf^.hkcDumpKcJson)   (dumpJsons odir r)
-  when (conf^.hkcDumpKcYaml)   (dumpYamls odir r)
-  return r
+  let fp = dumpPath conf "kinded"
+  dump fp r ( conf^.hkcDumpKcPretty
+            , conf^.hkcDumpKcBin
+            , conf^.hkcDumpKcJson
+            , conf^.hkcDumpKcYaml
+            )
 
 
 dumpLc :: ( MonadIO m, HasHkcConfig c )
        => c -> LcResult -> m LcResult
 dumpLc conf r = do
-  let odir = (conf^.hkcBuildDir) </> "linear"
-  when (conf^.hkcDumpLcPretty) (dumpPretties odir r)
-  when (conf^.hkcDumpLcBin)    (dumpBinaries odir r)
-  when (conf^.hkcDumpLcJson)   (dumpJsons odir r)
-  when (conf^.hkcDumpLcYaml)   (dumpYamls odir r)
-  return r
+  let fp = dumpPath conf "linear"
+  dump fp r ( conf^.hkcDumpLcPretty
+            , conf^.hkcDumpLcBin
+            , conf^.hkcDumpLcJson
+            , conf^.hkcDumpLcYaml
+            )
 
+    
+dump :: ( MonadIO m
+        , Binary a, PP.Pretty a, ToJSON a, FromJSON a )
+     => FilePath -> a -> (Bool, Bool, Bool, Bool) -> m a
+dump fp o (p, b, j, y) = do
+  when p $ dumpPretty fp o
+  when b $ dumpBinary fp o
+  when j $ dumpJson fp o
+  when y $ dumpYaml fp o
+  return o
 
-dumpPretties :: (MonadIO m, PP.Pretty a)
-             => FilePath -> Map FilePath a -> m ()
-dumpPretties odir =
-  mapM_ (dumpPretty odir) . Map.toList
-
-
-dumpBinaries :: (MonadIO m, Binary a)
-             => FilePath -> Map FilePath a -> m ()
-dumpBinaries odir =
-  mapM_ (dumpBinary odir) . Map.toList
-
-
-dumpJsons :: (MonadIO m, ToJSON a)
-           => FilePath -> Map FilePath a -> m ()
-dumpJsons odir =
-  mapM_ (dumpJson odir) . Map.toList
-
-
-dumpYamls :: (MonadIO m, ToJSON a)
-           => FilePath -> Map FilePath a -> m ()
-dumpYamls odir =
-  mapM_ (dumpYaml odir) . Map.toList
-  
 
 dumpPretty :: (MonadIO m, PP.Pretty a)
-           => FilePath -> (FilePath, a) -> m (FilePath, a)
-dumpPretty odir i@(fp, o) = do
-  let fp' = odir </> takeBaseName fp <.> "txt"
+           => FilePath -> a -> m ()
+dumpPretty fp o = do
+  let fp' = fp <.> "txt"
   liftIO $ do
-    createDirectoryIfMissing True odir 
+    createDirectoryIfMissing True fp 
     bracket (openFile fp' WriteMode) hClose
             (\h -> PP.hPutDoc h (PP.pretty o))
-    
-  return i
+  return ()
 
 
 dumpBinary :: (MonadIO m, Binary a)
-           => FilePath -> (FilePath, a) -> m (FilePath, a)
-dumpBinary odir i@(fp, o) = do
-  let fp' = odir </> takeBaseName fp <.> "bin"
+           => FilePath -> a -> m ()
+dumpBinary fp o = do
+  let fp' = fp <.> "bin"
   liftIO $ do
-    createDirectoryIfMissing True odir 
+    createDirectoryIfMissing True fp 
     encodeFile fp' o
-  return i
+  return ()
 
 
 dumpJson :: (MonadIO m, ToJSON a)
-         => FilePath -> (FilePath, a) -> m (FilePath, a)
-dumpJson odir i@(fp, o) = do
-  let fp' = odir </> takeBaseName fp <.> "json"
+         => FilePath -> a -> m ()
+dumpJson fp o = do
+  let fp' = fp <.> "json"
   liftIO $ do
-    createDirectoryIfMissing True odir 
+    createDirectoryIfMissing True fp 
     LBS.writeFile fp' (JSN.encode o)
-  return i
+  return ()
 
 
 dumpYaml :: (MonadIO m, ToJSON a)
-         => FilePath -> (FilePath, a) -> m (FilePath, a)
-dumpYaml odir i@(fp, o) = do
-  let fp' = odir </> takeBaseName fp <.> "yaml"
+         => FilePath -> a -> m ()
+dumpYaml fp o = do
+  let fp' = fp <.> "yaml"
   liftIO $ do
-    createDirectoryIfMissing True odir 
+    createDirectoryIfMissing True fp 
     Y.encodeFile fp' o
-  return i
+  return ()
+
+
