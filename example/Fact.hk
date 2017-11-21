@@ -1,0 +1,22 @@
+-- This program computes the factorial of some n
+
+-- Core Library Stuff
+
+-- Link to printi from c
+foreign import ccall "printi" printi : Int -> IO ()
+
+-- Set the infix for operators
+infix 4 <
+infixl 6 + -
+
+(<) : Int -> Int -> Int
+(<) a b = #cmp a b
+
+(+) : Int -> Int -> Int
+(+) x y = #add x y
+
+(-) : Int -> Int -> Int
+(-) x y = #sub x y
+
+
+fact : Float -> Float 

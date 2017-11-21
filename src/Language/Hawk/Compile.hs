@@ -21,6 +21,8 @@ import Language.Hawk.TypeCheck
 import Language.Hawk.KindsCheck
 import Language.Hawk.LinearCheck
 
+--import Language.Hawk.Target.LLVM.Codegen
+
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.Error
 import Language.Hawk.Compile.Message

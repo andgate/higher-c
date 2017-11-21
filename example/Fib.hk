@@ -7,11 +7,15 @@ foreign import ccall "printd" printd : Float -> ()
 infix 4 <
 infixl 6 + -
 
+(<) : Float -> Float -> Float
+(<) a b = #fcmp a b
+
 (+) : Float -> Float -> Float
 (+) x y = #fadd x y
 
 (-) : Float -> Float -> Float
 (-) x y = #fsub x y
+
 
 -- Define a fibonacci function
 fib : Float -o Float

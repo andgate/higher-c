@@ -7,7 +7,7 @@ import Data.Binary
 import Data.Data
 import Data.Default.Class
 import Data.List (concatMap)
-import Data.Map (Map)
+import Data.Map.Strict (Map)
 import Data.Maybe (maybeToList)
 import Data.Set (Set)
 import Data.Text (Text)
@@ -42,6 +42,14 @@ instance Plated Type
 instance FromJSON Type
 instance ToJSON Type
 
+
+class HasType n where
+  typeof :: n -> Type
+
+instance HasType Type where
+  typeof = id
+
+  
 
 instance HasKind Type where
   kind = \case

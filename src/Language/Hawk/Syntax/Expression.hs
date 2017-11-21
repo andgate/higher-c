@@ -58,7 +58,6 @@ data Exp
   deriving(Eq, Ord, Read, Show, Generic, Data, Typeable)
 
 
-
 class HasVar a where
   var :: a -> Maybe Text
 
@@ -67,6 +66,18 @@ instance HasVar Exp where
     EVar n -> Just n
     ECon n -> Just n
     _      -> Nothing
+
+
+instance HasType Exp where
+  typeof = \case
+    EType t _  -> t
+    ELoc _ e   -> typeof e
+    EParen e   -> typeof e
+
+    --ELit l -> typeof l
+    --EPrim i -> typeof i
+    
+    _ -> error "Cannot find type of untyped expression."
 
 
 instance HasKind Exp where
@@ -151,104 +162,49 @@ untype = transform $ \case
 -- | Class Instances
 
 instance PP.Pretty Exp where
-    pretty (ELit lit) =
-      PP.textStrict "Literal:" PP.<+> PP.pretty lit
+    pretty = \case
+      EVar n      -> PP.pretty n
+      EApp e1 e2  -> PP.pretty e1 PP.<+> PP.pretty e2
+      ELam n e    ->
+          PP.textStrict "\\" PP.<> PP.pretty n
+            PP.<+> PP.textStrict "->"
+            PP.<$> PP.indent 2 (PP.pretty e)
+      ELet (n, e1) e2 ->
+          PP.textStrict           "let"
+            PP.<+> PP.pretty       n
+            PP.<+> PP.textStrict  "="
+            PP.<+> PP.align (PP.pretty  e1)
+            PP.<$> PP.textStrict  "in"
+            PP.<+> PP.pretty       e2
+      ELit l      -> PP.pretty l
+      ECon n      -> PP.pretty n
+      EPrim i     -> PP.pretty i
+      EIf e1 e2 e3 ->
+          PP.textStrict           "if"
+            PP.<+> PP.pretty       e1
+            PP.<+> PP.textStrict  "then"
+            PP.<+> PP.pretty       e2
+            PP.<+> PP.textStrict  "else"
+            PP.<+> PP.pretty       e3
 
-    pretty (EVar name) =
-      PP.textStrict "Variable:" PP.<+> PP.pretty name
+      EDup e -> PP.textStrict "dup" PP.<+> PP.pretty e
+      EFree n e ->
+          PP.textStrict           "free"
+            PP.<+> PP.pretty       n
+            PP.<+> PP.textStrict  "in"
+            PP.<+> PP.pretty       e
+
+
+      EType t e ->
+          PP.pretty               e
+            PP.<+> PP.textStrict "::"
+            PP.<+> PP.pretty      t
+
+
+      ELoc l e ->
+        PP.pretty               e
+            PP.<+> PP.textStrict "@"
+            PP.<+> PP.parens (PP.pretty l)
+
       
-    pretty (ECon name) =
-      PP.textStrict "Con:" PP.<+> PP.pretty name
-
-    pretty (EPrim i) =
-      PP.textStrict "Prim:"
-      PP.<$>
-      PP.indent 2 
-        ( PP.textStrict "instruction:" PP.<+> PP.pretty i
-        )
-
-    pretty (EApp f as) =
-      PP.textStrict "Application:"
-      PP.<$>
-      PP.indent 2 
-        ( PP.textStrict "expression:" PP.<+> PP.pretty f
-          PP.<$>
-          PP.textStrict "applied to:" PP.<+> PP.pretty as
-        )
-
-    pretty (ELam b e) =
-      PP.textStrict "Lambda:" 
-      PP.<$>
-      PP.indent 2
-      (
-        PP.textStrict "binding:" PP.<+> PP.pretty b
-        PP.<$>
-        PP.textStrict "expression:" PP.<+> PP.pretty e
-      )
-
-    pretty (EIf predicate thenBranch elseBranch) =
-      PP.textStrict "If:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "predicate:" PP.<+> PP.pretty predicate
-          PP.<$>
-          PP.textStrict "then branch:" PP.<+> PP.pretty thenBranch
-          PP.<$>
-          PP.textStrict "else branch:" PP.<+> PP.pretty elseBranch
-        )
-
-    
-    pretty (ELet bs e) =
-      PP.textStrict "Let:"
-      PP.<$>
-      PP.indent 2 
-        ( PP.textStrict "bindings:" PP.<+> PP.pretty bs
-          PP.<$>
-          PP.textStrict "in:" PP.<+> PP.pretty e
-        )
-
-    pretty (EDup e) =
-      PP.textStrict "Dup:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "exp:" PP.<+> PP.pretty e
-        )
-
-    pretty (EFree n e) =
-      PP.textStrict "Free:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "var:" PP.<+> PP.pretty n
-          PP.<$>
-          PP.textStrict "so:" PP.<+> PP.pretty e
-        )
-        
-    pretty (EType e t) =
-      PP.textStrict "Type Hint:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "expression:" PP.<+> PP.pretty e
-          PP.<$>
-          PP.textStrict "type:" PP.<+> PP.pretty t
-        )
-
-    pretty (ETLit t e) =
-      PP.textStrict "TLit Hint:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "tlit:" PP.<+> PP.pretty t
-          PP.<$>
-          PP.textStrict "exp:" PP.<+> PP.pretty e
-        )
-
-    pretty (ELoc loc e) =
-      PP.textStrict "Location Hint:"
-      PP.<$>
-      PP.indent 2
-        ( PP.textStrict "location:" PP.<+> PP.pretty loc
-          PP.<$>
-          PP.textStrict "exp:" PP.<+> PP.pretty e
-        )
-
-    pretty (EParen e) =
-      PP.parens $ PP.pretty e
+      EParen e    -> PP.parens $ PP.pretty e

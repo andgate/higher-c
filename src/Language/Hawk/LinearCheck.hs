@@ -38,7 +38,7 @@ import Text.PrettyPrint.Leijen.Text (pretty)
 
 import Language.Hawk.Syntax
 import Language.Hawk.KindsCheck.Result (KcResult, kcSigs, kcDecls)
-import Language.Hawk.LinearCheck.Environment (Env)
+import Language.Hawk.LinearCheck.Environment (LcEnv)
 import Language.Hawk.LinearCheck.Error
 import Language.Hawk.LinearCheck.Message
 import Language.Hawk.LinearCheck.State
@@ -59,7 +59,33 @@ linearcheck :: ( MonadLog (WithSeverity msg) m, AsLcMsg msg
                , MonadChronicle (Bag e) m, AsLcErr e )
             => KcResult -> m LcResult
 linearcheck r = do
+  ds' <- mapM (mapM $ checkExp Env.empty) (r^.kcDecls)
   logInfo (_LcComplete # ())
   return LcResult { _lcSigs = r^.kcSigs
-                  , _lcDecls = r^.kcDecls
+                  , _lcDecls = ds'
                   }
+
+
+checkExp :: ( MonadChronicle (Bag e) m, AsLcErr e )
+         => LcEnv -> Exp -> m Exp
+checkExp env = \case
+  EVar n ->
+    case Env.lookup n env of
+      Just Env.RegCtx -> return $ EVar n
+        
+      Just Env.LinCtx -> let env' = Env.use env n
+                         in return $ EVar n -- linear
+                            
+      Nothing -> error "unbound variable encountered?"
+
+
+  ELet (n, e1) e2 -> do
+    e1' <- checkExp env e1
+
+    -- get type of e1'
+    let env' = Env.extendLinear env n
+    e2' <- checkExp env' e2
+    return $ ELet (n, e1') e2'
+
+    
+  e -> return e

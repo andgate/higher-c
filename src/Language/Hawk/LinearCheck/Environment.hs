@@ -1,79 +1,104 @@
 {-# LANGUAGE  TemplateHaskell
+            , LambdaCase
   #-}
 module Language.Hawk.LinearCheck.Environment where
 
 import Control.Lens
 import Data.Text (Text)
-import Data.Map (Map)
+import Data.Map.Strict (Map)
 import Data.Monoid
+import Data.Set (Set)
 import Language.Hawk.Syntax.Type
 
-import qualified Data.Map as Map
+import qualified Data.Map.Strict as Map
+import qualified Data.Set        as Set
 
 
 -------------------------------------------------------------------------------
--- Typing Environment
+-- Linear Checking Environment
 -------------------------------------------------------------------------------
 
-data Env = TypeEnv { _types :: Map Text Scheme }
+data LcEnv
+  = LcEnv
+    { _envReg :: Set Text
+    , _envLin  :: Set Text
+    }
   deriving (Eq, Show)
 
 
-makeClassy ''Env
+makeClassy ''LcEnv
 
 
-empty :: Env
-empty = TypeEnv Map.empty
+instance Monoid LcEnv where
+    mempty = empty
+    mappend = merge
 
 
-extend :: HasEnv e => e -> (Text, Scheme) -> e
-extend e (key, value) =
-  e & env . types %~ Map.insert key value
+data TyCtx
+  = RegCtx | LinCtx
+  deriving(Show, Eq)
 
 
-remove :: HasEnv e => e -> Text -> e
-remove e key =
-  e & env . types %~ Map.delete key
+-------------------------------------------------------------------------------
+-- Helpers
+-------------------------------------------------------------------------------
+
+empty :: LcEnv
+empty = LcEnv Set.empty Set.empty
 
 
-extends :: HasEnv e => e -> [(Text, Scheme)] -> e
-extends e xs =
-  e & env . types %~ Map.union (Map.fromList xs)
+extendIntuit :: HasLcEnv e => e -> Text -> e
+extendIntuit env n =
+  env & lcEnv . envReg %~ Set.insert n
+
+  
+extendLinear :: HasLcEnv e => e -> Text -> e
+extendLinear env n =
+  env & lcEnv . envLin %~ Set.insert n
 
 
-lookup :: HasEnv e => Text -> e -> Maybe Scheme
-lookup key e =
-  Map.lookup key $ e ^. env . types
+remove :: HasLcEnv e => e -> Text -> e
+remove env n =
+  env & lcEnv . envReg %~ Set.delete n
 
 
-merge :: HasEnv e => e -> e -> e
+use :: HasLcEnv e => e -> Text -> e
+use env n =
+  env & lcEnv . envLin %~ Set.delete n
+
+
+lookup :: HasLcEnv e => Text -> e -> Maybe TyCtx
+lookup n env
+  | Set.member n (env^.lcEnv.envReg) = Just RegCtx
+  | Set.member n (env^.lcEnv.envLin)  = Just LinCtx
+  | otherwise = Nothing
+  
+
+merge :: HasLcEnv e => e -> e -> e
 merge e1 e2 =
-  e1 & env . types %~ Map.union (e2 ^. env . types)
+  e1 & lcEnv . envReg %~ Set.union (e2^.lcEnv.envReg)
+     & lcEnv . envLin %~ Set.union (e2^.lcEnv.envLin)
 
 
-mergeMany :: HasEnv e => [e] -> Env
-mergeMany = foldr (merge . view env) empty
+mergeMany :: [LcEnv] -> LcEnv
+mergeMany = foldr merge empty
 
 
-mergeSome :: HasEnv e => [e] -> e
+mergeSome :: HasLcEnv e => [e] -> e
 mergeSome = foldr1 merge
 
 
-singleton :: Text -> Scheme -> Env
-singleton key val = TypeEnv $ Map.singleton key val
+singleton :: Text -> TyCtx -> LcEnv
+singleton n = \case
+  RegCtx -> empty { _envReg = Set.singleton n } 
+  LinCtx -> empty { _envLin = Set.singleton n }
 
-keys :: HasEnv e => e -> [Text]
-keys e =
-  Map.keys (e ^. env . types)
-
-
-fromList :: [(Text, Scheme)] -> Env
-fromList = TypeEnv . Map.fromList
-
-toList :: HasEnv e => e -> [(Text, Scheme)]
-toList = Map.toList . view (env . types)
+    
+fromList :: [(Text, Text)] -> LcEnv
+fromList = undefined
 
 
-instance Monoid Env where
-  mempty = empty
-  mappend = merge
+toList :: HasLcEnv e => e -> [(Text, Text)]
+toList = undefined
+
+
