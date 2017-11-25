@@ -118,8 +118,9 @@ library:
     - Language.Hawk.KindsCheck.State
 
     - Language.Hawk.LinearCheck
-    - Language.Hawk.LinearCheck.Environment
     - Language.Hawk.LinearCheck.Error
+    - Language.Hawk.LinearCheck.GlobalEnvironment
+    - Language.Hawk.LinearCheck.LocalEnvironment
     - Language.Hawk.LinearCheck.Message
     - Language.Hawk.LinearCheck.Result
     - Language.Hawk.LinearCheck.State

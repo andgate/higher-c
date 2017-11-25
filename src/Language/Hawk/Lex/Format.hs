@@ -2,20 +2,21 @@
            , OverloadedStrings
            , RankNTypes
            , TemplateHaskell
+           , DataKinds
+           , KindSignatures
+           , GADTs
   #-}
 module Language.Hawk.Lex.Format where
 
 import Control.Lens
 import Control.Monad (when, unless, void)
 import Control.Monad.State.Strict (State, evalState)
-import Data.Map.Strict (Map)
 import Language.Hawk.Lex.Result (LxResult (..), lxTokens)
 import Language.Hawk.Lex.Token
-import Language.Hawk.Syntax.Location (Loc(..), Region)
+import Language.Hawk.Syntax.Location (Loc(..), Region, locReg, regStart, posColumn)
 import Safe (headDef)
 
 import qualified Data.Map.Strict as Map
-import qualified Language.Hawk.Lex.Result as R
 import qualified Language.Hawk.Syntax.Location  as L
 
 
@@ -38,6 +39,7 @@ data Cell =
   { _cellIndent :: !Int
   , _cellType :: CellType
   } deriving (Eq, Ord, Show)
+
 
 makeLenses ''Cell
 
@@ -74,23 +76,24 @@ mkLayout input = LayoutState  "" mempty [defCell] False input [] []
 -- Since this was originally implemented with conduit, using recursion in a state monad that
 -- maintains input/out lists was easier.
 layout :: LxResult -> LxResult
-layout r = LxResult { _lxTokens = toks' }
+layout r =
+  r & lxTokens %~ Map.map f
   where
-    toks = r^.lxTokens      
-    toks' = Map.map f toks
-    f [toks] =
-      let toks' = evalState layoutDriver (mkLayout toks)
-      in  toks'
+    f = foldr (\x xs -> evalState layoutDriver (mkLayout x) ++ xs) mempty
+
 
 layoutDriver :: Layout [[Token]]
 layoutDriver = do
   ts <- use layToks
   case ts of
-    (t:ts') -> do layToks .= ts'
-                  updateLocation t
-                  handleTok t
-                  layoutDriver
-    [] -> reverse <$> use layResults
+    (t:ts') -> do
+      layToks .= ts'
+      updateLocation t
+      handleTok t
+      layoutDriver
+
+    [] -> use layResults
+
 
 handleTok :: Token -> Layout ()
 handleTok t
@@ -121,14 +124,18 @@ handleTok t
 yieldTok :: Token -> Layout ()
 yieldTok t = do
   layToks' %= (t:)
-  
-  when ( (t ^. L.regStart . L.posColumn) == 0
-         && (t ^. tokClass == TokenLn')
-       )
-       $ do ts <- use layToks'
-            layResults %= (reverse ts:)
+
+   -- Is it time to split it up?
+  when (isTopLevelLine || isEof)
+       $ do ts <- uses layToks' reverse
+            layResults %= (ts:)
             layToks' .= []
-            return ()
+  where
+    isTopLevelLine
+      = (t^.regStart.posColumn == 0) && (t^.tokClass == TokenLn')
+
+    isEof
+      = t^.tokClass == TokenEof
 
 
 closeStack :: Layout ()
@@ -166,6 +173,7 @@ open ct = do
   pushCell cl
   yieldTok $ openTok (Loc fp r) cl
 
+
 close :: Layout ()
 close = do
   cl <- peekCell
@@ -200,14 +208,17 @@ updateLocation (Token _ _ (Loc fp r)) = do
     layFilePath .= fp
     layRegion .= r
 
+
 getCellIndent :: Layout Int
 getCellIndent =
   _cellIndent <$> peekCell
 
+
 getCurrIndent :: Layout Int
 getCurrIndent =
   use $ layRegion . L.regStart . L.posColumn
-    
+
+  
 setIndent :: Int -> Layout ()
 setIndent i =
   layStack . ix 0 . cellIndent .= i
@@ -217,11 +228,13 @@ pushCell :: Cell -> Layout ()
 pushCell l =
   layStack %= (l:)
 
+
 popCell :: Layout Cell
 popCell = do
   cn <- peekCell
   layStack %= tail
   return cn
+
 
 peekCell :: Layout Cell
 peekCell = 

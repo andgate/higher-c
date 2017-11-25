@@ -67,7 +67,8 @@ instance HasRegion Token where
 instance PP.Pretty Token where
     pretty t =
       PP.dquotes (PP.textStrict (t^.tokText))
-        PP.<> PP.textStrict ":"
+        PP.<+> PP.parens (PP.pretty (t^.tokClass)) 
+        PP.<+> PP.textStrict "@"
         PP.<> pretty (t^.tokLoc)
 
 instance PP.Pretty TokenClass where

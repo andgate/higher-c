@@ -80,14 +80,16 @@ validate s@(env, l) = \case
     logInfo (_NcHit # (n, l))
     validate (env', l) e2
 
-  ELit _ -> return () -- Literals cannot contain names
+  ELit _ ->
+    return () -- Literals cannot contain names
 
   ECon n ->
     if env `Env.check` n
        then return ()
        else disclose $ One (_UndeclaredNameFound # (n, l))
             
-  EPrim _ -> return () -- Primitive instructions cannot contain names
+  EPrim _ ->
+    return () -- Primitive instructions cannot contain names
 
   EIf e1 e2 e3 -> do
     validate s e1
@@ -95,15 +97,15 @@ validate s@(env, l) = \case
     validate s e3
 
 
-  EDup e -> validate s e
+  EDup n ->
+    validate s (EVar n)
+    
 
   EFree n e ->
     let env' = Env.insert n env
     in validate (env', l) e
 
   EType _ e -> validate s e
-
   ETLit _ e -> validate s e
   ELoc l' e -> validate (env, l') e
-
-  EParen e -> validate s e
+  EParen e  -> validate s e

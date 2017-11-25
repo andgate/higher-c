@@ -12,7 +12,7 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 -- -----------------------------------------------------------------------------
 -- | Type
 
--- Hawk digs it's talon's into LLVM's instruction set.
+-- Hawk talon's are dug firmly into LLVM's instruction set.
 data PrimInstr
   = PrimAdd
   | PrimFAdd
@@ -24,6 +24,16 @@ data PrimInstr
   | PrimUDiv
   | PrimSDiv
   | PrimFDiv
+  | PrimEq
+  | PrimLt
+  | PrimLtEq
+  | PrimGt
+  | PrimtGtEq
+  | PrimNEq
+  | PrimNLt
+  | PrimNLtEq
+  | PrimNGt
+  | PrimNGtEq
   | PrimBad
   deriving (Read, Show, Eq, Ord, Enum, Data, Typeable, Generic)
 
@@ -72,15 +82,27 @@ instance ToJSON PrimInstr
 
 readPrim :: Text -> PrimInstr
 readPrim = \case
-  "#add"  -> PrimAdd
-  "#fadd" -> PrimFAdd
-  "#sub"  -> PrimSub
-  "#fsub" -> PrimFSub
-  "#mul"  -> PrimMul
-  "#fmul" -> PrimFMul
-  "#div"  -> PrimDiv
-  "#udiv" -> PrimUDiv
-  "#sdiv" -> PrimSDiv
-  "#fdiv" -> PrimFDiv
+  "#add"   -> PrimAdd
+  "#fadd"  -> PrimFAdd
+  "#sub"   -> PrimSub
+  "#fsub"  -> PrimFSub
+  "#mul"   -> PrimMul
+  "#fmul"  -> PrimFMul
+  "#div"   -> PrimDiv
+  "#udiv"  -> PrimUDiv
+  "#sdiv"  -> PrimSDiv
+  "#fdiv"  -> PrimFDiv
+  "#eq"    -> PrimEq
+  "#lt"    -> PrimLt
+  "#lteq"  -> PrimLtEq
+  "#gt"    -> PrimGt
+  "#gteq"  -> PrimtGtEq
+  "#neq"   -> PrimNEq
+  "#nlt"   -> PrimNLt
+  "#nlteq" -> PrimNLtEq
+  "#ngt"   -> PrimNGt
+  "#ngteq" -> PrimNGtEq
+
+   -- What was this for?
   
   _ -> PrimBad

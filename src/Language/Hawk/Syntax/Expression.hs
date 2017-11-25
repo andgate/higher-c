@@ -47,7 +47,7 @@ data Exp
   | ECon  Text
   | EPrim PrimInstr
   | EIf   Exp Exp Exp
-  | EDup  Exp
+  | EDup  Text
   | EFree Text Exp
 
   -- Hints
@@ -157,6 +157,25 @@ untype = transform $ \case
   EType _ e -> e
   e -> e
 
+
+-- -----------------------------------------------------------------------------
+-- | Helpers
+
+
+class HasParameters a where
+    parameters :: a -> [Text]
+
+
+instance HasParameters Exp where
+    -- Find top level lambas, return their vars.
+    parameters = \case
+      ELam n e  -> n : parameters e
+      EFree _ e -> parameters e
+      ELoc _ e  -> parameters e
+      EType _ e -> parameters e
+      EParen e  -> parameters e
+      _         -> []
+    
 
 -- -----------------------------------------------------------------------------
 -- | Class Instances

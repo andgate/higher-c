@@ -209,6 +209,7 @@ toplevel = mdo
     aexp <- rule $
           expParen
       <|> expVar
+      <|> expDup
       <|> expOp
       <|> expPrim
       <|> expLit
@@ -256,6 +257,10 @@ toplevel = mdo
     expVar <- rule $
       let ex (v, l) = ELoc l $ EVar v
       in ex <$> varId
+
+    expDup <- rule $
+      let ex (v, l) = ELoc l $ EDup v
+      in ex <$> (rsvp "dup" *> varId)
 
     expLit <- rule $
       let ex (lit, l) = ELoc l $ ELit lit

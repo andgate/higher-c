@@ -103,28 +103,28 @@ genParam (AST.Parameter ty pname _) = do
 
 
 emitDef :: (MonadState s m, HasLLVMState s)
-        => Hk.Def -> m ()
-emitDef (Hk.Def (Hk.Name name) pats (Hk.ETLit ty exp)) = do
+        => (Text, Hk.Exp) -> m ()
+emitDef (n, (Hk.ETLit ty e)) = do
   startBlocks
-  emitExp exp
+  emitExp e
   bls <- endBlocks
-  define retty' (t2sbs name) pats' bls
+  define retty' (t2sbs n) pats' bls
   where
     (pattys, retty) = viewTLit ty
     retty' = emitTypeLit retty
-    pats' = map emitPat (zip pats pattys)
+    pats' = map emitPat (zip (Hk.parameters e) pattys)
 
 
-emitPat :: (Hk.Pat, Hk.TLit) -> AST.Parameter
-emitPat (Hk.Pat name, ty)
-    = AST.Parameter ty' name' []
+emitPat :: (Text, Hk.TLit) -> AST.Parameter
+emitPat (n, ty)
+    = AST.Parameter ty' n' []
     where ty' = emitTypeLit ty
-          name' = AST.Name (t2sbs name)
+          n' = AST.Name (t2sbs n)
 
 
 emitPatBind :: (MonadState s m, HasLLVMState s)
-        => (Hk.Var, Hk.Exp Hk.Var) -> m ()
-emitPatBind (Hk.Var n, (Hk.ETLit t e)) = do
+        => (Text, Hk.Exp) -> m ()
+emitPatBind (n, (Hk.ETLit t e)) = do
   let t' = emitTypeLit t
       n' = AST.Name (t2sbs n)
   i <- alloca t'
@@ -133,12 +133,12 @@ emitPatBind (Hk.Var n, (Hk.ETLit t e)) = do
   assignVar n' i
 
 emitExp :: (MonadState s m, HasLLVMState s)
-        => Hk.Exp Hk.Var -> m AST.Operand
+        => Hk.Exp -> m AST.Operand
 emitExp = \case
   Hk.ELit c ->
     setVal $ constOp $ emitLit c
   
-  Hk.ETLit ty (Hk.EVar (Hk.Var n)) ->
+  Hk.ETLit ty (Hk.EVar n) ->
     getvar (t2sbs n) >>= load (emitTypeLit ty) >>= setVal
 
 
@@ -147,7 +147,7 @@ emitExp = \case
     emitExp e
 
 
-  Hk.ETLit ty (Hk.EApp (Hk.EVar (Hk.Var n)) arg) -> do
+  Hk.ETLit ty (Hk.EApp (Hk.EVar n) arg) -> do
     let ty' = emitTypeLit ty
     arg' <- emitExp arg
     call ty' (externf ty' (AST.Name (t2sbs n))) [arg']
@@ -155,7 +155,7 @@ emitExp = \case
   a@(Hk.EApp _ b) -> do
     let (f, args) = viewApp a
     case f of
-      Hk.ETLit ty (Hk.EVar (Hk.Var f')) -> do
+      Hk.ETLit ty (Hk.EVar f') -> do
         let ty' = emitTypeLit ty
         args' <- mapM emitExp args
         call ty' (externf ty' (AST.Name (t2sbs f'))) args'
@@ -197,7 +197,7 @@ emitExp = \case
 
 
 
-viewApp :: Hk.Exp Hk.Var -> (Hk.Exp Hk.Var, [Hk.Exp Hk.Var])
+viewApp :: Hk.Exp -> (Hk.Exp, [Hk.Exp])
 viewApp = go []
   where
     go xs (Hk.EApp a b) = go (b : xs) a
@@ -230,8 +230,7 @@ emitTypeLit = \case
   Hk.TLitFloat  -> Ty.double
   Hk.TLitChar   -> Ty.i8
   Hk.TLitBool   -> bool
-  -- More complicated type literals
-  Hk.TLitData (Hk.Con n) -> Ty.NamedTypeReference . AST.Name . t2sbs $ n
+  Hk.TLitData n -> Ty.NamedTypeReference . AST.Name . t2sbs $ n
   Hk.TLitFun args ret     -> Ty.FunctionType (emitTypeLit ret) (map emitTypeLit args) False
   
 -------------------------------------------------------------------------------

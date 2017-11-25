@@ -44,16 +44,20 @@ compile
      )
   => c -> m ()
 compile conf = do
-  condemn $
-    loadFiles (conf^.hkcSrcFiles)
-      >>= lexMany             >>= dumpLx conf
-      >>= parseMany           >>= dumpPs conf
-      >>= namecheck           >>= dumpNc conf
-      >>= typecheckMany       >>= dumpTc conf
-      >>= kindscheck          >>= dumpKc conf
-      >>= linearcheck         >>= dumpLc conf
+  phase1
+    >>= namecheck           >>= dumpNc conf
+    >>= typecheckMany       >>= dumpTc conf
+    >>= kindscheck          >>= dumpKc conf
+    >>= linearcheck         >>= dumpLc conf
 
   return ()
+
+  where
+    phase1 =
+      condemn
+      $ loadFiles (conf^.hkcSrcFiles)
+          >>= lexMany             >>= dumpLx conf
+          >>= parseMany           >>= dumpPs conf
 
 
 

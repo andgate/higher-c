@@ -59,7 +59,6 @@ import qualified Language.Hawk.TypeCheck.Result as R
 import qualified Language.Hawk.TypeCheck.Substitution as Subst
 
 
-
 -----------------------------------------------------------------------
 -- Type Checking
 -----------------------------------------------------------------------
@@ -147,7 +146,7 @@ inferConstraints = \case
     return ( tv
            , EType tv $ EVar x
            , InferResult { constraints = []
-                        , assumptions = As.singleton x tv })
+                         , assumptions = As.singleton x tv })
 
 
   EApp e1 e2 -> do
@@ -213,15 +212,16 @@ inferConstraints = \case
     (t3, e3', r3) <- inferConstraints e3
     return ( t2
            , EType t2 $ EIf e1' e2' e3'
-           , r1 <> r2 <> r2
+           , r1 <> r2 <> r3
                 <> InferResult [EqConst t1 tBool, EqConst t2 t3] As.empty
            )
 
-  EDup e -> do
-    (t, e', r) <- inferConstraints e
-    return ( t
-           , EType t $ EDup e'
-           , r )
+  EDup n -> do
+    tv <- fresh    
+    return ( tv
+           , EType tv $ EDup n
+           , InferResult { constraints = []
+                         , assumptions = As.singleton n tv } )
 
   EFree n e -> do
     (t, e', r) <- inferConstraints e
@@ -230,12 +230,12 @@ inferConstraints = \case
            , r)
 
   EType t e -> do
-    (t', e', r) <- inferConstraints e
+    (t', _, r) <- inferConstraints e
     return ( t
            , EType t e
            , r <> InferResult [EqConst t t'] As.empty)
 
-  ETLit tlit e -> error "Type inferenece doesn't work on type literals"
+  ETLit _ _ -> error "Type inferenece doesn't work on type literals"
 
   ELoc l e -> do
     (t, e', r) <- inferConstraints e
@@ -268,6 +268,18 @@ inferPrimInstr = \case
   PrimUDiv -> error "Unsigned division not implemented in typechecker."
   PrimSDiv -> error "Short division not implemented in typechecker."
   PrimFDiv -> tFun2 tFloat tFloat tFloat
+  
+  PrimEq     -> tFun2 tInt tInt tBool
+  PrimLt     -> tFun2 tInt tInt tBool
+  PrimLtEq   -> tFun2 tInt tInt tBool
+  PrimGt     -> tFun2 tInt tInt tBool
+  PrimtGtEq  -> tFun2 tInt tInt tBool
+  PrimNEq    -> tFun2 tInt tInt tBool
+  PrimNLt    -> tFun2 tInt tInt tBool
+  PrimNLtEq  -> tFun2 tInt tInt tBool
+  PrimNGt    -> tFun2 tInt tInt tBool
+  PrimNGtEq  -> tFun2 tInt tInt tBool
+  
   PrimBad  -> error "Type checker encountered bad primitive instruction."
 
 

@@ -407,14 +407,15 @@ alexGetByte (AlexInput c bytes text) = case bytes of
             (b, ytes) -> Just (b, AlexInput t ytes ext)
 
 alexInputPrevChar :: AlexInput -> Char
-alexInputPrevChar = prevChar              
+alexInputPrevChar = prevChar
 
 
 
 lexMany :: ( MonadChronicle (Bag e) m, AsLxErr e )
-      => LdResult -> m LxResult
+        => LdResult -> m LxResult
 lexMany =
   mconcatMapM (uncurry lex) . LdR.toList
+
 
 -- Simple token lexing
 lex :: ( MonadChronicle (Bag e) m, AsLxErr e )

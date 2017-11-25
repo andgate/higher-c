@@ -71,7 +71,7 @@ parseMany r = do
         r <- mconcatMapM (parse fp) toks
         logInfo (_ParseSuccess # fp)
         return r
-  r' <- mconcatMapM f toks
+  r' <- condemn $ mconcatMapM f toks
   logInfo (_ParseFinished # ())
   return r'
 
