@@ -122,7 +122,10 @@ checkExp env = \case
     (e1', env1) <- checkExp env e1
     (e2', env2) <- checkExp env1 e2
     (e3', env3) <- checkExp env1 e3
-    let diff = (env2^.localEnv.envLin) `Map.difference` (env3^.localEnv.envLin)
+    
+    let diff = Map.differenceWith f (env2^.localEnv.envLin) (env3^.localEnv.envLin)
+        f a b = if a == b then Nothing else Just a
+        
     unless (Map.null diff)
            $ confess $ One (_LcBranchMismatch # Map.keys diff )
     return (EIf e1' e2' e3', env3)
@@ -155,5 +158,3 @@ checkExp env = \case
   EParen e -> do
     (e', env') <- checkExp env e
     return (EParen e', env')
-
-
