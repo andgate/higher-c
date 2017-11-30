@@ -17,9 +17,10 @@ data Constraint
     -- Equality Constraint, to be unified when solving.
   = EqConst Type Type
 
-    -- Explicit Instance Constraint, states Scheme is a generic instance of Type.
+    -- Explicit Instance Constraint, states second type is a generic
+    -- instance of the first.
     -- Useful if type is known beforehand.
-  | ExpInstConst Type Scheme
+  | ExpInstConst Type Type
 
     -- Implicit Instance Constraint, says that t1 is an instance of t2
     -- when generalized to a Scheme with a given Set of type variables.

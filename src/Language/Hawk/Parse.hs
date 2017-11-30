@@ -49,7 +49,6 @@ import Language.Hawk.Lex.Token
 import Language.Hawk.Parse.Error
 import Language.Hawk.Parse.Grammar
 import Language.Hawk.Parse.Message
-import Language.Hawk.Parse.Result (PsResult)
 import Language.Hawk.Syntax
 
 import qualified Data.List.NonEmpty             as NE
@@ -57,14 +56,13 @@ import qualified Data.Map.Strict                as Map
 import qualified Data.Set                       as Set
 import qualified Data.Text                      as Text
 import qualified Language.Hawk.Lex.Result       as LxR
-import qualified Language.Hawk.Parse.Result     as R
 import qualified Text.Earley                    as E
 
 
 
 parseMany :: ( MonadChronicle (Bag e) m, AsPsErr e
              , MonadLog (WithSeverity msg) m, AsPsMsg msg )
-          => LxResult -> m PsResult
+          => LxResult -> m Image
 parseMany r = do
   let toks = LxR.toList r
       f (fp, toks) = do
@@ -77,7 +75,7 @@ parseMany r = do
 
 
 parse :: ( MonadChronicle (Bag e) m, AsPsErr e )
-         => FilePath -> [Token] -> m PsResult
+         => FilePath -> [Token] -> m Image
 parse fp toks = do
   let rs = E.fullParses (E.parser toplevel) toks
   handleParser rs

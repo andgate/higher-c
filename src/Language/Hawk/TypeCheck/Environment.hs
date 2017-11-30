@@ -7,6 +7,7 @@ import Data.Text (Text)
 import Data.Map (Map)
 import Data.Monoid
 import Language.Hawk.Syntax.Type
+import Language.Hawk.Syntax.Signature
 
 import qualified Data.Map as Map
 
@@ -15,7 +16,7 @@ import qualified Data.Map as Map
 -- Typing Environment
 -------------------------------------------------------------------------------
 
-data Env = TypeEnv { _types :: Map Text Scheme }
+data Env = TypeEnv { _types :: Map Text Type }
   deriving (Eq, Show)
 
 
@@ -35,7 +36,7 @@ empty :: Env
 empty = TypeEnv Map.empty
 
 
-extend :: HasEnv e => e -> (Text, Scheme) -> e
+extend :: HasEnv e => e -> (Text, Type) -> e
 extend e (key, value) =
   e & env . types %~ Map.insert key value
 
@@ -45,12 +46,12 @@ remove e key =
   e & env . types %~ Map.delete key
 
 
-extends :: HasEnv e => e -> [(Text, Scheme)] -> e
+extends :: HasEnv e => e -> [(Text, Type)] -> e
 extends e xs =
   e & env . types %~ Map.union (Map.fromList xs)
 
 
-lookup :: HasEnv e => Text -> e -> Maybe Scheme
+lookup :: HasEnv e => Text -> e -> Maybe Type
 lookup key e =
   Map.lookup key $ e ^. env . types
 
@@ -68,7 +69,7 @@ mergeSome :: HasEnv e => [e] -> e
 mergeSome = foldr1 merge
 
 
-singleton :: Text -> Scheme -> Env
+singleton :: Text -> Type -> Env
 singleton key val = TypeEnv $ Map.singleton key val
 
 keys :: HasEnv e => e -> [Text]
@@ -76,15 +77,27 @@ keys e =
   Map.keys (e ^. env . types)
 
 
-fromList :: [(Text, Scheme)] -> Env
+fromList :: [(Text, Type)] -> Env
 fromList = TypeEnv . Map.fromList
 
-toList :: HasEnv e => e -> [(Text, Scheme)]
+
+toList :: HasEnv e => e -> [(Text, Type)]
 toList = Map.toList . view (env . types)
 
-fromMap :: Map Text Scheme -> Env
+
+fromSig :: Sig -> Env
+fromSig (Sig n t) = singleton n t
+
+fromSigs :: [Sig] -> Env
+fromSigs sigs = fromList $ zip ns ts
+  where
+    ns = map _sigName sigs
+    ts = map _sigType sigs
+
+
+fromMap :: Map Text Type -> Env
 fromMap ts =
   TypeEnv { _types = ts }
 
-toMap :: HasEnv e => e -> Map Text Scheme
+toMap :: HasEnv e => e -> Map Text Type
 toMap = view (env .types)

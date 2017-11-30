@@ -2,8 +2,16 @@ resolver: nightly-2017-11-21
 
 packages:
 - '.'
+- location:
+    git: https://github.com/llvm-hs/llvm-hs-pretty.git
+    commit: f5093c8e53fe8eb8bf384a44df2e9cf6d8c2983d
+  extra-dep: true
+
+
 extra-deps:
 - data-default-instances-text-0.0.1
+- llvm-hs-pure-5.1.0
+
 nix:
   enable: true
   pure: true

@@ -79,6 +79,7 @@ library:
     - logging-effect
     - llvm-hs
     - llvm-hs-pure
+    - llvm-hs-pretty
     - mmorph
     - monad-control
     - monad-logger
@@ -96,6 +97,7 @@ library:
     - transformers
     - transformers-base
     - unbound-generics
+    - unordered-containers
     - utf8-string
     - vector
     - wl-pprint-text
@@ -114,7 +116,6 @@ library:
     - Language.Hawk.KindsCheck.Environment
     - Language.Hawk.KindsCheck.Error
     - Language.Hawk.KindsCheck.Message
-    - Language.Hawk.KindsCheck.Result
     - Language.Hawk.KindsCheck.State
 
     - Language.Hawk.LinearCheck
@@ -122,7 +123,6 @@ library:
     - Language.Hawk.LinearCheck.GlobalEnvironment
     - Language.Hawk.LinearCheck.LocalEnvironment
     - Language.Hawk.LinearCheck.Message
-    - Language.Hawk.LinearCheck.Result
     - Language.Hawk.LinearCheck.State
 
     - Language.Hawk.Load
@@ -133,7 +133,6 @@ library:
     - Language.Hawk.NameCheck
     - Language.Hawk.NameCheck.Environment
     - Language.Hawk.NameCheck.Error
-    - Language.Hawk.NameCheck.Result
     - Language.Hawk.NameCheck.State
     
     - Language.Hawk.Parse
@@ -141,7 +140,6 @@ library:
     - Language.Hawk.Parse.Grammar
     - Language.Hawk.Parse.Helpers
     - Language.Hawk.Parse.Message
-    - Language.Hawk.Parse.Result
     
     - Language.Hawk.Lex
     - Language.Hawk.Lex.Error
@@ -152,24 +150,28 @@ library:
     - Language.Hawk.Lex.Token
 
     - Language.Hawk.Syntax
-    - Language.Hawk.Syntax.Decl
     - Language.Hawk.Syntax.DataDecl
     - Language.Hawk.Syntax.Expression
+    - Language.Hawk.Syntax.Fixity
+    - Language.Hawk.Syntax.Foreign
+    - Language.Hawk.Syntax.Function
+    - Language.Hawk.Syntax.Image
     - Language.Hawk.Syntax.Location
     - Language.Hawk.Syntax.Pass
     - Language.Hawk.Syntax.Prim
+    - Language.Hawk.Syntax.Signature
     - Language.Hawk.Syntax.Type
 
-    - Language.Hawk.Target.LLVM.Codegen
-    - Language.Hawk.Target.LLVM.Emit
-    - Language.Hawk.Target.LLVM.Types
+    - Language.Hawk.Target.LLVM
+    - Language.Hawk.Target.LLVM.IR
+    - Language.Hawk.Target.LLVM.Module
+    - Language.Hawk.Target.LLVM.Instruction
 
     - Language.Hawk.TypeCheck
     - Language.Hawk.TypeCheck.Assumption
     - Language.Hawk.TypeCheck.Constraint
     - Language.Hawk.TypeCheck.Environment
     - Language.Hawk.TypeCheck.Error
-    - Language.Hawk.TypeCheck.Result
     - Language.Hawk.TypeCheck.State
     - Language.Hawk.TypeCheck.Substitution
 

@@ -19,16 +19,16 @@ data DataDecl
     = DataDecl
       { _dataName :: Text
       , _dataBody :: [ConDecl]
-      } deriving (Show, Generic)
+      } deriving (Show, Eq, Generic)
 
 data ConDecl
     = ConDecl Text [Type]
     | RecDecl Text [RecField]
-    deriving (Show, Generic)
+    deriving (Show, Eq, Generic)
 
 data RecField =
     RecField Text Type
-    deriving (Show, Generic)
+    deriving (Show, Eq, Generic)
 
 
 

@@ -10,11 +10,7 @@ import Data.Binary
 import Language.Hawk.Compile.Config
 import Language.Hawk.Load.Result (LdResult)
 import Language.Hawk.Lex.Result (LxResult)
-import Language.Hawk.Parse.Result (PsResult)
-import Language.Hawk.NameCheck.Result (NcResult)
-import Language.Hawk.TypeCheck.Result (TcResult)
-import Language.Hawk.KindsCheck.Result (KcResult)
-import Language.Hawk.LinearCheck.Result (LcResult)
+import Language.Hawk.Syntax.Image (Image)
 
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath ((</>), (<.>), takeBaseName, takeDirectory)
@@ -44,7 +40,7 @@ dumpLx conf r = do
     
 
 dumpPs :: ( MonadIO m, HasHkcConfig c )
-       => c -> PsResult -> m PsResult
+       => c -> Image -> m Image
 dumpPs conf r = do
   let fp = dumpPath conf "parse"
   dump fp r ( conf^.hkcDumpPsPretty
@@ -55,7 +51,7 @@ dumpPs conf r = do
 
 
 dumpNc :: ( MonadIO m, HasHkcConfig c )
-       => c -> NcResult -> m NcResult
+       => c -> Image -> m Image
 dumpNc conf r = do
   let fp = dumpPath conf "named"
   dump fp r ( conf^.hkcDumpNcPretty
@@ -66,7 +62,7 @@ dumpNc conf r = do
 
 
 dumpTc :: ( MonadIO m, HasHkcConfig c )
-       => c -> TcResult -> m TcResult
+       => c -> Image -> m Image
 dumpTc conf r = do
   let fp = dumpPath conf "typed"
   dump fp r ( conf^.hkcDumpTcPretty
@@ -77,7 +73,7 @@ dumpTc conf r = do
 
 
 dumpKc :: ( MonadIO m, HasHkcConfig c )
-       => c -> KcResult -> m KcResult
+       => c -> Image -> m Image
 dumpKc conf r = do
   let fp = dumpPath conf "kinded"
   dump fp r ( conf^.hkcDumpKcPretty
@@ -88,7 +84,7 @@ dumpKc conf r = do
 
 
 dumpLc :: ( MonadIO m, HasHkcConfig c )
-       => c -> LcResult -> m LcResult
+       => c -> Image -> m Image
 dumpLc conf r = do
   let fp = dumpPath conf "linear"
   dump fp r ( conf^.hkcDumpLcPretty

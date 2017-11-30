@@ -7,7 +7,6 @@ module Language.Hawk.Parse.Error where
 import Control.Lens
 
 import Language.Hawk.Lex.Token
-import Language.Hawk.Parse.Result (PsResult)
 import Language.Hawk.Syntax
 import Language.Hawk.Syntax.Location
 import Data.Text (Text, pack)
@@ -18,7 +17,7 @@ import qualified Text.PrettyPrint.Leijen.Text as P
 
 data PsErr
   = UnexpectedToken [Token]
-  | AmbiguousGrammar [PsResult]
+  | AmbiguousGrammar [Image]
   deriving(Show)
 
 makeClassyPrisms ''PsErr

@@ -37,13 +37,11 @@ import Data.Text (Text, pack)
 import Text.PrettyPrint.Leijen.Text (pretty)
 
 import Language.Hawk.Syntax
-import Language.Hawk.KindsCheck.Result (KcResult, kcSigs, kcDecls)
 import Language.Hawk.LinearCheck.Error
 import Language.Hawk.LinearCheck.GlobalEnvironment (GlobalEnv, HasGlobalEnv, globalEnv, globalVars)
 import Language.Hawk.LinearCheck.LocalEnvironment (LocalEnv, HasLocalEnv, localEnv, envLin, envReg)
 import Language.Hawk.LinearCheck.Message
 import Language.Hawk.LinearCheck.State
-import Language.Hawk.LinearCheck.Result (LcResult (..))
 
 
 import qualified Data.Map.Strict as Map
@@ -59,20 +57,20 @@ import qualified Language.Hawk.LinearCheck.GlobalEnvironment as GEnv
 
 linearcheck :: ( MonadLog (WithSeverity msg) m, AsLcMsg msg
                , MonadChronicle (Bag e) m, AsLcErr e )
-            => KcResult -> m LcResult
-linearcheck r = do
+            => Image -> m Image
+linearcheck img = do
   -- Generate global environment
-  let genv = GEnv.fromList $ Map.keys (r^.kcDecls)
-  ds' <- mapM (mapM $ runCheck genv) (r^.kcDecls)
+  let genv = GEnv.fromList (img^..imgFns.traversed.fnName)
+  img' <- mapMOf (imgFns.each) (runCheck genv) img
   logInfo (_LcComplete # ())
-  return LcResult { _lcSigs = r^.kcSigs
-                  , _lcDecls = ds'
-                  }
+  return img'
 
 runCheck :: ( MonadChronicle (Bag e) m, AsLcErr e )
-         => GlobalEnv -> Exp -> m Exp
-runCheck genv e =
-  fst <$> runReaderT (checkExp LEnv.empty e) genv  
+         => GlobalEnv -> Fn -> m Fn
+runCheck genv (Fn n vs e) = do
+  (e', lenv) <- runReaderT (checkExp LEnv.empty e) genv
+  return $ Fn n vs e'
+  
 
 
 checkExp :: ( MonadReader r m, HasGlobalEnv r

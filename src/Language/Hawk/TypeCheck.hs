@@ -16,6 +16,7 @@ module Language.Hawk.TypeCheck where
 
 import Control.Lens
 import Control.Applicative
+import Control.Arrow (second)
 import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Extra (mconcatMapM)
@@ -38,13 +39,11 @@ import Data.Text (Text, pack)
 import Text.PrettyPrint.Leijen.Text (pretty)
 
 import Language.Hawk.Syntax
-import Language.Hawk.NameCheck.Result (NcResult(..), ncNames, ncSigs, ncDecls)
 import Language.Hawk.TypeCheck.Assumption (Assumption)
 import Language.Hawk.TypeCheck.Constraint
 import Language.Hawk.TypeCheck.Environment (Env)
 import Language.Hawk.TypeCheck.Error
 import Language.Hawk.TypeCheck.Message
-import Language.Hawk.TypeCheck.Result (TcResult(..))
 import Language.Hawk.TypeCheck.State
 import Language.Hawk.TypeCheck.Substitution (Subst(..))
 
@@ -52,10 +51,8 @@ import Language.Hawk.TypeCheck.Substitution (Subst(..))
 import qualified Data.Map.Strict as Map
 import qualified Data.Set   as Set
 import qualified Data.Text  as T
-import qualified Language.Hawk.NameCheck.Result as NcR
 import qualified Language.Hawk.TypeCheck.Assumption as As
 import qualified Language.Hawk.TypeCheck.Environment as Env
-import qualified Language.Hawk.TypeCheck.Result as R
 import qualified Language.Hawk.TypeCheck.Substitution as Subst
 
 
@@ -65,33 +62,30 @@ import qualified Language.Hawk.TypeCheck.Substitution as Subst
 
 typecheckMany :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
                     , MonadChronicle (Bag e) m, AsTcErr e )
-                 => NcResult -> m TcResult
-typecheckMany r = evalStateT m env
+                 => Image -> m Image
+typecheckMany img = evalStateT m env
   where
-    es = Map.toList (r^.ncDecls)
-    ts = Map.map closeOver (r^.ncSigs)
-    env = Env.fromMap ts
+    sigsx = img^.imgSigs
+    sigsx' = sigsx & each.sigType %~ closeOver
+    
+    env = Env.fromSigs sigsx'
 
     m = do
-      r <- mconcatMapM f es
+      img' <- mapMOf (imgFns.each) f img
       logInfo (_TcComplete # ())
-      return r
+      return img'
       
-    
-    f (n, es') =
-      mconcatMapM (g n) es'
-
-    g n e = do
+    f (Fn n xs e) = do
       env <- get
-      (r, env') <- typecheck env n e
+      (e', env') <- typecheck env n e
       put env'
-      return r
+      return $ Fn n xs e'
 
 
 typecheck :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
              , MonadChronicle (Bag e) m, AsTcErr e
              )
-          => Env -> Text -> Exp -> m (TcResult, Env)
+          => Env -> Text -> Exp -> m (Exp, Env)
 typecheck env n e = run $ do
   (t, e', InferResult cs as) <- inferConstraints e
   let unbounds = Set.fromList (As.keys as) `Set.difference` Set.fromList (Env.keys env)
@@ -104,7 +98,8 @@ typecheck env n e = run $ do
   let e'' = Subst.apply s e'
       t'  = closeOver $ Subst.apply s t
       env' = Env.extend env (n, t')
-  return (R.singleton n t' [e''], env')
+      
+  return (e'', env')
 
   where
     run m = evalStateT (runReaderT m Set.empty) (def :: TypeState)
@@ -289,7 +284,7 @@ inferPrimInstr = \case
 -----------------------------------------------------------------------
 
 -- | Cannonicalize and return the polymorphic toplevel type.
-closeOver :: Type -> Scheme
+closeOver :: Type -> Type
 closeOver = normalize . generalize Set.empty
 
 
@@ -314,30 +309,39 @@ fresh = do
 
 
 instantiate :: (MonadState s m, HasTypeState s)
-            => Scheme -> m Type
-instantiate (Forall as t) = do
-  as' <- mapM (const fresh) as
-  let s = Subst $ Map.fromList $ zip as as'
-  return $ Subst.apply s t
+            => Type -> m Type
+instantiate =
+  transformM $ \x -> case x of
+    TForall tv t -> do
+      tv' <- fresh
+      let s = Subst $ Map.singleton tv tv'
+      return $ Subst.apply s t
+    _ -> return x
 
 
-generalize :: Set Text -> Type -> Scheme
-generalize free t = Forall as t
+-- Given a set of variables and some free variables from a type,
+-- wrap that type in Foralls with those variables.
+generalize :: Set Text -> Type -> Type
+generalize free t = foldr TForall t as
   where as = Set.toList $ ftv t `Set.difference` free
 
 
-normalize :: Scheme -> Scheme
-normalize (Forall _ body) = Forall (map (pack . snd) ord) body
+-- Normalizes names in a given type, from given names to generated
+-- names wrapped in foralls.
+normalize :: Type -> Type
+normalize t =
+  -- Wrap foralls with the generated type variables
+  -- over the normalized typed.
+  foldr (TForall . snd) t'' ord
   where
-    ord = zip (nub . Set.toList $ ftv body) letters
-
-    normtype (TArr a b) = TArr (normtype a) (normtype b)
-    normtype (TCon a) = TCon a
-    normtype (TVar a) =
-      case Prelude.lookup a ord of
-        Just x -> TVar (pack x)
-        Nothing -> error "type variable not in signature."
-
+    -- First drop the foralls
+    t' = dropForall t
+    -- Create a list of free names, paired with generated names
+    ord = zip (nub . Set.toList $ ftv t') (map pack letters)
+    -- Build substitution map from previous vars to generated vars
+    s = Subst.fromList $ map (second TVar) ord
+    -- Apply substition over our type
+    t'' = Subst.apply s t'
 
 -------------------------------------------------------------------------------
 -- Constraint Solving

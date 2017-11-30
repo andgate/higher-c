@@ -22,10 +22,13 @@ module Language.Hawk.Syntax
   , module Language.Hawk.Syntax.DataDecl
   , module Language.Hawk.Syntax.Decl
   , module Language.Hawk.Syntax.Expression
+  , module Language.Hawk.Syntax.Function
+  , module Language.Hawk.Syntax.Image
   , module Language.Hawk.Syntax.Kind
   , module Language.Hawk.Syntax.Literal
   , module Language.Hawk.Syntax.Location
   , module Language.Hawk.Syntax.Prim
+  , module Language.Hawk.Syntax.Signature
   , module Language.Hawk.Syntax.Type
   , module Language.Hawk.Syntax.TypeLiteral
   ) where
@@ -46,12 +49,15 @@ import GHC.Generics (Generic)
 import Language.Hawk.Syntax.DataDecl
 import Language.Hawk.Syntax.Decl
 import Language.Hawk.Syntax.Expression
+import Language.Hawk.Syntax.Function
+import Language.Hawk.Syntax.Image
 import Language.Hawk.Syntax.Kind
 import Language.Hawk.Syntax.Literal
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Operator
 import Language.Hawk.Syntax.Pass
 import Language.Hawk.Syntax.Prim
+import Language.Hawk.Syntax.Signature
 import Language.Hawk.Syntax.Type
 import Language.Hawk.Syntax.TypeLiteral
 import Text.PrettyPrint.Leijen.Text ((<+>))

@@ -9,17 +9,15 @@ import Data.Bifunctor
 import Data.Monoid
 import Data.Text (pack)
 import Language.Hawk.Parse.Helpers
-import Language.Hawk.Parse.Result (PsResult)
 import Language.Hawk.Lex.Token (Token)
 import Language.Hawk.Syntax
 import Text.Earley
 import Text.Earley.Mixfix
 
-import qualified Language.Hawk.Parse.Result as R
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-toplevel :: Grammar r (Prod r Token Token PsResult)
+toplevel :: Grammar r (Prod r Token Token Image)
 toplevel = mdo
         
 -- -----------------------------------------------------------------------------
@@ -27,7 +25,7 @@ toplevel = mdo
     
     result <- rule $ linefold $
           sig
-      <|> def
+      <|> fn
       -- <|> dataDef
       -- <|> classDef
       -- <|> instDef
@@ -81,7 +79,7 @@ toplevel = mdo
 -- Type Signature Declaration Rules
 
     sig <- rule $
-      let ex (n, _) ty = R.singleton n (Just ty) Nothing
+      let ex (n, _) ty = fromSig $ Sig n ty
       in ex <$> (varId <|> parens (fst <$> opId))
             <*> (rsvp ":" *> typ)
 
@@ -89,13 +87,13 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Definition Declaration Rules
 
-    def <- rule $
+    fn <- rule $
       let ex (n, _) vs e = let e' = foldr lam_ e vs
-                           in R.singleton n Nothing (Just e')
-      in ex <$> defName <*> many varId <*> (rsvp "=" *> exp)
+                           in fromFn $ Fn n [] e'
+      in ex <$> fnName <*> many varId <*> (rsvp "=" *> exp)
 
 
-    defName <- rule $
+    fnName <- rule $
       varId <|> parens (fst <$> opId)
 
 

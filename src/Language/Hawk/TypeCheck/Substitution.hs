@@ -29,6 +29,9 @@ compose :: Subst -> Subst -> Subst
 compose (Subst s1) (Subst s2) =
   Subst $ Map.map (apply (Subst s1)) s2 `Map.union` s1
 
+fromList :: [(Text, Type)] -> Subst
+fromList = Subst . Map.fromList
+
 
 instance Default Subst where
   def = Subst Map.empty
@@ -77,11 +80,8 @@ instance Substitutable Type where
     TKind k t    -> TKind k $ apply s t
     TLoc l t     -> TLoc l $ apply s t
     TParen t     -> TParen $ apply s t
-
-
-instance Substitutable Scheme where
-  apply s@(Subst s_map) (Forall as t) = Forall as $ apply s' t
-    where s' = Subst $ foldr Map.delete s_map as
+    TForall tv t -> let s' = Subst $ Map.delete tv s_map
+                    in  TForall tv $ apply s' t
 
 
 instance Substitutable Constraint where

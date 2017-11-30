@@ -20,15 +20,12 @@ import Language.Hawk.NameCheck.Environment (Env)
 import Language.Hawk.NameCheck.Error
 import Language.Hawk.NameCheck.Message
 import Language.Hawk.NameCheck.State
-import Language.Hawk.NameCheck.Result (NcResult (..))
-import Language.Hawk.Parse.Result (PsResult, psNames, psSigs, psDecls)
 import Language.Hawk.Syntax
 
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Data.Text as Text
 import qualified Language.Hawk.NameCheck.Environment as Env
-import qualified Language.Hawk.NameCheck.Result as R
-import qualified Language.Hawk.Parse.Result as PsR
 
 
 -----------------------------------------------------------------------
@@ -37,24 +34,16 @@ import qualified Language.Hawk.Parse.Result as PsR
 
 namecheck :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
              , MonadChronicle (Bag e) m, AsNcErr e
-             ) => PsResult -> m NcResult
-namecheck r = do
-  let ns = r^.psNames
-      ts = r^.psSigs
-      ds = r^.psDecls
+             ) => Image -> m Image
+namecheck img = do
+  let ns = Set.fromList (img^..imgFns.traversed.fnName)
+      env = Env.fromSet ns
       
-      es = concat $ Map.elems ds
-      env = Env.fromSet (r^.psNames)
-
   logInfo (_NcStarted # ns)
-  mapM_ (validate (env,mempty)) es
+  _ <- traverseOf_ (imgFns.each.fnBody) (validate (env,mempty)) img
   logInfo (_NcFinished # ())
 
-  return NcResult { _ncNames = ns
-                  , _ncSigs = ts
-                  , _ncDecls = ds
-                  }
-
+  return img
 
 validate :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
             , MonadChronicle (Bag e) m, AsNcErr e

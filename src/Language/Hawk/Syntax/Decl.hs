@@ -8,14 +8,16 @@ import Data.Text
 import GHC.Generics (Generic)
 import Language.Hawk.Syntax.DataDecl
 import Language.Hawk.Syntax.Expression
+import Language.Hawk.Syntax.Function
+import Language.Hawk.Syntax.Signature
 import Language.Hawk.Syntax.Type
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
 data Decl
-  = Sig Text Type
-  | Def Text Exp
+  = SigD Sig
+  | FnD  Fn
   | DataD DataDecl
   | Foreign Foreign
   | Fixity Fixity Int [Text]
@@ -72,23 +74,8 @@ instance ToJSON Fixity
 -- | Pretty Printing
 instance PP.Pretty Decl where
   pretty = \case
-    Sig n t ->
-      PP.textStrict "Signature Declaration"
-      PP.<$>
-      PP.indent 2
-      ( PP.textStrict "Name:" PP.<+> PP.pretty n
-        PP.<$>
-        PP.textStrict "Sig:" PP.<+> PP.pretty t
-      )
-
-    Def n t ->
-      PP.textStrict "Definition"
-      PP.<$>
-      PP.indent 2
-      ( PP.textStrict "Name:" PP.<+> PP.pretty n
-        PP.<$>
-        PP.textStrict "Def:" PP.<+> PP.pretty t
-      )
+    SigD s -> PP.pretty s
+    FnD f  -> PP.pretty f
 
     Foreign f ->
       PP.pretty f
