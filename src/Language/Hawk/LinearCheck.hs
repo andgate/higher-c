@@ -68,52 +68,52 @@ linearcheck img = do
 runCheck :: ( MonadChronicle (Bag e) m, AsLcErr e )
          => GlobalEnv -> Fn -> m Fn
 runCheck genv (Fn n vs e) = do
-  (e', lenv) <- runReaderT (checkExp LEnv.empty e) genv
+  (e', lenv) <- runReaderT (checkExp (LEnv.empty, locExp e) e) genv
   return $ Fn n vs e'
   
 
 
 checkExp :: ( MonadReader r m, HasGlobalEnv r
             , MonadChronicle (Bag e) m, AsLcErr e )
-         => LocalEnv -> Exp -> m (Exp, LocalEnv)
-checkExp env = \case
+         => (LocalEnv, Loc) -> Exp -> m (Exp, LocalEnv)
+checkExp (env, l) = \case
   e@(EVar n) ->
     case LEnv.lookup n env of
-      Just (LEnv.LinCtx 0)  -> confess $ One (_LcPreviouslyConsumed # n)
+      Just (LEnv.LinCtx 0)  -> confess $ One (_LcPreviouslyConsumed # (n, l))
       Just (LEnv.LinCtx _)  -> return (e, LEnv.free n env)
       Just LEnv.RegCtx -> return (e, env)
       Nothing -> do
         isGlobal <- views globalEnv (GEnv.lookup n)
         unless isGlobal
-               $ error "Variable not registered in context."   -- how was this reached!?
+               $ error $ show l ++ "\n\t\tVariable not registered in context."   -- how was this reached!?
         return (e, env)
 
 
   EApp f x -> do
-    (f', env1) <- checkExp env f
-    (x', env2) <- checkExp env1 x
+    (f', env1) <- checkExp (env, l) f
+    (x', env2) <- checkExp (env1, l) x
     return (EApp f' x', env2)
 
 
   ELam n e -> do
     let n' = readName n
         env1 = LEnv.extendLinear n' env
-    (e', env2) <- checkExp env1 e
+    (e', env2) <- checkExp (env1, l) e
 
     unless (LEnv.isConsumed n' env2)
-           $ confess $ One (_LcLetUnconsumed # n')
+           $ confess $ One (_LcLetUnconsumed # (n', l))
       
     return (ELam n e', env2)
 
 
   ELet (n, e1) e2 -> do
-    (e1', env1) <- checkExp env e1
+    (e1', env1) <- checkExp (env, l) e1
     let n' = readName n
         env1' = LEnv.extendLinear n' env1
-    (e2', env2) <- checkExp env1' e2
+    (e2', env2) <- checkExp (env1', l) e2
 
     unless (LEnv.isConsumed n' env2)
-           $ confess $ One (_LcLetUnconsumed # n')
+           $ confess $ One (_LcLetUnconsumed # (n', l))
     
     return (ELet (n, e1') e2', env2)
 
@@ -123,39 +123,42 @@ checkExp env = \case
   e@(EPrim _) -> return (e, env)
 
   EIf e1 e2 e3 -> do
-    (e1', env1) <- checkExp env e1
-    (e2', env2) <- checkExp env1 e2
-    (e3', env3) <- checkExp env1 e3
+    (e1', env1) <- checkExp (env, l) e1
+    (e2', env2) <- checkExp (env1, l) e2
+    (e3', env3) <- checkExp (env1, l) e3
     
     let diff = Map.differenceWith f (env2^.localEnv.envLin) (env3^.localEnv.envLin)
         f a b = if a == b then Nothing else Just a
         
     unless (Map.null diff)
-           $ confess $ One (_LcBranchMismatch # Map.keys diff )
+           $ confess $ One (_LcBranchMismatch # (Map.keys diff, l) )
+    
     return (EIf e1' e2' e3', env3)
 
     
   EDup n -> do
     let n' = readName n
+    
     when (LEnv.isConsumed n' env)
-         $ confess $ One (_LcPreviouslyConsumed # n')
+         $ confess $ One (_LcPreviouslyConsumed # (n', l))
+
     return (EDup n, env)
 
     
   EFree ns e -> do
     let env1 = foldr LEnv.free env (map readName ns)
-    (e', env2) <- checkExp env1 e
+    (e', env2) <- checkExp (env1, l) e
     return (EFree ns e', env2)
     
 
   EType t e -> do
-    (e', env') <- checkExp env e
+    (e', env') <- checkExp (env, l) e
     return (EType t e', env')
 
-  ELoc l e -> do
-    (e', env') <- checkExp env e
-    return (ELoc l e', env')
+  ELoc l' e -> do
+    (e', env') <- checkExp (env, l') e
+    return (ELoc l' e', env')
 
   EParen e -> do
-    (e', env') <- checkExp env e
+    (e', env') <- checkExp (env, l) e
     return (EParen e', env')

@@ -36,7 +36,7 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 data Type
   = TVar  Text
   | TCon  Text
-  | TApp  Type [Type]
+  | TApp  Type Type
   | TArr  Type Type
   | TLoli Type Type
   | TKind Kind Type
@@ -110,17 +110,17 @@ tLoli = TLoli
 -------------------------------------------------------------------------------
 -- Helpers
 
-getLoc :: Type -> Loc
-getLoc = \case
+locType :: Type -> Loc
+locType = \case
   TVar    _     -> error "Type is not located!"
   TCon    _     -> error "Type is not located!"
-  TApp    f  xs -> getLoc f  <> mconcat (getLoc <$> xs)
-  TArr    t1 t2 -> getLoc t1 <> getLoc t2
-  TLoli   t1 t2 -> getLoc t1 <> getLoc t2
-  TKind   _  t  -> getLoc t
+  TApp    f  x  -> locType f  <> locType x
+  TArr    t1 t2 -> locType t1 <> locType t2
+  TLoli   t1 t2 -> locType t1 <> locType t2
+  TKind   _  t  -> locType t
   TLoc    l  _  -> l
-  TParen  t     -> getLoc t
-  TForall _  t  -> getLoc t
+  TParen  t     -> locType t
+  TForall _  t  -> locType t
 
 
 -- -----------------------------------------------------------------------------
@@ -171,8 +171,8 @@ instance PP.Pretty Type where
       TVar tv ->
         PP.pretty tv
 
-      TApp f xs ->
-        PP.pretty f PP.<+> PP.pretty xs
+      TApp f x ->
+        PP.pretty f PP.<+> PP.pretty x
 
       TArr a b ->
         PP.pretty a PP.<+> PP.textStrict "->" PP.<+> PP.pretty b

@@ -147,6 +147,23 @@ untype = transform $ \case
 -- | Expression Manipulations
 
 
+locExp :: Exp -> Loc
+locExp = \case
+  EVar _ -> error "Cannot locate expression without location!"
+  EApp a b -> locExp a <> locExp b
+  ELam n e -> locName' n <> locExp e
+  ELet (n, _) e -> locName' n <> locExp e
+  ELit _ -> error "Cannot locate expression without location!"
+  ECon _ -> error "Cannot locate expression without location!"
+  EPrim _ -> error "Cannot located expresion without location!"
+  EIf a _ b -> locExp a <> locExp b
+  EDup n -> locName' n
+  EFree _ e -> locExp e
+  EType t e -> locExp e <> locType t
+  ELoc l _ -> l
+  EParen e -> locExp e
+  
+
 
 varName :: Name -> Exp
 varName = \case

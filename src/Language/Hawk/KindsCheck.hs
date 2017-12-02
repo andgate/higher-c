@@ -114,22 +114,17 @@ inferType env = \case
       Just k  -> return (k, TKind k t)
 
 
-  t@(TApp f xs) -> do
+  t@(TApp f x) -> do
     (k1, f') <- inferType env f
-    rs <- mapM (inferType env) xs
-    let k2s = map fst rs
-        k1Args = kargs k1
-        k1Ret  = kret k1
-        xs' = map snd rs
+    (k2, x') <- inferType env x
+    case k1 of
+      KArr a b -> do
+        unless (a `ksub` k2)
+               $ confess $ One (_KindMismatch # (a, b))
         
-    when (length k1Args == length k2s)
-         $ confess $ One (_KindArrowExpected # k1)
-      
-    forM_ (zip k2s k1Args) $ \(a, b) -> do
-      when (a `ksub` b)
-            $ confess $ One (_KindMismatch # (a, b))
+        return (b, TKind b $ TApp f' x')
 
-    return (k1Ret, TKind k1Ret $ TApp f' xs')
+      _ ->  confess $ One (_KindArrowExpected # k1) 
 
 
   t@(TArr t1 t2) -> do

@@ -133,10 +133,9 @@ toplevel = mdo
    
 
     btyp <- rule $
-      let ex f@(TLoc l1 _) xs =
-            let (TLoc l2 _) = head . reverse $ xs
-            in  TLoc (l1<>l2) $ TApp f xs
-      in   (ex <$> atyp <*> some atyp)
+      let ex f x = let l = (locType f <> locType x)
+                   in TLoc l $ TApp f x
+      in   (ex <$> btyp <*> atyp)
        <|> atyp
 
     atyp <- rule $
@@ -208,9 +207,13 @@ toplevel = mdo
       <|> expLet
       <|> bexp
 
+
     bexp <- rule $
-          expApp
-      <|> aexp
+      let ex f x = let l = locExp f <> locExp x
+                   in  ELoc l $ EApp f x
+      in     (ex <$> bexp <*> aexp)
+         <|> aexp
+
 
     aexp <- rule $
           expParen
@@ -258,11 +261,7 @@ toplevel = mdo
       let ex (n, l) = ELoc l $ EVar n
       in ex <$> opId
 
-    expApp <- rule $
-      let ex f@(ELoc l1 _) xs
-            = let (ELoc l2 _) = head $ reverse xs
-              in  ELoc (l1<>l2) $ foldr (flip EApp) f xs
-      in ex <$> aexp <*> some aexp
+
 
     expVar <- rule $
       let ex (v, l) = ELoc l $ EVar v
