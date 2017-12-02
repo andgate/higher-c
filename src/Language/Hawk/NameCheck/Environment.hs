@@ -1,6 +1,6 @@
 module Language.Hawk.NameCheck.Environment where
 
-
+import Data.Default.Class
 import Data.Text (Text)
 import Data.Set (Set)
 
@@ -8,6 +8,10 @@ import qualified Data.Set as Set
 
 
 newtype Env = Env { _envFrame :: [Set Text] }
+
+
+instance Default Env where
+  def = empty
 
 
 empty :: Env

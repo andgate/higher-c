@@ -60,7 +60,7 @@ linearcheck :: ( MonadLog (WithSeverity msg) m, AsLcMsg msg
             => Image -> m Image
 linearcheck img = do
   -- Generate global environment
-  let genv = GEnv.fromList (img^..imgFns.traversed.fnName)
+  let genv = GEnv.fromList $ map readName (img^..imgFns.traversed.fnName)
   img' <- mapMOf (imgFns.each) (runCheck genv) img
   logInfo (_LcComplete # ())
   return img'
@@ -89,27 +89,33 @@ checkExp env = \case
         return (e, env)
 
 
-  EApp e1 e2 -> do
-    (e1', env1) <- checkExp env e1
-    (e2', env2)  <- checkExp env1 e2
-    return (EApp e1' e2', env2)
+  EApp f x -> do
+    (f', env1) <- checkExp env f
+    (x', env2) <- checkExp env1 x
+    return (EApp f' x', env2)
 
 
   ELam n e -> do
-    let env1 = LEnv.extendLinear n env
+    let n' = readName n
+        env1 = LEnv.extendLinear n' env
     (e', env2) <- checkExp env1 e
-    unless (LEnv.isConsumed n env2)
-           $ confess $ One (_LcLamUnconsumed # n)
+
+    unless (LEnv.isConsumed n' env2)
+           $ confess $ One (_LcLetUnconsumed # n')
+      
     return (ELam n e', env2)
 
 
   ELet (n, e1) e2 -> do
     (e1', env1) <- checkExp env e1
-    let env2 = LEnv.extendLinear n env1
-    (e2', env3) <- checkExp env2 e2
-    unless (LEnv.isConsumed n env3)
-           $ confess $ One (_LcLetUnconsumed # n)
-    return (ELet (n, e1') e2', env3)
+    let n' = readName n
+        env1' = LEnv.extendLinear n' env1
+    (e2', env2) <- checkExp env1' e2
+
+    unless (LEnv.isConsumed n' env2)
+           $ confess $ One (_LcLetUnconsumed # n')
+    
+    return (ELet (n, e1') e2', env2)
 
 
   e@(ELit _) -> return (e, env)
@@ -130,24 +136,21 @@ checkExp env = \case
 
     
   EDup n -> do
-    when (LEnv.isConsumed n env)
-         $ confess $ One (_LcPreviouslyConsumed # n)
+    let n' = readName n
+    when (LEnv.isConsumed n' env)
+         $ confess $ One (_LcPreviouslyConsumed # n')
     return (EDup n, env)
 
     
-  EFree n e -> do
-    let env1 = LEnv.free n env
+  EFree ns e -> do
+    let env1 = foldr LEnv.free env (map readName ns)
     (e', env2) <- checkExp env1 e
-    return (EFree n e', env2)
+    return (EFree ns e', env2)
     
 
   EType t e -> do
     (e', env') <- checkExp env e
     return (EType t e', env')
-
-  ETLit tl e -> do
-    (e', env') <- checkExp env e
-    return (ETLit tl e', env')
 
   ELoc l e -> do
     (e', env') <- checkExp env e

@@ -30,6 +30,16 @@ toplevel = mdo
       -- <|> classDef
       -- <|> instDef
 
+
+    name <- rule $
+      let ex (n, l) = NLoc l $ Name n
+      in ex <$> varId
+
+
+    opName <- rule $
+      let ex (n, l) = NLoc l $ Name n
+      in ex <$> opId
+
 -- -----------------------------------------------------------------------------
 -- Foreign Rules
 {-
@@ -88,14 +98,12 @@ toplevel = mdo
 -- Definition Declaration Rules
 
     fn <- rule $
-      let ex (n, _) vs e = let e' = foldr lam_ e vs
-                           in fromFn $ Fn n [] e'
-      in ex <$> fnName <*> many varId <*> (rsvp "=" *> exp)
+      let ex n xs e = fromFn $ Fn n xs e
+      in ex <$> fnName <*> many name <*> (rsvp "=" *> exp)
 
 
     fnName <- rule $
-      varId <|> parens (fst <$> opId)
-
+      name <|> (fst <$> parens opName)
 
 -- -----------------------------------------------------------------------------
 -- Literal Rules
@@ -125,10 +133,10 @@ toplevel = mdo
    
 
     btyp <- rule $
-      let ex a@(TLoc l1 _) b@(TLoc l2 _) =
-            TLoc (l1<>l2) $ TApp a b
-
-      in   (ex <$> btyp <*> atyp)
+      let ex f@(TLoc l1 _) xs =
+            let (TLoc l2 _) = head . reverse $ xs
+            in  TLoc (l1<>l2) $ TApp f xs
+      in   (ex <$> atyp <*> some atyp)
        <|> atyp
 
     atyp <- rule $
@@ -215,11 +223,14 @@ toplevel = mdo
 
 
     expLet <- rule $
-      let ex (_, l1) vs _ e@(ELoc l2 _) = ELoc (l1 <> l2) $ foldr ELet e vs
+      let ex (_, l1) bs _ e@(ELoc l2 _) = ELoc (l1 <> l2) $ foldr ELet e bs
       in ex <$> rsvp "let" <*> block expLetBind  <*> rsvp "in" <*> exp
 
+
     expLetBind <- rule $
-      (,) <$> (fst <$> varId) <*> (rsvp "=" *> exp)
+      let ex n e = (n, e)
+      in ex <$> name <*> (rsvp "=" *> exp)
+
 
     expIf <- rule $
       let ex (_, l1) p a b@(ELoc l2 _) = ELoc (l1<>l2) $ EIf p a b
@@ -228,10 +239,10 @@ toplevel = mdo
 
     expFree <- rule $
       let
-        ex (_, l1) v e@(ELoc l2 _)
-            = ELoc (l1<>l2) $ EFree v e
+        ex (_, l1) xs e@(ELoc l2 _)
+            = ELoc (l1<>l2) $ EFree xs e
       in
-        ex <$> rsvp "free" <*> fmap fst varId <*> (rsvp "in" *> exp)
+        ex <$> rsvp "free" <*> some name <*> (rsvp "in" *> exp)
 
 
     -- Expression forms
@@ -248,17 +259,18 @@ toplevel = mdo
       in ex <$> opId
 
     expApp <- rule $
-      let ex a@(ELoc l1 _) b@(ELoc l2 _)
-            = ELoc (l1<>l2) $ EApp a b
-      in ex <$> bexp <*> aexp
+      let ex f@(ELoc l1 _) xs
+            = let (ELoc l2 _) = head $ reverse xs
+              in  ELoc (l1<>l2) $ foldr (flip EApp) f xs
+      in ex <$> aexp <*> some aexp
 
     expVar <- rule $
       let ex (v, l) = ELoc l $ EVar v
       in ex <$> varId
 
     expDup <- rule $
-      let ex (v, l) = ELoc l $ EDup v
-      in ex <$> (rsvp "dup" *> varId)
+      let ex (_,l1) n = ELoc (l1 <> locName' n) $ EDup n
+      in ex <$> rsvp "dup" <*> name
 
     expLit <- rule $
       let ex (lit, l) = ELoc l $ ELit lit

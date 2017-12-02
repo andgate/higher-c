@@ -140,6 +140,7 @@ modifyBlock f = do
     Just bb ->
       liftIRState $ modify $ \s -> s { builderBlock = Just $! f bb }
 
+
 -- | Generate fresh name
 fresh :: MonadIRBuilder m => m Name
 fresh = do
@@ -154,12 +155,14 @@ fresh = do
       liftIRState $ modify $ \s -> s { builderUsedNames = HS.insert unusedName $ builderUsedNames s }
       return $ Name unusedName
 
+
 -- | Generate a fresh numbered name
 freshUnName :: MonadIRBuilder m => m Name
 freshUnName = liftIRState $ do
   n <- gets builderSupply
   modify $ \s -> s { builderSupply = 1 + n }
   pure $ UnName n
+
 
 -- | Emit instruction
 emitInstr
@@ -174,6 +177,7 @@ emitInstr retty instr = do
     }
   pure (LocalReference retty nm)
 
+
 -- | Emit instruction that returns void
 emitInstrVoid
   :: MonadIRBuilder m
@@ -184,6 +188,7 @@ emitInstrVoid instr = do
     { partialBlockInstrs = partialBlockInstrs bb `snoc` (Do instr)
     }
   pure ()
+
 
 -- | Emit terminator
 emitTerm

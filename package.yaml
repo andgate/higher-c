@@ -83,6 +83,7 @@ library:
     - mmorph
     - monad-control
     - monad-logger
+    - monad-gen
     - mono-traversable
     - mtl
     - primitive
@@ -109,6 +110,10 @@ library:
     - Language.Hawk.Compile.Error
     - Language.Hawk.Compile.Message
     - Language.Hawk.Compile.Monad
+
+    - Language.Hawk.CPS
+    - Language.Hawk.CPS.Syntax
+    - Language.Hawk.CPS.Transform
 
     - Language.Hawk.Eval
 
@@ -158,6 +163,7 @@ library:
     - Language.Hawk.Syntax.Image
     - Language.Hawk.Syntax.Location
     - Language.Hawk.Syntax.Pass
+    - Language.Hawk.Syntax.Pattern
     - Language.Hawk.Syntax.Prim
     - Language.Hawk.Syntax.Signature
     - Language.Hawk.Syntax.Type

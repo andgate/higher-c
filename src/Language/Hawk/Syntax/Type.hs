@@ -17,6 +17,7 @@ import Data.Default.Class
 import Data.List (concatMap)
 import Data.Map.Strict (Map)
 import Data.Maybe (maybeToList)
+import Data.Monoid
 import Data.Set (Set)
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -28,20 +29,20 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
+
 ------------------------------------------------------------------------
 -- | Type
-
 
 data Type
   = TVar  Text
   | TCon  Text
-  | TApp  Type Type
+  | TApp  Type [Type]
   | TArr  Type Type
   | TLoli Type Type
   | TKind Kind Type
   | TLoc  Loc  Type
   | TParen  Type
-  | TForall Text Type
+  | TForall [Text] Type
   deriving (Eq, Ord, Show, Read, Data, Generic, Typeable)
 
 
@@ -70,36 +71,8 @@ instance HasKind Type where
     TLoc _ t -> kind t
     TParen t -> kind t
 
-
 -- -----------------------------------------------------------------------------
 -- | "Smart" Constructors
-
-mono :: Type -> Type
-mono = \case
-  TVar tv -> TVar tv
-  TCon n -> TCon n
-  TApp a b -> TApp a b
-  TArr a b -> TArr a b 
-  TLoli a b -> TLoli a b 
-  TKind k t -> TKind k t
-  TLoc l t -> TLoc l t
-  TParen t -> TParen t
-  TForall tv t -> mono t
-
-
-poly :: Type -> Type
-poly = \case
-  TVar tv -> TVar tv
-  TCon n -> TCon n
-  TApp a b -> TApp a b
-  TArr a b -> TArr a b 
-  TLoli a b -> TLoli a b 
-  TKind k t -> TKind k t
-  TLoc l t -> TLoc l t
-  TParen t -> TParen t
-  TForall tv t -> TForall tv t
-
-
 
 dropForall :: Type -> Type
 dropForall =
@@ -134,6 +107,21 @@ tArr  = TArr
 tLoli = TLoli
 
 
+-------------------------------------------------------------------------------
+-- Helpers
+
+getLoc :: Type -> Loc
+getLoc = \case
+  TVar    _     -> error "Type is not located!"
+  TCon    _     -> error "Type is not located!"
+  TApp    f  xs -> getLoc f  <> mconcat (getLoc <$> xs)
+  TArr    t1 t2 -> getLoc t1 <> getLoc t2
+  TLoli   t1 t2 -> getLoc t1 <> getLoc t2
+  TKind   _  t  -> getLoc t
+  TLoc    l  _  -> l
+  TParen  t     -> getLoc t
+  TForall _  t  -> getLoc t
+
 
 -- -----------------------------------------------------------------------------
 -- | Free Type Variables
@@ -152,7 +140,7 @@ instance FreeTypeVars Type where
     TKind _ t    -> ftv t
     TLoc _ t     -> ftv t
     TParen t     -> ftv t
-    TForall tv t -> ftv t `Set.difference` Set.singleton tv
+    TForall ns t -> ftv t `Set.difference` Set.fromList ns
 
 
 instance FreeTypeVars Text where
@@ -183,8 +171,8 @@ instance PP.Pretty Type where
       TVar tv ->
         PP.pretty tv
 
-      TApp a b ->
-        PP.pretty a PP.<+> PP.pretty b
+      TApp f xs ->
+        PP.pretty f PP.<+> PP.pretty xs
 
       TArr a b ->
         PP.pretty a PP.<+> PP.textStrict "->" PP.<+> PP.pretty b

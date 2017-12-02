@@ -63,18 +63,22 @@ kindscheck img = do
 inferExp :: ( MonadChronicle (Bag e) m, AsKcErr e )
          => Env -> Exp -> m Exp
 inferExp env = \case
-  EFree n e -> do
+  EFree ns e -> do
     e' <- inferExp env e
     let k = kind e'
     unless (k `ksub` KPop) (confess $ One (_KindMismatch # (k, KPop)))
-    return $ EFree n e'
+    return $ EFree ns e'
+
 
   ELet (n, e1) e2 -> do
     e1' <- inferExp env e1
+    n'  <- inferName env n
     e2' <- inferExp env e2
-    let k = kind e1'
-    unless (k `ksub` KPop) (confess $ One (_KindMismatch # (k, KPop)))
-    return $ ELet (n, e1') e2'
+    
+    unless (kind n' `ksub` KPop)
+          $ confess $ One (_KindMismatch # (kind n', KPop))
+
+    return $ ELet (n', e1') e2'
 
 
   EType t e -> do
@@ -85,6 +89,15 @@ inferExp env = \case
   e -> return e
 
 
+inferName :: ( MonadChronicle (Bag e) m, AsKcErr e )
+         => Env -> Name -> m Name
+inferName env = \case
+  Name n -> return $ Name n
+  NLoc l n -> NLoc l <$> inferName env n
+  NType t n -> do
+    (_, t') <- inferType env t
+    return $ NType t' n
+  
 
 inferType :: (MonadChronicle (Bag e) m, AsKcErr e)
       => Env -> Type -> m (Kind, Type)
@@ -101,15 +114,22 @@ inferType env = \case
       Just k  -> return (k, TKind k t)
 
 
-  t@(TApp t1 t2) -> do
-    (k1, t1') <- inferType env t1
-    (k2, t2') <- inferType env t2
-    case k1 of
-      KArr a b ->
-        if a `ksub` k2
-           then return (b, TKind b $ TApp t1' t2')
-           else confess $ One (_KindMismatch # (a, k2))
-      _ -> confess $ One (_KindArrowExpected # k1)
+  t@(TApp f xs) -> do
+    (k1, f') <- inferType env f
+    rs <- mapM (inferType env) xs
+    let k2s = map fst rs
+        k1Args = kargs k1
+        k1Ret  = kret k1
+        xs' = map snd rs
+        
+    when (length k1Args == length k2s)
+         $ confess $ One (_KindArrowExpected # k1)
+      
+    forM_ (zip k2s k1Args) $ \(a, b) -> do
+      when (a `ksub` b)
+            $ confess $ One (_KindMismatch # (a, b))
+
+    return (k1Ret, TKind k1Ret $ TApp f' xs')
 
 
   t@(TArr t1 t2) -> do

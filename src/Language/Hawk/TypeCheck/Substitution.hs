@@ -59,16 +59,16 @@ instance Substitutable Exp where
   apply s@(Subst smap) = \case
     EApp e1 e2          -> EApp (apply s e1) (apply s e2)
     ELam n e            -> ELam n (apply s e)
-    ELet (n, e1) e2     -> ELet (n, apply s e1) (apply s e2)
+    ELet (n, a) b       -> ELet (n, apply s a) (apply s b)
     EIf e1 e2 e3        -> EIf (apply s e1) (apply s e2) (apply s e3)
-    EDup e              -> EDup (apply s e)
-    EFree n e           -> EFree n (apply s e)
+    EDup n              -> EDup n
+    EFree ns e          -> EFree ns (apply s e)
     EType t e           -> EType (apply s t) (apply s e)
-    ETLit t e           -> ETLit t (apply s e)
     ELoc l e            -> ELoc l (apply s e)
     EParen e            -> EParen (apply s e)
 
     e -> e -- Cases without nested expressions can be returned
+
 
 instance Substitutable Type where
   apply s@(Subst s_map) = \case
@@ -80,7 +80,7 @@ instance Substitutable Type where
     TKind k t    -> TKind k $ apply s t
     TLoc l t     -> TLoc l $ apply s t
     TParen t     -> TParen $ apply s t
-    TForall tv t -> let s' = Subst $ Map.delete tv s_map
+    TForall tv t -> let s' = Subst $ foldr Map.delete s_map tv
                     in  TForall tv $ apply s' t
 
 

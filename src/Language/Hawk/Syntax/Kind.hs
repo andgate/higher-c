@@ -36,6 +36,18 @@ ksub (KArr a1 a2) (KArr b1 b2) = ksub a1 b1 && ksub a2 b2
 ksub _ _ = False
 
 
+kargs :: Kind -> [Kind]
+kargs = \case
+  KStar -> []
+  KPop -> []
+  KArr a b -> a : kargs b
+
+
+kret :: Kind -> Kind
+kret = \case
+  KArr _ b -> kret b
+  k -> k
+
 instance Binary Kind
 instance Plated Kind
 instance FromJSON Kind

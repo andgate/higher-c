@@ -1,5 +1,7 @@
 module Language.Hawk.TypeCheck.Assumption where
 
+import Prelude hiding (lookup)
+
 import Data.Text (Text)
 
 import Language.Hawk.Syntax.Type
@@ -21,9 +23,17 @@ remove :: Assumption -> Text -> Assumption
 remove (Assumption a) var = Assumption $ filter ((/= var) . fst) a
 
 
+removeMany :: Assumption -> [Text] -> Assumption
+removeMany (Assumption a) vars = Assumption $ filter ((`elem` vars) . fst) a
+
+
 lookup :: Text -> Assumption -> [Type]
 lookup key = map snd . filter ((== key) . fst) . assumptions
 
+
+lookupMany :: [Text] -> Assumption -> [Type]
+lookupMany ks as =
+  concatMap (`lookup` as) ks
 
 merge :: Assumption -> Assumption -> Assumption
 merge (Assumption a) (Assumption b) = Assumption (a ++ b)

@@ -13,13 +13,15 @@
   #-}
 module Language.Hawk.Syntax.Expression where
 
+import Control.Arrow (first, second)
 import Control.Lens
 import Data.Aeson
 import Data.Binary (Binary)
 import Data.Data
 import Data.Data.Lens (uniplate)
 import Data.Default.Class
-import Data.Monoid
+import Data.Monoid hiding (Alt)
+import Data.Set (Set)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
@@ -27,13 +29,25 @@ import Language.Hawk.Syntax.Literal
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Name
 import Language.Hawk.Syntax.Pass
+import Language.Hawk.Syntax.Pattern
 import Language.Hawk.Syntax.Prim
 import Language.Hawk.Syntax.Type
 import Language.Hawk.Syntax.Kind
-import Language.Hawk.Syntax.TypeLiteral
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
+import qualified Data.Set as Set
 
+
+
+-- Things to do to compile to LLVM?
+--   - Case Simplifier
+--   - CPS converter
+--   - Closure convert
+--   - Lambda lift?
+--   - Compile to LLVM as CPS calling function (jump w/ args)
+
+-- So, the idea is to simplify case statements, and then convert
+-- to CPS. CPS is 
 
 -- -----------------------------------------------------------------------------
 -- | Expression
@@ -41,21 +55,25 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 data Exp
   = EVar  Text
   | EApp  Exp Exp
-  | ELam  Text Exp
-  | ELet  (Text, Exp) Exp
+  | ELam  Name Exp
+  | ELet  (Name, Exp) Exp
   | ELit  Lit
   | ECon  Text
   | EPrim PrimInstr
   | EIf   Exp Exp Exp
-  | EDup  Text
-  | EFree Text Exp
+  | EDup  Name
+  | EFree [Name] Exp
 
   -- Hints
-  | EType Type Exp
-  | ETLit TLit Exp
-  | ELoc  Loc Exp
+  | EType  Type Exp
+  | ELoc   Loc Exp
   | EParen Exp
   deriving(Eq, Ord, Read, Show, Generic, Data, Typeable)
+
+
+data Binder = Binder Pat Exp
+  deriving(Eq, Ord, Read, Show, Generic, Data, Typeable)
+
 
 
 class HasVar a where
@@ -88,6 +106,10 @@ instance HasKind Exp where
     _ -> error "no kind"
 
 
+instance HasKind Binder where
+  kind (Binder p e) = kind p
+
+
 -- -----------------------------------------------------------------------------
 -- | Instances
 
@@ -100,50 +122,13 @@ instance Plated Exp
 instance FromJSON Exp
 instance ToJSON Exp
 
+instance Binary Binder
+instance Plated Binder
+instance FromJSON Binder
+instance ToJSON Binder
+
 -- -----------------------------------------------------------------------------
 -- | "Smart" Constructors
-
-
-var_ :: Text -> Loc -> Exp
-var_ n l = ELoc l $ EVar n
-
-lam_ :: (Text, Loc) -> Exp -> Exp
-lam_ (b, l1) e@(ELoc l2 _)
-  = ELoc (l1<>l2) $ ELam b e
-
-
-let_ :: [(Text, Exp)] -> Exp -> Exp
-let_ bs e = foldr elet' e (reverse bs)
-  where
-    elet' a@(_, (ELoc l1 _)) b@(ELoc l2 _)
-      = ELoc (l1 <> l2) $ ELet a b
-
-eapp_ :: Exp -> [Exp] -> Exp
-eapp_ f = foldr eapp' f . reverse
-  where
-    eapp' b@(ELoc l1 _) a@(ELoc l2 _)
-      =  ELoc (l1 <> l2)
-              (EApp a b)
-
-
-mkOp1 :: L Text -> Exp -> Exp
-mkOp1 (L l1 name) e@(ELoc l2 _) 
-  = ELoc l3 $ EApp v e
-  where
-    v = ELoc l1 $ EVar name
-    l3 = l1 <> l2
-
-
-mkOp2 :: L Text -> Exp -> Exp -> Exp
-mkOp2 (L l0@(Loc fp r1) name) lhs rhs
-  = ELoc l2 (EApp (ELoc l1 $ EApp v lhs) rhs)
-  where
-    v = ELoc l0 $ EVar name
-    (ELoc (Loc _ r2) _) = lhs
-    (ELoc (Loc _ r3) _) = rhs
-    l1 = Loc fp (r1 <> r2)
-    l2 = Loc fp (r1 <> r3)
-
 
 
 unlocate :: Exp -> Exp
@@ -159,23 +144,42 @@ untype = transform $ \case
 
 
 -- -----------------------------------------------------------------------------
+-- | Expression Manipulations
+
+
+
+varName :: Name -> Exp
+varName = \case
+  Name n -> EVar n
+  NLoc l n -> ELoc l $ varName n
+  NType t n -> EType t $ varName n
+
+
+-- -----------------------------------------------------------------------------
 -- | Helpers
 
 
-class HasParameters a where
-    parameters :: a -> [Text]
+class HasFreeVars a where
+  fv :: a -> Set Text
 
 
-instance HasParameters Exp where
-    -- Find top level lambas, return their vars.
-    parameters = \case
-      ELam n e  -> n : parameters e
-      EFree _ e -> parameters e
-      ELoc _ e  -> parameters e
-      EType _ e -> parameters e
-      EParen e  -> parameters e
-      _         -> []
+instance HasFreeVars Exp where
+  fv = \case
+    _ -> undefined
+
+
+instance HasFreeVars Binder where
+  fv (Binder p e) =
+    let bound = fv p
+        vars = fv e
+    in vars `Set.difference` bound
+
+
+instance HasFreeVars Pat where
+  fv = \case
+    PVar x -> Set.singleton x
     
+
 
 -- -----------------------------------------------------------------------------
 -- | Class Instances
@@ -188,13 +192,11 @@ instance PP.Pretty Exp where
           PP.textStrict "\\" PP.<> PP.pretty n
             PP.<+> PP.textStrict "->"
             PP.<$> PP.indent 2 (PP.pretty e)
-      ELet (n, e1) e2 ->
+      ELet xs e ->
           PP.textStrict           "let"
-            PP.<+> PP.pretty       n
-            PP.<+> PP.textStrict  "="
-            PP.<+> PP.align (PP.pretty  e1)
+            PP.<+> PP.pretty       xs
             PP.<$> PP.textStrict  "in"
-            PP.<+> PP.pretty       e2
+            PP.<+> PP.pretty       e
       ELit l      -> PP.pretty l
       ECon n      -> PP.pretty n
       EPrim i     -> PP.pretty i
@@ -227,3 +229,12 @@ instance PP.Pretty Exp where
 
       
       EParen e    -> PP.parens $ PP.pretty e
+
+
+
+instance PP.Pretty Binder where
+  pretty (Binder p e) =
+    PP.pretty p
+      PP.<+> PP.textStrict "="
+      PP.<+> PP.pretty e
+

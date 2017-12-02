@@ -11,6 +11,7 @@ packages:
 extra-deps:
 - data-default-instances-text-0.0.1
 - llvm-hs-pure-5.1.0
+- monad-gen-0.3.0.1
 
 nix:
   enable: true

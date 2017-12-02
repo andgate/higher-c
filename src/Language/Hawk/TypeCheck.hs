@@ -77,7 +77,7 @@ typecheckMany img = evalStateT m env
       
     f (Fn n xs e) = do
       env <- get
-      (e', env') <- typecheck env n e
+      (e', env') <- typecheck env (readName n) e
       put env'
       return $ Fn n xs e'
 
@@ -155,25 +155,29 @@ inferConstraints = \case
            )
 
 
-  ELam x e -> do
+  ELam n e -> do
     tv@(TVar a) <- fresh
     (t, e', InferResult cs as) <- extendMSet a $ inferConstraints e
-    let as' = as `As.remove` x 
-    return ( tv `TArr` t
-           , EType (tv `TArr` t) $ ELam x e'
-           , InferResult { constraints = cs ++ [EqConst t' tv | t' <- As.lookup x as]
-                        , assumptions = as' }
+
+    let x = readName n
+        t' = tv `TArr` t
+
+    return ( t'
+           , EType t' $ ELam n e'
+           , InferResult { constraints = cs ++ [EqConst y tv | y <- As.lookup x as]
+                         , assumptions = as `As.remove` x }
            )
     
 
-  ELet (x, e1) e2 -> do
+  ELet (n, e1) e2 -> do
+    let x = readName n
     (t1, e1', InferResult cs1 as1) <- inferConstraints e1
     (t2, e2', InferResult cs2 as2) <- inferConstraints e2
     ms <- ask
     return ( t2
-           , EType t2 $ ELet (x, e1') e2'
+           , EType t2 $ ELet (n, e1') e2'
            , InferResult { constraints = cs1 ++ cs2 ++ [ImpInstConst t' ms t1 | t' <- As.lookup x as2]
-                        , assumptions = as1 `As.merge` as2 `As.remove` x }
+                         , assumptions = as1 `As.merge` as2 `As.remove` x }
            )
 
 
@@ -216,7 +220,7 @@ inferConstraints = \case
     return ( tv
            , EType tv $ EDup n
            , InferResult { constraints = []
-                         , assumptions = As.singleton n tv } )
+                         , assumptions = As.singleton (readName n) tv } )
 
   EFree n e -> do
     (t, e', r) <- inferConstraints e
@@ -229,8 +233,6 @@ inferConstraints = \case
     return ( t
            , EType t e
            , r <> InferResult [EqConst t t'] As.empty)
-
-  ETLit _ _ -> error "Type inferenece doesn't work on type literals"
 
   ELoc l e -> do
     (t, e', r) <- inferConstraints e
@@ -278,6 +280,27 @@ inferPrimInstr = \case
   PrimBad  -> error "Type checker encountered bad primitive instruction."
 
 
+inferBinder
+  :: ( MonadReader (Set Text) m
+     , MonadState s m, HasTypeState s
+     , MonadLog (WithSeverity msg) m, AsTcMsg msg
+     , MonadChronicle (Bag e) m, AsTcErr e )
+  => Binder -> m (Type, Binder, InferResult)
+inferBinder (Binder p e) = do
+  (t1, p', r1) <- inferPattern p
+  (t2, e', r2) <- inferConstraints e
+  return (t2, Binder p' e', r1 <> r2)
+  
+
+inferPattern
+  :: ( MonadReader (Set Text) m
+     , MonadState s m, HasTypeState s
+     , MonadLog (WithSeverity msg) m, AsTcMsg msg
+     , MonadChronicle (Bag e) m, AsTcErr e )
+  => Pat -> m (Type, Pat, InferResult)
+inferPattern = \case
+  PVar x -> undefined
+
 
 -----------------------------------------------------------------------
 -- Helpers
@@ -308,13 +331,17 @@ fresh = do
   uses countfv genftv
 
 
+-- This should instantiate a type by finding foralls,
+-- generating a fresh type variable, subustituting the forall's
+-- variable, and discarding the forall, leaving the type instantiated.
 instantiate :: (MonadState s m, HasTypeState s)
             => Type -> m Type
 instantiate =
+  -- USES UNIPLATE, MAY NOT WORK
   transformM $ \x -> case x of
-    TForall tv t -> do
-      tv' <- fresh
-      let s = Subst $ Map.singleton tv tv'
+    TForall tvs t -> do
+      tvs' <- mapM (const fresh) tvs
+      let s = Subst $ Map.fromList (zip tvs tvs')
       return $ Subst.apply s t
     _ -> return x
 
@@ -322,26 +349,25 @@ instantiate =
 -- Given a set of variables and some free variables from a type,
 -- wrap that type in Foralls with those variables.
 generalize :: Set Text -> Type -> Type
-generalize free t = foldr TForall t as
+generalize free t = TForall as t
   where as = Set.toList $ ftv t `Set.difference` free
 
 
 -- Normalizes names in a given type, from given names to generated
 -- names wrapped in foralls.
 normalize :: Type -> Type
-normalize t =
-  -- Wrap foralls with the generated type variables
-  -- over the normalized typed.
-  foldr (TForall . snd) t'' ord
+normalize t1 =
+  -- Wrap normalized type in foralls with new free variables
+  TForall (Set.toList $ ftv t3) t3
   where
     -- First drop the foralls
-    t' = dropForall t
-    -- Create a list of free names, paired with generated names
-    ord = zip (nub . Set.toList $ ftv t') (map pack letters)
-    -- Build substitution map from previous vars to generated vars
-    s = Subst.fromList $ map (second TVar) ord
-    -- Apply substition over our type
-    t'' = Subst.apply s t'
+    t2 = dropForall t1
+    -- Build substitution map from free type variables in t2,
+    -- to type variables with generated names.
+    s = Subst.fromList $ zip (Set.toList $ ftv t2)
+                             (map (TVar . pack) letters)
+    -- Substitute names with generated names.
+    t3 = Subst.apply s t2
 
 -------------------------------------------------------------------------------
 -- Constraint Solving
