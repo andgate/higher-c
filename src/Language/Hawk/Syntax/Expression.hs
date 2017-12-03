@@ -38,17 +38,6 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 import qualified Data.Set as Set
 
 
-
--- Things to do to compile to LLVM?
---   - Case Simplifier
---   - CPS converter
---   - Closure convert
---   - Lambda lift?
---   - Compile to LLVM as CPS calling function (jump w/ args)
-
--- So, the idea is to simplify case statements, and then convert
--- to CPS. CPS is 
-
 -- -----------------------------------------------------------------------------
 -- | Expression
 

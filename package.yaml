@@ -112,6 +112,8 @@ library:
     - Language.Hawk.Compile.Monad
 
     - Language.Hawk.CPS
+    - Language.Hawk.CPS.ClosureConv
+    - Language.Hawk.CPS.LambdaLift
     - Language.Hawk.CPS.Syntax
     - Language.Hawk.CPS.Transform
 
@@ -122,6 +124,14 @@ library:
     - Language.Hawk.KindsCheck.Error
     - Language.Hawk.KindsCheck.Message
     - Language.Hawk.KindsCheck.State
+
+    - Language.Hawk.Lex
+    - Language.Hawk.Lex.Error
+    - Language.Hawk.Lex.Format
+    - Language.Hawk.Lex.Message
+    - Language.Hawk.Lex.Result
+    - Language.Hawk.Lex.State
+    - Language.Hawk.Lex.Token
 
     - Language.Hawk.LinearCheck
     - Language.Hawk.LinearCheck.Error
@@ -139,20 +149,14 @@ library:
     - Language.Hawk.NameCheck.Environment
     - Language.Hawk.NameCheck.Error
     - Language.Hawk.NameCheck.State
+
+    - Language.Hawk.NameGen
     
     - Language.Hawk.Parse
     - Language.Hawk.Parse.Error
     - Language.Hawk.Parse.Grammar
     - Language.Hawk.Parse.Helpers
     - Language.Hawk.Parse.Message
-    
-    - Language.Hawk.Lex
-    - Language.Hawk.Lex.Error
-    - Language.Hawk.Lex.Format
-    - Language.Hawk.Lex.Message
-    - Language.Hawk.Lex.Result
-    - Language.Hawk.Lex.State
-    - Language.Hawk.Lex.Token
 
     - Language.Hawk.Syntax
     - Language.Hawk.Syntax.DataDecl

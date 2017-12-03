@@ -10,33 +10,29 @@ import Control.Monad
 import Control.Monad.Gen.Class
 import Data.Text (Text, pack)
 import Language.Hawk.CPS.Syntax
+import Language.Hawk.NameGen
 
 import qualified Language.Hawk.Syntax as Hk
 
 
 
-newName :: MonadGen Int m
-        => m Text
-newName = do
-  n <- gen
-  return $ pack (letters !! n)
-
-
-letters :: [String]
-letters = [1..] >>= flip replicateM ['a'..'z']
-  
-
 cps :: (MonadGen Int m)
-    => (AExp -> m CExp) -> Hk.Exp -> m CExp
-cps c = \case
+    => Hk.Exp -> (AExp -> m CExp) -> m CExp
+cps e c = \case
   Hk.EVar x -> c $ CVar x
 
-  Hk.EApp a b -> undefined
+  Hk.EApp a b -> do
+    arg <- newName
+    cont <- CLam arg <$> c (CVar arg)
+    cps a $ \fa ->
+      cps b $ \fb ->
+      newName >>= \pair ->
+      return $ CLet pair (Pair fb cont) (CJump fa (CVar pair))
 
   Hk.ELam p e -> do
     [pairArg, newCont, newArg] <- replicateM 3 newName
     let e' = e -- using bound, instantiate newArg as a var in e? How to replicate this?
-    ce <- cps (return . CJump (CVar newCont)) e'
+    ce <- cps e' (return . CJump (CVar newCont))
     c (CLam pairArg
        $ CLet newArg  (ProjL pairArg)
        $ CLet newCont (ProjR pairArg)
@@ -50,8 +46,8 @@ cps c = \case
 
   Hk.EPrim i -> undefined
 
-  Hk.EIf p a b -> let c' pc = CIf pc <$> cps c a <*> cps c b
-                  in cps c' p
+  Hk.EIf p a b -> let c' = \pc -> CIf pc <$> cps a c <*> cps b c
+                  in cps p c'
                      
   Hk.EDup n -> undefined
 
