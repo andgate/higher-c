@@ -4,15 +4,20 @@
             , TemplateHaskell
             , DeriveDataTypeable
   #-}
-module Language.Hawk.CPS.Syntax where
+module Language.Hawk.CPS.Syntax
+  ( module Language.Hawk.CPS.Syntax
+  , module Language.Hawk.Syntax.Prim
+  )
+where
 
 import Control.Lens
-import Data.Aeson
+import Data.Aeson hiding (Value)
 import Data.Binary
 import Data.Data
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Language.Hawk.Syntax.Prim
 
 
 data Program = Program [Def]
@@ -24,25 +29,13 @@ instance FromJSON Program
 instance ToJSON Program
 
 
-data Def = Def Text CType CExp
+data Def = Def Text Term
   deriving(Eq, Ord, Read, Show, Generic, Data, Typeable)
 
 instance Binary Def
 instance Plated Def
 instance FromJSON Def
 instance ToJSON Def
-
-
-data CType
-  = Cont CType
-  | CInt
-  | CPair CType CType
-  deriving(Eq, Ord, Read, Show, Generic, Data, Typeable)
-
-instance Binary CType
-instance Plated CType
-instance FromJSON CType
-instance ToJSON CType
 
 
 data Lit
@@ -57,36 +50,39 @@ instance FromJSON Lit
 instance ToJSON Lit
 
 
-data AExp
-  = CLit Lit
-  | CVar Text
-  | CLam Text CExp
+data Value
+  = Lit Lit
+  | Var Text
+  | Use Text
+  | Dup Text
+  | Lam Text Term
   deriving(Eq, Ord, Read, Show, Generic, Data, Typeable)
 
-instance Binary AExp
-instance Plated AExp
-instance FromJSON AExp
-instance ToJSON AExp
+instance Binary Value
+instance Plated Value
+instance FromJSON Value
+instance ToJSON Value
 
 
-data CExp
-  = CLet Text Binder CExp
-  | CIf AExp CExp CExp
-  | CJump AExp AExp
-  | CHalt AExp
+data Term
+  = Let Text Binder Term
+  | If Value Term Term
+  | Free [Text] Term
+  | Jump Value Value
+  | Halt Value
   deriving(Eq, Ord, Read, Show, Generic, Data, Typeable)
 
-instance Binary CExp
-instance Plated CExp
-instance FromJSON CExp
-instance ToJSON CExp
+instance Binary Term
+instance Plated Term
+instance FromJSON Term
+instance ToJSON Term
 
 
 data Binder
-  = OpBind Text AExp AExp
+  = PrimBind PrimInstr Value Value
   | ProjL Text
   | ProjR Text
-  | Pair AExp AExp
+  | Pair Value Value
   deriving(Eq, Ord, Read, Show, Generic, Data, Typeable)
 
 instance Binary Binder

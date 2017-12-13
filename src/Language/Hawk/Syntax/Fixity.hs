@@ -5,6 +5,7 @@ import Data.Aeson
 import Data.Binary
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
+import Language.Hawk.Syntax.Location
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
@@ -13,7 +14,7 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 -- | Fixity
 
 -- A fixity declaration
-data Fixity = Fixity FixityKind Int [Text]
+data Fixity = Fixity FixityKind (L Int) [L Text]
   deriving (Show, Eq, Generic)
 
 instance Binary Fixity

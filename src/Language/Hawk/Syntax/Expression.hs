@@ -1,10 +1,5 @@
 {-# LANGUAGE  DeriveGeneric
-            , DeriveFunctor
-            , DeriveFoldable
-            , DeriveTraversable
-            , StandaloneDeriving
             , FlexibleContexts
-            , UndecidableInstances
             , TypeFamilies
             , OverloadedStrings
             , LambdaCase
@@ -28,7 +23,6 @@ import GHC.Generics (Generic)
 import Language.Hawk.Syntax.Literal
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Name
-import Language.Hawk.Syntax.Pass
 import Language.Hawk.Syntax.Pattern
 import Language.Hawk.Syntax.Prim
 import Language.Hawk.Syntax.Type
@@ -48,7 +42,7 @@ data Exp
   | ELet  (Name, Exp) Exp
   | ELit  Lit
   | ECon  Text
-  | EPrim PrimInstr
+  | EPrim PrimInstr Exp Exp
   | EIf   Exp Exp Exp
   | EDup  Name
   | EFree [Name] Exp
@@ -144,7 +138,7 @@ locExp = \case
   ELet (n, _) e -> locName' n <> locExp e
   ELit _ -> error "Cannot locate expression without location!"
   ECon _ -> error "Cannot locate expression without location!"
-  EPrim _ -> error "Cannot located expresion without location!"
+  EPrim _ a b -> locExp a <> locExp b
   EIf a _ b -> locExp a <> locExp b
   EDup n -> locName' n
   EFree _ e -> locExp e
@@ -205,7 +199,7 @@ instance PP.Pretty Exp where
             PP.<+> PP.pretty       e
       ELit l      -> PP.pretty l
       ECon n      -> PP.pretty n
-      EPrim i     -> PP.pretty i
+      EPrim i a b -> PP.pretty i PP.<+> PP.pretty a PP.<+> PP.pretty b
       EIf e1 e2 e3 ->
           PP.textStrict           "if"
             PP.<+> PP.pretty       e1

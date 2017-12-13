@@ -151,7 +151,7 @@ inferConstraints = \case
     return ( tv
            , EType tv $ EApp e1' e2'
            , r1 <> r2 <> InferResult { constraints = [EqConst t1 (t2 `TArr` tv)]
-                                    , assumptions = As.empty }
+                                     , assumptions = As.empty }
            )
 
 
@@ -186,24 +186,26 @@ inferConstraints = \case
     in return ( t
               , EType t $ ELit l
               , mempty)
-    -- Maybe in the future, literals can take on multiple possible
-    -- types through constraints? So '32' can be use as a double or int.
 
 
   ECon n -> do
+    -- Needs to Identify constructor's type
     tv <- fresh
-    -- Should look up constructors type here?
     return ( tv
            , EType tv $ ECon n
            , InferResult
              { constraints = []
              , assumptions = As.singleton n tv })
 
-  EPrim i ->
+  EPrim i e1 e2 -> do
     let t = inferPrimInstr i
-    in return ( t
-              , EType t $ EPrim i
-              , mempty)
+    tv <- fresh
+    (t1, e1', r1) <- inferConstraints e1
+    (t2, e2', r2) <- inferConstraints e2
+    return ( t
+             , EType t $ EPrim i e1' e2'
+             , r1 <> r2 <> InferResult { constraints = [EqConst t (tFun2 t1 t2 tv)]
+                                       , assumptions = As.empty })
 
   EIf e1 e2 e3 -> do
     (t1, e1', r1) <- inferConstraints e1

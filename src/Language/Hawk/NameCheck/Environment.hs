@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module Language.Hawk.NameCheck.Environment where
 
 import Data.Default.Class
@@ -22,6 +23,7 @@ check :: Env -> Text -> Bool
 check (Env fs) n =
   foldr (\f r -> r || Set.member n f) False fs 
 
+
 insert :: Text -> Env -> Env
 insert n (Env []) = Env [Set.singleton n]
 insert n (Env (f:fs)) = Env (f':fs)
@@ -43,14 +45,16 @@ delete n (Env (f:fs))
     f' = Set.delete n f
     Env fs' = delete n (Env fs)
 
+
 push :: Env -> Env
 push (Env fs) = Env (f:fs)
   where f = Set.empty
 
 
 pop :: Env -> Env
-pop (Env []) = Env []
-pop (Env (f:fs)) = Env fs
+pop = \case
+  Env [] -> Env []
+  Env (f:fs) -> Env fs
 
 
 

@@ -165,6 +165,11 @@ sep s p =
 sep' :: Prod r e Token b -> Prod r e Token a -> Prod r e Token [a]
 sep' s p =
   sep s p <|> pure []
+
+
+commaSep :: Prod r e Token a -> Prod r e Token [a]
+commaSep = sep (rsvp ",")
+
   
 mono :: Prod r e Token a -> Prod r e Token [a]
 mono =

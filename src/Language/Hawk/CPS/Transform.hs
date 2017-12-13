@@ -17,47 +17,47 @@ import qualified Language.Hawk.Syntax as Hk
 
 
 cps :: (MonadGen Int m)
-    => Hk.Exp -> (AExp -> m CExp) -> m CExp
-cps e c = \case
-  Hk.EVar x -> c $ CVar x
+    => Hk.Exp -> (Value -> m Term) -> m Term
+cps e c = case e of
+  Hk.EVar x -> c $ Var x
 
   Hk.EApp a b -> do
     arg <- newName
-    cont <- CLam arg <$> c (CVar arg)
+    cont <- Lam arg <$> c (Var arg)
     cps a $ \fa ->
-      cps b $ \fb ->
-      newName >>= \pair ->
-      return $ CLet pair (Pair fb cont) (CJump fa (CVar pair))
+      cps b $ \fb -> do
+        pair <- newName
+        return $ Let pair (Pair fb cont) (Jump fa (Var pair))
 
   Hk.ELam p e -> do
     [pairArg, newCont, newArg] <- replicateM 3 newName
     let e' = e -- using bound, instantiate newArg as a var in e? How to replicate this?
-    ce <- cps e' (return . CJump (CVar newCont))
-    c (CLam pairArg
-       $ CLet newArg  (ProjL pairArg)
-       $ CLet newCont (ProjR pairArg)
+    ce <- cps e' (return . Jump (Var newCont))
+    c (Lam pairArg
+       $ Let newArg  (ProjL pairArg)
+       $ Let newCont (ProjR pairArg)
        $ ce)
 
   Hk.ELet b e -> undefined
 
-  Hk.ELit l -> c $ CLit (cpsLit l)
+  Hk.ELit l -> c $ Lit (cpsLit l)
 
   Hk.ECon x -> undefined
 
-  Hk.EPrim i -> undefined
+  Hk.EPrim i a b -> undefined
 
-  Hk.EIf p a b -> let c' = \pc -> CIf pc <$> cps a c <*> cps b c
+  Hk.EIf p a b -> let c' = \pc -> If pc <$> cps a c <*> cps b c
                   in cps p c'
                      
   Hk.EDup n -> undefined
 
   Hk.EFree ns e -> undefined
 
-  Hk.EType t e -> undefined
+  Hk.EType t e -> cps e c
 
-  Hk.ELoc l e -> undefined
+  Hk.ELoc l e -> cps e c
 
-  Hk.EParen e -> undefined
+  Hk.EParen e -> cps e c
 
   
   

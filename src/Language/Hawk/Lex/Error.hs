@@ -7,7 +7,6 @@ module Language.Hawk.Lex.Error where
 import Control.Lens
 
 import Language.Hawk.Lex.Token
-import Language.Hawk.Syntax (Decl)
 import Language.Hawk.Syntax.Location
 import Data.Text (Text, pack)
 import Text.PrettyPrint.Leijen.Text (Pretty(..), (<+>), (<>))

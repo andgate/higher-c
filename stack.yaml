@@ -1,4 +1,4 @@
-resolver: nightly-2017-11-21
+resolver: lts-9.17
 
 packages:
 - '.'
@@ -10,6 +10,7 @@ packages:
 
 extra-deps:
 - data-default-instances-text-0.0.1
+- llvm-hs-5.1.0
 - llvm-hs-pure-5.1.0
 - monad-gen-0.3.0.1
 

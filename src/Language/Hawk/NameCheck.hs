@@ -15,6 +15,7 @@ import Control.Monad.Trans.Control
 import Data.Bag
 import Data.Default.Class
 import Data.Map (Map)
+import Data.Monoid
 import Data.Text (Text)
 
 import Language.Hawk.NameCheck.Environment (Env)
@@ -37,7 +38,9 @@ namecheck :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
              , MonadChronicle (Bag e) m, AsNcErr e
              ) => Image -> m Image
 namecheck img = do
-  let ns = Set.map readName $ Set.fromList (img^..imgFns.traversed.fnName)
+  let ns1 = Set.map readName $ Set.fromList (img^..imgFns.traversed.fnName)
+      ns2 = Set.fromList $ concatMap names (img^.imgDataS)
+      ns = ns1 <> ns2
       env = Env.fromSet ns
       
   logInfo (_NcStarted # ns)
@@ -45,6 +48,8 @@ namecheck img = do
   logInfo (_NcFinished # ())
 
   return img
+
+
 
 validate :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
             , MonadChronicle (Bag e) m, AsNcErr e
@@ -79,8 +84,11 @@ validate s@(env, l) = \case
            $ disclose $ One (_UndeclaredNameFound # (n, l))
     return env
             
-  EPrim _ ->
+  EPrim _ x1 x2 -> do
+    validate s x1
+    validate s x2
     return env -- Primitive instructions cannot contain names
+
 
   EIf e1 e2 e3 -> do
     validate s e1
@@ -93,8 +101,9 @@ validate s@(env, l) = \case
     
 
   EFree ns e ->
-    let env' = foldr Env.insert env (map readName ns)
+    let env' = foldr (Env.insert . readName) env ns
     in validate (env', l) e
+
 
   EType _ e -> validate s e
   ELoc l' e -> validate (env, l') e

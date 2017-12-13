@@ -19,8 +19,17 @@ import qualified Text.PrettyPrint.Leijen.Text as P
 
 
 -- Location wrapper
-data L a = L Loc a
+data L a = L { unLoc :: Loc
+             , unL   :: a
+             }
   deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
+
+
+wrapL :: (a, Loc) -> L a
+wrapL (x, l) = L l x
+
+unwrapL :: L a -> (a, Loc)
+unwrapL (L l x) = (x, l)
 
 
 data Loc

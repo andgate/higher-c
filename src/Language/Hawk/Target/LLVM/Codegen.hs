@@ -33,20 +33,23 @@ codegenDef
   :: (MonadModuleBuilder m)
   => Def -> m Operand
 codegenDef (Def n e) =
-  codegenComplex e
+  codegenTerm e
 
 
 
-codegenComplex :: CExp -> m Operand
-codegenComplex = \case
-  CLet n b e -> undefined
-  CIf p a b -> undefined
-  CJump a b -> undefined
-  CHalt a -> undefined
+codegenTerm :: Term -> m Operand
+codegenTerm = \case
+  Let n b e -> undefined
+  If p a b -> undefined
+  Free xs a -> undefined
+  Jump a b -> undefined
+  Halt a -> undefined
   
 
-codegenAtomic :: AExp -> m Operand
-codegenAtomic = \case
-  CLit l -> undefined
-  CVar n -> undefined
-  CLam n e -> undefined
+codegenValue :: Value -> m Operand
+codegenValue = \case
+  Lit l -> undefined
+  Var n -> undefined
+  Use n -> undefined
+  Dup n -> undefined
+  Lam n e -> undefined

@@ -24,11 +24,13 @@ toplevel = mdo
 -- Declaration Rules
     
     result <- rule $ linefold $
-          sig
-      <|> fn
-      -- <|> dataDef
-      -- <|> classDef
-      -- <|> instDef
+          fn
+      <|> sig
+      <|> typeAlias
+      <|> typeDef
+      <|> dataS
+      <|> forgn
+      <|> fixity
 
 
     name <- rule $
@@ -42,23 +44,27 @@ toplevel = mdo
 
 -- -----------------------------------------------------------------------------
 -- Foreign Rules
-{-
+
     forgn <- rule $
-      Foreign <$> forgn'
+      rsvp "foreign" *> forgn'
 
     forgn' <- rule $
-      rsvp "foreign" *>
+      fromForeign <$>
         (forgnImport <|> forgnExport)
 
     forgnImport <- rule $
-      let ex ft (srcN, _) (hkN, _) ty
-            = ForeignImport ft (pack srcN) hkN ty
-      in ex <$> (rsvp "import" *> forgnType) <*> strLit <*> (varId <|> conId <|> opId) <*> (rsvp ":" *> typ)
+      let ex ft (srcN, l1) (hkN, l2) ty
+            = ForeignImport ft (L l1 $ pack srcN) (L l2 hkN) ty
+      in ex <$> (rsvp "import" *> forgnType)
+            <*> strLit
+            <*> (varId <|> conId <|> opId)
+            <*> (rsvp ":" *> typ)
 
     forgnExport <- rule $
-      let ex ft (n, _)
-            = ForeignExport ft n
-      in ex <$> (rsvp "export" *> forgnType) <*> (varId <|> conId <|> opId)
+      let ex ft (n, l)
+            = ForeignExport ft (L l n)
+      in ex <$> (rsvp "export" *> forgnType)
+         <*> (varId <|> conId <|> opId)
 
     forgnType <- rule $
       rsvp "ccall" *> pure ForeignC
@@ -68,12 +74,12 @@ toplevel = mdo
 -- Fixity Rules
 
     fixity <- rule $
-      let ex fx (p, _) ops =
-            Fixity fx (fromIntegral p) (map fst ops)
-      in ex <$> fixity' <*> intLit <*> some opId
+      let ex fx (p, l) ops = fromFixity $
+            Fixity fx (L l $ fromIntegral p) (wrapL <$> ops)
+      in ex <$> fixityKind <*> intLit <*> some opId
 
-    fixity' <- rule $
-      infixL <|> infixR <|> infixN
+    fixityKind <- rule $
+      infixL <|> infixR <|> infixN <|> prefix <|> postfix
 
     infixL <- rule $
       rsvp "infixl" *> pure InfixL
@@ -83,7 +89,13 @@ toplevel = mdo
       
     infixN <- rule $
       rsvp "infix" *> pure InfixN
--}
+
+    prefix <- rule $
+      rsvp "prefix" *> pure Prefix
+
+    postfix <- rule $
+      rsvp "postfix" *> pure Postfix
+
 
 -- -----------------------------------------------------------------------------
 -- Type Signature Declaration Rules
@@ -116,7 +128,6 @@ toplevel = mdo
 
 -- -----------------------------------------------------------------------------
 -- Type Rules
-
 
     typ <- rule $
       ctyp
@@ -276,29 +287,31 @@ toplevel = mdo
       in ex <$> lit
     
     expPrim <- rule $
-      let ex (txt, l) = ELoc l $ EPrim (readPrim txt)
-      in ex <$> primText
+      let ex (txt, l1) a b = ELoc (l1<>locExp b) $ EPrim (readPrim txt) a b
+      in ex <$> primText <*> aexp <*> aexp
 
     expParen <- rule $
       let ex (e, l) = ELoc l $ EParen e
       in ex <$> parens exp
 
 
-    return result
 
-{-
 -- -----------------------------------------------------------------------------
 -- New Type Rules
 
-    newType <- rule $
-      NewType <$> (rsvp "newtype" *> conName) <*> many varName <*> (rsvp "=" *> typ)
+    typeDef <- rule $
+      let ex nl tvsl t = fromTDef $ TypeDef (wrapL nl) (wrapL <$> tvsl) t
+      in ex <$> (rsvp "type" *> conId) <*> many varId <*> (rsvp "=" *> typ)
 
 -- -----------------------------------------------------------------------------
 -- Type Alias Rules
 
     typeAlias <- rule $
-      TypeAlias <$> (rsvp "type" *> conName) <*> many varName <*> (rsvp "=" *> typ)
+      let ex nl tvsl t = fromTAlias $ TypeAlias (wrapL nl) (wrapL <$> tvsl) t
+      in ex <$> (rsvp "alias" *> conId) <*> many varId <*> (rsvp "=" *> typ)
 
+
+{-
 
 -- -----------------------------------------------------------------------------
 -- Type Class Rules
@@ -325,17 +338,41 @@ toplevel = mdo
         <*> conName
         <*> some atyp
         <*> (rsvp ":" *> block fun')
-
+-}
 
 -- -----------------------------------------------------------------------------
 -- Data Type Rules
 
-    dataType <- rule $
-      DataDecl
-        <$> (rsvp "data" *> conName)
-        <*> many varName
-        <*> (rsvp ":" *> block tySig')
+    dataS <- rule $
+      let
+        ex nl tvsl cs = fromData $ DataS (wrapL nl) (wrapL <$> tvsl) cs
+      in
+        ex <$> (rsvp "data" *> conId)
+           <*> many varId
+           <*> (rsvp "=" *> dataCons)
 
-    conDecl <- rule $
-      
--}
+
+    dataCons <- rule $
+      sep (rsvp "|") dataCon
+
+
+    dataCon <- rule $
+      dataCon' <|> dataRec
+
+
+    dataCon' <- rule $
+      let ex nl ts = DataCon (mkLocName nl) ts
+      in ex <$> conId <*> many atyp
+
+
+    dataRec <- rule $
+      let ex nl fs =  DataRec (mkLocName nl) fs
+      in ex <$> conId <*> curlys (commaSep recField)                         
+
+  
+    recField <- rule $
+      let ex nl t = RecField (mkLocName nl) t
+      in ex <$> varId <*> (rsvp "::" *> typ)
+
+
+    return result

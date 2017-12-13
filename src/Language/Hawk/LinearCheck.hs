@@ -120,7 +120,11 @@ checkExp (env, l) = \case
 
   e@(ELit _) -> return (e, env)
   e@(ECon _) -> return (e, env)
-  e@(EPrim _) -> return (e, env)
+  
+  EPrim i e1 e2 -> do
+    (e1', env1) <- checkExp (env, l) e1
+    (e2', env2) <- checkExp (env1, l) e2
+    return (EPrim i e1' e2', env2)
 
   EIf e1 e2 e3 -> do
     (e1', env1) <- checkExp (env, l) e1

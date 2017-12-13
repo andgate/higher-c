@@ -17,11 +17,13 @@ import Language.Hawk.Syntax.Kind
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
+
 data Name
   = Name Text
   | NLoc Loc Name
   | NType Type Name
   deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
+
 
 instance Binary Name
 instance Plated Name
@@ -45,6 +47,10 @@ instance PP.Pretty Name where
 
 -------------------------------------------------------------------------
 -- Helpers
+
+mkLocName :: (Text, Loc) -> Name
+mkLocName (n, l) = NLoc l $ Name n
+
 
 locName :: Name -> Maybe Loc
 locName = \case

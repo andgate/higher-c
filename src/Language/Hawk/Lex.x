@@ -91,6 +91,7 @@ hawk :-
   
 
   \_                              { rsvp }
+  \|                              { rsvp }
   \,                              { rsvp }
   \(                              { rsvp }
   \)                              { rsvp }

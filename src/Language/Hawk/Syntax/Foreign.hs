@@ -6,6 +6,7 @@ import Data.Binary
 import Data.Default.Class
 import Data.Text
 import GHC.Generics (Generic)
+import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Type
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
@@ -13,8 +14,8 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 -------------------------------------------------------------------------
 -- Foreign 
 data Foreign
-  = ForeignImport ForeignType Text Text Type
-  | ForeignExport ForeignType Text
+  = ForeignImport ForeignType (L Text) (L Text) Type
+  | ForeignExport ForeignType (L Text)
   deriving (Show, Eq, Generic)
 
 instance Binary Foreign
