@@ -36,6 +36,10 @@ ksub (KArr a1 a2) (KArr b1 b2) = ksub a1 b1 && ksub a2 b2
 ksub _ _ = False
 
 
+kstarN :: Int -> Kind
+kstarN i =
+  foldr (\_ r -> KStar `KArr` r) KStar (replicate i 0)
+
 kargs :: Kind -> [Kind]
 kargs = \case
   KStar -> []

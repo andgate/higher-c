@@ -15,7 +15,7 @@ spec = do
   describe "hawk compiler" $ do
     it "can compile code" $ do
       hkc $ def
-            { _hkcSrcFiles = ["example/Fact.hk"]
+            { _hkcSrcFiles = ["example/Maybe.hk"]
             , _hkcOutFile = "example"
             , _hkcDumpLxPretty = True
             , _hkcDumpPsPretty = True

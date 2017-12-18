@@ -159,7 +159,6 @@ library:
     - Language.Hawk.Parse.Message
 
     - Language.Hawk.Syntax
-    - Language.Hawk.Syntax.DataS
     - Language.Hawk.Syntax.Expression
     - Language.Hawk.Syntax.Fixity
     - Language.Hawk.Syntax.Foreign
@@ -172,6 +171,7 @@ library:
     - Language.Hawk.Syntax.Type
     - Language.Hawk.Syntax.TypeAlias
     - Language.Hawk.Syntax.TypeDef
+    - Language.Hawk.Syntax.TypeS
 
     - Language.Hawk.Target.LLVM
     - Language.Hawk.Target.LLVM.IR

@@ -8,7 +8,10 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 
 
-newtype Env = Env { _envFrame :: [Set Text] }
+data Env =
+  Env { _envTerms :: [Set Text]
+      , _envTypes  :: Set Text
+      }
 
 
 instance Default Env where
@@ -16,53 +19,62 @@ instance Default Env where
 
 
 empty :: Env
-empty = Env [Set.empty]
+empty = Env [Set.empty] Set.empty
 
 
-check :: Env -> Text -> Bool
-check (Env fs) n =
-  foldr (\f r -> r || Set.member n f) False fs 
+new :: Set Text -> Set Text -> Env
+new tns tys =
+  Env { _envTerms = [tns]
+      , _envTypes = tys
+      }
 
 
-insert :: Text -> Env -> Env
-insert n (Env []) = Env [Set.singleton n]
-insert n (Env (f:fs)) = Env (f':fs)
+checkTerm :: Env -> Text -> Bool
+checkTerm (Env tns _) n =
+  foldr (\ns r -> r || Set.member n ns) False tns
+
+
+checkType :: Env -> Text -> Bool
+checkType (Env _ tys) n =
+  Set.member n tys
+
+
+insertTerm :: Text -> Env -> Env
+insertTerm n (Env [] tys) = Env [Set.singleton n] tys
+insertTerm n (Env (tn:tns) tys) = Env (tn':tns) tys
   where
-    f' = Set.insert n f
+    tn' = Set.insert n tn
 
 
-insertMany :: Env -> [Text] -> Env
-insertMany =
-  foldr insert
+insertTerms :: Env -> [Text] -> Env
+insertTerms =
+  foldr insertTerm
 
 
-delete :: Text -> Env -> Env
-delete _ (Env []) = Env []
-delete n (Env (f:fs))
-  | Set.member n f = Env (f':fs)
-  | otherwise = Env (f:fs')
+deleteTerm :: Text -> Env -> Env
+deleteTerm _ (Env [] tys) = Env [] tys
+deleteTerm n (Env (tn:tns) tys)
+  | Set.member n tn = Env (tn':tns) tys
+  | otherwise = Env (tn:tns') tys
   where
-    f' = Set.delete n f
-    Env fs' = delete n (Env fs)
+    tn' = Set.delete n tn
+    Env tns' _ = deleteTerm n (Env tns tys)
 
 
-push :: Env -> Env
-push (Env fs) = Env (f:fs)
-  where f = Set.empty
+pushTerm :: Env -> Env
+pushTerm (Env tns tys) = Env (tn:tns) tys
+  where tn = Set.empty
 
 
-pop :: Env -> Env
-pop = \case
-  Env [] -> Env []
-  Env (f:fs) -> Env fs
+popTerm :: Env -> Env
+popTerm = \case
+  Env [] tys -> Env [] tys
+  Env (f:fs) tys -> Env fs tys
 
 
+insertType :: Text -> Env -> Env
+insertType n (Env tns tys) = Env tns (Set.insert n tys)
 
-fromList :: [Text] -> Env
-fromList =
-  insertMany empty
-
-
-fromSet :: Set Text -> Env
-fromSet ns =
-  Env { _envFrame = [ns] }
+insertTypes :: Env -> [Text] -> Env
+insertTypes =
+  foldr insertType

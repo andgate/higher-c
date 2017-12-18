@@ -28,7 +28,7 @@ toplevel = mdo
       <|> sig
       <|> typeAlias
       <|> typeDef
-      <|> dataS
+      <|> typeS
       <|> forgn
       <|> fixity
 
@@ -111,7 +111,7 @@ toplevel = mdo
 
     fn <- rule $
       let ex n xs e = fromFn $ Fn n xs e
-      in ex <$> fnName <*> many name <*> (rsvp "=" *> exp)
+      in ex <$> fnName <*> many pat <*> (rsvp "=" *> exp)
 
 
     fnName <- rule $
@@ -229,6 +229,7 @@ toplevel = mdo
     aexp <- rule $
           expParen
       <|> expVar
+      <|> expCon
       <|> expDup
       <|> expOp
       <|> expPrim
@@ -278,6 +279,11 @@ toplevel = mdo
       let ex (v, l) = ELoc l $ EVar v
       in ex <$> varId
 
+
+    expCon <- rule $
+      let ex (n, l) = ELoc l $ ECon n
+      in ex <$> conId
+
     expDup <- rule $
       let ex (_,l1) n = ELoc (l1 <> locName' n) $ EDup n
       in ex <$> rsvp "dup" <*> name
@@ -301,7 +307,7 @@ toplevel = mdo
 
     typeDef <- rule $
       let ex nl tvsl t = fromTDef $ TypeDef (wrapL nl) (wrapL <$> tvsl) t
-      in ex <$> (rsvp "type" *> conId) <*> many varId <*> (rsvp "=" *> typ)
+      in ex <$> (rsvp "type" *> conId) <*> many varId <*> (rsvp "as" *> typ)
 
 -- -----------------------------------------------------------------------------
 -- Type Alias Rules
@@ -343,36 +349,78 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Data Type Rules
 
-    dataS <- rule $
+    typeS <- rule $
       let
-        ex nl tvsl cs = fromData $ DataS (wrapL nl) (wrapL <$> tvsl) cs
+        ex nl tvsl cs = fromTStruct $ TypeS (wrapL nl) (wrapL <$> tvsl) cs
       in
-        ex <$> (rsvp "data" *> conId)
+        ex <$> (rsvp "type" *> conId)
            <*> many varId
-           <*> (rsvp "=" *> dataCons)
+           <*> (rsvp "=" *> typeCons)
 
 
-    dataCons <- rule $
-      sep (rsvp "|") dataCon
+    typeCons <- rule $
+      sep (rsvp "|") typeCon
 
 
-    dataCon <- rule $
-      dataCon' <|> dataRec
+    typeCon <- rule $
+      typeCon' <|> recCon
 
 
-    dataCon' <- rule $
-      let ex nl ts = DataCon (mkLocName nl) ts
+    typeCon' <- rule $
+      let ex nl ts = TypeCon (mkLocName nl) ts
       in ex <$> conId <*> many atyp
 
 
-    dataRec <- rule $
-      let ex nl fs =  DataRec (mkLocName nl) fs
-      in ex <$> conId <*> curlys (commaSep recField)                         
+    recCon <- rule $
+      let ex nl fs =  RecCon (mkLocName nl) fs
+      in ex <$> conId <*> curlys (commaSep recLabel)                         
 
   
-    recField <- rule $
-      let ex nl t = RecField (mkLocName nl) t
-      in ex <$> varId <*> (rsvp "::" *> typ)
+    recLabel <- rule $
+      let ex nl t = RecLabel (mkLocName nl) t
+      in ex <$> varId <*> (rsvp ":" *> typ)
 
+
+      
+-- -----------------------------------------------------------------------------
+-- Pattern Rules
+    pat <- rule $
+          patVar
+      <|> patWild
+      <|> patConMono
+      <|> patAs
+      <|> patParens
+
+    patVar <- rule $
+      let ex (n, l) = PLoc l $ PVar n
+      in ex <$> varId
+
+    patWild <- rule $
+      let ex (_, l) = PLoc l $ PWild
+      in ex <$> rsvp "_"
+
+    patAs <- rule $
+      let ex (n, l1) (p, l2) = PLoc (l1<>l2) $ PAs n p
+      in ex <$> varId <*> (rsvp "@" *> parens patCon0)
+
+    patConMono <- rule $
+      let ex (n, l) = PLoc l $ PCon n []
+      in ex <$> conId
+
+    patCon0 <- rule $
+      let ex (n, l) ps = PLoc l $ PCon n ps
+      in ex <$> conId <*> many pat
+
+    patCon1 <- rule $
+      let ex (n, l) ps = PLoc l $ PCon n ps
+      in ex <$> conId <*> some pat
+
+    patParens <- rule $
+      let ex (p, l) = PLoc l $ PParen p
+      in ex <$> parens (patType <|> patCon1)
+
+    patType <- rule $
+      let ex p t = PLoc (locPat p <> locType t) $ PType t p
+      in ex <$> (patCon0 <|> pat) <*> (rsvp "::" *> typ)
 
     return result

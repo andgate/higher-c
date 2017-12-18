@@ -32,8 +32,7 @@ rsvp =
 prim :: Text -> Prod r e Token (Token, Loc)
 prim =
   match . TokenPrim
-
-
+  
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Name Tokens
 

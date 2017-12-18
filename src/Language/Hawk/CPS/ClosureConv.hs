@@ -8,7 +8,7 @@ import Control.Lens
 import Control.Monad.Gen
 import Data.Text (Text)
 import Language.Hawk.CPS.Syntax
-import Language.Hawk.Syntax.DataS
+import Language.Hawk.Syntax.TypeS
 
 
 
@@ -16,7 +16,7 @@ import Language.Hawk.Syntax.DataS
 -- closure environments with fairly private names, and also
 -- I need to produce a new set of data types
 closureconv :: (MonadGen Int m)
-    => Text -> Term -> m ([DataS], Term)
+    => Text -> Term -> m ([TypeS], Term)
 closureconv def_n = \case
   Let n b e' -> undefined
   If p a b -> undefined

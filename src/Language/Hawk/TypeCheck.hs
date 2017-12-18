@@ -444,7 +444,7 @@ unify t1 t2
 
       -- Unify kinded types
       -- This should probably test kinds too
-      ts@(TKind k1 t1, t2) -> unify t1 t2
+      (TKind _ t1, t2) -> unify t1 t2
 --        unless (k1 `ksub` kind t2)
 --               (confess $ One (_UnificationFail # ts))
 --        unifies t1 t2

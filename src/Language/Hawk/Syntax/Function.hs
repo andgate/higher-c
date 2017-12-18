@@ -12,13 +12,14 @@ import Data.Data
 import GHC.Generics (Generic)
 import Language.Hawk.Syntax.Expression
 import Language.Hawk.Syntax.Name
+import Language.Hawk.Syntax.Pattern
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
 data Fn =
   Fn { _fnName :: Name
-     , _fnArgs :: [Name]
+     , _fnPats :: [Pat]
      , _fnBody :: Exp
      } deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
 

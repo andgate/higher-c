@@ -1,0 +1,34 @@
+type Maybe a = Just a | Nothing
+
+empty : Maybe a
+empty = Nothing
+
+
+singleton : a -> Maybe a
+singleton a = Just a
+
+
+mapMaybe : (a -> b) -> Maybe a -> Maybe b
+mapMaybe f (Just a) = Just (f a)
+mapMaybe _ Nothing = Nothing
+
+
+  
+type List a = Nil | Cons a (List a)
+
+
+head : List a -> Maybe a
+head (Cons x _) = Just x
+head Nil = Nothing
+
+
+tail : List a -> List a
+tail (Cons _ xs) = xs
+tail Nil = Nil
+
+
+mapList : (a -> b) -> List a -> List b
+mapList f (Cons x xs) = Cons (f x) (mapList f xs)
+mapList _ Nil = Nil
+
+

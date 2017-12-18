@@ -126,7 +126,7 @@ hawk :-
   "do"                            { rsvp }
   "where"                         { rsvp }
   "free"                          { rsvp }
-  "dup"				  { rsvp }
+  "dup"				                    { rsvp }
   "so"                            { rsvp }
 
   "if"                            { rsvp }
@@ -136,6 +136,7 @@ hawk :-
   "in"                            { rsvp }
   "case"                          { rsvp }
   "of"                            { rsvp }
+  "as"                            { rsvp }
   
   @primid                         { \text -> yieldTokAt (TokenPrim text) text }
 
