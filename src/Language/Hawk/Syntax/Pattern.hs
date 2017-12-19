@@ -51,6 +51,10 @@ instance HasKind Pat where
     PVar n -> undefined
 
 
+instance Default Pat where
+  def = PWild
+
+
 instance PP.Pretty Pat where
   pretty = \case
     PVar n ->
@@ -60,7 +64,7 @@ instance PP.Pretty Pat where
       PP.pretty l
 
     PWild->
-      PP.textStrict "*"
+      PP.textStrict "_"
 
     PAs n p ->
       PP.textStrict n
@@ -78,7 +82,7 @@ instance PP.Pretty Pat where
 
     PType t p ->
       PP.pretty p
-        PP.<+> PP.textStrict "::"
+        PP.<+> PP.textStrict ":"
         PP.<+> PP.pretty t
 
 

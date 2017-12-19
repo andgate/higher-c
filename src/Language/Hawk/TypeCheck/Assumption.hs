@@ -24,7 +24,7 @@ remove (Assumption a) var = Assumption $ filter ((/= var) . fst) a
 
 
 removeMany :: Assumption -> [Text] -> Assumption
-removeMany (Assumption a) vars = Assumption $ filter ((`elem` vars) . fst) a
+removeMany (Assumption a) vars = Assumption $ filter ((`notElem` vars) . fst) a
 
 
 lookup :: Text -> Assumption -> [Type]

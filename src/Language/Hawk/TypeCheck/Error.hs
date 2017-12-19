@@ -16,9 +16,10 @@ import qualified Text.PrettyPrint.Leijen.Text as P
 
 data TcErr
   = UnificationFail Type Type
+  | UnificationKindsMismatch Type Type
   | UnificationMismatch [Type] [Type]
   | InfiniteType Text Type
-  | UnboundVariable Text
+  | UnboundVariables [Text]
   | AmbiguousType [Constraint]
   | UndefinedConstructor Text Loc
   deriving(Show)
@@ -29,6 +30,15 @@ instance Pretty TcErr where
     pretty = \case
       UnificationFail have want ->
         P.textStrict "Unification fail:"
+          P.<$>
+          P.indent 2
+          ( P.textStrict "have:" P.<+> pretty have
+            P.<$>
+            P.textStrict "want:" P.<+> pretty want
+          )
+      
+      UnificationKindsMismatch have want ->
+        P.textStrict "Kind mismatch:"
           P.<$>
           P.indent 2
           ( P.textStrict "have:" P.<+> pretty have
@@ -48,8 +58,8 @@ instance Pretty TcErr where
       InfiniteType n t ->
         P.textStrict "Infinite type undefined"
 
-      UnboundVariable v ->
-        P.textStrict "Unbound variable encountered:" P.<+> pretty v
+      UnboundVariables vs ->
+        P.textStrict "Unbound variables encountered:" P.<+> pretty vs
 
       AmbiguousType cs ->
         P.textStrict "ambigiuous type??"

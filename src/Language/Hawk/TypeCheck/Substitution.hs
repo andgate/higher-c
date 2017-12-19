@@ -54,6 +54,21 @@ instance Substitutable Text where
     where t = TVar a
           (TVar tv) = Map.findWithDefault t a s
 
+instance Substitutable Fn where
+  apply s@(Subst smap) (Fn n ps e) =
+    Fn n (apply s <$> ps) (apply s e)
+
+instance Substitutable Pat where
+  apply s@(Subst smap) = \case
+    PVar n -> PVar n
+    PLit lt -> PLit lt
+    PWild -> PWild
+    PAs n p -> PAs n (apply s p)
+    PCon n ps -> PCon n (apply s <$> ps)
+    PParen p -> PParen $ apply s p
+    PLoc l p -> PLoc l $ apply s p
+    PType t p -> PType (apply s t) (apply s p)
+
 
 instance Substitutable Exp where
   apply s@(Subst smap) = \case

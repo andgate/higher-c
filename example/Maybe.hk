@@ -30,5 +30,3 @@ tail Nil = Nil
 mapList : (a -> b) -> List a -> List b
 mapList f (Cons x xs) = Cons (f x) (mapList f xs)
 mapList _ Nil = Nil
-
-

@@ -177,7 +177,15 @@ instance HasFreeVars Binder where
 
 instance HasFreeVars Pat where
   fv = \case
-    PVar x -> Set.singleton x
+    PVar n -> Set.singleton n
+    PLit l -> Set.empty
+    PWild-> Set.empty
+    PAs n p -> Set.singleton n `Set.union` fv p
+    PCon n ps -> Set.unions $ Set.singleton n : (fv <$> ps)
+    PParen p -> fv p
+    PLoc _ p -> fv p 
+    PType t p -> fv p
+
     
 
 

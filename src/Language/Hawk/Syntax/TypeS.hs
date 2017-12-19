@@ -143,7 +143,7 @@ structTVars s =
 structSigs :: TypeS -> [Sig]
 structSigs s@(TypeS _ _ cs) =
   let
-    t = foldr TApp (structType s) (structTVars s)
+    t = foldr (flip TApp) (structType s) (structTVars s)
   in
     concatMap (typeConSigs t) cs
 

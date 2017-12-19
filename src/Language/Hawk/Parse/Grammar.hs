@@ -355,7 +355,7 @@ toplevel = mdo
       in ex <$> varId
 
     patWild <- rule $
-      let ex (_, l) = PLoc l $ PWild
+      let ex (_, l) = PLoc l PWild
       in ex <$> rsvp "_"
 
     patAs <- rule $
