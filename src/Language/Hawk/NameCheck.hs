@@ -45,13 +45,13 @@ namecheck img = do
       env = Env.new tns tys
       
   logInfo (_NcStarted # tns)
-  mapM_ (namecheckFn env) (img^.imgFns)
-  mapM_ (namecheckSig env) (img^.imgSigs)
-  mapM_ (namecheckStruct env) (img^.imgTStructs)
-  mapM_ (namecheckTDef env) (img^.imgTDefs)
-  mapM_ (namecheckTAlias env) (img^.imgTAlias)
-  mapM_ (namecheckFixity env) (img^.imgFixity)
-  mapM_ (namecheckForeign env) (img^.imgForeign)
+  condemn $ do
+    mapM_ (namecheckFn env) (img^.imgFns)
+    mapM_ (namecheckSig env) (img^.imgSigs)
+    mapM_ (namecheckTAlias env) (img^.imgTAlias)
+    mapM_ (namecheckStruct env) (img^.imgTStructs)
+    mapM_ (namecheckFixity env) (img^.imgFixity)
+    mapM_ (namecheckForeign env) (img^.imgForeign)
   logInfo (_NcFinished # ())
 
   return img
@@ -168,13 +168,12 @@ namecheckType
      , MonadChronicle (Bag e) m, AsNcErr e )
   => (Env, Loc) -> Type -> m Env
 namecheckType s@(env, l) = \case
-  TVar n -> do
-    unless (env `Env.checkTerm` n) 
-         $ disclose $ One (_UndeclaredNameFound # (n, l))
+  TVar n ->
+    -- No need to check type variables
     return env
 
   TCon n -> do
-    unless (env `Env.checkTerm` n) 
+    unless (env `Env.checkType` n) 
           $ disclose $ One (_UndeclaredNameFound # (n, l))
     return env
   
@@ -210,17 +209,6 @@ namecheckType s@(env, l) = \case
     let env' = Env.insertTypes env ns
     namecheckType (env', l) t
     return env
-
-
-
-
-namecheckTDef
-  :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
-     , MonadChronicle (Bag e) m, AsNcErr e )
-  => Env -> TypeDef -> m ()
-namecheckTDef env (TypeDef _ tvs t) = 
-  void $ namecheckType (env', locType t) t
-  where env' = Env.insertTypes env (unL <$> tvs)
 
 
 namecheckStruct

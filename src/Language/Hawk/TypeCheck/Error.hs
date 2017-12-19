@@ -20,6 +20,7 @@ data TcErr
   | InfiniteType Text Type
   | UnboundVariable Text
   | AmbiguousType [Constraint]
+  | UndefinedConstructor Text Loc
   deriving(Show)
 
 makeClassyPrisms ''TcErr
@@ -51,4 +52,8 @@ instance Pretty TcErr where
         P.textStrict "Unbound variable encountered:" P.<+> pretty v
 
       AmbiguousType cs ->
-        P.textStrict "ambigiuous type??"      
+        P.textStrict "ambigiuous type??"
+
+      UndefinedConstructor n l ->
+        P.pretty l P.<+> P.textStrict "Undefined constructor encountered" P.<+> P.squotes (P.textStrict n)
+        

@@ -15,7 +15,6 @@ module Language.Hawk.Syntax
   , module Language.Hawk.Syntax.Signature
   , module Language.Hawk.Syntax.Type
   , module Language.Hawk.Syntax.TypeAlias
-  , module Language.Hawk.Syntax.TypeDef
   , module Language.Hawk.Syntax.TypeS
   ) where
 
@@ -33,5 +32,4 @@ import Language.Hawk.Syntax.Prim
 import Language.Hawk.Syntax.Signature
 import Language.Hawk.Syntax.Type
 import Language.Hawk.Syntax.TypeAlias
-import Language.Hawk.Syntax.TypeDef
 import Language.Hawk.Syntax.TypeS

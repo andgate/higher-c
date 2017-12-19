@@ -170,7 +170,6 @@ library:
     - Language.Hawk.Syntax.Signature
     - Language.Hawk.Syntax.Type
     - Language.Hawk.Syntax.TypeAlias
-    - Language.Hawk.Syntax.TypeDef
     - Language.Hawk.Syntax.TypeS
 
     - Language.Hawk.Target.LLVM

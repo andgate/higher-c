@@ -8,6 +8,7 @@ import Data.Text
 import GHC.Generics (Generic)
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Type
+import Language.Hawk.Syntax.Signature
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
@@ -62,3 +63,9 @@ instance PP.Pretty Foreign where
 instance PP.Pretty ForeignType where
   pretty ForeignC =
     PP.textStrict "ForeignC"
+
+
+foreignSig :: Foreign -> Maybe Sig
+foreignSig = \case
+    ForeignImport _ _ (L _ n) t -> Just (Sig n t)
+    ForeignExport _ _ -> Nothing

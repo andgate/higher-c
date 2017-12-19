@@ -61,7 +61,8 @@ linearcheck :: ( MonadLog (WithSeverity msg) m, AsLcMsg msg
 linearcheck img = do
   -- Generate global environment
   let genv = GEnv.fromList $ map readName (img^..imgFns.traversed.fnName)
-  img' <- mapMOf (imgFns.each) (runCheck genv) img
+  img' <- condemn $
+    mapMOf (imgFns.each) (runCheck genv) img
   logInfo (_LcComplete # ())
   return img'
 

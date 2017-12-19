@@ -43,14 +43,8 @@ compile
      , MonadIO m, HasHkcConfig c
      )
   => c -> m ()
-compile conf = do
-  phase1
-    >>= namecheck           >>= dumpNc conf
-    >>= typecheckMany       >>= dumpTc conf
-    >>= kindscheck          >>= dumpKc conf
-    >>= linearcheck         >>= dumpLc conf
-
-  return ()
+compile conf =
+  phase1 >>= phase2 >> return ()
 
   where
     phase1 =
@@ -59,6 +53,8 @@ compile conf = do
           >>= lexMany             >>= dumpLx conf
           >>= parseMany           >>= dumpPs conf
 
-
-
-
+    phase2 img =
+      namecheck img     >>= dumpNc conf
+      >>= typecheck     >>= dumpTc conf
+      >>= kindscheck    >>= dumpKc conf
+      >>= linearcheck   >>= dumpLc conf

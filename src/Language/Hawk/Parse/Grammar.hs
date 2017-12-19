@@ -27,7 +27,6 @@ toplevel = mdo
           fn
       <|> sig
       <|> typeAlias
-      <|> typeDef
       <|> typeS
       <|> forgn
       <|> fixity
@@ -301,14 +300,6 @@ toplevel = mdo
       in ex <$> parens exp
 
 
-
--- -----------------------------------------------------------------------------
--- New Type Rules
-
-    typeDef <- rule $
-      let ex nl tvsl t = fromTDef $ TypeDef (wrapL nl) (wrapL <$> tvsl) t
-      in ex <$> (rsvp "type" *> conId) <*> many varId <*> (rsvp "as" *> typ)
-
 -- -----------------------------------------------------------------------------
 -- Type Alias Rules
 
@@ -316,38 +307,8 @@ toplevel = mdo
       let ex nl tvsl t = fromTAlias $ TypeAlias (wrapL nl) (wrapL <$> tvsl) t
       in ex <$> (rsvp "alias" *> conId) <*> many varId <*> (rsvp "=" *> typ)
 
-
-{-
-
 -- -----------------------------------------------------------------------------
--- Type Class Rules
-
-    typeClass <- rule $
-      TypeClass <$> (rsvp "class" *> optional tyCtx')
-                <*> conName
-                <*> many varName
-                <*> (rsvp ":" *> typeClassBody)
-
-    
-    typeClassBody <- rule $
-      block $
-          (Left <$> fun')
-      <|> (Right <$> tySig')
-
-
--- -----------------------------------------------------------------------------
--- Type Class Instance Rules
-
-    typeClassInst <- rule $
-      TypeClassInst
-        <$> (rsvp "inst" *> optional tyCtx')
-        <*> conName
-        <*> some atyp
-        <*> (rsvp ":" *> block fun')
--}
-
--- -----------------------------------------------------------------------------
--- Data Type Rules
+-- Structured Type Rules
 
     typeS <- rule $
       let
@@ -380,8 +341,6 @@ toplevel = mdo
       let ex nl t = RecLabel (mkLocName nl) t
       in ex <$> varId <*> (rsvp ":" *> typ)
 
-
-      
 -- -----------------------------------------------------------------------------
 -- Pattern Rules
     pat <- rule $
@@ -422,5 +381,35 @@ toplevel = mdo
     patType <- rule $
       let ex p t = PLoc (locPat p <> locType t) $ PType t p
       in ex <$> (patCon0 <|> pat) <*> (rsvp "::" *> typ)
+
+
+{-
+
+-- -----------------------------------------------------------------------------
+-- Type Class Rules
+
+    typeClass <- rule $
+      TypeClass <$> (rsvp "class" *> optional tyCtx')
+                <*> conName
+                <*> many varName
+                <*> (rsvp ":" *> typeClassBody)
+
+    
+    typeClassBody <- rule $
+      block $
+          (Left <$> fun')
+      <|> (Right <$> tySig')
+
+
+-- -----------------------------------------------------------------------------
+-- Type Class Instance Rules
+
+    typeClassInst <- rule $
+      TypeClassInst
+        <$> (rsvp "inst" *> optional tyCtx')
+        <*> conName
+        <*> some atyp
+        <*> (rsvp ":" *> block fun')
+-}
 
     return result

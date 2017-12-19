@@ -55,7 +55,8 @@ kindscheck :: ( MonadLog (WithSeverity msg) m, AsKcMsg msg
               , MonadChronicle (Bag e) m, AsKcErr e )
            => Image -> m Image
 kindscheck img = do
-  img' <- mapMOf (imgFns.each.fnBody) (inferExp Env.empty) img
+  logInfo (_KcBegin # ())
+  img' <- condemn $ img & mapMOf (imgFns.each.fnBody) (inferExp Env.empty)
   logInfo (_KcComplete # ())
   return img'
 

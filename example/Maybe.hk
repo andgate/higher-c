@@ -10,7 +10,7 @@ singleton a = Just a
 
 mapMaybe : (a -> b) -> Maybe a -> Maybe b
 mapMaybe f (Just a) = Just (f a)
-mapMaybe _ Nothing = Nothing
+mapMaybe _ Nothing = Nil
 
 
   

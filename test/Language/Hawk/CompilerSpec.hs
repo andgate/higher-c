@@ -19,6 +19,7 @@ spec = do
             , _hkcOutFile = "example"
             , _hkcDumpLxPretty = True
             , _hkcDumpPsPretty = True
+            , _hkcDumpNcPretty = True
             , _hkcDumpTcPretty = True
             , _hkcDumpKcPretty = True
             , _hkcDumpLcPretty = True

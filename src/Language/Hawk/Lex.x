@@ -136,7 +136,6 @@ hawk :-
   "in"                            { rsvp }
   "case"                          { rsvp }
   "of"                            { rsvp }
-  "as"                            { rsvp }
   
   @primid                         { \text -> yieldTokAt (TokenPrim text) text }
 

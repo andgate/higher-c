@@ -60,46 +60,50 @@ import qualified Language.Hawk.TypeCheck.Substitution as Subst
 -- Type Checking
 -----------------------------------------------------------------------
 
-typecheckMany :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
+typecheck :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
                     , MonadChronicle (Bag e) m, AsTcErr e )
                  => Image -> m Image
-typecheckMany img = evalStateT m env
+typecheck img = evalStateT m env
   where
-    sigsx = img^.imgSigs
-    sigsx' = sigsx & each.sigType %~ closeOver
-    
-    env = Env.fromSigs sigsx'
-
+    env = Env.fromImg img
     m = do
-      img' <- mapMOf (imgFns.each) f img
+      logInfo (_TcBegin # ())
+      img' <- condemn $ img & mapMOf (imgFns.each) (typecheckWith typecheckFn)
       logInfo (_TcComplete # ())
       return img'
-      
-    f (Fn n xs e) = do
-      env <- get
-      (e', env') <- typecheck env (readName n) e
-      put env'
-      return $ Fn n xs e'
 
 
-typecheck :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
+typecheckWith
+  :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
+     , MonadChronicle (Bag e) m, AsTcErr e 
+     )
+  => (Env -> a -> m (b, Env)) -> a -> StateT Env m b
+typecheckWith tc a = do
+  env <- get
+  (a', env') <- lift $ tc env a
+  put env'
+  return a'
+
+
+typecheckFn :: ( MonadLog (WithSeverity msg) m, AsTcMsg msg
              , MonadChronicle (Bag e) m, AsTcErr e
              )
-          => Env -> Text -> Exp -> m (Exp, Env)
-typecheck env n e = run $ do
-  (t, e', InferResult cs as) <- inferConstraints e
-  let unbounds = Set.fromList (As.keys as) `Set.difference` Set.fromList (Env.keys env)
+          => Env -> Fn -> m (Fn, Env)
+typecheckFn env (Fn nm xs e) = run $ do
+  let n = readName nm
+  (t, e', InferResult cs as) <- inferConstraints (env, locExp e) e
+  let unbounds = Set.fromList (As.keys as) `Set.difference` Set.fromList (Env.typeNames env)
   unless (Set.null unbounds)
          $ disclose $ One (_UnboundVariable # Set.findMin unbounds)
-  let cs' = [ ExpInstConst t s | (x, s) <- Env.toList env
+  let cs' = [ ExpInstConst t s | (x, s) <- Env.toTypes env
                                , t <- As.lookup x as ]
 
   s <- solve (cs ++ cs')
   let e'' = Subst.apply s e'
       t'  = closeOver $ Subst.apply s t
-      env' = Env.extend env (n, t')
+      env' = Env.extendType env (n, t')
       
-  return (e'', env')
+  return (Fn nm xs e'', env')
 
   where
     run m = evalStateT (runReaderT m Set.empty) (def :: TypeState)
@@ -128,14 +132,17 @@ instance Monoid InferResult where
         , assumptions = as1 `As.merge` as2
         }
 
+instance Default InferResult where
+  def = mempty
+
 
 inferConstraints
   :: ( MonadReader (Set Text) m
      , MonadState s m, HasTypeState s
      , MonadLog (WithSeverity msg) m, AsTcMsg msg
      , MonadChronicle (Bag e) m, AsTcErr e )
-  => Exp -> m (Type, Exp, InferResult)
-inferConstraints = \case
+  => (Env, Loc) -> Exp -> m (Type, Exp, InferResult)
+inferConstraints s@(env, l) = \case
   EVar x -> do
     tv <- fresh
     return ( tv
@@ -146,8 +153,8 @@ inferConstraints = \case
 
   EApp e1 e2 -> do
     tv <- fresh
-    (t1, e1', r1) <- inferConstraints e1
-    (t2, e2', r2) <- inferConstraints e2
+    (t1, e1', r1) <- inferConstraints s e1
+    (t2, e2', r2) <- inferConstraints s e2
     return ( tv
            , EType tv $ EApp e1' e2'
            , r1 <> r2 <> InferResult { constraints = [EqConst t1 (t2 `TArr` tv)]
@@ -157,7 +164,7 @@ inferConstraints = \case
 
   ELam n e -> do
     tv@(TVar a) <- fresh
-    (t, e', InferResult cs as) <- extendMSet a $ inferConstraints e
+    (t, e', InferResult cs as) <- extendMSet a $ inferConstraints s e
 
     let x = readName n
         t' = tv `TArr` t
@@ -171,8 +178,8 @@ inferConstraints = \case
 
   ELet (n, e1) e2 -> do
     let x = readName n
-    (t1, e1', InferResult cs1 as1) <- inferConstraints e1
-    (t2, e2', InferResult cs2 as2) <- inferConstraints e2
+    (t1, e1', InferResult cs1 as1) <- inferConstraints s e1
+    (t2, e2', InferResult cs2 as2) <- inferConstraints s e2
     ms <- ask
     return ( t2
            , EType t2 $ ELet (n, e1') e2'
@@ -188,29 +195,29 @@ inferConstraints = \case
               , mempty)
 
 
-  ECon n -> do
-    -- Needs to Identify constructor's type
-    tv <- fresh
-    return ( tv
-           , EType tv $ ECon n
-           , InferResult
-             { constraints = []
-             , assumptions = As.singleton n tv })
+  ECon n ->
+    case Env.lookupType n env of
+      Just t ->
+        return ( t
+              , EType t $ ECon n
+              , mempty )
+      
+      Nothing -> disclose $ One (_UndefinedConstructor # (n, l))
 
   EPrim i e1 e2 -> do
     let t = inferPrimInstr i
     tv <- fresh
-    (t1, e1', r1) <- inferConstraints e1
-    (t2, e2', r2) <- inferConstraints e2
+    (t1, e1', r1) <- inferConstraints s e1
+    (t2, e2', r2) <- inferConstraints s e2
     return ( t
              , EType t $ EPrim i e1' e2'
              , r1 <> r2 <> InferResult { constraints = [EqConst t (tFun2 t1 t2 tv)]
                                        , assumptions = As.empty })
 
   EIf e1 e2 e3 -> do
-    (t1, e1', r1) <- inferConstraints e1
-    (t2, e2', r2) <- inferConstraints e2
-    (t3, e3', r3) <- inferConstraints e3
+    (t1, e1', r1) <- inferConstraints s e1
+    (t2, e2', r2) <- inferConstraints s e2
+    (t3, e3', r3) <- inferConstraints s e3
     return ( t2
            , EType t2 $ EIf e1' e2' e3'
            , r1 <> r2 <> r3
@@ -225,23 +232,23 @@ inferConstraints = \case
                          , assumptions = As.singleton (readName n) tv } )
 
   EFree n e -> do
-    (t, e', r) <- inferConstraints e
+    (t, e', r) <- inferConstraints s e
     return ( t
            , EType t $ EFree n e'
            , r)
 
   EType t e -> do
-    (t', _, r) <- inferConstraints e
+    (t', _, r) <- inferConstraints s e
     return ( t
            , EType t e
            , r <> InferResult [EqConst t t'] As.empty)
 
-  ELoc l e -> do
-    (t, e', r) <- inferConstraints e
-    return (t, ELoc l e', r)
+  ELoc l' e -> do
+    (t, e', r) <- inferConstraints (env, l') e
+    return (t, ELoc l' e', r)
 
   EParen e -> do
-    (t, e', r) <- inferConstraints e
+    (t, e', r) <- inferConstraints s e
     return ( t
            , EType t $ EParen e'
            , r)
@@ -282,25 +289,13 @@ inferPrimInstr = \case
   PrimBad  -> error "Type checker encountered bad primitive instruction."
 
 
-inferBinder
-  :: ( MonadReader (Set Text) m
-     , MonadState s m, HasTypeState s
-     , MonadLog (WithSeverity msg) m, AsTcMsg msg
-     , MonadChronicle (Bag e) m, AsTcErr e )
-  => Binder -> m (Type, Binder, InferResult)
-inferBinder (Binder p e) = do
-  (t1, p', r1) <- inferPattern p
-  (t2, e', r2) <- inferConstraints e
-  return (t2, Binder p' e', r1 <> r2)
-  
-
 inferPattern
   :: ( MonadReader (Set Text) m
      , MonadState s m, HasTypeState s
      , MonadLog (WithSeverity msg) m, AsTcMsg msg
      , MonadChronicle (Bag e) m, AsTcErr e )
-  => Pat -> m (Type, Pat, InferResult)
-inferPattern = \case
+  => Env -> Pat -> m (Type, Pat, InferResult)
+inferPattern env = \case
   PVar x -> undefined
 
 
@@ -438,6 +433,9 @@ unify t1 t2
       (TVar v, t) -> v `bind` t
       (t, TVar v) -> v `bind` t
 
+      (TCon v, t) -> v `bind` t
+      (t, TCon v) -> v `bind` t
+
       -- Unify arrows
       (TArr t1 t2, TArr t3 t4) -> unifyMany [t1,t2] [t3,t4]
       (TLoli t1 t2, TLoli t3 t4) -> unifyMany [t1,t2] [t3,t4]
@@ -464,6 +462,7 @@ unify t1 t2
 bind :: (MonadChronicle (Bag e) m, AsTcErr e)
      => Text -> Type -> m Subst
 bind a t | t == TVar a     = return Subst.empty
+         | t == TCon a     = return Subst.empty
          | occursCheck a t = disclose $ One (_InfiniteType # (a, t))
          | otherwise       = return (Subst $ Map.singleton a t)
      
