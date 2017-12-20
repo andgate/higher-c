@@ -1,7 +1,7 @@
 {-# LANGUAGE  FlexibleContexts
             , LambdaCase
   #-}
-module Language.Hawk.CPS.ClosureConv where
+module Language.CPS.ClosureConv where
 
 
 import Control.Lens

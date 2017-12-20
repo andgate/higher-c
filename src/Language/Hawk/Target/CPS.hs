@@ -2,7 +2,7 @@
             , OverloadedStrings
             , FlexibleContexts
   #-}
-module Language.Hawk.CPS.Transform where
+module Language.Hawk.Target.CPS where
 
 
 import Control.Lens

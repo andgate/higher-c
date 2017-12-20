@@ -60,7 +60,12 @@ linearcheck :: ( MonadLog (WithSeverity msg) m, AsLcMsg msg
             => Image -> m Image
 linearcheck img = do
   -- Generate global environment
-  let genv = GEnv.fromList $ map readName (img^..imgFns.traversed.fnName)
+  let genv1 = GEnv.fromList $ map readName (img^..imgFns.traversed.fnName)
+      genv2 = GEnv.fromList $ concatMap structNames (img^.imgTStructs)
+      genv = genv1 <> genv2
+  
+      
+  logInfo (_LcBegin # ())
   img' <- condemn $
     mapMOf (imgFns.each) (runCheck genv) img
   logInfo (_LcComplete # ())
@@ -68,10 +73,14 @@ linearcheck img = do
 
 runCheck :: ( MonadChronicle (Bag e) m, AsLcErr e )
          => GlobalEnv -> Fn -> m Fn
-runCheck genv (Fn n vs e) = do
-  (e', lenv) <- runReaderT (checkExp (LEnv.empty, locExp e) e) genv
-  return $ Fn n vs e'
-  
+runCheck genv (Fn n ps e) = do
+  let ns = Set.toList $ fv ps
+      lenv1 = foldr LEnv.extendLinear LEnv.empty ns
+
+  (e', lenv2) <- runReaderT (checkExp (lenv1, locExp e) e) genv
+  unless (LEnv.areTheseConsumed ns lenv2)
+         $ confess $ One (_LcParamsUnconsumed # (ns, locName' n))
+  return $ Fn n ps e'
 
 
 checkExp :: ( MonadReader r m, HasGlobalEnv r

@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell
   #-}
-module Language.Hawk.Target.LLVM.Types where
+module Language.CPS.Target.LLVM.Types where
 
 import Control.Lens
 import Data.ByteString.Short (ShortByteString)

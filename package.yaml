@@ -105,19 +105,20 @@ library:
     - yaml
 
   exposed-modules:
+    - Language.CPS.ClosureConv
+    - Language.CPS.LambdaLift
+    - Language.CPS.Syntax
+
+    - Language.CPS.Target.LLVM
+    - Language.CPS.Target.LLVM.IR
+    - Language.CPS.Target.LLVM.Module
+    - Language.CPS.Target.LLVM.Instruction
+
     - Language.Hawk.Compile
     - Language.Hawk.Compile.Config
     - Language.Hawk.Compile.Error
     - Language.Hawk.Compile.Message
     - Language.Hawk.Compile.Monad
-
-    - Language.Hawk.CPS
-    - Language.Hawk.CPS.ClosureConv
-    - Language.Hawk.CPS.LambdaLift
-    - Language.Hawk.CPS.Syntax
-    - Language.Hawk.CPS.Transform
-
-    - Language.Hawk.Eval
 
     - Language.Hawk.KindsCheck
     - Language.Hawk.KindsCheck.Environment
@@ -172,10 +173,7 @@ library:
     - Language.Hawk.Syntax.TypeAlias
     - Language.Hawk.Syntax.TypeS
 
-    - Language.Hawk.Target.LLVM
-    - Language.Hawk.Target.LLVM.IR
-    - Language.Hawk.Target.LLVM.Module
-    - Language.Hawk.Target.LLVM.Instruction
+    - Language.Hawk.Target.CPS
 
     - Language.Hawk.TypeCheck
     - Language.Hawk.TypeCheck.Assumption

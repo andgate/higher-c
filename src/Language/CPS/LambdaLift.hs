@@ -2,13 +2,13 @@
             , LambdaCase
             , OverloadedStrings
   #-}
-module Language.Hawk.CPS.LambdaLift where
+module Language.CPS.LambdaLift where
 
 import Control.Lens
 import Control.Monad.Gen
 import Data.Monoid
 import Data.Text (Text)
-import Language.Hawk.CPS.Syntax
+import Language.CPS.Syntax
 import Language.Hawk.NameGen
 
 
@@ -16,7 +16,7 @@ import Language.Hawk.NameGen
 
 
 lambdaLiftValue :: (MonadGen Int m)
-    => Text -> Value -> m ([Def], Value)
+    => Text -> Value -> m ([Lambda], Value)
 lambdaLiftValue def_n = \case
   Use n -> return ([], Use n)
   Dup n -> return ([], Dup n)
@@ -32,7 +32,7 @@ lambdaLiftValue def_n = \case
 
 
 lambdaLiftTerm :: (MonadGen Int m)
-    => Text -> Term -> m ([Def], Term)
+    => Text -> Term -> m ([Lambda], Term)
 lambdaLiftTerm def_n = \case
   Let n b e -> do
     (ds1, b') <- lambdaLiftBinder def_n b
@@ -57,7 +57,7 @@ lambdaLiftTerm def_n = \case
 
 
 lambdaLiftBinder :: (MonadGen Int m)
-    => Text -> Binder -> m ([Def], Binder)
+    => Text -> Binder -> m ([Lambda], Binder)
 lambdaLiftBinder def_n = \case
   PrimBind i a b -> do
     (ds1, a') <- lambdaLiftValue def_n a

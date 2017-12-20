@@ -15,6 +15,7 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 
 data LcErr
   = LcPreviouslyConsumed Text Loc
+  | LcParamsUnconsumed [Text] Loc
   | LcLamUnconsumed Text Loc
   | LcLetUnconsumed Text Loc
   | LcBranchMismatch [Text] Loc
@@ -31,6 +32,12 @@ instance Pretty LcErr where
         PP.textStrict "Linear variable"
           PP.<+> PP.squotes (PP.textStrict n)
           PP.<+> "was already consumed."
+      
+      LcParamsUnconsumed ns l ->
+        PP.pretty l
+        PP.<+>
+        PP.textStrict "Variable(s) introduced by function were not consumed:"
+          PP.<+> PP.pretty ns
 
       LcLamUnconsumed n l ->
         PP.pretty l

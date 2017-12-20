@@ -6,7 +6,7 @@
             , TemplateHaskell
             , DeriveDataTypeable
   #-}
-module Language.Hawk.Syntax.Expression where
+module Language.Hawk.Syntax.Term where
 
 import Control.Arrow (first, second)
 import Control.Lens
@@ -25,7 +25,6 @@ import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Name
 import Language.Hawk.Syntax.Pattern
 import Language.Hawk.Syntax.Prim
-import Language.Hawk.Syntax.Type
 import Language.Hawk.Syntax.Kind
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
@@ -33,28 +32,35 @@ import qualified Data.Set as Set
 
 
 -- -----------------------------------------------------------------------------
--- | Expression
+-- | Terms
 
-data Exp
-  = EVar  Text
-  | EApp  Exp Exp
-  | ELam  Name Exp
-  | ELet  (Name, Exp) Exp
-  | ELit  Lit
-  | ECon  Text
-  | EPrim PrimInstr Exp Exp
-  | EIf   Exp Exp Exp
-  | EDup  Name
-  | EFree [Name] Exp
+-- Defines which memory context a term's subverse is in
+data Context = Regular | Linear
+
+data Term
+  = TVar  Text
+  | TApp  Term Term
+  | TLam  Name Term
+
+  | TPi   (Name, Term) Term    -- Regular pi, or arrow
+  | TLPi   (Name, Term) Term   -- Linear pi, or lolipop
+
+  | TLet  (Name, Term) Term
+  
+  | TLit  Lit
+  | TCon  Text
+  | TPrim PrimInstr Term Term
+  | TIf   Term Term Term
+  
+  | TDup  Name
+  | TFree [Name] Exp
 
   -- Hints
-  | EType  Type Exp
-  | ELoc   Loc Exp
-  | EParen Exp
-  deriving(Eq, Ord, Read, Show, Generic, Data, Typeable)
-
-
-data Binder = Binder Pat Exp
+  | THint  Term Term
+  | TLoc   Loc Term
+  | TParen Term
+  | TContext Context Term
+  
   deriving(Eq, Ord, Read, Show, Generic, Data, Typeable)
 
 

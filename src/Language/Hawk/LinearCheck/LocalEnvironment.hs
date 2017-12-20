@@ -89,7 +89,11 @@ isConsumed n env =
     Just 0 -> True
     Just _ -> False
     Nothing -> False
-  
+
+
+areTheseConsumed :: HasLocalEnv e => [Text] -> e -> Bool
+areTheseConsumed ns env =
+  all (`isConsumed` env) ns 
 
 merge :: HasLocalEnv e => e -> e -> e
 merge e1 e2 =
