@@ -4,6 +4,7 @@ module Language.Hawk.Syntax
   ) where
 
 import Language.Hawk.Syntax.Branch        as X
+import Language.Hawk.Syntax.DataS         as X
 import Language.Hawk.Syntax.Fixity        as X
 import Language.Hawk.Syntax.Foreign       as X
 import Language.Hawk.Syntax.Function      as X
@@ -16,4 +17,3 @@ import Language.Hawk.Syntax.Prim          as X
 import Language.Hawk.Syntax.Signature     as X
 import Language.Hawk.Syntax.Subterm       as X
 import Language.Hawk.Syntax.Telescope     as X
-import Language.Hawk.Syntax.TypeS         as X

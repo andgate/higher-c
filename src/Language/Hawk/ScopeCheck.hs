@@ -27,12 +27,19 @@ import Language.Hawk.Syntax
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as Text
-import qualified Language.Hawk.NameCheck.Environment as Env
+import qualified Language.Hawk.ScopeCheck.Environment as Env
+import qualified Language.Hawk.Syntax.Term.Source    as Source
+import qualified Language.Hawk.Syntax.Pattern.Source as Source
+import qualified Language.Hawk.Syntax.Term.Scoped    as Scoped
+import qualified Language.Hawk.Syntax.Pattern.Scoped as Scoped
 
 
 -----------------------------------------------------------------------
 -- Scope Check
 -----------------------------------------------------------------------
+
+type ScopeCheckT m a = StateT (Set Text) (ReaderT (Set Text) m) a
+
 
 scopecheck :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
              , MonadChronicle (Bag e) m, AsNcErr e
@@ -54,6 +61,21 @@ scopecheck img = do
   logInfo (_NcFinished # ())
 
   return img
+
+
+scopecheckTerm
+  :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
+     , MonadChronicle (Bag e) m, AsNcErr e
+     )
+  => Unscoped.Term -> ScopeCheckT m ScopedTerm
+scopecheckTerm = \case
+    Unscoped.TVar x ->
+      return $ Scoped.TVar x
+
+    Unscoped.TLit l ->
+      return $ Scoped.TLit l
+
+    _ -> undefined
 
 
 namecheckFn :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg

@@ -18,18 +18,18 @@ import Language.Hawk.Syntax.DataS
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
-data Image t p =
-  Image { _imgFns       :: [Fn t p]
-        , _imgSigs      :: [Sig t]
-        , _imgTStructs  :: [DataS t]
+data Image t v p =
+  Image { _imgFns       :: [Fn (t v) p]
+        , _imgSigs      :: [Sig (t v)]
+        , _imgTStructs  :: [DataS t v]
         , _imgFixity    :: [Fixity]
-        , _imgForeign   :: [Foreign t]
+        , _imgForeign   :: [Foreign (t v)]
         } deriving (Show, Eq)
 
-makeLens ''Image
+makeLenses ''Image
 
 
-instance Monoid (Image t p) where
+instance Monoid (Image t v p) where
   mempty
     = Image
       { _imgFns       = []
@@ -47,11 +47,11 @@ instance Monoid (Image t p) where
       . (imgForeign %~ (++ m2^.imgForeign))
 
 
-instance Default (Image t p) where
+instance Default (Image t v p) where
   def = mempty
 
 
-instance (PP.Pretty t, PP.Pretty p) => PP.Pretty (Image t p) where
+instance (PP.Pretty (t v), PP.Pretty p) => PP.Pretty (Image t v p) where
   pretty m =
     PP.textStrict "Functions:" PP.<$> PP.pretty (m^.imgFns)
     PP.<$> PP.textStrict "Signatures:" PP.<$> PP.pretty (m^.imgSigs)
@@ -61,17 +61,17 @@ instance (PP.Pretty t, PP.Pretty p) => PP.Pretty (Image t p) where
     
 
 
-fromFn :: Fn t p -> Image t p
+fromFn :: Fn (t v) p -> Image t v p
 fromFn f = mempty & imgFns .~ [f]
 
-fromSig :: Sig t -> Image t p
+fromSig :: Sig (t v) -> Image t v p
 fromSig s = mempty & imgSigs .~ [s]
 
-fromTStruct :: DataS t -> Image t p
+fromTStruct :: DataS t v -> Image t v p
 fromTStruct d = mempty & imgTStructs .~ [d]
 
-fromFixity :: Fixity t -> Image t p
+fromFixity :: Fixity -> Image t v p
 fromFixity d = mempty & imgFixity .~ [d]
 
-fromForeign :: Foreign t -> Image t p
+fromForeign :: Foreign (t v) -> Image t v p
 fromForeign d = mempty & imgForeign .~ [d]

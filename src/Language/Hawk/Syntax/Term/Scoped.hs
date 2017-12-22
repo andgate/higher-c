@@ -21,6 +21,7 @@ import Language.Hawk.Syntax.Let
 import Language.Hawk.Syntax.Literal
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Name
+import Language.Hawk.Syntax.Pattern.Scoped
 import Language.Hawk.Syntax.Prim
 import Language.Hawk.Syntax.Subterm
 
@@ -66,24 +67,6 @@ data Term v
   deriving(Foldable, Functor, Traversable)
 
 
-type PatScope = Scope PatVar
-newtype PatVar = PatVar Int
-  deriving (Eq, Enum, Hashable, Ord, Show, Num)
-
-unPatVar :: PatVar -> Int
-unPatVar (PatVar i) = i
-
--- Pattern
-data Pat t b
-  = PVar b
-  | PLit Lit
-  | PWild
-  | PAs b (Pat t b)
-  | PCon Text [Pat t b]
-  | PParen (Pat t b)
-  | PLoc Loc (Pat t b)
-  | PHint t (Pat t b)
-  deriving(Foldable, Functor, Traversable)
 
 
 -- -----------------------------------------------------------------------------

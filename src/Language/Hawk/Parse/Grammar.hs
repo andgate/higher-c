@@ -11,6 +11,7 @@ import Data.Text (pack)
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Lex.Token (Token)
 import Language.Hawk.Syntax
+import Language.Hawk.Syntax.Term.Source
 import Text.Earley
 import Text.Earley.Mixfix
 

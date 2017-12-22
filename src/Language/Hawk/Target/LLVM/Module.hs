@@ -27,7 +27,7 @@ import Control.Monad.Trans.Identity
 import Data.Bifunctor
 import Data.ByteString.Short as BS
 import Data.SnocList
-import Language.CPS.Target.LLVM.IR
+import Language.Hawk.Target.LLVM.IR
 import LLVM.AST hiding (function)
 import LLVM.AST.Global
 import LLVM.AST.Linkage

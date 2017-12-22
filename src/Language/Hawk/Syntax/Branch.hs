@@ -22,7 +22,7 @@ data Branches c a t v
   | LitBranches (NonEmpty (LitBranch t v)) (t v)
 
 
-data ConBranch c a t v = ConBranch c (Telescope a t ) (Scope TeleVar t v)
+data ConBranch c a t v = ConBranch c (Telescope a t v) (Scope TeleVar t v)
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 data LitBranch t v = LitBranch Lit (t v)

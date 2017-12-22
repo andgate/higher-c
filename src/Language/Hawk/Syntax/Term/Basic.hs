@@ -217,34 +217,3 @@ instance PP.Pretty v => PP.Pretty (Term v) where
 
       
       TParen t    -> PP.parens $ PP.pretty t
-
-
-instance (PP.Pretty t, PP.Pretty b) => PP.Pretty (Pat t b) where
-  pretty = \case
-    PVar n ->
-      PP.textStrict n
-
-    PLit l ->
-      PP.pretty l
-
-    PWild->
-      PP.textStrict "_"
-
-    PAs n p ->
-      PP.textStrict n
-        PP.<> PP.textStrict "@"
-        PP.<> PP.pretty p
-
-    PCon n ps ->
-      PP.textStrict n PP.<+> PP.pretty ps
-
-    PParen p ->
-      PP.parens (PP.pretty p)
-
-    PLoc _ p ->
-      PP.pretty p -- Usually best to hide locations
-
-    PHint t p ->
-      PP.pretty p
-        PP.<+> PP.textStrict ":"
-        PP.<+> PP.pretty t

@@ -1,8 +1,9 @@
 {-# LANGUAGE  LambdaCase
+            , DeriveDataTypeable
             , DeriveGeneric
+            , GeneralizedNewtypeDeriving
             , OverloadedStrings
             , TemplateHaskell
-            , DeriveDataTypeable
   #-}
 module Language.Hawk.Syntax.Name where
 
@@ -11,15 +12,38 @@ import Data.Aeson
 import Data.Binary (Binary)
 import Data.Data
 import Data.Default.Class
+import Data.Monoid
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Language.Hawk.Syntax.Location
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
-data NameHint = N Text | Nameless
-  deriving (Eq, Ord, Show)
 
+------------------------------------------------------------------------------
+-- Name Hint
+data NameHint = N Text | Nameless
+  deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
+
+instance Binary NameHint
+instance Plated NameHint
+instance FromJSON NameHint
+instance ToJSON NameHint
+
+
+
+data QName = QName ModuleName Text
+  deriving (Eq, Generic, Ord, Show)
+
+data QConstr = QConstr QName Text
+  deriving (Eq, Generic, Ord, Show)
+
+newtype ModuleName = ModuleName [Text]
+  deriving (Eq, Generic, Ord, Show, Monoid)
+
+
+------------------------------------------------------------------------------
+-- Name Data Type
 data Name t b
   = Name b
   | NLoc Loc (Name t b)

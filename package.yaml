@@ -161,14 +161,19 @@ library:
     - Language.Hawk.Syntax.Image
     - Language.Hawk.Syntax.Location
     - Language.Hawk.Syntax.Name
+    - Language.Hawk.Syntax.Pattern.Scoped
+    - Language.Hawk.Syntax.Pattern.Source
     - Language.Hawk.Syntax.Prim
+    - Language.Hawk.Syntax.Scoped
     - Language.Hawk.Syntax.Signature
+    - Language.Hawk.Syntax.Source
     - Language.Hawk.Syntax.Telescope
     - Language.Hawk.Syntax.Term.Basic
     - Language.Hawk.Syntax.Term.Scoped
     - Language.Hawk.Syntax.Term.Source
 
-    - Language.Hawk.Target.LLVM
+    - Language.Hawk.Target.LLVM.Compile
+    - Language.Hawk.Target.LLVM.Generate
     - Language.Hawk.Target.LLVM.IR
     - Language.Hawk.Target.LLVM.Module
     - Language.Hawk.Target.LLVM.Instruction

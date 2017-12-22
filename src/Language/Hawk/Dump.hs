@@ -24,6 +24,9 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 import qualified Data.Yaml as Y
 
 
+import qualified Language.Hawk.Syntax.Term.Source as Source
+
+
 -----------------------------------------------------------------------
 -- Data Dumping for Results
 -----------------------------------------------------------------------
@@ -84,7 +87,7 @@ dumpKc conf r = do
 
 
 dumpLc :: ( MonadIO m, HasHkcConfig c )
-       => c -> Image -> m Image
+       => c -> Image -> m (Image Term Text (Pat) )
 dumpLc conf r = do
   let fp = dumpPath conf "linear"
   dump fp r ( conf^.hkcDumpLcPretty

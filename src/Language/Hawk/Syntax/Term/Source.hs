@@ -38,29 +38,29 @@ type TermName = Name Term Text
 type Type = Term
 
 -- Dependent Term
-data Term
-  = TVar  Text
-  | TApp  Term Term
-  | TLam  Name Term
+data Term v
+  = TVar  v
+  | TApp  (Term v) (Term v)
+  | TLam  Name (Term v)
 
-  | TPi   (Name, Term) Term    -- Regular pi, or arrow
-  | TLPi   (Name, Term) Term   -- Linear pi, or lolipop
+  | TPi   (Name, Term v) (Term v)    -- Regular pi, or arrow
+  | TLPi   (Name, Term v) (Term v)   -- Linear pi, or lolipop
 
-  | TLet  (Name, Term) Term
+  | TLet  (Name, Term v) (Term v)
   
   | TLit  Lit
   | TCon  Text
-  | TPrim PrimInstr Term Term
-  | TIf   Term Term Term
+  | TPrim PrimInstr (Term v) (Term v)
+  | TIf   (Term v) (Term v) (Term v)
   
-  | TDup  Text
-  | TFree [Name] Term
+  | TDup  v
+  | TFree [v] (Term v)
 
   -- Hints
-  | THint  Term Term
-  | TSub SubTerm Term
-  | TLoc   Loc Term
-  | TParen Term
+  | THint  (Term v) (Term v)
+  | TSub SubTerm (Term v)
+  | TLoc   Loc (Term v)
+  | TParen (Term v)
 
   | TWild
   
@@ -72,24 +72,6 @@ instance Binary Term
 instance Plated Term
 instance FromJSON Term
 instance ToJSON Term
-
--- Pattern
-data Pat
-  = PVar Text
-  | PLit Lit
-  | PWild
-  | PAs Text Pat
-  | PCon Text [Pat]
-  | PParen Pat
-  | PLoc Loc Pat
-  | PHint Term Pat
-  deriving(Show,Read,Ord,Eq,Data,Typeable,Generic)
-
--- Pattern instances
-instance Binary Pat
-instance Plated Pat
-instance FromJSON Pat
-instance ToJSON Pat
 
 -- -----------------------------------------------------------------------------
 -- | Default Instances
