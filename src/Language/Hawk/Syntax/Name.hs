@@ -13,7 +13,8 @@ import Data.Binary (Binary)
 import Data.Data
 import Data.Default.Class
 import Data.Monoid
-import Data.Text (Text)
+import Data.String
+import Data.Text (Text, unpack)
 import GHC.Generics (Generic)
 import Language.Hawk.Syntax.Location
 
@@ -30,6 +31,15 @@ instance Plated NameHint
 instance FromJSON NameHint
 instance ToJSON NameHint
 
+
+
+fromText :: IsString a => Text -> a
+fromText = fromString . unpack
+
+
+withNameHint :: PP.Pretty p => NameHint -> (Text -> p) -> p
+withNameHint (N n) f = f n
+withNameHint Nameless _ = undefined
 
 
 data QName = QName ModuleName Text

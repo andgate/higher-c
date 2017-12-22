@@ -158,6 +158,7 @@ library:
     - Language.Hawk.Syntax.Fixity
     - Language.Hawk.Syntax.Foreign
     - Language.Hawk.Syntax.Function
+    - Language.Hawk.Syntax.GlobalBind
     - Language.Hawk.Syntax.Image
     - Language.Hawk.Syntax.Location
     - Language.Hawk.Syntax.Name
@@ -169,6 +170,8 @@ library:
     - Language.Hawk.Syntax.Source
     - Language.Hawk.Syntax.Telescope
     - Language.Hawk.Syntax.Term.Basic
+    - Language.Hawk.Syntax.Term.Elab
+    - Language.Hawk.Syntax.Term.Sat
     - Language.Hawk.Syntax.Term.Scoped
     - Language.Hawk.Syntax.Term.Source
 

@@ -8,6 +8,7 @@ import Language.Hawk.Syntax.DataS         as X
 import Language.Hawk.Syntax.Fixity        as X
 import Language.Hawk.Syntax.Foreign       as X
 import Language.Hawk.Syntax.Function      as X
+import Language.Hawk.Syntax.GlobalBind    as X
 import Language.Hawk.Syntax.Image         as X
 import Language.Hawk.Syntax.Let           as X
 import Language.Hawk.Syntax.Literal       as X

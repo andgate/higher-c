@@ -13,6 +13,8 @@ import Bound.Scope
 import Data.Hashable
 import Language.Hawk.Syntax.Name
 
+import qualified Text.PrettyPrint.Leijen.Text as PP
+
 -------------------------------------------------------------------------------
 -- Let Types
 
@@ -31,3 +33,10 @@ unLetRec (LetRec xs) = xs
 
 data LetBinding t v = LetBinding !NameHint !(Scope LetVar t v) (t v)
   deriving (Eq, Ord, Show, Foldable, Functor, Traversable)
+
+
+instance (PP.Pretty (t v), PP.Pretty v) => PP.Pretty (LetRec t v) where
+  pretty (LetRec cs) = PP.cat $ map PP.pretty cs
+
+instance (PP.Pretty (t v), PP.Pretty v) => PP.Pretty (LetBinding t v) where
+  pretty (LetBinding _ s t) = undefined
