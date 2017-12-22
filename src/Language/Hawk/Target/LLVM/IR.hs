@@ -6,7 +6,7 @@
            , MultiParamTypeClasses
            , UndecidableInstances
 #-}
-module Language.CPS.Target.LLVM.IR where
+module Language.Hawk.Target.LLVM.IR where
 
 import Prelude hiding (and, or)
 

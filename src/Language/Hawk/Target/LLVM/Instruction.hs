@@ -1,11 +1,11 @@
 
 {-# LANGUAGE FlexibleContexts #-}
-module Language.CPS.Target.LLVM.Instruction where
+module Language.Hawk.Target.LLVM.Instruction where
 
 
 import Data.Word
 
-import Language.CPS.Target.LLVM.IR
+import Language.Hawk.Target.LLVM.IR
 
 import LLVM.Typed
 import LLVM.AST hiding (args, dests)

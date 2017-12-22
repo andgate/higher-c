@@ -2,7 +2,7 @@
             , TemplateHaskell
             , LambdaCase
   #-}
-module Language.Hawk.NameCheck.Message where
+module Language.Hawk.ScopeCheck.Message where
 
 import Control.Lens
 import Data.Set (Set)
@@ -14,24 +14,24 @@ import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Text.PrettyPrint.Leijen.Text as P
 
-data NcMsg
-  = NcStarted (Set Text)
-  | NcFinished
-  | NcHit Text Loc
+data ScMsg
+  = ScStarted (Set Text)
+  | ScFinished
+  | ScHit Text Loc
   deriving(Show)
 
-makeClassyPrisms ''NcMsg
+makeClassyPrisms ''ScMsg
 
-instance Pretty NcMsg where
+instance Pretty ScMsg where
     pretty = \case
-      NcStarted ns ->
-        P.textStrict "Name checker has"
+      ScStarted ns ->
+        P.textStrict "Scope checker has"
           P.<+> P.pretty (Set.toList ns)
       
-      NcFinished ->
-        P.textStrict "Name check completed."
+      ScFinished ->
+        P.textStrict "Scope check completed."
 
-      NcHit n l ->
+      ScHit n l ->
         P.pretty l
           P.<> P.textStrict ": Found symbol"
           P.<+> P.dquotes (P.textStrict n)

@@ -1,4 +1,4 @@
-{-# Language DeriveGeneric, LambdaCase, OverloadedStrings #-}
+{-# Language LambdaCase, OverloadedStrings #-}
 module Language.Hawk.Syntax.Foreign where
 
 import Data.Aeson
@@ -7,36 +7,27 @@ import Data.Default.Class
 import Data.Text
 import GHC.Generics (Generic)
 import Language.Hawk.Syntax.Location
-import Language.Hawk.Syntax.Type
 import Language.Hawk.Syntax.Signature
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
 -------------------------------------------------------------------------
--- Foreign 
-data Foreign
-  = ForeignImport ForeignType (L Text) (L Text) Type
+-- Foreign
+data Foreign t
+  = ForeignImport ForeignType (L Text) (L Text) t
   | ForeignExport ForeignType (L Text)
-  deriving (Show, Eq, Generic)
-
-instance Binary Foreign
-instance FromJSON Foreign
-instance ToJSON Foreign
+  deriving (Show, Eq)
 
 
 data ForeignType =
   ForeignC
-  deriving (Show, Eq, Generic)
-
-instance Binary ForeignType
-instance FromJSON ForeignType
-instance ToJSON ForeignType
+  deriving (Show, Eq)
 
 
 ------------------------------------------------------------------------------
 -- Pretty Printing
 
-instance PP.Pretty Foreign where
+instance (PP.Pretty t) => PP.Pretty (Foreign t) where
   pretty = \case
     ForeignImport ft fn hn ty ->
         PP.textStrict "Foreign Import:"
@@ -65,7 +56,7 @@ instance PP.Pretty ForeignType where
     PP.textStrict "ForeignC"
 
 
-foreignSig :: Foreign -> Maybe Sig
+foreignSig :: Foreign t -> Maybe (Sig t)
 foreignSig = \case
     ForeignImport _ _ (L _ n) t -> Just (Sig n t)
     ForeignExport _ _ -> Nothing

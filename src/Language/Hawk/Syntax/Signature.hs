@@ -1,36 +1,19 @@
-{-# LANGUAGE  TemplateHaskell
-            , DeriveGeneric
-            , OverloadedStrings
-  #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Language.Hawk.Syntax.Signature where
 
-import Control.Lens
-import Data.Aeson
-import Data.Binary (Binary)
 import Data.Text (Text)
-import GHC.Generics (Generic)
-import Language.Hawk.Syntax.Type
-
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
-data Sig
+data Sig t
   = Sig
       { _sigName :: Text
-      , _sigType :: Type
+      , _sigType :: t
       }
-    deriving (Show, Eq, Generic)
+    deriving (Show, Eq)
 
 
-makeClassy ''Sig
-
-
-instance Binary Sig
-instance FromJSON Sig
-instance ToJSON Sig
-
-
-instance PP.Pretty Sig where
+instance (PP.Pretty t) => PP.Pretty (Sig t) where
   pretty (Sig n t) =
     PP.textStrict n
       PP.<+> PP.textStrict "::"

@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Language.Hawk.NameCheck.Environment where
+module Language.Hawk.ScopeCheck.Environment where
 
 import Data.Default.Class
 import Data.Text (Text)

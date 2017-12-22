@@ -1,5 +1,5 @@
 {-# LANGUAGE  TemplateHaskell, LambdaCase, OverloadedStrings #-}
-module Language.Hawk.NameCheck.Error where
+module Language.Hawk.ScopeCheck.Error where
 
 import Control.Lens
 import Data.Text
@@ -8,18 +8,18 @@ import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
-data NcErr
-  = UndeclaredNameFound Text Loc
-  | UnknownNcErr
+data ScErr
+  = ScUndeclared Text Loc
+  | ScUnknownErr
   deriving(Show)
 
-makeClassyPrisms ''NcErr
+makeClassyPrisms ''ScErr
 
-instance Pretty NcErr where
+instance Pretty ScErr where
     pretty = \case
-      UndeclaredNameFound n l ->
+      ScUndeclared n l ->
         PP.pretty l
-          PP.<> PP.textStrict ": Unknown symbol encountered"
+          PP.<> PP.textStrict ": Scope checker encountered unknown symbol"
           PP.<+> PP.dquotes (PP.textStrict n)
 
-      UnknownNcErr -> PP.text "Unknown namechecker error."
+      ScUnknownErr -> PP.text "Unknown scope checker error."

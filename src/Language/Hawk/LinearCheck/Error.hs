@@ -6,7 +6,6 @@ module Language.Hawk.LinearCheck.Error where
 
 import Control.Lens
 import Data.Text (Text)
-import Language.Hawk.Syntax.Type (Type)
 import Language.Hawk.Syntax.Location
 import Text.PrettyPrint.Leijen.Text (Pretty(..))
 

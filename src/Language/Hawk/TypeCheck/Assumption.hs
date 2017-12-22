@@ -4,10 +4,10 @@ import Prelude hiding (lookup)
 
 import Data.Text (Text)
 
-import Language.Hawk.Syntax.Type
+import Language.Hawk.Syntax.Scope.Term
 
 
-newtype Assumption = Assumption { assumptions ::[(Text, Type)] }
+newtype Assumption = Assumption { assumptions ::[(Text, Term ())] }
   deriving (Eq, Show)
 
 
@@ -15,7 +15,7 @@ empty :: Assumption
 empty = Assumption []
 
 
-extend :: Assumption -> (Text, Type) -> Assumption
+extend :: Assumption -> (Text, Term) -> Assumption
 extend (Assumption a) (x, s) = Assumption ((x, s):a)
 
 
@@ -27,11 +27,11 @@ removeMany :: Assumption -> [Text] -> Assumption
 removeMany (Assumption a) vars = Assumption $ filter ((`notElem` vars) . fst) a
 
 
-lookup :: Text -> Assumption -> [Type]
+lookup :: Text -> Assumption -> [Term]
 lookup key = map snd . filter ((== key) . fst) . assumptions
 
 
-lookupMany :: [Text] -> Assumption -> [Type]
+lookupMany :: [Text] -> Assumption -> [Term]
 lookupMany ks as =
   concatMap (`lookup` as) ks
 
@@ -43,7 +43,7 @@ mergeMany :: [Assumption] -> Assumption
 mergeMany = foldr merge empty 
 
 
-singleton :: Text -> Type -> Assumption
+singleton :: Text -> Term -> Assumption
 singleton key val = Assumption [(key, val)] 
 
 

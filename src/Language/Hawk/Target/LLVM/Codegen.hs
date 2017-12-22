@@ -3,15 +3,16 @@
             , OverloadedStrings
             , LambdaCase
   #-}
-module Language.CPS.Target.LLVM.Codegen where
+module Language.Hawk.Target.LLVM.Codegen where
 
 import Control.Lens
 import Data.ByteString.Short (ShortByteString)
 import Data.Text (Text)
-import Language.CPS.Syntax
-import Language.CPS.Target.LLVM.Instruction
-import Language.CPS.Target.LLVM.IR
-import Language.CPS.Target.LLVM.Module
+import Language.Hawk.Syntax
+import Language.Hawk.Syntax.Term.Basic
+import Language.Hawk.Target.LLVM.Instruction
+import Language.Hawk.Target.LLVM.IR
+import Language.Hawk.Target.LLVM.Module
 import LLVM.Pretty
 
 import LLVM.AST hiding (function)

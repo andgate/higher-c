@@ -6,7 +6,7 @@
 name: hawk
 maintainer: Gabriel Anderson
 synopsis: Hawk programming language
-description: Linear Typed Purely Functional Systems Language
+description: Linear, Depdenently Typed, Purely Functional Systems Language
 github: andgate/hawk
 category: Compilers
 version: '0.0.0'
@@ -73,6 +73,7 @@ library:
     - extra
     - filepath
     - ghc-prim
+    - hashable
     - lens
     - lifted-base
     - lifted-async
@@ -105,14 +106,6 @@ library:
     - yaml
 
   exposed-modules:
-    - Language.CPS.ClosureConv
-    - Language.CPS.LambdaLift
-    - Language.CPS.Syntax
-
-    - Language.CPS.Target.LLVM
-    - Language.CPS.Target.LLVM.IR
-    - Language.CPS.Target.LLVM.Module
-    - Language.CPS.Target.LLVM.Instruction
 
     - Language.Hawk.Compile
     - Language.Hawk.Compile.Config
@@ -120,11 +113,11 @@ library:
     - Language.Hawk.Compile.Message
     - Language.Hawk.Compile.Monad
 
-    - Language.Hawk.KindsCheck
-    - Language.Hawk.KindsCheck.Environment
-    - Language.Hawk.KindsCheck.Error
-    - Language.Hawk.KindsCheck.Message
-    - Language.Hawk.KindsCheck.State
+#    - Language.Hawk.SubtypeCheck
+#    - Language.Hawk.SubtypeCheck.Environment
+    - Language.Hawk.SubtypeCheck.Error
+    - Language.Hawk.SubtypeCheck.Message
+#    - Language.Hawk.SubtypeCheck.State
 
     - Language.Hawk.Lex
     - Language.Hawk.Lex.Error
@@ -134,22 +127,22 @@ library:
     - Language.Hawk.Lex.State
     - Language.Hawk.Lex.Token
 
-    - Language.Hawk.LinearCheck
+#    - Language.Hawk.LinearCheck
     - Language.Hawk.LinearCheck.Error
-    - Language.Hawk.LinearCheck.GlobalEnvironment
-    - Language.Hawk.LinearCheck.LocalEnvironment
+#    - Language.Hawk.LinearCheck.GlobalEnvironment
+#    - Language.Hawk.LinearCheck.LocalEnvironment
     - Language.Hawk.LinearCheck.Message
-    - Language.Hawk.LinearCheck.State
+#    - Language.Hawk.LinearCheck.State
 
     - Language.Hawk.Load
     - Language.Hawk.Load.Message
     - Language.Hawk.Load.Error
     - Language.Hawk.Load.Result
 
-    - Language.Hawk.NameCheck
-    - Language.Hawk.NameCheck.Environment
-    - Language.Hawk.NameCheck.Error
-    - Language.Hawk.NameCheck.State
+    - Language.Hawk.ScopeCheck
+    - Language.Hawk.ScopeCheck.Environment
+    - Language.Hawk.ScopeCheck.Error
+    - Language.Hawk.ScopeCheck.State
 
     - Language.Hawk.NameGen
     
@@ -160,28 +153,34 @@ library:
     - Language.Hawk.Parse.Message
 
     - Language.Hawk.Syntax
-    - Language.Hawk.Syntax.Expression
+    - Language.Hawk.Syntax.Branch
+    - Language.Hawk.Syntax.DataS
     - Language.Hawk.Syntax.Fixity
     - Language.Hawk.Syntax.Foreign
     - Language.Hawk.Syntax.Function
     - Language.Hawk.Syntax.Image
     - Language.Hawk.Syntax.Location
-    - Language.Hawk.Syntax.Pattern
+    - Language.Hawk.Syntax.Name
     - Language.Hawk.Syntax.Prim
     - Language.Hawk.Syntax.Signature
-    - Language.Hawk.Syntax.Type
-    - Language.Hawk.Syntax.TypeAlias
-    - Language.Hawk.Syntax.TypeS
+    - Language.Hawk.Syntax.Telescope
+    - Language.Hawk.Syntax.Term.Basic
+    - Language.Hawk.Syntax.Term.Scoped
+    - Language.Hawk.Syntax.Term.Source
 
-    - Language.Hawk.Target.CPS
+    - Language.Hawk.Target.LLVM
+    - Language.Hawk.Target.LLVM.IR
+    - Language.Hawk.Target.LLVM.Module
+    - Language.Hawk.Target.LLVM.Instruction
 
     - Language.Hawk.TypeCheck
-    - Language.Hawk.TypeCheck.Assumption
-    - Language.Hawk.TypeCheck.Constraint
-    - Language.Hawk.TypeCheck.Environment
+#    - Language.Hawk.TypeCheck.Assumption
+#    - Language.Hawk.TypeCheck.Constraint
+#    - Language.Hawk.TypeCheck.Environment
     - Language.Hawk.TypeCheck.Error
-    - Language.Hawk.TypeCheck.State
-    - Language.Hawk.TypeCheck.Substitution
+    - Language.Hawk.TypeCheck.Message
+#    - Language.Hawk.TypeCheck.State
+#    - Language.Hawk.TypeCheck.Substitution
 
     ## Extra, possibly seperate packages or upstream merges
     - Data.Bag
@@ -190,14 +189,16 @@ library:
 tests:
   spec:
     source-dirs: test
-    main: Spec.hs
+    main: Main.hs
     dependencies:
       - base
+      - bytestring
       - data-default-class
+      - directory
+      - filepath
       - hawk
-      - hspec
-    ghc-options:
-      - -rtsopts
-      - -threaded
-      - -with-rtsopts=-N
+      - process
+      - tasty
+      - tasty-golden
+      - tasty-program
 

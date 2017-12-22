@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Language.Hawk.KindsCheck.State where
+module Language.Hawk.SubtypeCheck.State where
 
 import Control.Lens
 import Data.Default.Class

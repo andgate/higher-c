@@ -8,34 +8,22 @@ module Language.Hawk.Syntax.Function where
 import Control.Lens
 import Data.Aeson
 import Data.Binary (Binary)
-import Data.Data
+import Data.Text (Text)
 import GHC.Generics (Generic)
-import Language.Hawk.Syntax.Expression
-import Language.Hawk.Syntax.Name
-import Language.Hawk.Syntax.Pattern
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
-data Fn =
-  Fn { _fnName :: Name
-     , _fnPats :: [Pat]
-     , _fnBody :: Exp
-     } deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
+data Fn t p =
+  Fn { _fnName :: Text
+     , _fnPats :: [p]
+     , _fnTerm :: t
+     } deriving (Eq, Ord, Show)
 
 
-makeClassy ''Fn
-
-
-instance Binary Fn
-instance Plated Fn
-instance FromJSON Fn
-instance ToJSON Fn
-
-
-instance PP.Pretty Fn where
-  pretty (Fn n xs e) =
+instance (PP.Pretty t, PP.Pretty p) => PP.Pretty (Fn t p) where
+  pretty (Fn n ps t) =
     PP.pretty n
-      PP.<+> PP.pretty xs
+      PP.<+> PP.pretty ps
       PP.<+> PP.textStrict "="
-      PP.<+> PP.pretty e
+      PP.<+> PP.pretty t

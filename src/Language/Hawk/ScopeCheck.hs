@@ -1,7 +1,7 @@
 {-# LANGUAGE  LambdaCase
             , FlexibleContexts
   #-}
-module Language.Hawk.NameCheck where
+module Language.Hawk.ScopeCheck where
 
 import Control.Lens
 import Control.Monad.Chronicle
@@ -18,10 +18,10 @@ import Data.Map (Map)
 import Data.Monoid
 import Data.Text (Text)
 
-import Language.Hawk.NameCheck.Environment (Env)
-import Language.Hawk.NameCheck.Error
-import Language.Hawk.NameCheck.Message
-import Language.Hawk.NameCheck.State
+import Language.Hawk.ScopeCheck.Environment (Env)
+import Language.Hawk.ScopeCheck.Error
+import Language.Hawk.ScopeCheck.Message
+import Language.Hawk.ScopeCheck.State
 import Language.Hawk.Syntax
 
 import qualified Data.Map as Map
@@ -31,13 +31,13 @@ import qualified Language.Hawk.NameCheck.Environment as Env
 
 
 -----------------------------------------------------------------------
--- Name Check
+-- Scope Check
 -----------------------------------------------------------------------
 
-namecheck :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
+scopecheck :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
              , MonadChronicle (Bag e) m, AsNcErr e
-             ) => Image -> m Image 
-namecheck img = do
+             ) => Image Term -> m Image STerm 
+scopecheck img = do
   let tns1 = Set.map readName $ Set.fromList (img^..imgFns.traversed.fnName)
       tns2 = Set.fromList $ concatMap structNames (img^.imgTStructs) 
       tns = tns1 <> tns2
@@ -48,7 +48,6 @@ namecheck img = do
   condemn $ do
     mapM_ (namecheckFn env) (img^.imgFns)
     mapM_ (namecheckSig env) (img^.imgSigs)
-    mapM_ (namecheckTAlias env) (img^.imgTAlias)
     mapM_ (namecheckStruct env) (img^.imgTStructs)
     mapM_ (namecheckFixity env) (img^.imgFixity)
     mapM_ (namecheckForeign env) (img^.imgForeign)
@@ -60,69 +59,69 @@ namecheck img = do
 namecheckFn :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
               , MonadChronicle (Bag e) m, AsNcErr e
               ) => Env -> Fn -> m ()
-namecheckFn env (Fn _ xs e) =
-  void $ namecheckExp (env', locExp e) e
+namecheckFn env (Fn _ xs t) =
+  void $ namecheckTerm (env', locTerm t) t
   where env' = Env.insertTerms env (concatMap patNames xs)
 
 
 
-namecheckExp :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
+namecheckTerm :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
             , MonadChronicle (Bag e) m, AsNcErr e
-            ) => (Env, Loc) -> Exp -> m Env
-namecheckExp s@(env, l) = \case
-  EVar n -> do
+            ) => (Env, Loc) -> Term -> m Env
+namecheckTerm s@(env, l) = \case
+  TVar n -> do
     unless (env `Env.checkTerm` n) 
            $ disclose $ One (_UndeclaredNameFound # (n, l))
     return env
 
-  EApp f x -> do
-    namecheckExp s f
-    namecheckExp s x
+  TApp f x -> do
+    namecheckTerm s f
+    namecheckTerm s x
     return env
 
-  ELam n e -> do
+  TLam n e -> do
     let env' = Env.insertTerm (readName n) env
-    namecheckExp (env', l) e
+    namecheckTerm (env', l) e
     return env
 
-  ELet (n, e1) e2 -> do
+  TLet (n, e1) e2 -> do
     let env' = Env.insertTerm (readName n) env
-    namecheckExp (env', l) e1
-    namecheckExp (env', l) e2
+    namecheckTerm (env', l) e1
+    namecheckTerm (env', l) e2
     return env
 
-  ELit _ ->
+  TLit _ ->
     return env -- Literals cannot contain names
 
-  ECon n -> do
+  TCon n -> do
     unless (env `Env.checkTerm` n) 
            $ disclose $ One (_UndeclaredNameFound # (n, l))
     return env
             
-  EPrim _ x1 x2 -> do
-    namecheckExp s x1
-    namecheckExp s x2
+  TPrim _ x1 x2 -> do
+    namecheckTerm s x1
+    namecheckTerm s x2
     return env -- Primitive instructions cannot contain names
 
 
-  EIf e1 e2 e3 -> do
-    namecheckExp s e1
-    namecheckExp s e2
-    namecheckExp s e3
+  TIf e1 e2 e3 -> do
+    namecheckTerm s e1
+    namecheckTerm s e2
+    namecheckTerm s e3
 
 
-  EDup n ->
-    namecheckExp s (varName n)
+  TDup n ->
+    namecheckTerm s (varName $ Name n)
     
 
-  EFree ns e ->
+  TFree ns e ->
     let env' = foldr (Env.deleteTerm . readName) env ns
-    in namecheckExp (env', l) e
+    in namecheckTerm (env', l) e
 
 
-  EType _ e -> namecheckExp s e
-  ELoc l' e -> namecheckExp (env, l') e
-  EParen e  -> namecheckExp s e
+  THint t e -> namecheckTerm s t >> namecheckTerm s e
+  TLoc l' e -> namecheckTerm (env, l') e
+  TParen e  -> namecheckTerm s e
 
 
 
@@ -150,7 +149,7 @@ namecheckPat s@(env, l) = \case
 
   PParen p -> namecheckPat s p
   PLoc l' p -> namecheckPat (env, l') p
-  PType t p -> namecheckType s t >> namecheckPat s p
+  PHint t p -> namecheckTerm s t >> namecheckPat s p
 
 
 
@@ -159,10 +158,10 @@ namecheckSig
      , MonadChronicle (Bag e) m, AsNcErr e )
   => Env -> Sig -> m ()
 namecheckSig env (Sig _ t) = 
-  void $ namecheckType (env, locType t) t
+  void $ namecheckTerm (env, locTerm t) t
 
 
-
+{-
 namecheckType
   :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
      , MonadChronicle (Bag e) m, AsNcErr e )
@@ -209,6 +208,7 @@ namecheckType s@(env, l) = \case
     let env' = Env.insertTypes env ns
     namecheckType (env', l) t
     return env
+-}
 
 
 namecheckStruct
@@ -225,7 +225,7 @@ namecheckTCon
      , MonadChronicle (Bag e) m, AsNcErr e )
   => Env -> TypeCon -> m ()
 namecheckTCon env = \case
-  TypeCon _ ts -> mapM_ (\t -> namecheckType (env, locType t) t) ts 
+  TypeCon _ ts -> mapM_ (\t -> namecheckTerm (env, locTerm t) t) ts 
   RecCon _ ls -> mapM_ (namecheckRecLabel env) ls
 
 namecheckRecLabel
@@ -233,15 +233,8 @@ namecheckRecLabel
      , MonadChronicle (Bag e) m, AsNcErr e )
   => Env -> RecLabel -> m ()
 namecheckRecLabel env (RecLabel _ t) =
-  void $ namecheckType (env, locType t) t
+  void $ namecheckTerm (env, locTerm t) t
 
-namecheckTAlias
-  :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
-      , MonadChronicle (Bag e) m, AsNcErr e )
-  => Env -> TypeAlias -> m ()
-namecheckTAlias env (TypeAlias _ tvs t) = 
-  void $ namecheckType (env', locType t) t
-  where env' = Env.insertTypes env (unL <$> tvs)
 
 
 namecheckFixity
@@ -260,7 +253,7 @@ namecheckForeign
 namecheckForeign env = \case
   ForeignImport _ _ (L l n) t ->
     if Env.checkTerm env n
-      then void $ namecheckType (env, locType t) t
+      then void $ namecheckTerm (env, locTerm t) t
       else disclose $ One (_UndeclaredNameFound # (n, l))
   
   ForeignExport _ (L l n) ->

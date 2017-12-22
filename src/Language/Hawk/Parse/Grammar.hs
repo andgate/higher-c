@@ -26,7 +26,6 @@ toplevel = mdo
     result <- rule $ linefold $
           fn
       <|> sig
-      <|> typeAlias
       <|> typeS
       <|> forgn
       <|> fixity
@@ -57,7 +56,7 @@ toplevel = mdo
       in ex <$> (rsvp "import" *> forgnType)
             <*> strLit
             <*> (varId <|> conId <|> opId)
-            <*> (rsvp ":" *> typ)
+            <*> (rsvp ":" *> term)
 
     forgnExport <- rule $
       let ex ft (n, l)
@@ -100,9 +99,9 @@ toplevel = mdo
 -- Type Signature Declaration Rules
 
     sig <- rule $
-      let ex (n, _) ty = fromSig $ Sig n ty
+      let ex (n, _) t = fromSig $ Sig n t
       in ex <$> (varId <|> parens (fst <$> opId))
-            <*> (rsvp ":" *> typ)
+            <*> (rsvp ":" *> term)
 
 
 -- -----------------------------------------------------------------------------
@@ -110,7 +109,7 @@ toplevel = mdo
 
     fn <- rule $
       let ex n xs e = fromFn $ Fn n xs e
-      in ex <$> fnName <*> many pat <*> (rsvp "=" *> exp)
+      in ex <$> fnName <*> many pat <*> (rsvp "=" *> term)
 
 
     fnName <- rule $
@@ -128,18 +127,11 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Type Rules
 
+{-
     typ <- rule $
       ctyp
     
-    ctyp <- rule $
-      let ex1 a@(TLoc l1 _) b@(TLoc l2 _) =
-            TLoc (l1<>l2) $ TArr a b
-          ex2 a@(TLoc l1 _) b@(TLoc l2 _) =
-            TLoc (l1<>l2) $ TLoli a b
-      in
-           (ex1 <$> ctyp <*> (rsvp "->" *> btyp))
-       <|> (ex2 <$> ctyp <*> (rsvp "-o" *> btyp))
-       <|> btyp
+    
    
 
     btyp <- rule $
@@ -178,7 +170,6 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Type Context Rules
 
-{-
     qtyp0 <- rule $
         qtyp 
         <|> (QType (TyContext []) <$> typ)
@@ -203,109 +194,106 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Expression Rules
 
-    -- The expression chain, starting at aexp as the base with the highest precedence.
-    exp <- rule $
-      dexp
+    -- The expression precedence chain, starting at aexp as the base with the highest precedence.
+    term <- rule dterm
 
-    dexp <- rule $
-          expType
-      <|> cexp
-
-    cexp <- rule $
-          expFree
-      <|> expIf
-      <|> expLet
-      <|> bexp
-
-
-    bexp <- rule $
-      let ex f x = let l = locExp f <> locExp x
-                   in  ELoc l $ EApp f x
-      in     (ex <$> bexp <*> aexp)
-         <|> aexp
-
-
-    aexp <- rule $
-          expParen
-      <|> expVar
-      <|> expCon
-      <|> expDup
-      <|> expOp
-      <|> expPrim
-      <|> expLit
-
-
-
-    expLet <- rule $
-      let ex (_, l1) bs _ e@(ELoc l2 _) = ELoc (l1 <> l2) $ foldr ELet e bs
-      in ex <$> rsvp "let" <*> block expLetBind  <*> rsvp "in" <*> exp
-
-
-    expLetBind <- rule $
-      let ex n e = (n, e)
-      in ex <$> name <*> (rsvp "=" *> exp)
-
-
-    expIf <- rule $
-      let ex (_, l1) p a b@(ELoc l2 _) = ELoc (l1<>l2) $ EIf p a b
-      in ex <$> rsvp "if" <*> exp <*> (rsvp "then" *> exp) <*> (rsvp "else" *> exp)
-
-
-    expFree <- rule $
-      let
-        ex (_, l1) xs e@(ELoc l2 _)
-            = ELoc (l1<>l2) $ EFree xs e
+    eterm <- rule $
+      let ex1 a@(TLoc l1 _) b@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TPi (Name "", a) b
+          ex2 a@(TLoc l1 _) b@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TLPi (Name "", a) b
       in
-        ex <$> rsvp "free" <*> some name <*> (rsvp "in" *> exp)
+          (ex1 <$> eterm <*> (rsvp "->" *> dterm))
+      <|> (ex2 <$> eterm <*> (rsvp "-o" *> dterm))
+      <|> dterm
+
+    dterm <- rule $
+          termHint
+      <|> cterm
 
 
-    -- Expression forms
-    expType <- rule $
+    cterm <- rule $
+          termFree
+      <|> termIf
+      <|> termLet
+      <|> bterm
+
+
+    bterm <- rule $
+      let ex f x = let l = locTerm f <> locTerm x
+                   in  TLoc l $ TApp f x
+      in     (ex <$> bterm <*> aterm)
+         <|> aterm
+
+
+    aterm <- rule $
+          termParen
+      <|> termVar
+      <|> termCon
+      <|> termDup
+      <|> termOp
+      <|> termPrim
+      <|> termLit
+
+    termHint <- rule $
       let
-        ex e@(ELoc l1 _) ty@(TLoc l2 _)
-          = ELoc (l1<>l2) $ EType ty e
+        ex e@(TLoc l1 _) ty@(TLoc l2 _)
+          = TLoc (l1<>l2) $ THint ty e
       in
-        ex <$> bexp <*> (rsvp ":" *> typ)
+        ex <$> dterm <*> (rsvp ":" *> term)
 
 
-    expOp <- rule $
-      let ex (n, l) = ELoc l $ EVar n
+    termLet <- rule $
+      let ex (_, l1) bs _ t@(TLoc l2 _) = TLoc (l1 <> l2) $ foldr TLet t bs
+      in ex <$> rsvp "let" <*> block termLetBind  <*> rsvp "in" <*> term
+
+
+    termLetBind <- rule $
+      let ex n t = (n, t)
+      in ex <$> name <*> (rsvp "=" *> term)
+
+
+    termIf <- rule $
+      let ex (_, l1) p a b@(TLoc l2 _) = TLoc (l1<>l2) $ TIf p a b
+      in ex <$> rsvp "if" <*> term <*> (rsvp "then" *> term) <*> (rsvp "else" *> term)
+
+
+    termFree <- rule $
+      let
+        ex (_, l1) xs e@(TLoc l2 _)
+            = TLoc (l1<>l2) $ TFree xs e
+      in
+        ex <$> rsvp "free" <*> some name <*> (rsvp "in" *> term)
+
+
+    termOp <- rule $
+      let ex (n, l) = TLoc l $ TVar n
       in ex <$> opId
 
-
-
-    expVar <- rule $
-      let ex (v, l) = ELoc l $ EVar v
+    termVar <- rule $
+      let ex (v, l) = TLoc l $ TVar v
       in ex <$> varId
 
-
-    expCon <- rule $
-      let ex (n, l) = ELoc l $ ECon n
+    termCon <- rule $
+      let ex (n, l) = TLoc l $ TCon n
       in ex <$> conId
 
-    expDup <- rule $
-      let ex (_,l1) n = ELoc (l1 <> locName' n) $ EDup n
+    termDup <- rule $
+      let ex (_,l1) n = TLoc (l1 <> locName' n) $ TDup (readName n)
       in ex <$> rsvp "dup" <*> name
 
-    expLit <- rule $
-      let ex (lit, l) = ELoc l $ ELit lit
+    termLit <- rule $
+      let ex (lit, l) = TLoc l $ TLit lit
       in ex <$> lit
     
-    expPrim <- rule $
-      let ex (txt, l1) a b = ELoc (l1<>locExp b) $ EPrim (readPrim txt) a b
-      in ex <$> primText <*> aexp <*> aexp
+    termPrim <- rule $
+      let ex (txt, l1) a b = TLoc (l1<>locTerm b) $ TPrim (readPrim txt) a b
+      in ex <$> primText <*> aterm <*> aterm
+      
+    termParen <- rule $
+      let ex (t, l) = TLoc l $ TParen t
+      in ex <$> parens term
 
-    expParen <- rule $
-      let ex (e, l) = ELoc l $ EParen e
-      in ex <$> parens exp
-
-
--- -----------------------------------------------------------------------------
--- Type Alias Rules
-
-    typeAlias <- rule $
-      let ex nl tvsl t = fromTAlias $ TypeAlias (wrapL nl) (wrapL <$> tvsl) t
-      in ex <$> (rsvp "alias" *> conId) <*> many varId <*> (rsvp "=" *> typ)
 
 -- -----------------------------------------------------------------------------
 -- Structured Type Rules
@@ -328,18 +316,18 @@ toplevel = mdo
 
 
     typeCon' <- rule $
-      let ex nl ts = TypeCon (mkLocName nl) ts
-      in ex <$> conId <*> many atyp
+      let ex = TypeCon . mkLocName
+      in ex <$> conId <*> many aterm
 
 
     recCon <- rule $
-      let ex nl fs =  RecCon (mkLocName nl) fs
+      let ex =  RecCon . mkLocName
       in ex <$> conId <*> curlys (commaSep recLabel)                         
 
   
     recLabel <- rule $
-      let ex nl t = RecLabel (mkLocName nl) t
-      in ex <$> varId <*> (rsvp ":" *> typ)
+      let ex = RecLabel . mkLocName
+      in ex <$> varId <*> (rsvp ":" *> term)
 
 -- -----------------------------------------------------------------------------
 -- Pattern Rules
@@ -379,8 +367,8 @@ toplevel = mdo
       in ex <$> parens (patType <|> patCon1)
 
     patType <- rule $
-      let ex p t = PLoc (locPat p <> locType t) $ PType t p
-      in ex <$> (patCon0 <|> pat) <*> (rsvp "::" *> typ)
+      let ex p t = PLoc (locPat p <> locTerm t) $ PHint t p
+      in ex <$> (patCon0 <|> pat) <*> (rsvp ":" *> term)
 
 
 {-

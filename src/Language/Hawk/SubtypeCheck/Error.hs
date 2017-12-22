@@ -2,30 +2,29 @@
             , OverloadedStrings
             , LambdaCase
   #-}
-module Language.Hawk.KindsCheck.Error where
+module Language.Hawk.SubtypeCheck.Error where
 
 import Control.Lens
 import Data.Text (Text)
-import Language.Hawk.Syntax.Type (Type)
-import Language.Hawk.Syntax.Kind (Kind)
+import Language.Hawk.Syntax.Term.Scoped
 import Language.Hawk.Syntax.Location
 import Text.PrettyPrint.Leijen.Text (Pretty(..))
 
 import qualified Text.PrettyPrint.Leijen.Text as P
 
 
-data KcErr
-  = KindUnknown Text
-  | KindMismatch Kind Kind
-  | KindArrowExpected Kind
+data StcErr
+  = StcUnknownError Text
+  | StcMismatch (Term ()) (Term ())
+  | StcArrowExpected (Term ())
   deriving(Show)
 
-makeClassyPrisms ''KcErr
+makeClassyPrisms ''STcErr
 
-instance Pretty KcErr where
+instance Pretty STcErr where
     pretty = \case
-      KindUnknown n ->
+      StcUnknownError n ->
         undefined
 
-      KindMismatch expected actual ->
+      StcMismatch expected actual ->
         undefined

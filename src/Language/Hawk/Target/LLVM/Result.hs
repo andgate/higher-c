@@ -1,5 +1,5 @@
 {-# LANGUAGE  OverloadedStrings, LambdaCase  #-}
-module Language.CPS.Target.LLVM.Result where
+module Language.Hawk.Target.LLVM.Result where
 
 import Control.Lens
 

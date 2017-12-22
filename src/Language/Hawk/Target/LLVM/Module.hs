@@ -6,7 +6,7 @@
             , MultiParamTypeClasses
             , UndecidableInstances
   #-}
-module Language.CPS.Target.LLVM.Module where
+module Language.Hawk.Target.LLVM.Module where
 
 
 import Control.Applicative

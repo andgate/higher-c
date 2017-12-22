@@ -18,10 +18,11 @@ import Language.Hawk.Lex
 import Language.Hawk.Parse
 import Language.Hawk.NameCheck
 import Language.Hawk.TypeCheck
-import Language.Hawk.KindsCheck
-import Language.Hawk.LinearCheck
+--import Language.Hawk.KindsCheck
+--import Language.Hawk.LinearCheck
 
---import Language.Hawk.Target.LLVM.Codegen
+--import Language.Hawk.Target.CPS
+--import Language.CPS.Target.LLVM
 
 import Language.Hawk.Compile.Config
 import Language.Hawk.Compile.Error
@@ -56,5 +57,5 @@ compile conf =
     phase2 img =
       namecheck img     >>= dumpNc conf
       >>= typecheck     >>= dumpTc conf
-      >>= kindscheck    >>= dumpKc conf
-      >>= linearcheck   >>= dumpLc conf
+      -- >>= kindscheck    >>= dumpKc conf
+      -- >>= linearcheck   >>= dumpLc conf

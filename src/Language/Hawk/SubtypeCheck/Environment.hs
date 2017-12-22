@@ -1,13 +1,12 @@
 {-# LANGUAGE  TemplateHaskell
   #-}
-module Language.Hawk.KindsCheck.Environment where
+module Language.Hawk.SubtypeCheck.Environment where
 
 import Control.Lens
 import Data.Text (Text)
 import Data.Map (Map)
 import Data.Monoid
-import Language.Hawk.Syntax.Type
-import Language.Hawk.Syntax.Kind
+import Language.Hawk.Syntax.Term.Scoped
 
 import qualified Data.Map as Map
 
@@ -17,7 +16,7 @@ import qualified Data.Map as Map
 -------------------------------------------------------------------------------
 
 -- Types and their known kind names
-data Env = KindEnv { _kinds :: Map Text Kind }
+data Env = SubtermEnv { _subterms :: Map Text SubTerm }
   deriving (Eq, Show)
 
 
@@ -25,32 +24,32 @@ makeClassy ''Env
 
 
 empty :: Env
-empty = KindEnv Map.empty
+empty = SubtermEnv Map.empty
 
 
-extend :: HasEnv e => e -> (Text, Kind) -> e
+extend :: HasEnv e => e -> (Text, SubTerm) -> e
 extend e (key, value) =
-  e & env . kinds %~ Map.insert key value
+  e & env . subterms %~ Map.insert key value
 
 
 remove :: HasEnv e => e -> Text -> e
 remove e key =
-  e & env . kinds %~ Map.delete key
+  e & env . subterms %~ Map.delete key
 
 
-extends :: HasEnv e => e -> [(Text, Kind)] -> e
+extends :: HasEnv e => e -> [(Text, SubTerm)] -> e
 extends e xs =
-  e & env . kinds %~ Map.union (Map.fromList xs)
+  e & env . subterms %~ Map.union (Map.fromList xs)
 
 
-lookup :: HasEnv e => Text -> e -> Maybe Kind
+lookup :: HasEnv e => Text -> e -> Maybe SubTerm
 lookup key e =
-  Map.lookup key $ e ^. env . kinds
+  Map.lookup key $ e ^. env . subterms
 
 
 merge :: HasEnv e => e -> e -> e
 merge e1 e2 =
-  e1 & env . kinds %~ Map.union (e2 ^. env . kinds)
+  e1 & env . subterms %~ Map.union (e2 ^. env . subterms)
 
 
 mergeMany :: HasEnv e => [e] -> Env
@@ -61,19 +60,19 @@ mergeSome :: HasEnv e => [e] -> e
 mergeSome = foldr1 merge
 
 
-singleton :: Text -> Kind -> Env
-singleton key val = KindEnv $ Map.singleton key val
+singleton :: Text -> SubTerm -> Env
+singleton key val = SubtermEnv $ Map.singleton key val
 
 keys :: HasEnv e => e -> [Text]
 keys e =
-  Map.keys (e ^. env . kinds)
+  Map.keys (e ^. env . subterms)
 
 
-fromList :: [(Text, Kind)] -> Env
-fromList = KindEnv . Map.fromList
+fromList :: [(Text, SubTerm)] -> Env
+fromList = SubtermEnv . Map.fromList
 
-toList :: HasEnv e => e -> [(Text, Kind)]
-toList = Map.toList . view (env . kinds)
+toList :: HasEnv e => e -> [(Text, SubTerm)]
+toList = Map.toList . view (env . subterms)
 
 
 instance Monoid Env where

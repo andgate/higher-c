@@ -8,7 +8,6 @@ import Data.Text (Text)
 import Data.Map.Strict (Map)
 import Data.Monoid
 import Data.Set (Set)
-import Language.Hawk.Syntax.Type
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set        as Set

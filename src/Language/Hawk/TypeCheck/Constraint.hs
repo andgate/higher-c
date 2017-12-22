@@ -4,7 +4,7 @@ module Language.Hawk.TypeCheck.Constraint where
 import Data.Set (Set)
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Language.Hawk.Syntax.Type
+import Language.Hawk.Syntax.Term
 
 import qualified Data.Set as Set
 
@@ -15,19 +15,19 @@ import qualified Data.Set as Set
 data Constraint
 
     -- Equality Constraint, to be unified when solving.
-  = EqConst Type Type
+  = EqConst Term Term
 
     -- Explicit Instance Constraint, states second type is a generic
     -- instance of the first.
     -- Useful if type is known beforehand.
-  | ExpInstConst Type Type
+  | ExpInstConst Term Term
 
     -- Implicit Instance Constraint, says that t1 is an instance of t2
     -- when generalized to a Scheme with a given Set of type variables.
     -- This is for handling let-polymorphism - in general, the type of a
     -- declaration of a let-expression must be inferred before it can
     -- be instantiated.
-  | ImpInstConst Type (Set Text) Type
+  | ImpInstConst Term (Set Text) Term
 
   deriving (Show, Eq, Ord, Generic)
 
