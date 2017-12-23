@@ -1,12 +1,13 @@
 {-# LANGUAGE  TemplateHaskell
   #-}
-module Language.Hawk.SubtypeCheck.Environment where
+module Language.Hawk.SubtermCheck.Environment where
 
 import Control.Lens
 import Data.Text (Text)
 import Data.Map (Map)
 import Data.Monoid
 import Language.Hawk.Syntax.Term.Scoped
+import Language.Hawk.Syntax.Subterm
 
 import qualified Data.Map as Map
 
@@ -16,7 +17,7 @@ import qualified Data.Map as Map
 -------------------------------------------------------------------------------
 
 -- Types and their known kind names
-data Env = SubtermEnv { _subterms :: Map Text SubTerm }
+data Env = SubtermEnv { _subterms :: Map Text Subterm }
   deriving (Eq, Show)
 
 
@@ -27,7 +28,7 @@ empty :: Env
 empty = SubtermEnv Map.empty
 
 
-extend :: HasEnv e => e -> (Text, SubTerm) -> e
+extend :: HasEnv e => e -> (Text, Subterm) -> e
 extend e (key, value) =
   e & env . subterms %~ Map.insert key value
 
@@ -37,12 +38,12 @@ remove e key =
   e & env . subterms %~ Map.delete key
 
 
-extends :: HasEnv e => e -> [(Text, SubTerm)] -> e
+extends :: HasEnv e => e -> [(Text, Subterm)] -> e
 extends e xs =
   e & env . subterms %~ Map.union (Map.fromList xs)
 
 
-lookup :: HasEnv e => Text -> e -> Maybe SubTerm
+lookup :: HasEnv e => Text -> e -> Maybe Subterm
 lookup key e =
   Map.lookup key $ e ^. env . subterms
 
@@ -60,7 +61,7 @@ mergeSome :: HasEnv e => [e] -> e
 mergeSome = foldr1 merge
 
 
-singleton :: Text -> SubTerm -> Env
+singleton :: Text -> Subterm -> Env
 singleton key val = SubtermEnv $ Map.singleton key val
 
 keys :: HasEnv e => e -> [Text]
@@ -68,10 +69,10 @@ keys e =
   Map.keys (e ^. env . subterms)
 
 
-fromList :: [(Text, SubTerm)] -> Env
+fromList :: [(Text, Subterm)] -> Env
 fromList = SubtermEnv . Map.fromList
 
-toList :: HasEnv e => e -> [(Text, SubTerm)]
+toList :: HasEnv e => e -> [(Text, Subterm)]
 toList = Map.toList . view (env . subterms)
 
 

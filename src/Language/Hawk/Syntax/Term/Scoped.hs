@@ -57,7 +57,7 @@ data Term v
 
   -- Hints
   | TAnnot  (Term v) (Type v)
-  | TSub SubTerm (Term v)
+  | TSub Subterm (Term v)
   | TLoc   Loc (Term v)
   | TParen (Term v)
 

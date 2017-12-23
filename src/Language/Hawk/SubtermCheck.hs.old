@@ -12,7 +12,7 @@
             , UndecidableInstances
             , StandaloneDeriving
   #-}
-module Language.Hawk.KindsCheck where
+module Language.Hawk.SubTermCheck where
 
 import Control.Lens
 import Control.Applicative
@@ -36,10 +36,10 @@ import Data.Set (Set, (\\))
 import Data.Text (Text, pack)
 import Text.PrettyPrint.Leijen.Text (pretty)
 
-import Language.Hawk.Syntax
-import Language.Hawk.KindsCheck.Environment (Env)
-import Language.Hawk.KindsCheck.Error
-import Language.Hawk.KindsCheck.Message
+import Language.Hawk.Syntax.Scoped
+import Language.Hawk.SubtermCheck.Environment (Env)
+import Language.Hawk.SubtermCheck.Error
+import Language.Hawk.SubtermCheck.Message
 
 import qualified Data.Map   as Map
 import qualified Data.Set   as Set

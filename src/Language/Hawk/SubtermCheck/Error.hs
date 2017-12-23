@@ -2,7 +2,7 @@
             , OverloadedStrings
             , LambdaCase
   #-}
-module Language.Hawk.SubtypeCheck.Error where
+module Language.Hawk.SubtermCheck.Error where
 
 import Control.Lens
 import Data.Text (Text)

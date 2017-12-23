@@ -29,9 +29,7 @@ import qualified Data.Set as Set
 import qualified Data.Text as Text
 import qualified Language.Hawk.ScopeCheck.Environment as Env
 import qualified Language.Hawk.Syntax.Term.Source    as Source
-import qualified Language.Hawk.Syntax.Pattern.Source as Source
 import qualified Language.Hawk.Syntax.Term.Scoped    as Scoped
-import qualified Language.Hawk.Syntax.Pattern.Scoped as Scoped
 
 
 -----------------------------------------------------------------------
@@ -41,8 +39,8 @@ import qualified Language.Hawk.Syntax.Pattern.Scoped as Scoped
 type ScopeCheckT m a = StateT (Set Text) (ReaderT (Set Text) m) a
 
 
-scopecheck :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
-             , MonadChronicle (Bag e) m, AsNcErr e
+scopecheck :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
+             , MonadChronicle (Bag e) m, AsScErr e
              ) => Image Term -> m Image STerm 
 scopecheck img = do
   let tns1 = Set.map readName $ Set.fromList (img^..imgFns.traversed.fnName)
@@ -51,21 +49,22 @@ scopecheck img = do
       tys = Set.fromList $ map structTName (img^.imgTStructs) 
       env = Env.new tns tys
       
-  logInfo (_NcStarted # tns)
-  condemn $ do
+  logInfo (_ScStarted # tns)
+{-condemn $ do
     mapM_ (namecheckFn env) (img^.imgFns)
     mapM_ (namecheckSig env) (img^.imgSigs)
     mapM_ (namecheckStruct env) (img^.imgTStructs)
     mapM_ (namecheckFixity env) (img^.imgFixity)
     mapM_ (namecheckForeign env) (img^.imgForeign)
-  logInfo (_NcFinished # ())
+-}
+  logInfo (_ScFinished # ())
 
   return img
 
 
 scopecheckTerm
-  :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
-     , MonadChronicle (Bag e) m, AsNcErr e
+  :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
+     , MonadChronicle (Bag e) m, AsScErr e
      )
   => Unscoped.Term -> ScopeCheckT m ScopedTerm
 scopecheckTerm = \case
@@ -78,19 +77,21 @@ scopecheckTerm = \case
     _ -> undefined
 
 
-namecheckFn :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
-              , MonadChronicle (Bag e) m, AsNcErr e
+scopecheckFn :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
+              , MonadChronicle (Bag e) m, AsScErr e
               ) => Env -> Fn -> m ()
-namecheckFn env (Fn _ xs t) =
+scopecheckFn env (Fn _ xs t) =
   void $ namecheckTerm (env', locTerm t) t
   where env' = Env.insertTerms env (concatMap patNames xs)
 
 
 
-namecheckTerm :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
-            , MonadChronicle (Bag e) m, AsNcErr e
-            ) => (Env, Loc) -> Term -> m Env
-namecheckTerm s@(env, l) = \case
+scopeheckTerm 
+  :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
+     , MonadChronicle (Bag e) m, AsScErr e
+     )
+  => (Env, Loc) -> Term -> m (Env, Term)
+scopecheckTerm s@(env, l) = \case
   TVar n -> do
     unless (env `Env.checkTerm` n) 
            $ disclose $ One (_UndeclaredNameFound # (n, l))
@@ -148,11 +149,11 @@ namecheckTerm s@(env, l) = \case
 
 
 
-namecheckPat
-  :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
-     , MonadChronicle (Bag e) m, AsNcErr e )
+scopecheckPat
+  :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
+     , MonadChronicle (Bag e) m, AsScErr e )
   => (Env, Loc) -> Pat -> m Env
-namecheckPat s@(env, l) = \case
+scopecheckPat s@(env, l) = \case
   PVar n ->
     return $ Env.insertTerm n env
 
@@ -175,20 +176,20 @@ namecheckPat s@(env, l) = \case
 
 
 
-namecheckSig
-  :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
-     , MonadChronicle (Bag e) m, AsNcErr e )
+scopecheckSig
+  :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
+     , MonadChronicle (Bag e) m, AsScErr e )
   => Env -> Sig -> m ()
-namecheckSig env (Sig _ t) = 
+scopecheckSig env (Sig _ t) = 
   void $ namecheckTerm (env, locTerm t) t
 
 
 {-
-namecheckType
-  :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
-     , MonadChronicle (Bag e) m, AsNcErr e )
+scopecheckType
+  :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
+     , MonadChronicle (Bag e) m, AsScErr e )
   => (Env, Loc) -> Type -> m Env
-namecheckType s@(env, l) = \case
+scopecheckType s@(env, l) = \case
   TVar n ->
     -- No need to check type variables
     return env
@@ -233,46 +234,30 @@ namecheckType s@(env, l) = \case
 -}
 
 
-namecheckStruct
-  :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
-      , MonadChronicle (Bag e) m, AsNcErr e )
+scopecheckStruct
+  :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
+      , MonadChronicle (Bag e) m, AsScErr e )
   => Env -> TypeS -> m ()
 namecheckStruct env (TypeS _ tvs cs) = 
   mapM_ (namecheckTCon env') cs
   where env' = Env.insertTypes env (unL <$> tvs)
 
 
-namecheckTCon
-  :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
-     , MonadChronicle (Bag e) m, AsNcErr e )
-  => Env -> TypeCon -> m ()
-namecheckTCon env = \case
-  TypeCon _ ts -> mapM_ (\t -> namecheckTerm (env, locTerm t) t) ts 
-  RecCon _ ls -> mapM_ (namecheckRecLabel env) ls
-
-namecheckRecLabel
-  :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
-     , MonadChronicle (Bag e) m, AsNcErr e )
-  => Env -> RecLabel -> m ()
-namecheckRecLabel env (RecLabel _ t) =
-  void $ namecheckTerm (env, locTerm t) t
-
-
-
-namecheckFixity
-  :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
-     , MonadChronicle (Bag e) m, AsNcErr e )
+scopecheckFixity
+  :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
+     , MonadChronicle (Bag e) m, AsScErr e )
   => Env -> Fixity -> m ()
-namecheckFixity env (Fixity _ _ ops) =
+scopecheckFixity env (Fixity _ _ ops) =
   forM_ ops $ \(L l n) ->
     unless (Env.checkTerm env n)
            $ disclose $ One (_UndeclaredNameFound # (n, l))
 
-namecheckForeign
-  :: ( MonadLog (WithSeverity msg) m, AsNcMsg msg
-      , MonadChronicle (Bag e) m, AsNcErr e )
+
+scopecheckForeign
+  :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
+      , MonadChronicle (Bag e) m, AsScErr e )
   => Env -> Foreign -> m ()
-namecheckForeign env = \case
+scopecheckForeign env = \case
   ForeignImport _ _ (L l n) t ->
     if Env.checkTerm env n
       then void $ namecheckTerm (env, locTerm t) t

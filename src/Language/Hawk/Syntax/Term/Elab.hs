@@ -59,7 +59,7 @@ data Term v
   | TDup  (Term v)
   | TFree [Term v] (Term v)
 
-  | TSub SubTerm (Term v)  
+  | TSub Subterm (Term v)  
   deriving(Foldable, Functor, Traversable)
 
 

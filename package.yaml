@@ -115,8 +115,8 @@ library:
 
 #    - Language.Hawk.SubtypeCheck
 #    - Language.Hawk.SubtypeCheck.Environment
-    - Language.Hawk.SubtypeCheck.Error
-    - Language.Hawk.SubtypeCheck.Message
+    - Language.Hawk.SubtermCheck.Error
+    - Language.Hawk.SubtermCheck.Message
 #    - Language.Hawk.SubtypeCheck.State
 
     - Language.Hawk.Lex
@@ -172,6 +172,7 @@ library:
     - Language.Hawk.Syntax.Scoped
     - Language.Hawk.Syntax.Signature
     - Language.Hawk.Syntax.Source
+    - Language.Hawk.Syntax.Subterm
     - Language.Hawk.Syntax.Telescope
     - Language.Hawk.Syntax.Term.Basic
     - Language.Hawk.Syntax.Term.Elab

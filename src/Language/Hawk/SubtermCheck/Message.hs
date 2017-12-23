@@ -2,7 +2,7 @@
             , TemplateHaskell
             , LambdaCase 
   #-}
-module Language.Hawk.SubtypeCheck.Message where
+module Language.Hawk.SubtermCheck.Message where
 
 import Control.Lens
 import Text.PrettyPrint.Leijen.Text (Pretty(..))

@@ -33,20 +33,18 @@ import qualified Data.Set as Set
 -- -----------------------------------------------------------------------------
 -- | Terms
 
-type TermName = Name Term Text
-
 type Type = Term
 
 -- Dependent Term
 data Term v
   = TVar  v
   | TApp  (Term v) (Term v)
-  | TLam  Name (Term v)
+  | TLam  (Name (Type v) v) (Term v)
 
-  | TPi   (Name, Term v) (Term v)    -- Regular pi, or arrow
-  | TLPi   (Name, Term v) (Term v)   -- Linear pi, or lolipop
+  | TPi   (Name (Type v) v, Term v) (Term v)    -- Regular pi, or arrow
+  | TLPi   (Name (Type v) v, Term v) (Term v)   -- Linear pi, or lolipop
 
-  | TLet  (Name, Term v) (Term v)
+  | TLet  (Name (Term v) v, Term v) (Term v)
   
   | TLit  Lit
   | TCon  Text
@@ -58,31 +56,25 @@ data Term v
 
   -- Hints
   | THint  (Term v) (Term v)
-  | TSub SubTerm (Term v)
+  | TSub Subterm (Term v)
   | TLoc   Loc (Term v)
   | TParen (Term v)
 
   | TWild
   
-  deriving(Eq, Ord, Read, Show, Generic, Data, Typeable)
+  deriving(Show)
 
-
--- Term instances
-instance Binary Term
-instance Plated Term
-instance FromJSON Term
-instance ToJSON Term
 
 -- -----------------------------------------------------------------------------
 -- | Default Instances
 
-instance Default Term where
+instance Default (Term v) where
   def = TCon "()"
 
 -- -----------------------------------------------------------------------------
 -- | Pretty Instances
 
-instance PP.Pretty Term where
+instance (PP.Pretty v) => PP.Pretty (Term v) where
     pretty = \case
       TVar n      -> PP.pretty n
       TApp e1 e2  -> PP.pretty e1 PP.<+> PP.pretty e2
