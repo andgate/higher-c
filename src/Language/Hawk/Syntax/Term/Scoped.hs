@@ -1,30 +1,32 @@
-{-# LANGUAGE  DeriveFoldable
-            , DeriveFunctor
-            , DeriveTraversable
-            , FlexibleContexts
-            , TypeFamilies
-            , OverloadedStrings
+{-# LANGUAGE  OverloadedStrings
             , LambdaCase
-            , GeneralizedNewtypeDeriving
+            , PatternSynonyms
   #-}
 module Language.Hawk.Syntax.Term.Scoped where
 
 
 import Control.Monad
+import Data.Bifunctor
+import Data.Bitraversable
+import Data.Foldable as Foldable
 import Data.Default.Class
 import Data.Functor.Classes
-import Data.Monoid hiding (Alt)
+import Data.Monoid
+import Data.Traversable
 import Data.Set (Set)
 import Data.Text (Text)
 
+import Language.Hawk.Syntax.Definition.Scoped
 import Language.Hawk.Syntax.GlobalBind
 import Language.Hawk.Syntax.Let
 import Language.Hawk.Syntax.Literal
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Name
+import Language.Hawk.Syntax.Pattern
 import Language.Hawk.Syntax.Pattern.Source
 import Language.Hawk.Syntax.Prim
 import Language.Hawk.Syntax.Subterm
+import Language.Hawk.Syntax.Telescope
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 import qualified Data.Set as Set
@@ -47,11 +49,11 @@ data Term v
   | TPi   (Pat (PatScope Type v) ()) (PatScope Term v)   -- Regular pi, or arrow
   | TLPi  (Pat (PatScope Type v) ()) (PatScope Term v)   -- Linear pi, or lolipop
 
-  | TLet  (Loc, NameHint, PatDef (Clause LetVar Term v), Maybe (LetScope Type v)) (LetScope Term v)
+  | TLet  [(Loc, NameHint, PatDef (Clause LetVar Term v), Maybe (LetScope Type v))] (LetScope Term v)
   | TCase (Term v) [(Pat (PatScope Type v) (), PatScope Term v)]
   
-  | TDup  v
-  | TFree [v] (Term v)
+  | TDup  (Term v)
+  | TFree [Term v] (Term v)
 
   -- Hints
   | TAnnot  (Term v) (Type v)
@@ -60,8 +62,6 @@ data Term v
   | TParen (Term v)
 
   | TWild
-  
-  deriving(Foldable, Functor, Traversable)
 
 type Type = Term
 
@@ -77,17 +77,17 @@ instance Default (Term v) where
 -- | Instances
 
 instance Eq1 Term where
-  liftEq f t1 t2 = case (t2, t2) of
+  liftEq f t1 t2 = case (t1, t2) of
     (TVar v1, TVar v2)            -> f v1 v2
     (TGlobal g1, TGlobal g2)      -> g1 == g2
     (TLit l1, TLit l2)            -> l1 == l2
     (TCon c1, TCon c2)            -> c1 == c2
     
-    (TApp e1 p1 e1', TApp e2 p2 e2') -> liftEq f e1 e2 && p1 == p2 && liftEq f e1' e2'
-    (TLam p1 pat1 s1, TLam p2 pat2 s2) ->s p1 == p2 && liftPatEq (liftEq f) (==) pat1 pat2 && liftEq f s1 s2
+    (TApp e1 e1', TApp e2 e2') -> liftEq f e1 e2 && liftEq f e1' e2'
+    (TLam pat1 s1, TLam pat2 s2) -> liftPatEq (liftEq f) (==) pat1 pat2 && liftEq f s1 s2
     
-    (TPi p1 pat1 s1, TPi p2 pat2 s2) -> p1 == p2 && liftPatEq (liftEq f) (==) pat1 pat2 && liftEq f s1 s2
-    (TLPi p1 pat1 s1, TLPi p2 pat2 s2) -> p1 == p2 && liftPatEq (liftEq f) (==) pat1 pat2 && liftEq f s1 s2    
+    (TPi pat1 s1, TPi pat2 s2) -> liftPatEq (liftEq f) (==) pat1 pat2 && liftEq f s1 s2
+    (TLPi pat1 s1, TLPi pat2 s2) -> liftPatEq (liftEq f) (==) pat1 pat2 && liftEq f s1 s2    
     
     (TLet tele1 s1, TLet tele2 s2) -> liftEq (\(_, _, d1, mt1) (_, _, d2, mt2) -> liftEq (liftEq f) d1 d2 && liftEq (liftEq f) mt1 mt2) tele1 tele2 && liftEq f s1 s2
     (TCase e1 brs1, TCase e2 brs2) ->
@@ -124,11 +124,11 @@ instance GlobalBind Term where
     TCon c -> TCon c
     TPrim i a b -> TPrim i (bind f g a) (bind f g b)
     
-    TApp e1 p e2 -> TApp (bind f g e1) p (bind f g e2)
-    TLam p pat s -> TLam p (first (bound f g) pat) (bound f g s)
+    TApp e1 e2 -> TApp (bind f g e1) (bind f g e2)
+    TLam pat s -> TLam (first (bound f g) pat) (bound f g s)
     
-    TPi  p pat s -> TPi  p (first (bound f g) pat) (bound f g s)
-    TLPi p pat s -> TLPi p (first (bound f g) pat) (bound f g s)
+    TPi  pat s -> TPi  (first (bound f g) pat) (bound f g s)
+    TLPi pat s -> TLPi (first (bound f g) pat) (bound f g s)
     
     TLet tele s -> TLet ((\(loc, h, pd, mt) -> (loc, h, bound f g <$> pd, bound f g <$> mt)) <$> tele) (bound f g s)
     TCase e brs -> TCase (bind f g e) (bimap (first (bound f g)) (bound f g) <$> brs)
@@ -136,8 +136,8 @@ instance GlobalBind Term where
     TDup v     -> TDup (bind f g v)
     TFree vs e -> TFree (bind f g <$> vs) (bind f g e)
 
-    TAnnot l e -> TLoc l (bind f g e)
-    TSub l e   -> TLoc l (bind f g e)
+    TAnnot e ty -> TAnnot (bind f g e) (bind f g ty)
+    TSub st e   -> TSub st (bind f g e)
     TLoc l e   -> TLoc l (bind f g e)
     
     TWild -> TWild
@@ -163,10 +163,10 @@ instance Traversable Term where
     TPrim i a b -> TPrim i <$> traverse f a <*> traverse f b
 
     TApp e1 e2 -> TApp <$> traverse f e1 <*> traverse f e2
-    TLam p pat s -> TLam p <$> bitraverse (traverse f) pure pat <*> traverse f s
+    TLam pat s -> TLam <$> bitraverse (traverse f) pure pat <*> traverse f s
     
-    TPi  p pat s -> TPi  p <$> bitraverse (traverse f) pure pat <*> traverse f s
-    TLPi p pat s -> TLPi p <$> bitraverse (traverse f) pure pat <*> traverse f s
+    TPi  pat s -> TPi  <$> bitraverse (traverse f) pure pat <*> traverse f s
+    TLPi pat s -> TLPi <$> bitraverse (traverse f) pure pat <*> traverse f s
     
     TLet tele s -> TLet <$> traverse (bitraverse (traverse $ traverse f) $ traverse $ traverse f) tele <*> traverse f s
     TCase e brs ->
@@ -192,21 +192,24 @@ instance PP.Pretty v => PP.Pretty (Term v) where
       
       TApp e1 e2  -> PP.pretty e1 PP.<+> PP.pretty e2
       TLam n e    ->
+        undefined
+        {-
           PP.textStrict "\\" PP.<> PP.pretty n
             PP.<+> PP.textStrict "->"
             PP.<$> PP.indent 2 (PP.pretty e)
+        -}
 
-      TPi _ _ _-> undefined    
+      TPi _ _-> undefined    
       
-      TLPi _ _ _-> undefined    
+      TLPi _ _-> undefined    
 
       TLet xs e ->
           PP.textStrict           "let"
-            PP.<+> PP.pretty       xs
+            PP.<+> undefined
             PP.<$> PP.textStrict  "in"
-            PP.<+> PP.pretty       e
+            PP.<+> undefined
 
-      TCase _ _ _ ->
+      TCase _ _ ->
         undefined
 
       TDup e -> PP.textStrict "dup" PP.<+> PP.pretty e

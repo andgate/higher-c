@@ -17,11 +17,10 @@ data StcErr
   = StcUnknownError Text
   | StcMismatch (Term ()) (Term ())
   | StcArrowExpected (Term ())
-  deriving(Show)
 
-makeClassyPrisms ''STcErr
+makeClassyPrisms ''StcErr
 
-instance Pretty STcErr where
+instance Pretty StcErr where
     pretty = \case
       StcUnknownError n ->
         undefined
