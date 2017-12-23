@@ -3,6 +3,7 @@
   #-}
 module Language.Hawk.ScopeCheck where
 
+import Bound
 import Control.Lens
 import Control.Monad.Chronicle
 import Control.Monad.Chronicle.Extra
@@ -13,7 +14,11 @@ import Control.Monad.State (MonadState)
 import Control.Monad.Trans.Control
 
 import Data.Bag
+import Data.Bifunctor
+import Data.Bitraversable
 import Data.Default.Class
+import Data.Foldable as Foldable
+import Data.HashSet (HashSet)
 import Data.Map (Map)
 import Data.Monoid
 import Data.Text (Text)
@@ -23,34 +28,73 @@ import Language.Hawk.ScopeCheck.Error
 import Language.Hawk.ScopeCheck.Message
 import Language.Hawk.ScopeCheck.State
 import Language.Hawk.Syntax
+import Language.Hawk.Syntax.Pattern
+import Language.Hawk.Syntax.Pattern.Source
 
+import qualified Data.HashSet as HashSet
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as Text
-import qualified Language.Hawk.ScopeCheck.Environment as Env
-import qualified Language.Hawk.Syntax.Term.Source    as Source
-import qualified Language.Hawk.Syntax.Term.Scoped    as Scoped
+import qualified Language.Hawk.Syntax.Term.Source       as Source
+import qualified Language.Hawk.Syntax.Definition.Source as Source
+import qualified Language.Hawk.Syntax.Term.Scoped       as Scoped
+import qualified Language.Hawk.Syntax.Definition.Scoped as Scoped
 
 
 -----------------------------------------------------------------------
--- Scope Check
+-- Types for Scope Checker
+
+type ScEnv = ( Loc            -- Last location above current position
+             , HashSet Text   -- Set of valid names
+             )
+
+type SourceTerm = Source.Term Text
+type SourceType = SourceTerm
+type SourcePat = Pat SourceTerm Text
+
+type ScopedTerm       = Scoped.Term Text
+type ScopedType       = ScopedTerm
+type PatScopedTerm    = PatScope Scoped.Term Text
+type ScopedPat        = Pat ScopedTerm Text
+
+type SourceImage = Image Source.Term Text SourcePat
+type ScopedImage = Image Scoped.Term Text ScopedPat
+
+
+type SourceFn = Fn SourceTerm SourcePat
+type ScopedFn = Fn ScopedTerm ScopedPat
+
+
+type SourceSig = Sig SourceTerm
+type ScopedSig = Sig ScopedTerm
+
+
+type SourceDataS = DataS Source.Term Text
+type ScopedDataS = DataS Scoped.Term Text
+
+type SourceForeign = Foreign SourceTerm
+type ScopedForeign = Foreign ScopedTerm
+
+
 -----------------------------------------------------------------------
+-- Scope Checking
 
-type ScopeCheckT m a = StateT (Set Text) (ReaderT (Set Text) m) a
-
-
-scopecheck :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
-             , MonadChronicle (Bag e) m, AsScErr e
-             ) => Image Term -> m Image STerm 
+scopecheck
+  :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
+     , MonadChronicle (Bag e) m, AsScErr e
+     )
+  => SourceImage -> m ScopedImage 
 scopecheck img = do
+  {-
   let tns1 = Set.map readName $ Set.fromList (img^..imgFns.traversed.fnName)
       tns2 = Set.fromList $ concatMap structNames (img^.imgTStructs) 
       tns = tns1 <> tns2
-      tys = Set.fromList $ map structTName (img^.imgTStructs) 
+      tys = Set.fromList $ Prelude.map structTName (img^.imgTStructs) 
       env = Env.new tns tys
+  -}
       
-  logInfo (_ScStarted # tns)
-{-condemn $ do
+  logInfo (_ScStarted # mempty)
+{-condemn $ runReaderT (mempty, HSet.empty) do
     mapM_ (namecheckFn env) (img^.imgFns)
     mapM_ (namecheckSig env) (img^.imgSigs)
     mapM_ (namecheckStruct env) (img^.imgTStructs)
@@ -59,210 +103,178 @@ scopecheck img = do
 -}
   logInfo (_ScFinished # ())
 
-  return img
+  return undefined
 
+-----------------------------------------------------------------------
+-- Scope Checking on Definitions
 
-scopecheckTerm
+scopecheckFn
   :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
      , MonadChronicle (Bag e) m, AsScErr e
      )
-  => Unscoped.Term -> ScopeCheckT m ScopedTerm
-scopecheckTerm = \case
-    Unscoped.TVar x ->
-      return $ Scoped.TVar x
-
-    Unscoped.TLit l ->
-      return $ Scoped.TLit l
-
-    _ -> undefined
-
-
-scopecheckFn :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
-              , MonadChronicle (Bag e) m, AsScErr e
-              ) => Env -> Fn -> m ()
-scopecheckFn env (Fn _ xs t) =
+  => SourceFn -> m ScopedFn
+scopecheckFn (Fn {}) =
+  undefined
+{-
   void $ namecheckTerm (env', locTerm t) t
   where env' = Env.insertTerms env (concatMap patNames xs)
-
-
-
-scopeheckTerm 
-  :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
-     , MonadChronicle (Bag e) m, AsScErr e
-     )
-  => (Env, Loc) -> Term -> m (Env, Term)
-scopecheckTerm s@(env, l) = \case
-  TVar n -> do
-    unless (env `Env.checkTerm` n) 
-           $ disclose $ One (_UndeclaredNameFound # (n, l))
-    return env
-
-  TApp f x -> do
-    namecheckTerm s f
-    namecheckTerm s x
-    return env
-
-  TLam n e -> do
-    let env' = Env.insertTerm (readName n) env
-    namecheckTerm (env', l) e
-    return env
-
-  TLet (n, e1) e2 -> do
-    let env' = Env.insertTerm (readName n) env
-    namecheckTerm (env', l) e1
-    namecheckTerm (env', l) e2
-    return env
-
-  TLit _ ->
-    return env -- Literals cannot contain names
-
-  TCon n -> do
-    unless (env `Env.checkTerm` n) 
-           $ disclose $ One (_UndeclaredNameFound # (n, l))
-    return env
-            
-  TPrim _ x1 x2 -> do
-    namecheckTerm s x1
-    namecheckTerm s x2
-    return env -- Primitive instructions cannot contain names
-
-
-  TIf e1 e2 e3 -> do
-    namecheckTerm s e1
-    namecheckTerm s e2
-    namecheckTerm s e3
-
-
-  TDup n ->
-    namecheckTerm s (varName $ Name n)
-    
-
-  TFree ns e ->
-    let env' = foldr (Env.deleteTerm . readName) env ns
-    in namecheckTerm (env', l) e
-
-
-  THint t e -> namecheckTerm s t >> namecheckTerm s e
-  TLoc l' e -> namecheckTerm (env, l') e
-  TParen e  -> namecheckTerm s e
-
-
-
-
-scopecheckPat
-  :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
-     , MonadChronicle (Bag e) m, AsScErr e )
-  => (Env, Loc) -> Pat -> m Env
-scopecheckPat s@(env, l) = \case
-  PVar n ->
-    return $ Env.insertTerm n env
-
-  PLit _ -> return env
-  PWild  -> return env
-
-  PAs n p -> do
-    env' <- namecheckPat s p
-    return $ Env.insertTerm n env'
-  
-  PCon n ps -> do
-    env' <- foldM (\env1 p -> namecheckPat (env1,l) p) env ps
-    unless (env' `Env.checkTerm` n)
-           $ disclose $ One (_UndeclaredNameFound # (n, l))
-    return env'
-
-  PParen p -> namecheckPat s p
-  PLoc l' p -> namecheckPat (env, l') p
-  PHint t p -> namecheckTerm s t >> namecheckPat s p
-
-
+-}
 
 scopecheckSig
   :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
      , MonadChronicle (Bag e) m, AsScErr e )
-  => Env -> Sig -> m ()
-scopecheckSig env (Sig _ t) = 
-  void $ namecheckTerm (env, locTerm t) t
-
-
+  => SourceSig -> m ScopedSig
+scopecheckSig (Sig {}) =
+  undefined
 {-
-scopecheckType
-  :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
-     , MonadChronicle (Bag e) m, AsScErr e )
-  => (Env, Loc) -> Type -> m Env
-scopecheckType s@(env, l) = \case
-  TVar n ->
-    -- No need to check type variables
-    return env
-
-  TCon n -> do
-    unless (env `Env.checkType` n) 
-          $ disclose $ One (_UndeclaredNameFound # (n, l))
-    return env
-  
-  TApp f x -> do
-    namecheckType s f
-    namecheckType s x
-    return env
-
-  TArr a b -> do
-    namecheckType s a
-    namecheckType s b
-    return env
-
-  TLoli a b -> do
-    namecheckType s a
-    namecheckType s b
-    return env
-
-  TKind _ t -> do
-    -- Don't check kinds (which don't contain names)
-    namecheckType s t
-    return env
-
-  TLoc _ t -> do
-    namecheckType s t
-    return env
-
-  TParen t -> do
-    namecheckType s t
-    return env
-
-  TForall ns t -> do
-    let env' = Env.insertTypes env ns
-    namecheckType (env', l) t
-    return env
+  void $ namecheckTerm (env, locTerm t) t
 -}
-
 
 scopecheckStruct
   :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
       , MonadChronicle (Bag e) m, AsScErr e )
-  => Env -> TypeS -> m ()
-namecheckStruct env (TypeS _ tvs cs) = 
+  => SourceDataS -> m ScopedDataS
+scopecheckStruct (DataS {}) = 
+  undefined
+{-
   mapM_ (namecheckTCon env') cs
   where env' = Env.insertTypes env (unL <$> tvs)
-
+-}
 
 scopecheckFixity
   :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
      , MonadChronicle (Bag e) m, AsScErr e )
-  => Env -> Fixity -> m ()
-scopecheckFixity env (Fixity _ _ ops) =
+  => Fixity -> m Fixity
+scopecheckFixity (Fixity {}) =
+  undefined
+{-
   forM_ ops $ \(L l n) ->
     unless (Env.checkTerm env n)
-           $ disclose $ One (_UndeclaredNameFound # (n, l))
+            $ disclose $ One (_UndeclaredNameFound # (n, l))
+-}
 
 
 scopecheckForeign
   :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
-      , MonadChronicle (Bag e) m, AsScErr e )
-  => Env -> Foreign -> m ()
-scopecheckForeign env = \case
-  ForeignImport _ _ (L l n) t ->
-    if Env.checkTerm env n
-      then void $ namecheckTerm (env, locTerm t) t
-      else disclose $ One (_UndeclaredNameFound # (n, l))
+     , MonadChronicle (Bag e) m, AsScErr e )
+  => SourceForeign -> m ScopedForeign
+scopecheckForeign = \case
+  ForeignImport {} -> undefined
+  ForeignExport {} -> undefined
+
+
+-----------------------------------------------------------------------
+-- Scope Checking Terms and Patterns
+
+scopecheckTerm 
+  :: ( MonadReader (Loc, HashSet Text) m
+     , MonadLog (WithSeverity msg) m, AsScMsg msg
+     , MonadChronicle (Bag e) m, AsScErr e
+     )
+  => SourceTerm -> m ScopedTerm
+scopecheckTerm = \case
+  Source.TVar x ->
+    return $ Scoped.TVar x
+
+  Source.TLit l ->
+    return $ Scoped.TLit l
+
+  Source.TCon n ->
+    return $ Scoped.TCon n
+            
+  Source.TPrim i x1 x2 ->
+    Scoped.TPrim i <$> scopecheckTerm x1 <*> scopecheckTerm x2
+
+  Source.TApp f x ->
+    Scoped.TApp <$> scopecheckTerm f <*> scopecheckTerm x
+
+  Source.TLam _ _ -> undefined
+
+  Source.TLet ds e -> do
+    ds' <- traverse (bitraverse pure scopecheckDef) ds
+    e' <- scopecheckTerm e
+    return $ error "let scoping is unimplemented"
+
+
+  Source.TCase e brs ->
+    Scoped.TCase
+      <$> scopecheckTerm e 
+      <*> mapM (uncurry scopecheckBranch) brs
+
+
+  Source.TDup n ->
+    return $ Scoped.TDup (Scoped.TVar n)
+
+  Source.TFree ns e ->
+    Scoped.TFree (Scoped.TVar <$> ns) <$> scopecheckTerm e
+
+
+  Source.TAnnot t e -> 
+    Scoped.TAnnot <$> scopecheckTerm e <*> scopecheckTerm t
   
-  ForeignExport _ (L l n) ->
-    unless (Env.checkTerm env n)
-           $ disclose $ One (_UndeclaredNameFound # (n, l))
+  Source.TSub st t ->
+    Scoped.TSub st <$> scopecheckTerm t
+  
+  Source.TLoc l' t ->
+    Scoped.TLoc l' <$> local (bimap (const l') id) (scopecheckTerm t)
+
+  Source.TParen e ->
+    Scoped.TParen <$> scopecheckTerm e
+
+  Source.TWild -> 
+    return Scoped.TWild
+
+
+
+scopecheckDef 
+  :: ( MonadReader (Loc, HashSet Text) m
+     , MonadLog (WithSeverity msg) m, AsScMsg msg
+     , MonadChronicle (Bag e) m, AsScErr e
+     )
+  => Source.Def SourceTerm -> m (Text, Scoped.PatDef (Scoped.Clause void Scoped.Term Text), Maybe ScopedType)
+scopecheckDef (Source.Def n cs t) = undefined
+
+
+scopecheckClause
+  :: ( MonadReader (Loc, HashSet Text) m
+     , MonadLog (WithSeverity msg) m, AsScMsg msg
+     , MonadChronicle (Bag e) m, AsScErr e
+     )
+  => Source.Clause SourceTerm -> m (Scoped.Clause void Scoped.Term Text) 
+scopecheckClause (Source.Clause _ _) = undefined
+
+scopecheckBranch
+  :: ( MonadReader (Loc, HashSet Text) m
+     , MonadLog (WithSeverity msg) m, AsScMsg msg
+     , MonadChronicle (Bag e) m, AsScErr e
+     )
+  => SourcePat -> SourceTerm -> m (Pat (PatScope Scoped.Term Text) (), PatScope Scoped.Term Text)
+scopecheckBranch p t = do
+  p' <- scopecheckPat p
+  let vs = Foldable.toList p'
+      p'' = void $ abstractPatternTypes vs p'
+  t' <- abstract (patternAbstraction vs) <$> scopecheckTerm t
+  return (p'', t')
+
+
+scopecheckPat
+  :: ( MonadReader (Loc, HashSet Text) m
+     , MonadLog (WithSeverity msg) m, AsScMsg msg
+     , MonadChronicle (Bag e) m, AsScErr e )
+  => SourcePat -> m (Pat ScopedTerm Text)
+scopecheckPat = \case
+  PVar h b -> return $ PVar h b
+
+  PWild -> return PWild
+  PLit l -> return $ PLit l
+
+  PCon n ps -> undefined
+
+  PAnnot t p ->
+    PAnnot <$> scopecheckTerm t <*> scopecheckPat p
+
+  PView t p ->
+    PView <$> scopecheckTerm t <*> scopecheckPat p
+
+  PLoc l' p ->
+    PLoc l' <$> local (_1 .~ l') (scopecheckPat p)

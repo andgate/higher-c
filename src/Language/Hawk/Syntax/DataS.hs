@@ -4,7 +4,6 @@
             , DeriveFoldable
             , DeriveFunctor
             , DeriveTraversable
-            , KindSignatures
   #-}
 module Language.Hawk.Syntax.DataS where
 

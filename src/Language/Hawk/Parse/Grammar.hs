@@ -7,18 +7,25 @@ module Language.Hawk.Parse.Grammar where
 import Control.Applicative
 import Data.Bifunctor
 import Data.Monoid
-import Data.Text (pack)
+import Data.Text (Text, pack)
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Lex.Token (Token)
 import Language.Hawk.Syntax
 import Language.Hawk.Syntax.Term.Source
+import Language.Hawk.Syntax.Pattern.Source
 import Text.Earley
 import Text.Earley.Mixfix
 
 
 -- -----------------------------------------------------------------------------
+-- Types Required by Grammar
+
+type SourcePat = Pat (Term Text) Text
+type SourceImage = Image Term Text SourcePat
+
+-- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-toplevel :: Grammar r (Prod r Token Token Image)
+toplevel :: Grammar r (Prod r Token Token SourceImage)
 toplevel = mdo
         
 -- -----------------------------------------------------------------------------
