@@ -155,6 +155,9 @@ library:
     - Language.Hawk.Syntax
     - Language.Hawk.Syntax.Branch
     - Language.Hawk.Syntax.DataS
+    - Language.Hawk.Syntax.Definition
+    - Language.Hawk.Syntax.Definition.Scoped
+    - Language.Hawk.Syntax.Definition.Source
     - Language.Hawk.Syntax.Fixity
     - Language.Hawk.Syntax.Foreign
     - Language.Hawk.Syntax.Function
@@ -162,7 +165,8 @@ library:
     - Language.Hawk.Syntax.Image
     - Language.Hawk.Syntax.Location
     - Language.Hawk.Syntax.Name
-    - Language.Hawk.Syntax.Pattern.Scoped
+    - Language.Hawk.Syntax.Pattern
+    - Language.Hawk.Syntax.Pattern.Elab
     - Language.Hawk.Syntax.Pattern.Source
     - Language.Hawk.Syntax.Prim
     - Language.Hawk.Syntax.Scoped

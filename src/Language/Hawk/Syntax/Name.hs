@@ -31,6 +31,14 @@ instance Plated NameHint
 instance FromJSON NameHint
 instance ToJSON NameHint
 
+instance Monoid NameHint where
+  mempty = Nameless
+  mappend h1 h2 = case (h1, h2) of
+    (N n, _)      -> N n
+    (_, N n)      -> N n
+    _             -> Nameless
+
+
 
 
 fromText :: IsString a => Text -> a

@@ -6,22 +6,24 @@
             , OverloadedStrings
             , LambdaCase
             , GeneralizedNewtypeDeriving
+            , TemplateHaskell
   #-}
 module Language.Hawk.Syntax.Term.Sat where
 
 import Bound
 import Control.Monad
 import Data.Default.Class
-import Data.Hashable
-import Data.Monoid hiding (Alt)
+import Data.Deriving
+import Data.Monoid
 import Data.Set (Set)
 import Data.Text (Text)
 
+import Language.Hawk.Syntax.Branch
+import Language.Hawk.Syntax.GlobalBind
 import Language.Hawk.Syntax.Let
 import Language.Hawk.Syntax.Literal
 import Language.Hawk.Syntax.Location
 import Language.Hawk.Syntax.Name
-import Language.Hawk.Syntax.Pattern.Scoped
 import Language.Hawk.Syntax.Prim
 import Language.Hawk.Syntax.Subterm
 
@@ -32,9 +34,6 @@ import qualified Data.Set as Set
 -- -----------------------------------------------------------------------------
 -- | Terms
 
-type TermName v = Name (Term v) Text
-
-type Type = Term
 
 -- Dependent Term
 data Term v
@@ -43,160 +42,85 @@ data Term v
   | TLit  Lit
   | TCon  Text [Term v]
   | TPrim PrimInstr (Term v) (Term v)
-  | TLam  (Type v) (Pat (PatScope Type v) ()) (PatScope Term v)
+  | TLam  NameHint (Type v) (Scope () Term v)
   | TApp  (Term v) (Term v)
 
   | TLet  (LetRec Term v) (LetScope Term v)
   
-  | TIf   (Term v) (Branches Text () Term v)
+  | TCase   (Term v) (Branches Text () Term v)
+
+  | TDup  (Term v)
+  | TFree [Term v] (Term v)
   
-  | TDup  v
-  | TFree [v] (Term v)
+  | TAnnot (Term v) (Type v)
   deriving(Foldable, Functor, Traversable)
 
-
+type Type = Term
 
 
 -- -----------------------------------------------------------------------------
 -- | Default Instances
 
 instance Default (Term v) where
-  def = TCon "()"
-
-instance Default (Pat t b) where
-  def = PWild
+  def = TCon "()" []
 
 -- -----------------------------------------------------------------------------
--- | Term Helpers
+-- | Instances
 
--- Remove locations from a term
-unlocate :: Term v -> Term v
-unlocate = undefine
-
-
--- Remove types from a term
-untype :: Term v -> Term v
-untype = undefine
-
-
--- Locations
-locTerm :: Term v -> Loc
-locTerm = \case
-  TVar _ -> error "Cannot locate term without location!"
-  TApp a b -> locTerm a <> locTerm b
-  TLam n e -> locName' n <> locTerm e
-  TLet (n, _) e -> locName' n <> locTerm e
-  TLit _ -> error "Cannot locate term without location!"
-  TCon _ -> error "Cannot locate term without location!"
-  TPrim _ a b -> locTerm a <> locTerm b
-  TIf a _ b -> locTerm a <> locTerm b
-  TDup n -> error "Cannot locate term without location!"
-  TFree _ t -> locTerm t
-  THint t' t -> locTerm t <> locTerm t'
-  TSub c t -> locTerm t
-  TLoc l _ -> l
-  TParen e -> locTerm e
+instance GlobalBind Term where
+  global = TGlobal
+  bind f g = \case
+    TVar v -> f v
+    TGlobal v -> g v
+    TLit l -> TLit l
+    TCon qc es -> TCon qc (bind f g <$> es)
+    TPrim i a b -> TPrim i (bind f g a) (bind f g b)
+    TLam h e s -> TLam h (bind f g e) (bound f g s)
+    TApp e1 e2 -> TApp (bind f g e1) (bind f g e2)
+    TLet ds s -> TLet (bound f g ds) (bound f g s)
+    TCase e brs -> TCase (bind f g e) (bound f g brs)
+    TDup v -> TDup $ bind f g v
+    TFree vs e -> TFree (bind f g <$> vs) (bind f g e)
+    TAnnot e t -> TAnnot (bind f g e) (bind f g t)
 
 
-locPat :: Pat t b -> Loc
-locPat = \case
-  PVar n -> error "No location found in pattern."
-  PLit l -> error "No location found in pattern."
-  PWild-> error "No location found in pattern."
-  PAs n p -> locPat p
-  PCon n ps -> mconcat (locPat <$> ps)
-  PParen p -> locPat p
-  PLoc l _ -> l
-  PHint t p -> locPat p <> locTerm t
+instance Applicative Term where
+  pure = TVar
+  (<*>) = ap
 
+instance Monad Term where
+  return = TVar
+  trm >>= f = bind f TGlobal trm
 
--- Names
-termNames :: Term v -> [v]
-termNames = \case
-  TVar n -> [n]
-  _ -> undefined
-
-
-patNames :: Pat t b -> [Text]
-patNames = \case
-  PVar n -> [n]
-  PLit l -> []
-  PWild-> []
-  PAs n p -> n : patNames p
-  PCon n ps -> n : concatMap patNames ps
-  PParen p -> patNames p
-  PLoc _ p -> patNames p 
-  PHint t p -> patNames p
-  
-
---------------------------------------------------------------------------------
--- Name Helpers
-
-varName :: Name v -> Term v
-varName = \case
-  Name n -> TVar n
-  NLoc l n -> TLoc l $ varName n
-  NTerm t n -> THint t $ varName n
+deriveEq1 ''Term
+deriveEq ''Term
+deriveOrd1 ''Term
+deriveOrd ''Term
+deriveShow1 ''Term
+deriveShow ''Term
 
 
 -- -----------------------------------------------------------------------------
--- | Free Variables
-
-class HasFreeVars a where
-  fv :: a -> Set Text
-
-  
-instance HasFreeVars Text where
-  fv = Set.singleton
-
-
-instance HasFreeVars (Term v) where
-  fv = \case
-    _ -> undefined
-
-
-instance (HasFreeVars t, HasFreeVars b) => HasFreeVars (Pat t b) where
-  fv = \case
-    PVar n -> fv n
-    PLit l -> Set.empty
-    PWild-> Set.empty
-    PAs n p -> Set.singleton n `Set.union` fv p
-    PCon n ps -> Set.unions (fv <$> ps)
-    PParen p -> fv p
-    PLoc _ p -> fv p 
-    PHint t p -> fv p
-
-
-instance HasFreeVars a => HasFreeVars [a] where
-  fv = mconcat . map fv
-
-
--- -----------------------------------------------------------------------------
--- | Pretty Instances
+-- | Pretty Printing
 
 instance PP.Pretty v => PP.Pretty (Term v) where
     pretty = \case
       TVar n      -> PP.pretty n
-      TApp e1 e2  -> PP.pretty e1 PP.<+> PP.pretty e2
-      TLam n e    ->
-          PP.textStrict "\\" PP.<> PP.pretty n
-            PP.<+> PP.textStrict "->"
-            PP.<$> PP.indent 2 (PP.pretty e)
-      TLet xs e ->
-          PP.textStrict           "let"
-            PP.<+> PP.pretty       xs
-            PP.<$> PP.textStrict  "in"
-            PP.<+> PP.pretty       e
+      TGlobal n   -> PP.pretty n
       TLit l      -> PP.pretty l
-      TCon n      -> PP.pretty n
+      TCon c xs   -> PP.pretty c PP.<+> PP.hsep (PP.pretty <$> xs)
       TPrim i a b -> PP.pretty i PP.<+> PP.pretty a PP.<+> PP.pretty b
-      TIf e1 e2 e3 ->
-          PP.textStrict           "if"
-            PP.<+> PP.pretty       e1
-            PP.<+> PP.textStrict  "then"
-            PP.<+> PP.pretty       e2
-            PP.<+> PP.textStrict  "else"
-            PP.<+> PP.pretty       e3
+
+      TLam h e s    ->
+        undefined
+      
+      TApp e1 e2  -> PP.pretty e1 PP.<+> PP.pretty e2
+      
+      TLet xs e ->
+        undefined
+      
+      TCase e brs ->
+        undefined
 
       TDup e -> PP.textStrict "dup" PP.<+> PP.pretty e
       TFree n e ->
@@ -206,47 +130,7 @@ instance PP.Pretty v => PP.Pretty (Term v) where
             PP.<+> PP.pretty       e
 
 
-      THint t e ->
+      TAnnot e ty ->
           PP.pretty               e
-            PP.<+> PP.textStrict "::"
-            PP.<+> PP.pretty      t
-
-
-      TLoc l e ->
-        PP.pretty               e
-            PP.<+> PP.textStrict "@"
-            PP.<+> PP.parens (PP.pretty l)
-
-      
-      TParen t    -> PP.parens $ PP.pretty t
-
-
-instance (PP.Pretty t, PP.Pretty b) => PP.Pretty (Pat t b) where
-  pretty = \case
-    PVar n ->
-      PP.textStrict n
-
-    PLit l ->
-      PP.pretty l
-
-    PWild->
-      PP.textStrict "_"
-
-    PAs n p ->
-      PP.textStrict n
-        PP.<> PP.textStrict "@"
-        PP.<> PP.pretty p
-
-    PCon n ps ->
-      PP.textStrict n PP.<+> PP.pretty ps
-
-    PParen p ->
-      PP.parens (PP.pretty p)
-
-    PLoc _ p ->
-      PP.pretty p -- Usually best to hide locations
-
-    PHint t p ->
-      PP.pretty p
-        PP.<+> PP.textStrict ":"
-        PP.<+> PP.pretty t
+            PP.<+> PP.textStrict ":"
+            PP.<+> PP.pretty      ty

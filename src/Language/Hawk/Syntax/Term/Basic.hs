@@ -45,12 +45,12 @@ data Term v
   | TCall (Term v) [Term v]
   | TPrimCall PrimInstr (Term v) (Term v)
 
-  | TLet NameHint  (LetRec Term v) (Scope () Term v)
+  | TLet NameHint  (Term v) (Scope () Term v)
   
   | TCase (Term v) (Branches Text () Term v)
   
-  | TDup  v
-  | TFree [v] (Term v)
+  | TDup  (Term v)
+  | TFree [Term v] (Term v)
 
   | TAnnot (Term v) (Type v)
   deriving(Foldable, Functor, Traversable)
@@ -60,7 +60,7 @@ data Term v
 -- | Default Instances
 
 instance Default (Term v) where
-  def = TCon "()"
+  def = TCon "()" []
 
 
 -- -----------------------------------------------------------------------------
@@ -68,7 +68,7 @@ instance Default (Term v) where
 
 -- Remove types from a term
 untype :: Term v -> Term v
-untype = undefine
+untype = undefined
 
 
 -- Locations
@@ -127,17 +127,19 @@ deriveShow ''Term
 
 
 instance GlobalBind Term where
-  global = Global
-  bind f g t = case t of
-    Var v -> f v
-    Global v -> g v
-    Lit l -> Lit l
-    Con c es -> Con c (bind f g <$> es)
-    Call e es -> Call (bind f g e) (bind f g <$> es)
-    PrimCall lang retDir e es -> PrimCall lang retDir (bind f g e) (fmap (bind f g) <$> es)
-    Let h e s -> Let h (bind f g e) (bound f g s)
-    Case e brs -> Case (bind f g e) (bound f g brs)
-    Anno e t -> Anno (bind f g e) (bind f g t)
+  global = TGlobal
+  bind f g = \case
+    TVar v -> f v
+    TGlobal v -> g v
+    TLit l -> TLit l
+    TCon c es -> TCon c (bind f g <$> es)
+    TCall e es -> TCall (bind f g e) (bind f g <$> es)
+    TPrimCall i a b -> TPrimCall i (bind f g a) (bind f g a)
+    TLet h e s -> TLet h (bind f g e) (bound f g s)
+    TCase e brs -> TCase (bind f g e) (bound f g brs)
+    TDup v ->  TDup $ bind f g v 
+    TFree vs e -> TFree (bind f g <$> vs) (bind f g e)
+    TAnnot e t -> TAnnot (bind f g e) (bind f g t)
 
 
 instance Applicative Term where
@@ -146,7 +148,7 @@ instance Applicative Term where
 
 
 instance Monad Term where
-  t >>= f = bind f Global t
+  t >>= f = bind f TGlobal t
 
 
 -- -----------------------------------------------------------------------------

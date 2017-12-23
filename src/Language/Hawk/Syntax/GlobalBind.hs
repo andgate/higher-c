@@ -2,6 +2,7 @@ module Language.Hawk.Syntax.GlobalBind where
 
 import Bound
 import Bound.Var
+import Bound.Scope
 import Data.Foldable
 import Data.Text (Text)
 
@@ -14,6 +15,10 @@ class GlobalBound t where
         -> t e v
         -> t e v'
 
+{-
+instance (GlobalBound b, Functor f b) => GlobalBound f b where
+  bound f g bs = bound f g <$> bs
+-}
 
 instance GlobalBound (Scope b) where
   bound f g (Scope s) = Scope $ bind
