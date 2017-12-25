@@ -25,21 +25,19 @@ import Language.Hawk.Syntax.Name
 -------------------------------------------------------------------------------------
 -- Telescope
 
-newtype TeleVar = TeleVar Int
+newtype Telescope a t v = Telescope { unTelescope :: [TeleArg a t v] }
+  deriving (Eq, Ord, Show, Foldable, Functor, Traversable)
+
+data TeleArg a t v = TeleArg !NameHint !a !(TeleScope t v)
+  deriving (Eq, Ord, Show, Foldable, Functor, Traversable)
+
+
+-------------------------------------------------------------------------------------
+-- Telescope Scope AKA "TeleScope"
+
+type TeleScope = Scope TeleVar
+newtype TeleVar = TeleVar { unTeleVar :: Int }
   deriving (Eq, Enum, Hashable, Ord, Show, Num)
-
-unTeleVar :: TeleVar -> Int
-unTeleVar (TeleVar i) = i
-
-
-newtype Telescope a t v = Telescope [TeleArg a t v]
-  deriving (Eq, Ord, Show, Foldable, Functor, Traversable)
-
-data TeleArg a t v = TeleArg !NameHint !a !(Scope TeleVar t v)
-  deriving (Eq, Ord, Show, Foldable, Functor, Traversable)
-
-unTelescope :: Telescope a t v -> [TeleArg a t v]
-unTelescope (Telescope xs) = xs
 
 -- -----------------------------------------------------------------------------
 -- | Instances

@@ -270,8 +270,8 @@ scopecheckPat = \case
 
   PCon n ps -> undefined
 
-  PAnnot t p ->
-    PAnnot <$> scopecheckTerm t <*> scopecheckPat p
+  PAnnot p t ->
+    PAnnot <$> scopecheckPat p <*> scopecheckTerm t
 
   PView t p ->
     PView <$> scopecheckTerm t <*> scopecheckPat p

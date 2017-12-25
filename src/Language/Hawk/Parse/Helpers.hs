@@ -140,8 +140,11 @@ ln' = match TokenLn'
 -- -----------------------------------------------------------------------------
 -- Symbols
 
-parens :: Prod r e Token a -> Prod r e Token (a, Loc)
-parens p =
+parens :: Prod r e Token a -> Prod r e Token a
+parens p = rsvp "(" *> p <* rsvp ")"
+
+parensLoc :: Prod r e Token a -> Prod r e Token (a, Loc)
+parensLoc p =
   let ex (_, l1) r (_, l2) = (r, l1 <> l2)
   in ex <$> rsvp "(" <*> p <*> rsvp ")"
 

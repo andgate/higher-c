@@ -1,6 +1,7 @@
 {-# LANGUAGE RecursiveDo
            , RankNTypes
            , OverloadedStrings
+           , FlexibleContexts
   #-}
 module Language.Hawk.Parse.Grammar where
 
@@ -23,30 +24,22 @@ import Text.Earley.Mixfix
 type SourcePat = Pat (Term Text) Text
 type SourceImage = Image Term Text SourcePat
 
+
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
 toplevel :: Grammar r (Prod r Token Token SourceImage)
 toplevel = mdo
-        
+
+
 -- -----------------------------------------------------------------------------
 -- Declaration Rules
     
     result <- rule $ linefold $
           fn
       <|> sig
-      <|> typeS
+      <|> dataDef
       <|> forgn
       <|> fixity
-
-
-    name <- rule $
-      let ex (n, l) = NLoc l $ Name n
-      in ex <$> varId
-
-
-    opName <- rule $
-      let ex (n, l) = NLoc l $ Name n
-      in ex <$> opId
 
 -- -----------------------------------------------------------------------------
 -- Foreign Rules
@@ -108,7 +101,7 @@ toplevel = mdo
 
     sig <- rule $
       let ex (n, _) t = fromSig $ Sig n t
-      in ex <$> (varId <|> parens (fst <$> opId))
+      in ex <$> (varId <|> parensLoc (fst <$> opId))
             <*> (rsvp ":" *> term)
 
 
@@ -121,7 +114,7 @@ toplevel = mdo
 
 
     fnName <- rule $
-      name <|> (fst <$> parens opName)
+      name <|> parens (fst <$> opId)
 
 -- -----------------------------------------------------------------------------
 -- Literal Rules
@@ -207,16 +200,16 @@ toplevel = mdo
 
     eterm <- rule $
       let ex1 a@(TLoc l1 _) b@(TLoc l2 _) =
-            TLoc (l1<>l2) $ TPi (Name "", a) b
+            TLoc (l1<>l2) $ TPi ("", a) b
           ex2 a@(TLoc l1 _) b@(TLoc l2 _) =
             TLoc (l1<>l2) $ TLPi (Name "", a) b
       in
-          (ex1 <$> eterm <*> (rsvp "->" *> dterm))
-      <|> (ex2 <$> eterm <*> (rsvp "-o" *> dterm))
+          (ex1 <$> pat <*> (rsvp "->" *> term))
+      <|> (ex2 <$> pat <*> (rsvp "-o" *> term))
       <|> dterm
 
     dterm <- rule $
-          termHint
+          termAnnot
       <|> cterm
 
 
@@ -228,7 +221,7 @@ toplevel = mdo
 
 
     bterm <- rule $
-      let ex f x = let l = locTerm f <> locTerm x
+      let ex f x = let l = locOf f <> locOf x
                    in  TLoc l $ TApp f x
       in     (ex <$> bterm <*> aterm)
          <|> aterm
@@ -243,12 +236,29 @@ toplevel = mdo
       <|> termPrim
       <|> termLit
 
-    termHint <- rule $
-      let
-        ex e@(TLoc l1 _) ty@(TLoc l2 _)
-          = TLoc (l1<>l2) $ THint ty e
-      in
-        ex <$> dterm <*> (rsvp ":" *> term)
+
+    termVar <- rule $
+      let ex (v, l) = TLoc l $ TVar v
+      in ex <$> varId
+
+    termOp <- rule $
+      let ex (n, l) = TLoc l $ TVar n
+      in ex <$> opId
+
+
+    termLit <- rule $
+      let ex (lit, l) = TLoc l $ TLit lit
+      in ex <$> lit
+
+
+    termCon <- rule $
+      let ex (n, l) = TLoc l $ TCon n
+      in ex <$> conId
+
+    termPrim <- rule $
+      let ex (txt, l1) a b = TLoc (l1 <> locOf b) $ TPrim (readPrim txt) a b
+      in ex <$> primText <*> aterm <*> aterm
+
 
 
     termLet <- rule $
@@ -261,122 +271,130 @@ toplevel = mdo
       in ex <$> name <*> (rsvp "=" *> term)
 
 
-    termIf <- rule $
-      let ex (_, l1) p a b@(TLoc l2 _) = TLoc (l1<>l2) $ TIf p a b
-      in ex <$> rsvp "if" <*> term <*> (rsvp "then" *> term) <*> (rsvp "else" *> term)
+    termCase <- rule $
+      let ex (_, l1) p brs = TLoc (l1<>locOf brs) $ TCase p brs
+      in ex <$> rsvp "case" <*> term <*> (rsvp "of" *> branches)
 
+      
+    termDup <- rule $
+      let ex (_,l1) (n, l2) = TLoc (l1 <> l2) $ TDup n
+      in ex <$> rsvp "dup" <*> varId
 
+    
     termFree <- rule $
       let
         ex (_, l1) xs e@(TLoc l2 _)
-            = TLoc (l1<>l2) $ TFree xs e
+            = TLoc (l1<>l2) $ TFree (fst <$> xs) e
       in
-        ex <$> rsvp "free" <*> some name <*> (rsvp "in" *> term)
+        ex <$> rsvp "free" <*> some varId <*> (rsvp "in" *> term)
 
 
-    termOp <- rule $
-      let ex (n, l) = TLoc l $ TVar n
-      in ex <$> opId
+    termAnnot <- rule $
+      let
+        ex e@(TLoc l1 _) ty@(TLoc l2 _)
+          = TLoc (l1<>l2) $ TAnnot e ty
+      in
+        ex <$> dterm <*> (rsvp ":" *> term)
 
-    termVar <- rule $
-      let ex (v, l) = TLoc l $ TVar v
-      in ex <$> varId
+    termSub <- rule $
+      let
+        ex (st, l) t
+          = TLoc (l<>locOf t) $ TSub st t
+      in
+        ex <$> term <*> (rsvp "?" *> subtype)
 
-    termCon <- rule $
-      let ex (n, l) = TLoc l $ TCon n
-      in ex <$> conId
+    subtype <- rule $ 
+      intuitive <|> linear
 
-    termDup <- rule $
-      let ex (_,l1) n = TLoc (l1 <> locName' n) $ TDup (readName n)
-      in ex <$> rsvp "dup" <*> name
+    intuitive <- rule $
+      (TIn,) <$> rsvp "*"
 
-    termLit <- rule $
-      let ex (lit, l) = TLoc l $ TLit lit
-      in ex <$> lit
-    
-    termPrim <- rule $
-      let ex (txt, l1) a b = TLoc (l1<>locTerm b) $ TPrim (readPrim txt) a b
-      in ex <$> primText <*> aterm <*> aterm
+    linear <- rule $
+      (TLin,) <$> rsvp "o"
       
     termParen <- rule $
-      let ex (t, l) = TLoc l $ TParen t
-      in ex <$> parens term
+      parens term
 
-
--- -----------------------------------------------------------------------------
--- Structured Type Rules
-
-    typeS <- rule $
-      let
-        ex nl tvsl cs = fromTStruct $ TypeS (wrapL nl) (wrapL <$> tvsl) cs
-      in
-        ex <$> (rsvp "type" *> conId)
-           <*> many varId
-           <*> (rsvp "=" *> typeCons)
-
-
-    typeCons <- rule $
-      sep (rsvp "|") typeCon
-
-
-    typeCon <- rule $
-      typeCon' <|> recCon
-
-
-    typeCon' <- rule $
-      let ex = TypeCon . mkLocName
-      in ex <$> conId <*> many aterm
-
-
-    recCon <- rule $
-      let ex =  RecCon . mkLocName
-      in ex <$> conId <*> curlys (commaSep recLabel)                         
-
-  
-    recLabel <- rule $
-      let ex = RecLabel . mkLocName
-      in ex <$> varId <*> (rsvp ":" *> term)
 
 -- -----------------------------------------------------------------------------
 -- Pattern Rules
-    pat <- rule $
+    
+    pat <- rule dpat
+
+    dpat <- rule $
+          parens patAnnot
+      <|> cpat
+
+    cpat <- rule $
+          parens patView
+      <|> bpat
+
+    bpat <- rule $
+          parens patConPats
+      <|> apat
+
+    apat <- rule $
           patVar
       <|> patWild
-      <|> patConMono
-      <|> patAs
-      <|> patParens
+      <|> patLit
+      <|> patCon
+      <|> parens pat
 
     patVar <- rule $
-      let ex (n, l) = PLoc l $ PVar n
+      let ex (n, l) = PLoc l $ PVar (N n) n
       in ex <$> varId
 
     patWild <- rule $
       let ex (_, l) = PLoc l PWild
       in ex <$> rsvp "_"
 
-    patAs <- rule $
-      let ex (n, l1) (p, l2) = PLoc (l1<>l2) $ PAs n p
-      in ex <$> varId <*> (rsvp "@" *> parens patCon0)
+    patLit <- rule $
+      let ex (lit, l) = PLoc l $ PLit lit
+      in ex <$> lit
 
-    patConMono <- rule $
+    patCon <- rule $
       let ex (n, l) = PLoc l $ PCon n []
       in ex <$> conId
 
-    patCon0 <- rule $
-      let ex (n, l) ps = PLoc l $ PCon n ps
+    patConPats <- rule $
+      let ex (n, l) ps = PLoc (l <> locOf ps) $ PCon n ps
       in ex <$> conId <*> many pat
 
-    patCon1 <- rule $
-      let ex (n, l) ps = PLoc l $ PCon n ps
-      in ex <$> conId <*> some pat
+    patAnnot <- rule $
+      let ex p t = PLoc (locOf p <> locOf t) $ PAnnot p t
+      in ex <$> (pat <* rsvp ":") <*> term
 
-    patParens <- rule $
-      let ex (p, l) = PLoc l $ PParen p
-      in ex <$> parens (patType <|> patCon1)
+    patView <- rule $
+      let ex t p = PLoc (locOf t <> locOf p) $ PView t p
+      in ex <$> (term <* rsvp "@") <*> pat
 
-    patType <- rule $
-      let ex p t = PLoc (locPat p <> locTerm t) $ PHint t p
-      in ex <$> (patCon0 <|> pat) <*> (rsvp ":" *> term)
+
+-- -----------------------------------------------------------------------------
+-- Branch Rules
+
+    branches <- rule $ block branch
+
+    branch <- rule $
+      let ex p t = (p, t)
+      in ex <$> (pat <* rsvp "->") <*> term
+
+
+ -- -----------------------------------------------------------------------------
+-- Structured Type Rules
+
+    dataDef <- rule $
+      let
+        ex (n, l) cs = fromTStruct $ DataS n cs
+      in
+        ex <$> (rsvp "type" *> conId)
+           <*> (rsvp "=" *> constrs)
+
+    constrs <- rule $
+      sep (rsvp "|") constr
+
+    constr <- rule $
+      let ex (n, _) ts = Constr n $ foldr (TPi . PAnnot PWild) TWild ts
+      in ex <$> conId <*> many term   
 
 
 {-

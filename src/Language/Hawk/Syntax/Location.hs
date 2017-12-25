@@ -11,6 +11,7 @@ import Control.Lens
 import Data.Aeson
 import Data.Binary
 import Data.Data
+import Data.Foldable
 import Data.Monoid
 import Data.Text (pack)
 import GHC.Generics (Generic)
@@ -69,6 +70,13 @@ makeClassy ''Position
 -- -----------------------------------------------------------------------------
 -- Classy Instances  
 
+class Locatable a where
+    locOf :: a -> Loc
+
+-- Location can be taken from any foldable functor
+instance {-# OVERLAPPABLE #-} (Foldable f, Functor f, Locatable a) => Locatable (f a) where
+    locOf = fold . fmap locOf
+
 instance HasRegion Loc where
     region = locReg . region
 
@@ -76,7 +84,7 @@ instance HasRegion Loc where
 
 -- -----------------------------------------------------------------------------
 -- Helpers
-    
+
 mkRegion :: HasPosition a => a -> a -> Region
 mkRegion start end = R (start^.position) (end^.position)
 

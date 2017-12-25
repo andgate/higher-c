@@ -13,7 +13,6 @@ import Language.Hawk.Syntax.Fixity
 import Language.Hawk.Syntax.Foreign
 import Language.Hawk.Syntax.Function
 import Language.Hawk.Syntax.Signature
-import Language.Hawk.Syntax.DataS
 
 import qualified Text.PrettyPrint.Leijen.Text as PP
 
