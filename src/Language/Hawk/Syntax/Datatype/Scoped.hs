@@ -20,17 +20,16 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 
 ------------------------------------------------------------------------
 -- Type Structure
-data DataS t v
-    = DataS { _dsName :: Text
-            , _dsCons  :: [Constr (TeleScope t v)]
-            }
-  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
+data Datatype t v = DataS
+  { _dsName :: Text
+  , _dsCons  :: [Constr (TeleScope t v)]
+  } deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 
-data Constr term
-  = Constr { _constrName :: Text
-           , _constrType :: term
-           }
+data Constr term = Constr
+  { _constrName :: Text
+  , _constrType :: term
+  }
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 
@@ -39,7 +38,7 @@ data Constr term
 
 
 -- Pretty Printing
-instance (PP.Pretty (t v)) => PP.Pretty (DataS t v) where
+instance (PP.Pretty (t v)) => PP.Pretty (Datatype t v) where
     pretty (DataS n cs) =
       undefined
 

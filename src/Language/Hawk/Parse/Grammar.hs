@@ -2,6 +2,7 @@
            , RankNTypes
            , OverloadedStrings
            , FlexibleContexts
+           , TupleSections
   #-}
 module Language.Hawk.Parse.Grammar where
 
@@ -12,8 +13,9 @@ import Data.Text (Text, pack)
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Lex.Token (Token)
 import Language.Hawk.Syntax
-import Language.Hawk.Syntax.Term.Source
+import Language.Hawk.Syntax.Definition.Source
 import Language.Hawk.Syntax.Pattern.Source
+import Language.Hawk.Syntax.Term.Source
 import Text.Earley
 import Text.Earley.Mixfix
 
@@ -22,12 +24,12 @@ import Text.Earley.Mixfix
 -- Types Required by Grammar
 
 type SourcePat = Pat (Term Text) Text
-type SourceImage = Image Term Text SourcePat
+type SourceLib = Lib Term Text
 
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-toplevel :: Grammar r (Prod r Token Token SourceImage)
+toplevel :: Grammar r (Prod r Token Token SourceLib)
 toplevel = mdo
 
 
@@ -66,7 +68,7 @@ toplevel = mdo
          <*> (varId <|> conId <|> opId)
 
     forgnType <- rule $
-      rsvp "ccall" *> pure ForeignC
+      ForeignC <$ rsvp "ccall"
 
 
 -- -----------------------------------------------------------------------------
@@ -81,19 +83,19 @@ toplevel = mdo
       infixL <|> infixR <|> infixN <|> prefix <|> postfix
 
     infixL <- rule $
-      rsvp "infixl" *> pure InfixL
-      
+      InfixL <$ rsvp "infixl"
+
     infixR <- rule $
-      rsvp "infixr" *> pure InfixR
-      
+      InfixR <$ rsvp "infixr" 
+
     infixN <- rule $
-      rsvp "infix" *> pure InfixN
+      InfixN <$ rsvp "infix" 
 
     prefix <- rule $
-      rsvp "prefix" *> pure Prefix
+      Prefix <$ rsvp "prefix" 
 
     postfix <- rule $
-      rsvp "postfix" *> pure Postfix
+      Postfix <$ rsvp "postfix" 
 
 
 -- -----------------------------------------------------------------------------

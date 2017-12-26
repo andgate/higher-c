@@ -87,6 +87,7 @@ library:
     - monad-gen
     - mono-traversable
     - mtl
+    - multimap
     - primitive
     - reducers
     - resourcet
@@ -154,6 +155,7 @@ library:
 
     - Language.Hawk.Syntax
     - Language.Hawk.Syntax.Branch
+    - Language.Hawk.Syntax.Class
     - Language.Hawk.Syntax.Datatype.Scoped
     - Language.Hawk.Syntax.Datatype.Source
     - Language.Hawk.Syntax.Definition
@@ -161,7 +163,6 @@ library:
     - Language.Hawk.Syntax.Definition.Source
     - Language.Hawk.Syntax.Fixity
     - Language.Hawk.Syntax.Foreign
-    - Language.Hawk.Syntax.Function
     - Language.Hawk.Syntax.GlobalBind
     - Language.Hawk.Syntax.Location
     - Language.Hawk.Syntax.Name

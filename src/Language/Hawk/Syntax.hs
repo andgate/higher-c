@@ -4,6 +4,7 @@ module Language.Hawk.Syntax
   ) where
 
 import Language.Hawk.Syntax.Branch        as X
+import Language.Hawk.Syntax.Class         as X
 import Language.Hawk.Syntax.Fixity        as X
 import Language.Hawk.Syntax.Foreign       as X
 import Language.Hawk.Syntax.GlobalBind    as X

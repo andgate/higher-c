@@ -35,10 +35,12 @@ import qualified Data.HashSet as HashSet
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as Text
-import qualified Language.Hawk.Syntax.Term.Source       as Source
-import qualified Language.Hawk.Syntax.Definition.Source as Source
-import qualified Language.Hawk.Syntax.Term.Scoped       as Scoped
-import qualified Language.Hawk.Syntax.Definition.Scoped as Scoped
+import qualified Language.Hawk.Syntax.Datatype.Scoped     as Scoped
+import qualified Language.Hawk.Syntax.Datatype.Source     as Source
+import qualified Language.Hawk.Syntax.Definition.Scoped   as Scoped
+import qualified Language.Hawk.Syntax.Definition.Source   as Source
+import qualified Language.Hawk.Syntax.Term.Scoped         as Scoped
+import qualified Language.Hawk.Syntax.Term.Source         as Source
 
 
 -----------------------------------------------------------------------
@@ -47,6 +49,12 @@ import qualified Language.Hawk.Syntax.Definition.Scoped as Scoped
 type ScEnv = ( Loc            -- Last location above current position
              , HashSet Text   -- Set of valid names
              )
+
+type SourceLib = Source.Lib Source.Term Text
+type ScopedLib = Source.Lib Scoped.Term Text
+
+type SourceDef = Source.Def SourceTerm
+type ScopedDef = Source.Def ScopedTerm 
 
 type SourceTerm = Source.Term Text
 type SourceType = SourceTerm
@@ -57,20 +65,9 @@ type ScopedType       = ScopedTerm
 type PatScopedTerm    = PatScope Scoped.Term Text
 type ScopedPat        = Pat ScopedTerm Text
 
-type SourceImage = Image Source.Term Text SourcePat
-type ScopedImage = Image Scoped.Term Text ScopedPat
 
-
-type SourceFn = Fn SourceTerm SourcePat
-type ScopedFn = Fn ScopedTerm ScopedPat
-
-
-type SourceSig = Sig SourceTerm
-type ScopedSig = Sig ScopedTerm
-
-
-type SourceDataS = DataS Source.Term Text
-type ScopedDataS = DataS Scoped.Term Text
+type SourceDatatype = Source.Datatype Source.Term Text
+type ScopedDatatype = Scoped.Datatype Scoped.Term Text
 
 type SourceForeign = Foreign SourceTerm
 type ScopedForeign = Foreign ScopedTerm
@@ -83,7 +80,7 @@ scopecheck
   :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
      , MonadChronicle (Bag e) m, AsScErr e
      )
-  => SourceImage -> m ScopedImage 
+  => SourceLib -> m ScopedLib
 scopecheck img = do
   {-
   let tns1 = Set.map readName $ Set.fromList (img^..imgFns.traversed.fnName)
@@ -108,33 +105,12 @@ scopecheck img = do
 -----------------------------------------------------------------------
 -- Scope Checking on Definitions
 
-scopecheckFn
-  :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
-     , MonadChronicle (Bag e) m, AsScErr e
-     )
-  => SourceFn -> m ScopedFn
-scopecheckFn (Fn {}) =
-  undefined
-{-
-  void $ namecheckTerm (env', locTerm t) t
-  where env' = Env.insertTerms env (concatMap patNames xs)
--}
-
-scopecheckSig
-  :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
-     , MonadChronicle (Bag e) m, AsScErr e )
-  => SourceSig -> m ScopedSig
-scopecheckSig (Sig {}) =
-  undefined
-{-
-  void $ namecheckTerm (env, locTerm t) t
--}
-
 scopecheckStruct
   :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
-      , MonadChronicle (Bag e) m, AsScErr e )
-  => SourceDataS -> m ScopedDataS
-scopecheckStruct (DataS {}) = 
+     , MonadChronicle (Bag e) m, AsScErr e 
+     )
+  => SourceDatatype -> m ScopedDatatype
+scopecheckStruct Source.Datatype{} = 
   undefined
 {-
   mapM_ (namecheckTCon env') cs
@@ -145,7 +121,7 @@ scopecheckFixity
   :: ( MonadLog (WithSeverity msg) m, AsScMsg msg
      , MonadChronicle (Bag e) m, AsScErr e )
   => Fixity -> m Fixity
-scopecheckFixity (Fixity {}) =
+scopecheckFixity Fixity {} =
   undefined
 {-
   forM_ ops $ \(L l n) ->
