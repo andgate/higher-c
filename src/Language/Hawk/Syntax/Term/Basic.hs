@@ -52,7 +52,7 @@ data Term v
   | TDup  (Term v)
   | TFree [Term v] (Term v)
 
-  | TAnnot (Term v) (Type v)
+  | TAnnot (Term v) (Type v) -- Shouldn't types disappear after type checking?
   deriving(Foldable, Functor, Traversable)
 
 

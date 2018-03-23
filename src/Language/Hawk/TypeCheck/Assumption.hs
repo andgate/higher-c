@@ -4,7 +4,7 @@ import Prelude hiding (lookup)
 
 import Data.Text (Text)
 
-import Language.Hawk.Syntax.Scope.Term
+import Language.Hawk.Syntax.Term.Scoped
 
 
 newtype Assumption = Assumption { assumptions ::[(Text, Term ())] }

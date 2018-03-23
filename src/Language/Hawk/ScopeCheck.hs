@@ -167,7 +167,7 @@ scopecheckTerm = \case
   Source.TLam _ _ -> undefined
 
   Source.TLet ds e -> do
-    ds' <- traverse (bitraverse pure scopecheckDef) ds
+    ds' <- traverse scopecheckDef ds
     e' <- scopecheckTerm e
     return $ error "let scoping is unimplemented"
 

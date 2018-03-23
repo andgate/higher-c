@@ -21,8 +21,6 @@
   #-}
 module Language.Hawk.Parse where
 
-import Prelude hiding (lex)
-
 import Control.Lens
 import Control.Lens.Internal.Zoom
 import Control.Monad (mapM, (<=<))
@@ -50,6 +48,8 @@ import Language.Hawk.Parse.Error
 import Language.Hawk.Parse.Grammar
 import Language.Hawk.Parse.Message
 import Language.Hawk.Syntax
+import Language.Hawk.Syntax.Definition.Source
+import Language.Hawk.Syntax.Term.Source
 
 import qualified Data.List.NonEmpty             as NE
 import qualified Data.Map.Strict                as Map
@@ -62,7 +62,7 @@ import qualified Text.Earley                    as E
 
 parseMany :: ( MonadChronicle (Bag e) m, AsPsErr e
              , MonadLog (WithSeverity msg) m, AsPsMsg msg )
-          => LxResult -> m Image
+          => LxResult -> m (Lib Term Text)
 parseMany r = do
   let toks = LxR.toList r
       f (fp, toks) = do
@@ -75,7 +75,7 @@ parseMany r = do
 
 
 parse :: ( MonadChronicle (Bag e) m, AsPsErr e )
-         => FilePath -> [Token] -> m Image
+         => FilePath -> [Token] -> m (Lib Term Text)
 parse fp toks = do
   let rs = E.fullParses (E.parser toplevel) toks
   handleParser rs
@@ -87,5 +87,5 @@ parse fp toks = do
         [p] -> return p
                    
         -- This will only happen if the grammar is wrong
-        ps -> disclose $ One (_AmbiguousGrammar # ps)
+        ps -> disclose $ One (_AmbiguousGrammar # () )
 

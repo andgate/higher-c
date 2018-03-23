@@ -32,7 +32,8 @@ rsvp =
 prim :: Text -> Prod r e Token (Token, Loc)
 prim =
   match . TokenPrim
-  
+
+
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Name Tokens
 
@@ -66,8 +67,10 @@ primText = unsafeExtract <$> satisfy p
     p _                         = False
     unsafeExtract (Token (TokenPrim n) _ l) = (n, l)
 
+
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Literal Tokens
+
 intLit :: Prod r e Token (Integer, Loc)
 intLit = unsafeExtract <$> satisfy p
   where

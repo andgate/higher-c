@@ -7,6 +7,7 @@ import qualified Text.PrettyPrint.Leijen.Text as PP
 
 
 -- Defines which memory context a term's subverse is in
+-- Can either be Intuitionistic or Linear
 data Subterm = TIn | TLin
   deriving (Eq, Ord, Read, Show)
 

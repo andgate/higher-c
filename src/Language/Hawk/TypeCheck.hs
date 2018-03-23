@@ -14,6 +14,19 @@
   #-}
 module Language.Hawk.TypeCheck where
 
+import Control.Monad.Chronicle
+import Control.Monad.Chronicle.Extra
+import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Log
+import Control.Monad.Reader
+import Control.Monad.State (MonadState)
+import Control.Monad.Trans.Control
+
+import Language.Hawk.TypeCheck.Environment (Env)
+import Language.Hawk.TypeCheck.Error
+import Language.Hawk.TypeCheck.Message
+import Language.Hawk.TypeCheck.State
+
 import Language.Hawk.Syntax
 
 -----------------------------------------------------------------------

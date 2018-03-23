@@ -128,9 +128,17 @@ icmp pred a b = emitInstr i1 $ ICmp pred a b []
 fcmp :: MonadIRBuilder m => FP.FloatingPointPredicate -> Operand -> Operand -> m Operand
 fcmp pred a b = emitInstr i1 $ FCmp pred a b []
 
--- | Unconditional branch
+-- | Control Flow
+
+-- Unconditional Branching
 br :: MonadIRBuilder m => Name -> m ()
 br val = emitTerm (Br val [])
+
+
+-- Conditional Branching
+condBr :: MonadIRBuilder m => Operand -> Name -> Name -> m ()
+condBr cond tdest fdest = emitTerm $ CondBr cond tdest fdest []
+
 
 phi :: MonadIRBuilder m => [(Operand, Name)] -> m Operand
 phi [] = emitInstr AST.void $ Phi AST.void [] []
@@ -166,9 +174,6 @@ switch val def dests = emitTerm $ Switch val def dests []
 
 select :: MonadIRBuilder m => Operand -> Operand -> Operand -> m Operand
 select cond t f = emitInstr (typeOf t) $ Select cond t f []
-
-condBr :: MonadIRBuilder m => Operand -> Name -> Name -> m ()
-condBr cond tdest fdest = emitTerm $ CondBr cond tdest fdest []
 
 unreachable :: MonadIRBuilder m => m ()
 unreachable = emitTerm $ Unreachable []

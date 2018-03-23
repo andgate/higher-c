@@ -22,8 +22,9 @@ import Language.Hawk.Syntax.Pattern.Source
 import Language.Hawk.Syntax.Prim
 import Language.Hawk.Syntax.Subterm
 
-import qualified Text.PrettyPrint.Leijen.Text as PP
-import qualified Data.Set as Set
+import qualified Text.PrettyPrint.Leijen.Text   as PP
+import qualified Data.List.NonEmpty             as NE
+import qualified Data.Set                       as Set
 
 
 -- -----------------------------------------------------------------------------
@@ -45,7 +46,7 @@ data Term v
   | TPi   (Pat (Type v) v) (Term v)   -- Regular pi, or arrow
   | TLPi  (Pat (Type v) v) (Term v)   -- Linear pi, or lolipop
   
-  | TLet  [(Loc, Def (Term v))] (Term v)
+  | TLet  (NonEmpty (Def (Term v))) (Term v)
   | TCase  (Term v) [(Pat (Term v) v, Term v)]
   
   | TDup  v
@@ -113,7 +114,7 @@ instance (PP.Pretty v) => PP.Pretty (Term v) where
       TLet xs e ->
         PP.textStrict "let"
           PP.<$>
-          PP.indent 2 ( PP.vsep $ (PP.pretty . snd) <$> xs )
+          PP.indent 2 ( PP.vsep $ PP.pretty <$> NE.toList xs )
           PP.<$>
           PP.textStrict  "in" PP.<> PP.indent 2 (PP.pretty e)
       
