@@ -1,0 +1,85 @@
+{-# LANGUAGE  FlexibleInstances
+            , FlexibleContexts
+            , MultiParamTypeClasses
+            , UndecidableInstances
+            , TypeFamilies
+  #-}
+module Control.Monad.Chronicle.Extra where
+
+import Control.Monad.Base
+import Control.Monad.Chronicle
+import Control.Monad.Catch
+--import Control.Monad.Log
+import Control.Monad.Trans.Control
+--import Control.Monad.Trans.Either (EitherT(..), eitherT)
+import Data.Bag
+import Data.Default.Class
+import Data.Semigroup
+import Data.These
+
+
+-------------------------------------------------------------------------------
+-- Helpers
+
+--discloseNow :: (MonadChronicle (Bag (WithTimestamp c)) m  -- Is there a better way to handle semigroup?
+--               , MonadIO m, Default a
+--               ) => c -> m a
+--discloseNow c = do
+--    c' <- timestamp c
+--    disclose (One c')
+
+
+--confessNow :: (MonadChronicle (Bag (WithTimestamp c)) m  -- Is there a better way to handle semigroup?
+--              , MonadIO m
+--              ) => c -> m a
+--confessNow c = do
+--    c' <- timestamp c
+--    confess (One c')
+
+
+conceal :: (MonadChronicle (Bag c) m  -- Is there a better way to handle semigroup?
+           , MonadIO m, Default a
+           ) => m a -> m a
+conceal =
+  eitherT disclose return . EitherT . memento
+
+
+-------------------------------------------------------------------------------
+-- Extra instances
+
+{-
+instance MonadChronicle c m => MonadChronicle c (LoggingT msg m) where
+    dictate = lift . dictate
+    confess = lift . confess
+    memento (LoggingT m) = LoggingT $ memento m
+    absolve x (LoggingT m) = LoggingT $ absolve x m
+    condemn (LoggingT m) = LoggingT $ condemn m
+    retcon f (LoggingT m) = LoggingT $ retcon f m
+    chronicle = lift . chronicle
+
+instance (Semigroup c, MonadLog msg m) => MonadLog msg (ChronicleT c m)
+-}
+instance (Semigroup c, MonadThrow m) => MonadThrow (ChronicleT c m) where
+    throwM e = lift $ throwM e
+
+instance (Semigroup c, MonadCatch m) => MonadCatch (ChronicleT c m) where
+    catch (ChronicleT m) h = ChronicleT $ m `catch` (\e -> runChronicleT (h e))
+
+
+instance (Semigroup c) => MonadTransControl (ChronicleT c) where
+    type StT (ChronicleT c) a = These c a
+    liftWith f = ChronicleT $ liftM return $ f runChronicleT
+    restoreT = ChronicleT
+    {-# INLINABLE liftWith #-}
+    {-# INLINABLE restoreT #-}
+
+instance (Semigroup c, MonadBaseControl b m) => MonadBaseControl b (ChronicleT c m) where
+    type StM (ChronicleT c m) a = ComposeSt (ChronicleT c) m a
+    liftBaseWith = defaultLiftBaseWith
+    restoreM = defaultRestoreM
+    {-# INLINABLE liftBaseWith #-}
+    {-# INLINABLE restoreM #-}
+
+instance (Semigroup c, MonadBase b m) => MonadBase b (ChronicleT c m) where
+    liftBase = lift . liftBase
+    {-# INLINABLE liftBase #-}
