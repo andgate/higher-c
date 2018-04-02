@@ -11,9 +11,11 @@ import Data.Bifunctor
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Monoid
 import Data.Text (Text, pack)
+
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Lex.Token (Token)
-import Language.Hawk.Syntax
+import Language.Hawk.Syntax.Source
+
 import Text.Earley
 import Text.Earley.Mixfix
 
@@ -21,37 +23,32 @@ import qualified Data.List.NonEmpty as NE
 
 
 -- -----------------------------------------------------------------------------
--- Types Required by Grammar
-
-type SourcePat = Pat (Term Text) Text
-type SourceLib = Lib Term Text
-
-
--- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-toplevel :: Grammar r (Prod r Token Token SourceLib)
+toplevel :: Grammar r (Prod r Token Token TopLevelDef)
 toplevel = mdo
 
 
 -- -----------------------------------------------------------------------------
 -- Declaration Rules
     
-    result <- rule $ linefold $
-          (fromDef <$> def)
-      <|> sig
+    topLevelDef <- rule $ linefold $
+          (TopLevelDef <$> def)
+      <|> sigDef
       <|> dataDef
-      <|> forgn
-      <|> fixity
+      <|> forgnDef
+      <|> fixityDef
 
 -- -----------------------------------------------------------------------------
 -- Foreign Rules
+
+    forgnDef <- rule $
+      TopLevelForeignDef <$> forgn
 
     forgn <- rule $
       rsvp "foreign" *> forgn'
 
     forgn' <- rule $
-      fromForeign <$>
-        (forgnImport <|> forgnExport)
+      forgnImport <|> forgnExport
 
     forgnImport <- rule $
       let ex ft (srcN, l1) (hkN, l2) ty
@@ -74,8 +71,11 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Fixity Rules
 
+    fixityDef <- rule $
+      TopLevelFixityDef <$> fixity
+
     fixity <- rule $
-      let ex fx (p, l) ops = fromFixity $
+      let ex fx (p, l) ops =
             Fixity fx (L l $ fromIntegral p) (wrapL <$> ops)
       in ex <$> fixityKind <*> intLit <*> some opId
 
@@ -101,8 +101,11 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Type Signature Declaration Rules
 
+    sigDef <- rule $
+      TopLevelSig <$> sig
+
     sig <- rule $
-      let ex (n, _) t = fromSig (n,t)
+      let ex (n, _) t = Sig n t
       in ex <$> (varId <|> parensLoc (fst <$> opId))
             <*> (rsvp ":" *> term)
 
@@ -111,21 +114,21 @@ toplevel = mdo
 -- Definition Declaration Rules
 
     def <- rule $
-      let ex (n, _) c = Def n (c:|[]) Nothing
+      let ex (n, _) c = Def n c
       in ex <$> varId <*> clause
 
     clause <- rule $
-      Clause <$> many pat <*> (rsvp "=" *> term)
+      Clause <$> many ((,) Explicit <$> pat) <*> (rsvp "=" *> term)
 
 
 -- -----------------------------------------------------------------------------
 -- Literal Rules
 
-    lit <- rule $
-            ( first IntLit <$> intLit )
-        <|> ( first FloatLit <$> floatLit )
-        <|> ( first CharLit <$> charLit )
-        <|> ( first BoolLit <$> boolLit )
+    val <- rule $
+            ( first VInt <$> intLit )
+        <|> ( first VFloat <$> floatLit )
+        <|> ( first VChar <$> charLit )
+        <|> ( first VBool <$> boolLit )
 
 -- -----------------------------------------------------------------------------
 -- Type Rules
@@ -201,13 +204,7 @@ toplevel = mdo
     term <- rule dterm
 
     eterm <- rule $
-      let ex1 a@(PLoc l1 _) b@(TLoc l2 _) =
-            TLoc (l1<>l2) $ TPi a b
-          ex2 a@(PLoc l1 _) b@(TLoc l2 _) =
-            TLoc (l1<>l2) $ TLPi a b
-      in
-          (ex1 <$> pat <*> (rsvp "->" *> term))
-      <|> (ex2 <$> pat <*> (rsvp "-o" *> term))
+          termPi <|> termLPi
       <|> dterm
 
     dterm <- rule $
@@ -224,7 +221,7 @@ toplevel = mdo
 
     bterm <- rule $
       let ex f x = let l = locOf f <> locOf x
-                   in  TLoc l $ TApp f x
+                   in  TLoc l $ TApp f Explicit x
       in     (ex <$> bterm <*> aterm)
          <|> aterm
 
@@ -236,8 +233,22 @@ toplevel = mdo
       <|> termDup
       <|> termOp
       <|> termPrim
-      <|> termLit
+      <|> termVal
 
+    termPi <- rule $
+      let ex (_,l1) a b@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TPi Explicit a b
+      in ex <$> rsvp "forall" <*> pat <*> (rsvp "." *> eterm)
+
+    termLPi <- rule $
+      let ex (_,l1) a b@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TLPi Explicit a b
+      in ex <$> rsvp "forall" <*> pat <*> (rsvp "-o" *> eterm)
+
+    termLam <- rule $
+      let ex (_,l1) a b@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TLam Explicit a b
+      in ex <$> rsvp "\\" <*> pat <*> (rsvp "->" *> term)
 
     termVar <- rule $
       let ex (v, l) = TLoc l $ TVar v
@@ -248,9 +259,9 @@ toplevel = mdo
       in ex <$> opId
 
 
-    termLit <- rule $
-      let ex (lit, l) = TLoc l $ TLit lit
-      in ex <$> lit
+    termVal <- rule $
+      let ex (v, l) = TLoc l $ TVal v
+      in ex <$> val
 
 
     termCon <- rule $
@@ -295,7 +306,7 @@ toplevel = mdo
     termSub <- rule $
       let
         ex t (st, l)
-          = TLoc (l<>locOf t) $ TSub st t
+          = TLoc (l<>locOf t) $ TSub t st
       in
         ex <$> term <*> (rsvp "?" *> subtype)
 
@@ -332,8 +343,7 @@ toplevel = mdo
     apat <- rule $
           patVar
       <|> patWild
-      <|> patLit
-      <|> patCon
+      <|> patVal
       <|> parens pat
 
     patVar <- rule $
@@ -344,17 +354,17 @@ toplevel = mdo
       let ex (_, l) = PLoc l PWild
       in ex <$> rsvp "_"
 
-    patLit <- rule $
-      let ex (lit, l) = PLoc l $ PLit lit
-      in ex <$> lit
+    patVal <- rule $
+      let ex (v, l) = PLoc l $ PVal v
+      in ex <$> val
 
     patCon <- rule $
-      let ex (n, l) = PLoc l $ PCon n []
+      let ex (n, l) args = PLoc l $ PCon n []     
       in ex <$> conId
 
     patConPats <- rule $
       let ex (n, l) ps = PLoc (l <> locOf ps) $ PCon n ps
-      in ex <$> conId <*> many pat
+      in ex <$> conId <*> many ((,) Explicit <$> pat)
 
     patAnnot <- rule $
       let ex p t = PLoc (locOf p <> locOf t) $ PAnnot p t
@@ -363,7 +373,6 @@ toplevel = mdo
     patView <- rule $
       let ex t p = PLoc (locOf t <> locOf p) $ PView t p
       in ex <$> (term <* rsvp "@") <*> pat
-
 
 -- -----------------------------------------------------------------------------
 -- Branch Rules
@@ -379,8 +388,23 @@ toplevel = mdo
 -- Structured Type Rules
 
     dataDef <- rule $
+      TopLevelDataDef <$> (dataDef' <|> dataDefAdt)
+
+
+    dataDefAdt <- rule $
       let
-        ex (n, l) cs = fromDatatype $ Datatype n [] cs
+        ex (n, l) cs = DataDef n [] cs
+      in
+        ex <$> (rsvp "type" *> conId)
+           <*> (rsvp "where" *> block constr)
+
+    adtConstr <- rule $
+      let ex (n, _) ts = ConstrDef n $ foldr (TPi Explicit . PAnnot PWild) TWild ts
+      in ex <$> conId <* rsvp ":" <*> many term
+
+    dataDef' <- rule $
+      let
+        ex (n, l) cs = DataDef n [] cs
       in
         ex <$> (rsvp "type" *> conId)
            <*> (rsvp "=" *> constrs)
@@ -389,8 +413,8 @@ toplevel = mdo
       sep (rsvp "|") constr
 
     constr <- rule $
-      let ex (n, _) ts = Constr n $ foldr (TPi . PAnnot PWild) TWild ts
-      in ex <$> conId <*> many term   
+      let ex (n, _) ts = ConstrDef n $ foldr (TPi Explicit . PAnnot PWild) TWild ts
+      in ex <$> conId <*> many term
 
 
 {-
@@ -422,4 +446,4 @@ toplevel = mdo
         <*> (rsvp ":" *> block fun')
 -}
 
-    return result
+    return topLevelDef

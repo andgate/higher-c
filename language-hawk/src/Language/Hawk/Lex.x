@@ -85,6 +85,7 @@ hawk :-
 
   \_                              { rsvp }
   \|                              { rsvp }
+  \.                              { rsvp }
   \,                              { rsvp }
   \(                              { rsvp }
   \)                              { rsvp }
@@ -116,6 +117,7 @@ hawk :-
   "class"                         { rsvp }  
   "inst"                          { rsvp }
 
+  "forall"                        { rsvp }
   "do"                            { rsvp }
   "where"                         { rsvp }
   "free"                          { rsvp }
