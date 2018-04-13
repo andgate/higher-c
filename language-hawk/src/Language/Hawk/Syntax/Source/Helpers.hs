@@ -2,7 +2,7 @@ module Language.Hawk.Syntax.Source.Helpers where
 
 import Language.Hawk.Syntax.Source
 
-
+{-
 
 explicitLam :: Term -> Term -> Term
 explicitLam = plicitLam Explicit
@@ -38,3 +38,5 @@ explicitLPi = plicitLPi Explicit
 
 plicitLPi :: Plicity -> Type -> Type -> Type
 plicitLPi p arg ret = TLPi p (PAnno PWild arg) ret
+
+-}

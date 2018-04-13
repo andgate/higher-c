@@ -33,6 +33,7 @@ data TokenClass
   | TokenPrim Text
 
   | TokenVarId Text
+  | TokenDupId Text
   | TokenConId Text
   | TokenOpId Text
   

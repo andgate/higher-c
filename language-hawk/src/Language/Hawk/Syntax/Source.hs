@@ -42,11 +42,11 @@ data Def
   deriving (Show)
 
 data Clause
-  = Clause [(Plicity, Pat)] Term
+  = Clause [Pat] Exp
   deriving (Show)
 
 data Sig
-  = Sig Text Type
+  = Sig Text QType
   deriving (Show)
 
 
@@ -55,7 +55,7 @@ data Sig
 -- Data Definition
 
 data DataDef
-  = DataDef Text [(Plicity, Text, Type)] [ConstrDef]
+  = DataDef Text [(Text, Type)] [ConstrDef]
   deriving (Show)
 
 
@@ -68,11 +68,11 @@ data ConstrDef
 -- | Class Definition
 
 data ClassDef
-  = ClassDef Text [(Plicity, Text, Type)] [MethodDef]
+  = ClassDef Text [(Text, Type)] [MethodDef]
   deriving (Show)
 
 data MethodDef
-  = MethodDef Loc Text Term
+  = MethodDef Loc Text Exp
   deriving (Show)
 
 
@@ -116,54 +116,81 @@ data ForeignType =
 
 
 -- -----------------------------------------------------------------------------
--- | Terms
+-- | Expressions
 
--- | Plicitness of terms and patterns
-data Plicity
-  = Implicit | Explicit | Constraint
-  deriving (Eq, Ord, Show)
+data Exp
+  = EVar  Text
+  | EDup  Text
+  | EVal  Value
+  | EOp   Text
 
+  | ECon  Text
+  | EPrim PrimInstr Exp Exp
+  
+  | EApp  Exp Exp
+  | ELam  Pat Exp
 
--- Dependent Term
-data Term
-  = TVar  Text
-  | TVal  Value
-  
-  | TCon  Text
-  | TPrim PrimInstr Term Term
-  
-  | TApp  Term Plicity Term
-  | TLam  Plicity Pat Term
-
-  | TPi   Plicity Pat Term   -- Regular pi, or arrow
-  | TLPi  Plicity Pat Term   -- Linear pi, or lolipop
-  
-  | TLet  (NonEmpty Def) Term
-  | TCase Term [(Pat, Term)]
-  
-  | TDup  Text
+  | ELet  (NonEmpty Def) Exp
+  | ECase Exp [(Loc, Pat, Exp)]
 
   -- Annotations
-  | TLoc   Loc Term
-  | TParen Term
+  | EType  Exp Type
+  | ELoc   Loc Exp
+  | EParen Exp
+  | EWild
+  deriving (Show)
+
+
+-- -----------------------------------------------------------------------------
+-- | Type
+
+data Type
+  = TVar Text
+  | TCon Text
+  | TApp Type Type
+  | TArr Type Type
+  | TLoli Type Type
+  | TForall (NonEmpty Text) Type
+
+  -- Annotations
+  | TKind Type Kind
+  | TLoc Loc Type
+  | TParen Type
   | TWild
-  deriving(Show)
+  deriving (Show)
 
 
-type Type = Term
+data QType
+  = QType [Assert] Type
+  deriving Show
+
+data Assert
+  = IsIn Text [Type]
+  deriving Show
+
+-- -----------------------------------------------------------------------------
+-- | Kind
+
+data Kind
+  = KStar
+  | KArr Kind Kind
+  | KLoc Loc Kind
+  | KParen Kind
+  deriving (Show)
 
 
 -- -----------------------------------------------------------------------------
 -- | Patterns
 
 data Pat
-  = PVar NameHint Text
-  | PWild
+  = PVar Text
   | PVal Value
-  | PCon Text [(Plicity, Pat)]
-  | PAnno Pat Type
-  | PView Term Pat
+  | PAs Text Pat
+  | PCon Text [Pat]
+  | PType Pat Type
   | PLoc Loc Pat
+  | PParen Pat
+  | PWild
   deriving (Show)
 
 
@@ -186,22 +213,6 @@ pis :: [Pat (Type v) v] -> Term v -> Term v
 pis ps t = foldr TPi t ps
 -}
 
-
--- -----------------------------------------------------------------------------
--- | Locatable Instances
-
-instance {-# OVERLAPS #-} Locatable Term where
-  locOf = \case
-    TLoc l _  -> l
-    -- Ignores parens and others like lambda
-    _     -> error "No location found"
-
-
-instance Locatable Pat where
-  locOf = \case
-    PLoc l _ -> l
-    -- No other annotations compete with PLoc
-    _ -> error "Pattern does not have a location."
 
 -- -----------------------------------------------------------------------------
 -- | Pretty Instances
@@ -267,80 +278,95 @@ instance Pretty ForeignType where
     "ForeignC"
 
 
-instance Pretty Term where
+instance Pretty Exp where
     pretty = \case
-      TVar n      -> pretty n
-      TVal v      -> pretty v
+      EVar n      -> pretty n
+      EVal v      -> pretty v
+      EDup e      -> pretty e <> "!"
+      EOp op      -> pretty op
       
-      TCon n      -> pretty n
-      TPrim i a b -> pretty i <+> pretty a <+> pretty b
+      ECon n      -> pretty n
+      EPrim i a b -> pretty i <+> pretty a <+> pretty b
       
-      TApp e1 p e2  -> pretty e1 <+> pretty e2
-      TLam p pat e    ->
+      EApp e1 e2  -> pretty e1 <+> pretty e2
+      ELam pat e    ->
           "\\" <+> pretty pat
             <+> vsep [ "."
                      , indent 2 (pretty e)
                      ]
-
-      TPi p pat t    ->
-          parens (pretty pat)
-            <+> "->"
-            <+> pretty t
-
-      TLPi p pat t   ->
-          parens (pretty pat)
-            <+> "->"
-            <+> pretty t
       
-      TLet xs e ->
+      ELet xs e ->
         vsep  [ "let"
               , indent 2 ( vsep $ pretty <$> NE.toList xs )
               , "in" <> indent 2 (pretty e)
               ]
       
-      TCase e brs ->
+      ECase e brs ->
         vsep  [ "case" <+> pretty e <+> "of"
               , indent 2 $ vsep
                   [ pretty p <+> "->" <+> pretty br
-                    | (p, br) <- brs
+                    | (_, p, br) <- brs
                   ]
               ]
 
-      TDup e ->
-        "dup" <+> pretty e
+      EType e t -> pretty e <+> ":" <+> pretty t
+      ELoc _ e  -> pretty e -- ignore location
+      EParen e  -> parens $ pretty e
+      EWild     -> "_"
+
+
+instance Pretty Type where
+    pretty = \case
+      TVar n      -> pretty n
+      TCon n      -> pretty n
       
-      TLoc _ e  -> pretty e -- ignore location
+      TApp t1 t2  -> pretty t1 <+> pretty t2
+      TArr t1 t2  -> pretty t1 <+> "->" <+> pretty t2
+      TLoli t1 t2  -> pretty t1 <+> "-o" <+> pretty t2
+      
+      TForall xs t -> "forall" <+> hsep (pretty <$> NE.toList xs) <+> "." <+> pretty t
+
+      TKind t k -> pretty t <+> ":" <+> pretty k
+      TLoc _ t  -> pretty t -- ignore location
       TParen t  -> parens $ pretty t
       TWild     -> "_"
 
 
+instance Pretty QType where
+  pretty (QType as t) =
+     tupled (pretty <$> as) <+> "=>" <+> pretty t
+
+instance Pretty Assert where
+  pretty (IsIn n tys) =
+     pretty n <+> hsep (pretty <$> tys)
+
+
+instance Pretty Kind where
+    pretty = \case
+      KStar       -> "*"
+      KArr k1 k2  -> pretty k1 <+> "->" <+> pretty k2
+      KLoc _ k    -> pretty k -- ignore location
+      KParen k    -> parens $ pretty k
+
+
 instance Pretty Pat where
   pretty = \case
-    PVar h n ->
-      pretty n
+    PVar x -> pretty x
+    PVal v -> pretty v
 
-    PWild->
-      "_"
-    
-    PVal v ->
-      pretty v
+    PAs n p ->
+      pretty n <> "@" <> parens (pretty p)
 
     PCon c pats ->
-      pretty c <+> hsep [pretty p | (a, p) <- pats]
+      pretty c <+> hsep (pretty <$> pats)
 
-    PAnno p t ->
-      pretty p
-        <+> ":"
-        <+> pretty t
+    PType p t ->
+      pretty p <+> ":" <+> pretty t
 
-    PView n p ->
-      pretty n
-        <> "@"
-        <> pretty p
 
-    PLoc _ p ->
-      pretty p -- Usually best to hide locations
-
+    PLoc _ p -> pretty p -- omit location
+    PParen p  -> parens $ pretty p
+    PWild -> "_"
 
 instance Pretty Value where
   pretty = \case

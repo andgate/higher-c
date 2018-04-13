@@ -60,6 +60,7 @@ $whiteNoNewline = $white # \n
 -- Basic Ids
 @primid = \# $small+
 @varid = $small $idcharsym*
+@dupid = $small $idcharsym* \!
 @conid = $large $idcharsym*
 @opid  = $opchar+
 
@@ -133,7 +134,7 @@ hawk :-
   "of"                            { rsvp }
   
   @primid                         { \text -> yieldTokAt (TokenPrim text) text }
-
+  @dupid                          { \text -> yieldTokAt (TokenDupId text) text }
   @conid                          { \text -> yieldTokAt (TokenConId text) text }
   @varid                          { \text -> yieldTokAt (TokenVarId text) text }
   @opid                           { \text -> yieldTokAt (TokenOpId text) text }
