@@ -31,11 +31,11 @@ testLex :: Text -> IO [[Token]]
 testLex srcText = do
     case Hk.lex srcPath srcText of
         Left err   -> do
-            putDoc $ pretty err
+            putDoc $ pretty err <> line
             error "\nLexer encountered fatal error."
         
         Right srcToks -> do
-            putDoc $ pretty srcToks
+            putDoc $ vcat (pretty <$> srcToks) <> line
             return srcToks
 
 
@@ -43,11 +43,11 @@ testParse :: [[Token]] -> IO [TopLevelDef]
 testParse srcToks = do
     case partitionEithers (Hk.parse srcPath <$> srcToks) of
         ([], srcAst)   -> do
-            putDoc $ pretty srcAst
+            putDoc $ pretty srcAst <> line
             return srcAst
 
         (errs, _)   -> do
-            mapM_ putDoc (pretty <$> errs)
+            putDoc $ vcat (pretty <$> errs) <> line
             error "\nParser encountered fatal error."
 
     

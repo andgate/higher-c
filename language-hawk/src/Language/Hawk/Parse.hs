@@ -15,7 +15,7 @@ import Language.Hawk.Parse.Error
 import Language.Hawk.Parse.Grammar
 import Language.Hawk.Syntax.Source
 
-import qualified Text.Earley                    as E
+import qualified Text.Earley as E
 
 
 parse :: FilePath -> [Token] -> Either ParseError TopLevelDef

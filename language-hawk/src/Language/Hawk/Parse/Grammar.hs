@@ -15,6 +15,7 @@ import Data.Text (Text, pack)
 import Language.Hawk.Parse.Helpers
 import Language.Hawk.Lex.Token (Token)
 import Language.Hawk.Syntax.Source
+import Language.Hawk.Syntax.Source.Helpers
 
 import Text.Earley
 import Text.Earley.Mixfix
@@ -201,54 +202,32 @@ toplevel = mdo
 -- Expression Rules
 
     -- The expression precedence chain, starting at aexp as the base with the highest precedence.
-    term <- rule dterm
-
-    eterm <- rule $
-          termPi <|> termLPi
-      <|> dterm
-
-    dterm <- rule $
-          termAnnot
-      <|> cterm
-
-
-    cterm <- rule $
-          termFree
-      <|> termCase
-      <|> termLet
-      <|> bterm
-
-
-    bterm <- rule $
-      let ex f x = let l = locOf f <> locOf x
-                   in  TLoc l $ TApp f Explicit x
-      in     (ex <$> bterm <*> aterm)
-         <|> aterm
+    term <- rule $
+          termApp 
+      <|> termArr
+      <|> termLoli
+      <|> aterm
 
 
     aterm <- rule $
-          termParen
+          termVal
       <|> termVar
-      <|> termCon
-      <|> termDup
       <|> termOp
+      <|> termCon
       <|> termPrim
-      <|> termVal
+      <|> termLam
+      <|> termPi
+      -- <|> termLPi
+      <|> termLet
+      <|> termCase
+      <|> termDup
+      <|> termParen
+      <|> termWild
 
-    termPi <- rule $
-      let ex (_,l1) a b@(TLoc l2 _) =
-            TLoc (l1<>l2) $ TPi Explicit a b
-      in ex <$> rsvp "forall" <*> pat <*> (rsvp "." *> eterm)
 
-    termLPi <- rule $
-      let ex (_,l1) a b@(TLoc l2 _) =
-            TLoc (l1<>l2) $ TLPi Explicit a b
-      in ex <$> rsvp "forall" <*> pat <*> (rsvp "-o" *> eterm)
-
-    termLam <- rule $
-      let ex (_,l1) a b@(TLoc l2 _) =
-            TLoc (l1<>l2) $ TLam Explicit a b
-      in ex <$> rsvp "\\" <*> pat <*> (rsvp "->" *> term)
+    termVal <- rule $
+      let ex (v, l) = TLoc l $ TVal v
+      in ex <$> val
 
     termVar <- rule $
       let ex (v, l) = TLoc l $ TVar v
@@ -258,12 +237,6 @@ toplevel = mdo
       let ex (n, l) = TLoc l $ TVar n
       in ex <$> opId
 
-
-    termVal <- rule $
-      let ex (v, l) = TLoc l $ TVal v
-      in ex <$> val
-
-
     termCon <- rule $
       let ex (n, l) = TLoc l $ TCon n
       in ex <$> conId
@@ -272,55 +245,64 @@ toplevel = mdo
       let ex (txt, l1) a b = TLoc (l1 <> locOf b) $ TPrim (readPrim txt) a b
       in ex <$> primText <*> aterm <*> aterm
 
+    termApp <- rule $
+      let ex f x = let l = locOf f <> locOf x
+                   in  TLoc l $ TApp f Explicit x
+      in ex <$> term <*> aterm
+
+    termLam <- rule $
+      let ex (_,l1) arg ret@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TLam Explicit arg ret
+      in ex <$> rsvp "\\" <*> pat <*> (rsvp "->" *> term)
+
+    termPi <- rule $
+      let ex (_,l1) arg ret@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TPi Explicit arg ret
+      in ex <$> rsvp "forall" <*> pat <*> (rsvp "." *> term)
+
+    {-
+    
+    termLPi <- rule $
+      let ex (_,l1) arg ret@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TPi Explicit arg ret
+      in ex <$> rsvp "forall" <*> pat <*> (rsvp "." *> term)
+
+    termArr <- rule
+
+    -}
+
+    termArr <- rule $
+      let ex arg@(TLoc l1 _) ret@(TLoc l2 _)
+            = TLoc (l1<>l2) $ explicitPi arg ret
+      in (ex <$> term <*> (rsvp "->" *> aterm))
+         <|> aterm
+
+    termLoli <- rule $
+      let ex arg@(TLoc l1 _) ret@(TLoc l2 _)
+            = TLoc (l1<>l2) $ explicitLPi arg ret
+      in (ex <$> term <*> (rsvp "-o" *> aterm))
+         <|> aterm
 
     termLet <- rule $
       let ex (_,l1) ds t = TLoc (l1<>locOf t) $ TLet (NE.fromList ds) t
-      in ex <$> rsvp "let" <*> block def <* rsvp "in" <*> term
-
+      in ex <$> rsvp "let" <*> block def <*> (rsvp "in" *> term)
 
     termCase <- rule $
       let ex (_, l1) p brs = TLoc (l1<>locOf brs) $ TCase p brs
       in ex <$> rsvp "case" <*> term <*> (rsvp "of" *> branches)
 
-      
     termDup <- rule $
       let ex (_,l1) (n, l2) = TLoc (l1 <> l2) $ TDup n
       in ex <$> rsvp "dup" <*> varId
 
-    
-    termFree <- rule $
-      let
-        ex (_, l1) xs e@(TLoc l2 _)
-            = TLoc (l1<>l2) $ TFree (fst <$> xs) e
-      in
-        ex <$> rsvp "free" <*> some varId <*> (rsvp "in" *> term)
-
-
-    termAnnot <- rule $
-      let
-        ex e@(TLoc l1 _) ty@(TLoc l2 _)
-          = TLoc (l1<>l2) $ TAnnot e ty
-      in
-        ex <$> dterm <*> (rsvp ":" *> term)
-
-    termSub <- rule $
-      let
-        ex t (st, l)
-          = TLoc (l<>locOf t) $ TSub t st
-      in
-        ex <$> term <*> (rsvp "?" *> subtype)
-
-    subtype <- rule $ 
-      intuitive <|> linear
-
-    intuitive <- rule $
-      (TIn,) . snd <$> rsvp "*"
-
-    linear <- rule $
-      (TLin,) . snd <$> rsvp "o"
-      
     termParen <- rule $
-      parens term
+      let ex (t, l) =
+            TLoc l $ TParen t
+      in ex <$> parensLoc term
+
+    termWild <- rule $
+      let ex (_, l) = TLoc l $ TWild
+      in ex <$> rsvp "_"
 
 
 -- -----------------------------------------------------------------------------
@@ -329,7 +311,7 @@ toplevel = mdo
     pat <- rule dpat
 
     dpat <- rule $
-          parens patAnnot
+          parens patAnno
       <|> cpat
 
     cpat <- rule $
@@ -337,7 +319,7 @@ toplevel = mdo
       <|> bpat
 
     bpat <- rule $
-          parens patConPats
+          parens patCon
       <|> apat
 
     apat <- rule $
@@ -359,15 +341,11 @@ toplevel = mdo
       in ex <$> val
 
     patCon <- rule $
-      let ex (n, l) args = PLoc l $ PCon n []     
-      in ex <$> conId
-
-    patConPats <- rule $
       let ex (n, l) ps = PLoc (l <> locOf ps) $ PCon n ps
       in ex <$> conId <*> many ((,) Explicit <$> pat)
 
-    patAnnot <- rule $
-      let ex p t = PLoc (locOf p <> locOf t) $ PAnnot p t
+    patAnno <- rule $
+      let ex p t = PLoc (locOf p <> locOf t) $ PAnno p t
       in ex <$> (pat <* rsvp ":") <*> term
 
     patView <- rule $
@@ -399,7 +377,7 @@ toplevel = mdo
            <*> (rsvp "where" *> block constr)
 
     adtConstr <- rule $
-      let ex (n, _) ts = ConstrDef n $ foldr (TPi Explicit . PAnnot PWild) TWild ts
+      let ex (n, _) ts = ConstrDef n $ foldr explicitPi TWild ts
       in ex <$> conId <* rsvp ":" <*> many term
 
     dataDef' <- rule $
@@ -413,7 +391,7 @@ toplevel = mdo
       sep (rsvp "|") constr
 
     constr <- rule $
-      let ex (n, _) ts = ConstrDef n $ foldr (TPi Explicit . PAnnot PWild) TWild ts
+      let ex (n, _) ts = ConstrDef n $ foldr explicitPi TWild ts
       in ex <$> conId <*> many term
 
 

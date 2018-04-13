@@ -16,7 +16,7 @@ c = 3
 
 -- So variable 'c' has type 'Int'
 
-d = 3 : Int
+d = 3
 
 -- Type signature tests
 foo : Int -> Int -> Int

@@ -18,8 +18,28 @@ c = 3
 
 d = 3 : Int
 
+
+addSqr : Int -> Int -> Int
+addSqr x y = (x + y)(x + y)
+
 -- Here is a function type signature.
-foo : Int -o Int -o Int
+addSqr : Int -> Int -> Int
+addSqr x y = (x + y)(x + y)
+
+
+fst : Pair Int Int -o Int
+fst (Pair x _) = x
+
+
+fstOrSnd : Pair Int Int -o Bool -o Int
+fstOrSnd (Pair x y) p =
+  if p == True then
+    let _ = y
+    in x
+  else
+    let _ = x
+    in y
+
 
 -- 'foo' is a function that takes two Ints and evalutes to an Int.
 -- We can define it like so...

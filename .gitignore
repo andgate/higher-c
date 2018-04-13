@@ -3,7 +3,7 @@
 .\#*
 hk.db
 /.stack-work/
-/*.cabal
+**dist-newstyle
 /*.tix
 /*.hpc
 /.hkc
