@@ -15,7 +15,7 @@ import Language.Hawk.Syntax.Location (Loc(..), Region, locReg, regStart, posLine
 
 
 blkTriggers :: [TokenClass]
-blkTriggers = [TokenRsvp ":=", TokenRsvp "do", TokenRsvp "where", TokenRsvp "let"]
+blkTriggers = [TokenRsvp "do", TokenRsvp "where", TokenRsvp "let"]
 
 blkEndTriggers :: [TokenClass]
 blkEndTriggers = [TokenRsvp "in"]

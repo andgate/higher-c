@@ -33,80 +33,42 @@ toplevel = mdo
 -- Declaration Rules
     
     topLevelDef <- rule $ linefold $
-          topLevelFnDef
+          (topLevelFnDef
       <|> topLevelSig
-      <|> (aliasDef <?> "Type Alias Definition")
-      <|> (dataDef <?> "Data Definition")
-      <|> (classDef <?> "Class")
-      <|> (instDef <?> "Instance")
-      <|> (forgnDef <?> "Foreign Definition")
-      <|> (fixityDef <?> "Fixity Definition")
+      <|> topLevelAliasDef
+      <|> topLevelDataDef
+      <|> topLevelClassDef
+      <|> topLevelInstDef
+      <|> topLevelForeignDef
+      <|> topLevelFixityDef)
+      <?> "Top-Level Definition"
 
 
     topLevelFnDef <- rule $
-      (TopLevelFnDef <$> def) <?> "Function Definition"
+      (TopLevelFnDef <$> def) <?> "Function"
 
     topLevelSig <- rule $
-      (TopLevelSig <$> sig) <?> "Function signature"
+      (TopLevelSig <$> sig) <?> "Signature"
 
--- -----------------------------------------------------------------------------
--- Foreign Rules
+    topLevelAliasDef <- rule $
+      (TopLevelAliasDef <$> aliasDef) <?> "Type Alias"
 
-    forgnDef <- rule $
-      TopLevelForeignDef <$> forgn
+    topLevelDataDef <- rule $
+      (TopLevelDataDef <$> dataDef) <?> "DataType"
 
-    forgn <- rule $
-      rsvp "foreign" *> forgn'
+    topLevelClassDef <- rule $
+      (TopLevelClassDef <$> classDef) <?> "Class"
 
-    forgn' <- rule $
-      forgnImport <|> forgnExport
+    topLevelInstDef <- rule $
+      (TopLevelInstDef <$> instDef) <?> "Class Instance"
 
-    forgnImport <- rule $
-      let ex ft (srcN, l1) (hkN, l2) ty
-            = ForeignImport ft (L l1 $ pack srcN) (L l2 hkN) ty
-      in ex <$> (rsvp "import" *> forgnType)
-            <*> strLit
-            <*> (varId <|> conId <|> opId)
-            <*> (rsvp ":" *> typ)
-
-    forgnExport <- rule $
-      let ex ft (n, l)
-            = ForeignExport ft (L l n)
-      in ex <$> (rsvp "export" *> forgnType)
-         <*> (varId <|> conId <|> opId)
-
-    forgnType <- rule $
-      ForeignC <$ rsvp "ccall"
+    topLevelForeignDef <- rule $
+      (TopLevelForeignDef <$> forgnDef) <?> "Foreign Function"
+    
+    topLevelFixityDef <- rule $
+      (TopLevelFixityDef <$> fixityDecl) <?> "Fixity Declaration"
 
 
--- -----------------------------------------------------------------------------
--- Fixity Rules
-
-    fixityDef <- rule $
-      TopLevelFixityDef <$> fixity
-
-    fixity <- rule $
-      let ex fx (p, l) ops =
-            Fixity fx (L l $ fromIntegral p) (wrapL <$> ops)
-      in ex <$> fixityKind <*> intLit <*> some opId
-
-    fixityKind <- rule $
-      infixL <|> infixR <|> infixN <|> prefix <|> postfix
-
-    infixL <- rule $
-      InfixL <$ rsvp "infixl"
-
-    infixR <- rule $
-      InfixR <$ rsvp "infixr" 
-
-    infixN <- rule $
-      InfixN <$ rsvp "infix" 
-
-    prefix <- rule $
-      Prefix <$ rsvp "prefix" 
-
-    postfix <- rule $
-      Postfix <$ rsvp "postfix" 
 
 
 -- -----------------------------------------------------------------------------
@@ -378,9 +340,6 @@ toplevel = mdo
 -- Type Alias Rules
 
     aliasDef <- rule $
-      TopLevelAliasDef <$> aliasDef'
-
-    aliasDef' <- rule $
       AliasDef <$> (fst <$> conId)
                <*> many (fst <$> varId)
                <*> (rsvp "=" *> typ)
@@ -389,9 +348,6 @@ toplevel = mdo
 -- Data Type Rules
 
     dataDef <- rule $
-      TopLevelDataDef <$> dataDef'
-
-    dataDef' <- rule $
       DataDef <$> (fst <$> conId)
               <*> many (fst <$> varId)
               <*> (rsvp ":=" *> constrs)
@@ -413,27 +369,72 @@ toplevel = mdo
 -- Type Class Rules
 
     classDef <- rule $
-      TopLevelClassDef <$> classDef'
-
-    classDef' <- rule $
       ClassDef <$> (rsvp "class" *> tyContext)
                <*> (fst <$> conId)
                <*> many atyp
                <*> (rsvp "where" *> block0 sig)
 
 
-
 -- -----------------------------------------------------------------------------
 -- Type Class Instance Rules
 
     instDef <- rule $
-      TopLevelInstDef <$> instDef'
-
-    instDef' <- rule $
       InstDef
         <$> tyContext
         <*> (fst <$> conId)
         <*> many atyp
         <*> (rsvp "where" *> block0 def)
+
+
+-- -----------------------------------------------------------------------------
+-- Foreign Rules
+
+    forgnDef <- rule $
+      rsvp "foreign" *> (forgnImport <|> forgnExport)
+
+    forgnImport <- rule $
+      let ex ft (srcN, l1) (hkN, l2) ty
+            = ForeignImport ft (L l1 $ pack srcN) (L l2 hkN) ty
+      in ex <$> (rsvp "import" *> forgnType)
+            <*> strLit
+            <*> (varId <|> conId <|> opId)
+            <*> (rsvp ":" *> typ)
+
+    forgnExport <- rule $
+      let ex ft (n, l)
+            = ForeignExport ft (L l n)
+      in ex <$> (rsvp "export" *> forgnType)
+         <*> (varId <|> conId <|> opId)
+
+    forgnType <- rule $
+      ForeignC <$ rsvp "ccall"
+
+
+-- -----------------------------------------------------------------------------
+-- Fixity Rules
+
+    fixityDecl <- rule $
+      let ex fx (p, l) ops =
+            Fixity fx (L l $ fromIntegral p) (wrapL <$> ops)
+      in ex <$> fixityKind <*> intLit <*> some opId
+
+    fixityKind <- rule $
+      infixL <|> infixR <|> infixN <|> prefix <|> postfix
+
+    infixL <- rule $
+      InfixL <$ rsvp "infixl"
+
+    infixR <- rule $
+      InfixR <$ rsvp "infixr" 
+
+    infixN <- rule $
+      InfixN <$ rsvp "infix" 
+
+    prefix <- rule $
+      Prefix <$ rsvp "prefix" 
+
+    postfix <- rule $
+      Postfix <$ rsvp "postfix" 
+
 
     return topLevelDef

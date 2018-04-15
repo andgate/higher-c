@@ -40,17 +40,18 @@ foo x y =
 
 -- Let expressions introduce variables into an expression
 five =
-  let z = #add 2 2
-  in #add 1 z
+  let x = #add 2 2
+      y = #sub 3 1
+  in #add y z
 
 
 
 
 -- Product type with record syntax
 Vec3f :=
-  V { vx : Float
-    , vy : Float
-    , vz : Float
+  V { x : Float
+    , y : Float
+    , z : Float
     }
 
 -- Or without record syntax
@@ -61,14 +62,12 @@ Color :=
 Maybe a := Nothing | Just a
 
 
---|
 -- GADTs can be established with type
-Exp a where
+Exp a : * -> * where
   EVal : Int -> Exp
   EVar : String -> Exp
   EApp : Exp -> Exp -> Exp
   ELam : String -> Exp -> Exp
-|--
 
 
 -- Newtypes are an optimization
@@ -90,7 +89,7 @@ class Functor f where
 
 -- Class instances
 Functor Box where
-  fmap (Box x) = Box (f x)
+  fmap f (Box x) = Box (f x)
 
 --|   This creates a record with one constructor, Color.
     My color has three field accessors red, green, and blue.
