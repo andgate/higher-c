@@ -22,7 +22,7 @@ parse :: FilePath -> [Token] -> Either ParseError TopLevelDef
 parse fp toks = do
   let (parses, r@(Report _ expected unconsumed)) = E.fullParses (E.parser toplevel) toks
   case parses of
-    []  -> Left $ UnexpectedToken unconsumed
+    []  -> Left $ UnexpectedToken unconsumed expected
     [p] -> Right p
                
     -- This will only happen if the grammar is wrong

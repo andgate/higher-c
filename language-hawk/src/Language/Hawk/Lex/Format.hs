@@ -73,7 +73,7 @@ mkLayout input = LayoutState  "" mempty [defCell] False input [] []
 
 layout :: [Token] -> [[Token]]
 layout = 
-  evalState layoutDriver . mkLayout
+  reverse . evalState layoutDriver . mkLayout
 
 
 layoutDriver :: Layout [[Token]]

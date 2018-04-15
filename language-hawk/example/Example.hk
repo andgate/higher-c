@@ -44,21 +44,53 @@ five =
   in #add 1 z
 
 
---|
--- Type alias, type system will treat these as interchangable
-type Inch = Int
-
--- New types are not treated as interchangable.
-alias Size = Int
 
 
--- Declare data structures with the data keyword
-data Color
-  = Color
-      { red   : Float
-      , green : Float
-      , blue  : Float
-      }
+-- Product type with record syntax
+Vec3f :=
+  V { vx : Float
+    , vy : Float
+    , vz : Float
+    }
+
+-- Or without record syntax
+Color :=
+  Color Float Float Float
+
+-- We can also do sum types
+Maybe a := Nothing | Just a
+
+-- There is also a long-hand for for defining datatypes
+data Maybe a = Nothing | Just a
+
+
+-- GADTs can be established with type
+Exp a where
+  EVal : Int -> Exp
+  EVar : String -> Exp
+  EApp : Exp -> Exp -> Exp
+  ELam : String -> Exp -> Exp
+
+
+-- Newtypes are an optimization
+-- on data with only a single constructor
+Box a := Box a
+
+-- Type aliasing is allowed
+Color = Vec3f
+Optional a = Maybe a
+
+-- Type aliasing can be pointfree
+Optional = Maybe
+
+
+-- Class definitions
+class Functor f where
+  fmap : (a -> b) -> f a -> f b
+
+-- Class instances
+Functor Box where
+  fmap (Box x) = Box (f x)
 
 |--
 

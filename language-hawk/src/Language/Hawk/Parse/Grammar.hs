@@ -25,7 +25,7 @@ import qualified Data.List.NonEmpty as NE
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-toplevel :: Grammar r (Prod r Token Token TopLevelDef)
+toplevel :: Grammar r (Prod r String Token TopLevelDef)
 toplevel = mdo
 
 
@@ -33,11 +33,11 @@ toplevel = mdo
 -- Declaration Rules
     
     topLevelDef <- rule $ linefold $
-          (TopLevelDef <$> def)
-      <|> sigDef
-      <|> dataDef
-      <|> forgnDef
-      <|> fixityDef
+          ((TopLevelDef <$> def) <?> "Function Definition")
+      <|> (sigDef <?> "Function signature")
+      <|> (dataDef <?> "Data Definition")
+      <|> (forgnDef <?> "Foreign Definition")
+      <|> (fixityDef <?> "Fixity Definition")
 
 -- -----------------------------------------------------------------------------
 -- Foreign Rules
@@ -108,7 +108,7 @@ toplevel = mdo
     sig <- rule $
       let ex (n, _) t = Sig n t
       in ex <$> (varId <|> parensLoc (fst <$> opId))
-            <*> (rsvp ":" *> qtyp)
+            <*> (rsvp ":" *> qtyp0)
 
 
 -- -----------------------------------------------------------------------------
@@ -206,21 +206,67 @@ toplevel = mdo
 
     -- The expression precedence chain, starting at aexp as the base with the highest precedence.
     exp <- rule $
-      aexp
+      dexp
+
+    dexp <- rule $
+      let ex e@(ELoc l1 _) t@(TLoc l2 _)
+            = ELoc (l1<>l2) $ EType e t
+      in ex <$> cexp <*> (rsvp ":" *> typ)
+      <|> cexp
+
+    cexp <- rule $
+          expIf
+      <|> expLet
+      <|> expCase
+      <|> bexp
+
+
+    expLam <- rule $
+      let ex (_,l1) arg ret@(ELoc l2 _) =
+            ELoc (l1<>l2) $ ELam arg ret
+      in ex <$> rsvp "\\" <*> pat <*> (rsvp "->" *> exp)
+    
+
+    expLet <- rule $
+      let ex (_,l1) ds b@(ELoc l2 _)
+            = ELoc (l1<>l2) $ ELet (NE.fromList ds) b
+      in ex <$> rsvp "let" <*> block def <*> (rsvp "in" *> exp)
+
+    expIf <- rule $
+      let ex (_, l1) p a b@(ELoc l2 _) =
+            ELoc (l1<>l2) $ EIf p a b
+      in ex <$> rsvp "if" <*> exp
+            <*> (rsvp "then" *> exp)
+            <*> (rsvp "else" *> exp)
+
+    expCase <- rule $
+      let ex (_, l1) p brs =
+            let l2 = mconcat [ l | (l,_,_) <- brs]
+            in ELoc (l1<>l2) $ ECase p brs
+      in ex <$> rsvp "case" <*> bexp <*> (rsvp "of" *> branches)
+
+
+    bexp <- rule $
+          expApp
+      <|> aexp
+
+
+    expApp <- rule $
+      let ex f@(ELoc l1 _) x@(ELoc l2 _)
+            = ELoc (l1<>l2) $ EApp f x
+      in ex <$> bexp <*> aexp
+
 
 
     aexp <- rule $
-          expVal
-      <|> expVar
-      <|> expOp
-      <|> expCon
-      <|> expPrim
-      <|> expLet
-      <|> expCase
-      <|> expDup
-      <|> expParen
-      <|> expWild
-
+          (expVal <?> "value")
+      <|> (expVar <?> "variable")
+      <|> (expOp <?> "operator")
+      <|> (expCon <?> "constructor")
+      <|> (expPrim <?> "primitive expression")
+      <|> (expDup <?> "duplicate var")
+      <|> (expParen <?> "parenthetical expression")
+      <|> (expWild <?> "wildcard expression")
 
 
 
@@ -229,8 +275,8 @@ toplevel = mdo
       in ex <$> varId
     
     expDup <- rule $
-      let ex (_,l1) (n, l2) = ELoc (l1 <> l2) $ EDup n
-      in ex <$> rsvp "dup" <*> varId
+      let ex (n, l) = ELoc l $ EDup n
+      in ex <$> dupId
 
     expVal <- rule $
       let ex (v, l) = ELoc l $ EVal v
@@ -248,31 +294,6 @@ toplevel = mdo
       let ex (txt, l1) a b@(ELoc l2 _) 
             = ELoc (l1<>l2) $ EPrim (readPrim txt) a b
       in ex <$> primText <*> aexp <*> aexp
-
-    expApp <- rule $
-      let ex f@(ELoc l1 _) x@(ELoc l2 _)
-            = ELoc (l1<>l2) $ EApp f x
-      in ex <$> exp <*> aexp
-
-    expLam <- rule $
-      let ex (_,l1) arg ret@(ELoc l2 _) =
-            ELoc (l1<>l2) $ ELam arg ret
-      in ex <$> rsvp "\\" <*> pat <*> (rsvp "->" *> exp)
-    
-
-    expLet <- rule $
-      let ex (_,l1) ds b@(ELoc l2 _)
-            = ELoc (l1<>l2) $ ELet (NE.fromList ds) b
-      in ex <$> rsvp "let" <*> block def <*> (rsvp "in" *> exp)
-
-
-    expCase <- rule $
-      let ex (_, l1) p brs =
-            let l2 = mconcat [ l | (l,_,_) <- brs]
-            in ELoc (l1<>l2) $ ECase p brs
-      in ex <$> rsvp "case" <*> exp <*> (rsvp "of" *> branches)
-
-    
 
     expParen <- rule $
       let ex (e, l) = ELoc l $ EParen e
@@ -343,17 +364,17 @@ toplevel = mdo
 
     branch <- rule $
       let ex p@(PLoc l1 _) e@(ELoc l2 _) = (l1<>l2, p, e)
-      in ex <$> (pat <* rsvp "->") <*> exp
+      in ex <$> (pat <* rsvp "->") <*> bexp
 
 
  -- -----------------------------------------------------------------------------
 -- Structured Type Rules
 
     dataDef <- rule $
-      TopLevelDataDef <$> (dataDef' <|> dataDefAdt)
+      TopLevelDataDef <$> (dataDef' <|> dataDefGadt)
 
 
-    dataDefAdt <- rule $
+    dataDefGadt <- rule $
       let
         ex (n, l) cs = DataDef n [] cs
       in
@@ -368,8 +389,8 @@ toplevel = mdo
       let
         ex (n, l) cs = DataDef n [] cs
       in
-        ex <$> (rsvp "type" *> conId)
-           <*> (rsvp "=" *> constrs)
+        ex <$> conId
+           <*> (rsvp ":=" *> constrs)
 
     constrs <- rule $
       sep (rsvp "|") constr

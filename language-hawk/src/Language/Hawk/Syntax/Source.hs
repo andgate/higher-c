@@ -55,7 +55,7 @@ data Sig
 -- Data Definition
 
 data DataDef
-  = DataDef Text [(Text, Type)] [ConstrDef]
+  = DataDef Text [(Text, Kind)] [ConstrDef]
   deriving (Show)
 
 
@@ -132,6 +132,7 @@ data Exp
 
   | ELet  (NonEmpty Def) Exp
   | ECase Exp [(Loc, Pat, Exp)]
+  | EIf Exp Exp Exp
 
   -- Annotations
   | EType  Exp Type
@@ -176,6 +177,7 @@ data Kind
   | KArr Kind Kind
   | KLoc Loc Kind
   | KParen Kind
+  | KWild
   deriving (Show)
 
 
