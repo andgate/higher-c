@@ -33,11 +33,21 @@ toplevel = mdo
 -- Declaration Rules
     
     topLevelDef <- rule $ linefold $
-          ((TopLevelDef <$> def) <?> "Function Definition")
-      <|> (sigDef <?> "Function signature")
+          topLevelFnDef
+      <|> topLevelSig
+      <|> (aliasDef <?> "Type Alias Definition")
       <|> (dataDef <?> "Data Definition")
+      <|> (classDef <?> "Class")
+      <|> (instDef <?> "Instance")
       <|> (forgnDef <?> "Foreign Definition")
       <|> (fixityDef <?> "Fixity Definition")
+
+
+    topLevelFnDef <- rule $
+      (TopLevelFnDef <$> def) <?> "Function Definition"
+
+    topLevelSig <- rule $
+      (TopLevelSig <$> sig) <?> "Function signature"
 
 -- -----------------------------------------------------------------------------
 -- Foreign Rules
@@ -102,13 +112,10 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Type Signature Declaration Rules
 
-    sigDef <- rule $
-      TopLevelSig <$> sig
-
     sig <- rule $
       let ex (n, _) t = Sig n t
       in ex <$> (varId <|> parensLoc (fst <$> opId))
-            <*> (rsvp ":" *> qtyp0)
+            <*> (rsvp ":" *> qtyp)
 
 
 -- -----------------------------------------------------------------------------
@@ -186,12 +193,12 @@ toplevel = mdo
 -- -----------------------------------------------------------------------------
 -- Type Context Rules
 
-    qtyp0 <- rule $
-        qtyp 
-        <|> (QType [] <$> typ)
-       
     qtyp <- rule $
-        QType <$> tyAsserts <*> (rsvp "=>" *> typ)
+        QType <$> tyContext <*> typ
+
+    tyContext <- rule $
+          (tyAsserts <* rsvp "=>")
+      <|> pure [] 
 
     tyAsserts <- rule $
         parens (sep (rsvp ",") tyAssert)
@@ -367,66 +374,66 @@ toplevel = mdo
       in ex <$> (pat <* rsvp "->") <*> bexp
 
 
- -- -----------------------------------------------------------------------------
--- Structured Type Rules
+-- -----------------------------------------------------------------------------
+-- Type Alias Rules
+
+    aliasDef <- rule $
+      TopLevelAliasDef <$> aliasDef'
+
+    aliasDef' <- rule $
+      AliasDef <$> (fst <$> conId)
+               <*> many (fst <$> varId)
+               <*> (rsvp "=" *> typ)
+
+-- -----------------------------------------------------------------------------
+-- Data Type Rules
 
     dataDef <- rule $
-      TopLevelDataDef <$> (dataDef' <|> dataDefGadt)
-
-
-    dataDefGadt <- rule $
-      let
-        ex (n, l) cs = DataDef n [] cs
-      in
-        ex <$> (rsvp "type" *> conId)
-           <*> (rsvp "where" *> block constr)
-
-    adtConstr <- rule $
-      let ex (n, _) ts = ConstrDef n $ foldr TLoli TWild ts
-      in ex <$> conId <* rsvp ":" <*> many typ
+      TopLevelDataDef <$> dataDef'
 
     dataDef' <- rule $
-      let
-        ex (n, l) cs = DataDef n [] cs
-      in
-        ex <$> conId
-           <*> (rsvp ":=" *> constrs)
+      DataDef <$> (fst <$> conId)
+              <*> many (fst <$> varId)
+              <*> (rsvp ":=" *> constrs)
 
     constrs <- rule $
-      sep (rsvp "|") constr
+      sep (rsvp "|") (constr <|> recConstr)
 
     constr <- rule $
-      let ex (n, _) ts = ConstrDef n $ foldr TLoli TWild ts
-      in ex <$> conId <*> many typ
+      ConstrDef <$> (fst <$> conId)
+                <*> many atyp
 
+    recConstr <- rule $
+      RecordDef <$> (fst <$> conId) <*> recFields
 
-{-
+    recFields <- rule $ curlys $ commaSep $
+      (,) <$> (fst <$> varId) <*> (rsvp ":" *> typ)
 
 -- -----------------------------------------------------------------------------
 -- Type Class Rules
 
-    typeClass <- rule $
-      TypeClass <$> (rsvp "class" *> optional tyCtx')
-                <*> conName
-                <*> many varName
-                <*> (rsvp ":" *> typeClassBody)
+    classDef <- rule $
+      TopLevelClassDef <$> classDef'
 
-    
-    typeClassBody <- rule $
-      block $
-          (Left <$> fun')
-      <|> (Right <$> tySig')
+    classDef' <- rule $
+      ClassDef <$> (rsvp "class" *> tyContext)
+               <*> (fst <$> conId)
+               <*> many atyp
+               <*> (rsvp "where" *> block0 sig)
+
 
 
 -- -----------------------------------------------------------------------------
 -- Type Class Instance Rules
 
-    typeClassInst <- rule $
-      TypeClassInst
-        <$> (rsvp "inst" *> optional tyCtx')
-        <*> conName
-        <*> some atyp
-        <*> (rsvp ":" *> block fun')
--}
+    instDef <- rule $
+      TopLevelInstDef <$> instDef'
+
+    instDef' <- rule $
+      InstDef
+        <$> tyContext
+        <*> (fst <$> conId)
+        <*> many atyp
+        <*> (rsvp "where" *> block0 def)
 
     return topLevelDef

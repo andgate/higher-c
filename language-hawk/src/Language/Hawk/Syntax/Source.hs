@@ -24,8 +24,9 @@ import qualified Data.List.NonEmpty             as NE
 -- | Top Level Definition
 
 data TopLevelDef
-  = TopLevelDef         Def
+  = TopLevelFnDef       Def
   | TopLevelSig         Sig
+  | TopLevelAliasDef    AliasDef
   | TopLevelDataDef     DataDef
   | TopLevelClassDef    ClassDef
   | TopLevelInstDef     InstDef
@@ -55,31 +56,35 @@ data Sig
 -- Data Definition
 
 data DataDef
-  = DataDef Text [(Text, Kind)] [ConstrDef]
+  = DataDef Text [Text] [ConstrDef]
   deriving (Show)
 
 
 data ConstrDef
-  = ConstrDef Text Type
+  = ConstrDef Text [Type]
+  | RecordDef Text [(Text, Type)]
   deriving (Show)
 
+------------------------------------------------------------------------
+-- Type Alias Definition
+
+data AliasDef
+  = AliasDef Text [Text] Type
+  deriving Show
 
 -- -----------------------------------------------------------------------------
 -- | Class Definition
 
 data ClassDef
-  = ClassDef Text [(Text, Type)] [MethodDef]
-  deriving (Show)
-
-data MethodDef
-  = MethodDef Loc Text Exp
+  = ClassDef [Assert] Text [Type] [Sig]
   deriving (Show)
 
 
 -- -----------------------------------------------------------------------------
 -- | Instance Definition
 
-data InstDef = InstDef Type [(Loc, Def)]
+data InstDef
+  = InstDef [Assert] Text [Type] [Def]
   deriving (Show)
 
 
@@ -220,26 +225,73 @@ pis ps t = foldr TPi t ps
 -- | Pretty Instances
 
 instance Pretty TopLevelDef where
-  pretty = undefined
+  pretty = \case
+    TopLevelFnDef       x -> pretty x
+    TopLevelSig         x -> pretty x
+    TopLevelAliasDef    x -> pretty x
+    TopLevelDataDef     x -> pretty x
+    TopLevelClassDef    x -> pretty x
+    TopLevelInstDef     x -> pretty x
+    TopLevelForeignDef  x -> pretty x
+    TopLevelFixityDef   x -> pretty x
 
 instance Pretty Def where
-  pretty = undefined
+  pretty (Def n c) =
+    pretty n <+> pretty c
+
+instance Pretty Clause where
+  pretty (Clause pats e) =
+    hsep (pretty <$> pats) <+> "=" <+> pretty e
 
 instance Pretty Sig where
-  pretty (Sig n t) =
-    pretty n
-      <+> "::"
-      <+> pretty t
+  pretty (Sig n qt) =
+    pretty n <+> ":" <+> pretty qt
+
+
+
 
 
 instance Pretty DataDef where
     pretty (DataDef n vs cs) =
-      undefined
+      pretty n <+> hsep (pretty <$> vs) <+> hang 0 (":=" <+> hsep (punctuate (line <> pipe) (pretty <$> cs)))
 
 instance Pretty ConstrDef where
-    pretty (ConstrDef n t) =
-      pretty n <+> ":" <+> pretty t
+    pretty  = \case
+      ConstrDef n ts ->
+        pretty n <+> hsep (pretty <$> ts)
 
+      RecordDef n fs ->
+        pretty n <+> encloseSep lbrace rbrace comma
+                      [ pretty n <+> ":" <+> pretty t | (n, t) <- fs ]
+
+
+instance Pretty AliasDef where
+  pretty (AliasDef n xs t) =
+    pretty n <+> hsep (pretty <$> xs) <+> "=" <+> pretty t
+
+
+instance Pretty ClassDef where
+  pretty = \case
+    ClassDef [] n vs ms ->
+      "class" <+> pretty n <+> hsep (pretty <$> vs)
+        <+> "where" <> indent 2 (vsep (pretty <$> ms))
+
+    ClassDef as n vs ms ->
+      "class" <+> tupled (pretty <$> as) <+> "=>"
+        <+> pretty n <+> hsep (pretty <$> vs)
+        <+> "where" <> indent 2 (vsep (pretty <$> ms))
+
+
+instance Pretty InstDef where
+  pretty = \case
+    InstDef [] n vs ds ->
+      pretty n <+> hsep (pretty <$> vs)
+        <+> "where" <> indent 2 (vsep (pretty <$> ds))
+
+    InstDef as n vs ds ->
+      tupled (pretty <$> as) <+> "=>"
+        <+> pretty n <+> hsep (pretty <$> vs)
+        <+> "where" <> indent 2 (vsep (pretty <$> ds))
 
 instance Pretty Fixity where
   pretty (Fixity f p ops) =
@@ -335,8 +387,10 @@ instance Pretty Type where
 
 
 instance Pretty QType where
-  pretty (QType as t) =
-     tupled (pretty <$> as) <+> "=>" <+> pretty t
+  pretty = \case
+    QType [] t -> pretty t
+    QType as t ->
+      tupled (pretty <$> as) <+> "=>" <+> pretty t
 
 instance Pretty Assert where
   pretty (IsIn n tys) =

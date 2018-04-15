@@ -20,7 +20,7 @@ import qualified Language.Hawk.Syntax.Location  as L
 
 
 blkTriggers :: [TokenClass]
-blkTriggers = [TokenRsvp ":=", TokenRsvp "do", TokenRsvp "where", TokenRsvp "let"]
+blkTriggers = [TokenRsvp "do", TokenRsvp "where", TokenRsvp "let"]
 
 blkEndTriggers :: [TokenClass]
 blkEndTriggers = [TokenRsvp "in"]

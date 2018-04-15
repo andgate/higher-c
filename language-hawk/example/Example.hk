@@ -60,21 +60,21 @@ Color :=
 -- We can also do sum types
 Maybe a := Nothing | Just a
 
--- There is also a long-hand for for defining datatypes
-data Maybe a = Nothing | Just a
 
-
+--|
 -- GADTs can be established with type
 Exp a where
   EVal : Int -> Exp
   EVar : String -> Exp
   EApp : Exp -> Exp -> Exp
   ELam : String -> Exp -> Exp
+|--
 
 
 -- Newtypes are an optimization
 -- on data with only a single constructor
 Box a := Box a
+
 
 -- Type aliasing is allowed
 Color = Vec3f
@@ -91,8 +91,6 @@ class Functor f where
 -- Class instances
 Functor Box where
   fmap (Box x) = Box (f x)
-
-|--
 
 --|   This creates a record with one constructor, Color.
     My color has three field accessors red, green, and blue.

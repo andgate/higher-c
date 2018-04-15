@@ -26,4 +26,4 @@ parse fp toks = do
     [p] -> Right p
                
     -- This will only happen if the grammar is wrong
-    ps -> Left AmbiguousGrammar
+    ps -> Left $ AmbiguousGrammar ps

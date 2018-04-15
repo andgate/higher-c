@@ -120,6 +120,9 @@ boolLit = unsafeExtract <$> satisfy p
 eof :: Prod r e Token (Token, Loc)
 eof = match TokenEof
 
+block0 :: Prod r e Token a -> Prod r e Token [a]
+block0 p = blk *> linefolds0 p <* blk'
+
 block :: Prod r e Token a -> Prod r e Token [a]
 block p = blk *> linefolds p <* blk'
 
@@ -165,6 +168,12 @@ braces p =
 curlys :: Prod r e Token a -> Prod r e Token a
 curlys p =
   rsvp "{" *> p <* rsvp "}"
+
+curlysLoc :: Prod r e Token a -> Prod r e Token (a, Loc)
+curlysLoc p =
+  let ex (_, l1) r (_, l2) = (r, l1 <> l2)
+  in ex <$> rsvp "{" <*> p <*> rsvp "}"
+
 
 angled :: Prod r e Token a -> Prod r e Token a
 angled p =
