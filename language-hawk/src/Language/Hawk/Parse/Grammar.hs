@@ -178,23 +178,29 @@ toplevel = mdo
 
     -- The expression precedence chain, starting at aexp as the base with the highest precedence.
     exp <- rule $
-      cexp
+      fexp
+
+    fexp <- rule $
+      expType <|> eexp
 
     eexp <- rule $
-      expType <|> dexp
-
-    dexp <- rule $
-      expSeq <|> cexp
+      expSeq <|> dexp
 
     -- new cexp for control flow
-    cexp <- rule $
+    dexp <- rule $
       expCase <|> expIf
               <|> expDo
               <|> expLam
-              <|> bexp
-      
+              <|> cexp
+
+
+    cexp <- rule $
+      expBind <|> expSet <|> bexp
+
+
     bexp <- rule $
       expApp <|> aexp
+
 
     aexp <- rule $
           (expVal <?> "value")
@@ -204,6 +210,7 @@ toplevel = mdo
       <|> (expPrim <?> "primitive expression")
       <|> (expParen <?> "parenthetical expression")
       <|> (expWild <?> "wildcard expression")
+      <|> (expFree <?> "free <vars>")
 
 
     -- Terms
@@ -221,6 +228,9 @@ toplevel = mdo
 
 
     -- Magic
+    expCon <- rule $
+      expConS <|> expConH
+
     expConS <- rule $
       let ex (n, l) = ELoc l $ EConS n
       in ex <$> conSId
@@ -241,6 +251,7 @@ toplevel = mdo
             = ELoc (l1<>l2) $ EApp f x
       in ex <$> bexp <*> aexp
 
+
     expLam <- rule $
       let ex (_,l1) arg ret@(ELoc l2 _) =
             ELoc (l1<>l2) $ ELam arg ret
@@ -251,22 +262,22 @@ toplevel = mdo
     expSeq <- rule $
       let ex a@(ELoc l1 _) b@(ELoc l2 _) =
             ELoc (l1<>l2) $ ESeq a b
-      in ex <$> exp <*> (rsvp ";" *> exp)
+      in ex <$> eexp <*> (rsvp ";" *> dexp)
 
     expBind <- rule $
       let ex (v, l1) e@(ELoc l2 _) =
             ELoc (l1<>l2) $ EBind v e
-      in ex <$> varId <*> (rsvp "<-" *> exp)
+      in ex <$> varId <*> (rsvp "<-" *> dexp)
 
     expSet <- rule $
       let ex (v, l1) e@(ELoc l2 _) =
             ELoc (l1<>l2) $ ESet v e
-      in ex <$> varId <*> (rsvp "=" *> exp)
+      in ex <$> varId <*> (rsvp "=" *> dexp)
 
     expFree <- rule $
-      let ex (_,l1) (v, l2) =
-            ELoc (l1<>l2) $ EFree v
-      in ex <$> rsvp "free" <*> varId
+      let ex vs@((_,l1):_) (v, l2) =
+            ELoc (l1<>l2) $ EFree (fst <$> vs)
+      in ex <$> rsvp "free" <*> some varId
 
 
     -- Control Flow
