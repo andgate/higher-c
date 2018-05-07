@@ -1,115 +1,240 @@
---|   Sample of a basic Hawk program.
-    Hawk is similar in syntax to Haskell,
-    but technically closer to C.
-  |--
+module Example x ? Core.IO, Core.Math, Core.List x:
 
---| Hawk is a purely functional langauge
-    The definition of variables and functions is similar.
-    In fact, Hawk treats variables as functions that take no arguments.
-  |--
-a = #add 1 2
+  --|   Sample of a basic Hawk program.
+      Hawk is similar in syntax to Haskell,
+      but technically closer to C.
+    |--
 
+  --| Hawk is a purely functional langauge
+      The definition of variables and functions is similar.
+      In fact, Hawk treats variables as functions that take no arguments.
+    |--
+  a = #add 1 2
 
--- Type signatures declare the type of a variable
-c : Int
-c = 3
-
--- So variable 'c' has type 'Int'
-
-d = 3
-
--- Type signature tests
-foo : Int -> Int -> Int
-bar : Int -o Int -o Int
-
-
-
--- 'foo' is a function that takes two Ints and evalutes to an Int.
--- We can define it like so...
-foo x y =
-  #div (#mul (#add x 2) y) 3
-
-
---|   You might notice the '#' on the operations.
-    '#' prefix is for primitive instructions.
-    These are builtin to the language. As Hawk
-    becomes more advanced, the regular mathematical
-    operators will replace them.
-  |--
-
-
--- Let expressions introduce variables into an expression
-five =
-  let x = #add 2 2
-      y = #sub 3 1
-  in #add y z
-
-
-
-
--- Product type with record syntax
-Vec3f :=
-  V { x : Float
-    , y : Float
-    , z : Float
-    }
-
--- Or without record syntax
-Color :=
-  Color Float Float Float
-
--- We can also do sum types
-Maybe a := Nothing | Just a
-
-
--- GADTs can be established with type
-Exp a : * -> * where
-  EVal : Int -> Exp
-  EVar : String -> Exp
-  EApp : Exp -> Exp -> Exp
-  ELam : String -> Exp -> Exp
-
-
--- Newtypes are an optimization
--- on data with only a single constructor
-Box a := Box a
-
-
--- Type aliasing is allowed
-Color = Vec3f
-Optional a = Maybe a
-
--- Type aliasing can be pointfree
-Optional = Maybe
-
-
--- Class definitions
-class Functor f where
-  fmap : (a -> b) -> f a -> f b
-
--- Class instances
-Functor Box where
-  fmap f (Box x) = Box (f x)
-
---|   This creates a record with one constructor, Color.
-    My color has three field accessors red, green, and blue.
-    These are functions that when used on a variable of type
-    "Color", will evalute to the information in that field.
-  |--
 
 
 --|
--- Here is a function that produces a new 
--- color with the values inverted
-invert : Color -> Color
-invert c =
-  let r' = #fsub 1.0 (red c)
-      g' = #fsub 1.0 (green c)
-      b' = #fsub 1.0 (blue c)
-  in Color r' g' b'
+    Instructions:
+      <name> = <process>     -- Store result on stack
+      <name> <- <process>    -- store on heap, give pointer
+      del <name>             -- deletes data on heat
+
+      -- The last process to execute is the return process
+      statements are basically
+      <process>
+      <process>
+      <process>  -- Last process, result of this one is the statement
+
+
+      -- Cases are very important,
+      -- for operating over our data
+      case <var>:
+        <pattern1>:
+          <statements>
+        <pattern2>:
+          <statements>
+        ...
+
+
+      -- We can have branching logic
+      if val1:
+        <statements
+      
+      elif val2:
+        <statements>
+      
+      else:
+        <statements>
+
+      
+      
+      
+      -- No loops though! Use recursion instead.
+
+
+    -- Data
+    Data:
+      -- Data is the bread and butter of Hawk.
+      -- With data, we can structure everything.
+      -- We can then use pattern matching to deconstruct
+      -- our data.
+      -- A piece of data is assumed be have
+      -- the size of the largest constructor
+      <name> = Con1 A1 A2 A3 .. An | Con2 B1 B2 B3 .. Bm | ..
+
+      -- We can also have records.
+      <name> = Con { <record fields> } | ...
+
+      -- Each record comes with a function
+      -- That can be used to access a record
+      
+      -- We also have traditional object notation
+      -- For example, this makes setting fields easy
+      <data>.<recordField> = <someData>
+
+      -- Data is really powerful
+      -- We could, for instance, remove
+      -- if statements from the language.
+      Bool :- True | False
+
+      -- This gives the type "Bool" with constructors True and False.
+      -- Then, pattern matching on this data provides us with a 
+      -- rudimentary if statement. Indeed, the compiler would optimize that
+      -- to be a simple if statement.
+      -- However, syntatic sugar for if makes this easier to use.
+
+
+    -- Declarations and types
+    -- Simple task that does things
+    black : Color
+    black =
+      let red   <- Color3f 1.0 0 0    -- stack allocation by default
+          blue  <- @Color3f 0 0 1.0   -- heap allocation with @
+          green <- @Color3f 0 1.0 0   -- Stack allocated
+          green = red + blue + green
+          free red, blue               -- This will erase a heap value
+      in green
+
+    
 
   |--
+  module _ ? Import C:
+  
+    showPerson ? { first ? Int, last ? Int | a} -> Int
+    showPerson { x@first, y@last }:
+      add x y
 
+
+    add ? Int -> Int -> Int
+    mul ? Int -> Int -> Int
+
+    add_ln ? Int -> Int -> (Int, Int, Int)
+    mul_ln ? Int -> Int -> (Int, Int, Int)
+
+
+    fact ? Int -> Int
+    fact x:
+      case x:
+        0: 1
+        1: 1
+        x: x * fact (x-1)
+
+
+    fact_ln : Int -> (Int, Int)
+    fact_ln 0 = (0, 1)
+    fact_ln 1 = (1, 1)
+    fact_ln a =
+      let (a, _, a') = add_ln a (-1)
+          (_, a') = fact_ln a'
+          (a, _, a') = mul a a'
+      in (a, a')
+
+
+
+
+
+
+  -- Type signatures declare the type of a variable
+  c : Int
+  c = 3
+
+  -- So variable 'c' has type 'Int'
+
+  d = 3
+
+  -- Type signature tests
+  foo : Int -> Int -> Int
+  bar : Int -o Int -o Int
+
+
+
+  -- 'foo' is a function that takes two Ints and evalutes to an Int.
+  -- We can define it like so...
+  foo x y =
+    #div (#mul (#add x 2) y) 3
+
+
+  --|   You might notice the '#' on the operations.
+      '#' prefix is for primitive instructions.
+      These are builtin to the language. As Hawk
+      becomes more advanced, the regular mathematical
+      operators will replace them.
+    |--
+
+
+  -- Let expressions introduce variables into an expression
+  five =
+    let x = #add 2 2
+        y = #sub 3 1
+    in #add y z
+
+
+
+
+  -- Product type with record syntax
+  Vec3f :=
+    V { x : Float
+      , y : Float
+      , z : Float
+      }
+
+  -- Or without record syntax
+  Color :=
+    Color Float Float Float
+
+  -- We can also do sum types
+  Maybe a := Nothing | Just a
+
+
+  --|
+  -- GADTs can be established with type
+  Exp a : * -> * where
+    EVal : Int -> Exp
+    EVar : String -> Exp
+    EApp : Exp -> Exp -> Exp
+    ELam : String -> Exp -> Exp
+  |--
+
+  -- Newtypes are an optimization
+  -- on data with only a single constructor
+  Box a := Box a
+
+
+  -- Type aliasing is allowed
+  Color = Vec3f
+  Optional a = Maybe a
+
+  -- Type aliasing can be pointfree
+  Optional = Maybe
+
+
+  -- Class definitions
+  class Functor f where
+    fmap : (a -> b) -> f a -> f b
+
+  -- Class instances
+  Functor Box where
+    fmap f (Box x) = Box (f x)
+
+  --|   This creates a record with one constructor, Color.
+      My color has three field accessors red, green, and blue.
+      These are functions that when used on a variable of type
+      "Color", will evalute to the information in that field.
+    |--
+
+
+  --|
+  -- Here is a function that produces a new 
+  -- color with the values inverted
+  invert : Color -> Color
+  invert c =
+    let r' = #fsub 1.0 (red c)
+        g' = #fsub 1.0 (green c)
+        b' = #fsub 1.0 (blue c)
+    in Color r' g' b'
+
+    |--
+}
 
 --|   This is a good opportunity to explain Hawk's memory model.
     Hawk is a linear typed programming language. That means every

@@ -23,6 +23,19 @@ import qualified Data.List.NonEmpty             as NE
 -- -----------------------------------------------------------------------------
 -- | Top Level Definition
 
+data Module a =
+  Module
+    { modName :: Text
+    , modVars :: [Text]
+    , modContents :: a
+    }
+  deriving(Show)
+
+type TopLevelModule = Module [TopLevelDef]
+
+-- -----------------------------------------------------------------------------
+-- | Top Level Definition
+
 data TopLevelDef
   = TopLevelFnDef       Def
   | TopLevelSig         Sig
@@ -124,20 +137,30 @@ data ForeignType =
 -- | Expressions
 
 data Exp
+  -- Terms
   = EVar  Text
-  | EDup  Text
   | EVal  Value
   | EOp   Text
 
-  | ECon  Text
+  -- Magic
+  | EConS Text
+  | EConH Text
   | EPrim PrimInstr Exp Exp
   
+  -- Evaluation
   | EApp  Exp Exp
   | ELam  Pat Exp
 
-  | ELet  (NonEmpty Def) Exp
-  | ECase Exp [(Loc, Pat, Exp)]
+  -- Imperative, Impure stuff
+  | ESeq Exp Exp
+  | EBind Text Exp
+  | ESet Text Exp
+  | EFree [Text]
+
+  -- Control Flow
+  | ECase Exp [(Pat, Exp)]
   | EIf Exp Exp Exp
+  | EDo [Exp]
 
   -- Annotations
   | EType  Exp Type
@@ -145,7 +168,6 @@ data Exp
   | EParen Exp
   | EWild
   deriving (Show)
-
 
 -- -----------------------------------------------------------------------------
 -- | Type
@@ -157,6 +179,8 @@ data Type
   | TArr Type Type
   | TLoli Type Type
   | TForall (NonEmpty Text) Type
+
+  | TRow [(Text, Type)] (Maybe Text)
 
   -- Annotations
   | TKind Type Kind
@@ -174,11 +198,13 @@ data Assert
   = IsIn Text [Type]
   deriving Show
 
+
 -- -----------------------------------------------------------------------------
 -- | Kind
 
 data Kind
   = KStar
+  | KRow Kind
   | KArr Kind Kind
   | KLoc Loc Kind
   | KParen Kind
@@ -194,6 +220,8 @@ data Pat
   | PVal Value
   | PAs Text Pat
   | PCon Text [Pat]
+  | PRec [(Text, Text)]
+
   | PType Pat Type
   | PLoc Loc Pat
   | PParen Pat
@@ -336,10 +364,10 @@ instance Pretty Exp where
     pretty = \case
       EVar n      -> pretty n
       EVal v      -> pretty v
-      EDup e      -> pretty e <> "!"
       EOp op      -> pretty op
       
-      ECon n      -> pretty n
+      EConS n     -> pretty n
+      EConH n     -> pretty n
       EPrim i a b -> pretty i <+> pretty a <+> pretty b
       
       EApp e1 e2  -> pretty e1 <+> pretty e2
@@ -348,21 +376,23 @@ instance Pretty Exp where
             <+> vsep [ "."
                      , indent 2 (pretty e)
                      ]
-      
-      ELet xs e ->
-        vsep  [ "let"
-              , indent 2 ( vsep $ pretty <$> NE.toList xs )
-              , "in" <> indent 2 (pretty e)
-              ]
-      
-      ECase e brs ->
-        vsep  [ "case" <+> pretty e <+> "of"
-              , indent 2 $ vsep
-                  [ pretty p <+> "->" <+> pretty br
-                    | (_, p, br) <- brs
-                  ]
-              ]
 
+      ESeq a b -> pretty a <> ";" <+> pretty b
+      EBind v e -> pretty v <+> "<-" <+> pretty e
+      ESet v e -> pretty v <+> "=" <+> pretty e
+      EFree vs -> "free" <+> hcat (pretty <$> vs)
+
+      -- Control Flow
+      ECase e brs -> "case" <+> pretty e
+                            <+> vcat [pretty p <+> "->" <+> pretty e | (p, e) <- brs]
+
+      EIf p a b -> "if" <+> pretty p
+                        <+> "then" <+> pretty a
+                        <+> "else" <+> pretty b 
+
+      EDo es -> "do" <+> vcat [pretty e | e <- es]
+
+      -- Annotations
       EType e t -> pretty e <+> ":" <+> pretty t
       ELoc _ e  -> pretty e -- ignore location
       EParen e  -> parens $ pretty e

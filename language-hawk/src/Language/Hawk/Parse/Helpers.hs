@@ -45,19 +45,19 @@ varId = unsafeExtract <$> satisfy p
     unsafeExtract (Token (TokenVarId n) _ l) = (n, l)
 
 
-dupId :: Prod r e Token (Text, Loc)
-dupId = unsafeExtract <$> satisfy p
+conSId :: Prod r e Token (Text, Loc)
+conSId = unsafeExtract <$> satisfy p
   where
-    p (Token (TokenDupId _) _ _) = True
+    p (Token (TokenConSId _) _ _) = True
     p  _                         = False
-    unsafeExtract (Token (TokenDupId n) _ l) = (n, l)
+    unsafeExtract (Token (TokenConSId n) _ l) = (n, l)
 
-conId :: Prod r e Token (Text, Loc)
-conId = unsafeExtract <$> satisfy p
+conHId :: Prod r e Token (Text, Loc)
+conHId = unsafeExtract <$> satisfy p
   where
-    p (Token (TokenConId _) _ _) = True
+    p (Token (TokenConHId _) _ _) = True
     p  _                         = False
-    unsafeExtract (Token (TokenConId n) _ l) = (n, l)
+    unsafeExtract (Token (TokenConHId n) _ l) = (n, l)
 
 
 opId :: Prod r e Token (Text, Loc)

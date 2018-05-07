@@ -34,7 +34,8 @@ data TokenClass
 
   | TokenVarId Text
   | TokenDupId Text
-  | TokenConId Text
+  | TokenConSId Text
+  | TokenConHId Text
   | TokenOpId Text
   
   | TokenInteger Integer

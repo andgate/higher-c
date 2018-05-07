@@ -137,7 +137,7 @@ toplevel = mdo
 
     tyCon <- rule $
       let ex (n, l) = TLoc l $ TCon n
-      in ex <$> conId
+      in ex <$> conSId
 
     tyVar <- rule $
       let ex (n, l) = TLoc l $ TVar n
@@ -167,7 +167,10 @@ toplevel = mdo
         <|> mono tyAssert
     
     tyAssert <- rule $
-        IsIn <$> (fst <$> conId) <*> many atyp
+        IsIn <$> (fst <$> conSId) <*> many atyp
+
+-- -----------------------------------------------------------------------------
+-- Statement Rules
 
 
 -- -----------------------------------------------------------------------------
@@ -175,57 +178,23 @@ toplevel = mdo
 
     -- The expression precedence chain, starting at aexp as the base with the highest precedence.
     exp <- rule $
-      dexp
+      cexp
+
+    eexp <- rule $
+      expType <|> dexp
 
     dexp <- rule $
-      let ex e@(ELoc l1 _) t@(TLoc l2 _)
-            = ELoc (l1<>l2) $ EType e t
-      in ex <$> cexp <*> (rsvp ":" *> typ)
-      <|> cexp
+      expSeq <|> cexp
 
+    -- new cexp for control flow
     cexp <- rule $
-          expIf
-      <|> expLet
-      <|> expCase
-      <|> bexp
-
-
-    expLam <- rule $
-      let ex (_,l1) arg ret@(ELoc l2 _) =
-            ELoc (l1<>l2) $ ELam arg ret
-      in ex <$> rsvp "\\" <*> pat <*> (rsvp "->" *> exp)
-    
-
-    expLet <- rule $
-      let ex (_,l1) ds b@(ELoc l2 _)
-            = ELoc (l1<>l2) $ ELet (NE.fromList ds) b
-      in ex <$> rsvp "let" <*> block def <*> (rsvp "in" *> exp)
-
-    expIf <- rule $
-      let ex (_, l1) p a b@(ELoc l2 _) =
-            ELoc (l1<>l2) $ EIf p a b
-      in ex <$> rsvp "if" <*> exp
-            <*> (rsvp "then" *> exp)
-            <*> (rsvp "else" *> exp)
-
-    expCase <- rule $
-      let ex (_, l1) p brs =
-            let l2 = mconcat [ l | (l,_,_) <- brs]
-            in ELoc (l1<>l2) $ ECase p brs
-      in ex <$> rsvp "case" <*> bexp <*> (rsvp "of" *> branches)
-
-
+      expCase <|> expIf
+              <|> expDo
+              <|> expLam
+              <|> bexp
+      
     bexp <- rule $
-          expApp
-      <|> aexp
-
-
-    expApp <- rule $
-      let ex f@(ELoc l1 _) x@(ELoc l2 _)
-            = ELoc (l1<>l2) $ EApp f x
-      in ex <$> bexp <*> aexp
-
-
+      expApp <|> aexp
 
     aexp <- rule $
           (expVal <?> "value")
@@ -233,36 +202,95 @@ toplevel = mdo
       <|> (expOp <?> "operator")
       <|> (expCon <?> "constructor")
       <|> (expPrim <?> "primitive expression")
-      <|> (expDup <?> "duplicate var")
       <|> (expParen <?> "parenthetical expression")
       <|> (expWild <?> "wildcard expression")
 
 
-
+    -- Terms
     expVar <- rule $
       let ex (v, l) = ELoc l $ EVar v
       in ex <$> varId
-    
-    expDup <- rule $
-      let ex (n, l) = ELoc l $ EDup n
-      in ex <$> dupId
 
     expVal <- rule $
       let ex (v, l) = ELoc l $ EVal v
       in ex <$> val
 
-    expCon <- rule $
-      let ex (n, l) = ELoc l $ ECon n
-      in ex <$> conId
-
     expOp <- rule $
       let ex (n, l) = ELoc l $ EOp n
       in ex <$> opId
+
+
+    -- Magic
+    expConS <- rule $
+      let ex (n, l) = ELoc l $ EConS n
+      in ex <$> conSId
+
+    expConH <- rule $
+      let ex (n, l) = ELoc l $ EConH n
+      in ex <$> conHId
 
     expPrim <- rule $
       let ex (txt, l1) a b@(ELoc l2 _) 
             = ELoc (l1<>l2) $ EPrim (readPrim txt) a b
       in ex <$> primText <*> aexp <*> aexp
+
+
+    -- Evaluation
+    expApp <- rule $
+      let ex f@(ELoc l1 _) x@(ELoc l2 _)
+            = ELoc (l1<>l2) $ EApp f x
+      in ex <$> bexp <*> aexp
+
+    expLam <- rule $
+      let ex (_,l1) arg ret@(ELoc l2 _) =
+            ELoc (l1<>l2) $ ELam arg ret
+      in ex <$> rsvp "\\" <*> pat <*> (rsvp "->" *> exp)
+
+
+    -- Imperative, impure object names
+    expSeq <- rule $
+      let ex a@(ELoc l1 _) b@(ELoc l2 _) =
+            ELoc (l1<>l2) $ ESeq a b
+      in ex <$> exp <*> (rsvp ";" *> exp)
+
+    expBind <- rule $
+      let ex (v, l1) e@(ELoc l2 _) =
+            ELoc (l1<>l2) $ EBind v e
+      in ex <$> varId <*> (rsvp "<-" *> exp)
+
+    expSet <- rule $
+      let ex (v, l1) e@(ELoc l2 _) =
+            ELoc (l1<>l2) $ ESet v e
+      in ex <$> varId <*> (rsvp "=" *> exp)
+
+    expFree <- rule $
+      let ex (_,l1) (v, l2) =
+            ELoc (l1<>l2) $ EFree v
+      in ex <$> rsvp "free" <*> varId
+
+
+    -- Control Flow
+    expCase <- rule $
+      let ex (_, l1) (v, _) e@(ELoc l2 _) =
+            ELoc (l1<>l2) $ ECase v brs
+      in ex <$> rsvp "case" <*> exp <*> (rsvp "of" *> branches)
+
+    expIf <- rule $
+      let ex (_, l1) p a b@(ELoc l2 _) =
+            ELoc (l1<>l2) $ EIf p a b
+      in ex <$> rsvp "if" <*> exp <*> (rsvp "then" *> exp) <*> (rsvp "else" *> exp)
+
+    expDo <- rule $
+      let ex (_, l1) es (_, l2) =
+            ELoc (l1<>l2) $ EDo es
+      in ex <$> rsvp "do" <*> (blk *> linefolds0 exp) <*> blk'
+
+
+    -- Annotations
+    expType <- rule $
+      let ex e@(ELoc _ l1) t@(TLoc _ l2) =
+            ELoc (l1<>l2) $ EType e t
+      in ex <$> dexp <*> (rsvp ":" <*> typ)
 
     expParen <- rule $
       let ex (e, l) = ELoc l $ EParen e
