@@ -44,7 +44,7 @@ before_install:
   
 install:
   # Build dependencies
-  - sudo apt-get install llvm-6.0-dev
+  - sudo apt-get install llvm-6.0 llvm-6.0-dev
   - cabal new-configure
 
 script:
