@@ -38,15 +38,15 @@ git:
 
 before_install:
   # LLVM
-  - sudo sh -c "echo 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main' >> /etc/apt/sources.list"
+  - echo 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main' >> /etc/apt/sources.list
   - wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-  - sudo apt-get update
+  - apt-get update
   
   
 install:
   # Build dependencies
-  - sudo apt-get install llvm-6.0 llvm-6.0-dev llvm-6.0-runtime libllvm6.0
-  - sudo apt-get install -f
+  - apt-get install llvm-6.0 llvm-6.0-dev llvm-6.0-runtime libllvm6.0
+  - apt-get install -f
   - cabal new-configure
 
 script:
