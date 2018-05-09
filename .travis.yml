@@ -9,7 +9,7 @@
 # named .travis.yml
 
 # Use new container infrastructure to enable caching
-dist: precise
+dist: trusty
 sudo: false
 
 # Do not choose a language; we provide our own build tools.
