@@ -41,4 +41,4 @@ install:
 
 script:
 # Build the package, its tests, and its docs and run the tests
-- cabal new-build && cabal new-test
+- cabal new-test language-hawk
