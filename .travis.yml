@@ -1,6 +1,6 @@
 # Use new container infrastructure to enable caching
 dist: trusty
-sudo: false
+sudo: enabled
 
 language: haskell
 
@@ -28,7 +28,7 @@ git:
 
 before_install:
   # LLVM
-  - echo 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main' >> /etc/apt/sources.list
+  - sudo "echo 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main' >> /etc/apt/sources.list"
   - wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
   - apt-get update
   
