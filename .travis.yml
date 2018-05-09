@@ -18,6 +18,7 @@ addons:
       - sourceline: 'ppa:hvr/ghc' # PPA of Haskell packages
       - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main' 
         key_url: 'http://apt.llvm.org/llvm-snapshot.gpg.key'
+      - sourceline: 'deb http://ppa.launchpad.net/ubuntu-toolchain-r/test/ubuntu trusty main'
     packages:
       - libgmp-dev           # required by cabal
       - cabal-install-2.0    # required by GHC 8.x
