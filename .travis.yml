@@ -17,6 +17,7 @@ addons:
     packages:
       - libgmp-dev           # required by cabal
       - cabal-install-2.0    # required by GHC 8.x
+      - llvm-toolchain-trusty-6.0
 
 ghc:
   - "8.4"
@@ -24,13 +25,6 @@ ghc:
 
 git:
   depth: 5
-
-
-before_install:
-  # LLVM
-  - sudo "echo 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main' >> /etc/apt/sources.list"
-  - wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-  - apt-get update
   
   
 install:
