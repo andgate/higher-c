@@ -35,9 +35,16 @@ git:
   depth: 5
 
 
+before_install:
+  # LLVM
+  - sudo sh -c "echo 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main' >> /etc/apt/sources.list"
+  - wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+  
+  
 install:
-# Build dependencies
-- cabal new-configure
+  # Build dependencies
+  - sudo apt-get llvm-6.0.-dev 
+  - cabal new-configure
 
 script:
 # Build the package, its tests, and its docs and run the tests
