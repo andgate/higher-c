@@ -12,78 +12,6 @@
 a = #add 1 2
 
 
-
---|
-Instructions:
-  <name> = <process>     -- Store result on stack
-  <name> <- <process>    -- store on heap, give pointer
-  del <name>             -- deletes data on heat
-
-  -- The last process to execute is the return process
-  statements are basically
-  <process>
-  <process>
-  <process>  -- Last process, result of this one is the statement
-
-
-  -- Cases are very important,
-  -- for operating over our data
-  case <var>:
-    <pattern1>:
-      <statements>
-    <pattern2>:
-      <statements>
-    ...
-
-
-  -- We can have branching logic
-  if val1:
-    <statements
-  
-  elif val2:
-    <statements>
-  
-  else:
-    <statements>
-
-  
-  
-  
-  -- No loops though! Use recursion instead.
-
-
--- Data
-Data:
-  -- Data is the bread and butter of Hawk.
-  -- With data, we can structure everything.
-  -- We can then use pattern matching to deconstruct
-  -- our data.
-  -- A piece of data is assumed be have
-  -- the size of the largest constructor
-  <name> = Con1 A1 A2 A3 .. An | Con2 B1 B2 B3 .. Bm | ..
-
-  -- We can also have records.
-  <name> = Con { <record fields> } | ...
-
-  -- Each record comes with a function
-  -- That can be used to access a record
-  
-  -- We also have traditional object notation
-  -- For example, this makes setting fields easy
-  <data>.<recordField> = <someData>
-
-  -- Data is really powerful
-  -- We could, for instance, remove
-  -- if statements from the language.
-  Bool :- True | False
-
-  -- This gives the type "Bool" with constructors True and False.
-  -- Then, pattern matching on this data provides us with a 
-  -- rudimentary if statement. Indeed, the compiler would optimize that
-  -- to be a simple if statement.
-  -- However, syntatic sugar for if makes this easier to use.
-
-
 -- Declarations and types
 -- Simple task that does things
 black : Color
@@ -96,8 +24,6 @@ black =
   in green
 
     
-
-|--
 --module _ : Import C where
 
 showPerson : { first : Int, last : Int | a} -> Int
@@ -105,19 +31,19 @@ showPerson { x@first, y@last }:
   add x y
 
 
-add ? Int -> Int -> Int
-mul ? Int -> Int -> Int
+add : Int -> Int -> Int
+mul : Int -> Int -> Int
 
-add_ln ? Int -> Int -> (Int, Int, Int)
-mul_ln ? Int -> Int -> (Int, Int, Int)
+add_ln : Int -> Int -> (Int, Int, Int)
+mul_ln : Int -> Int -> (Int, Int, Int)
 
 
-fact ? Int -> Int
-fact x:
-  case x:
-    0: 1
-    1: 1
-    x: x * fact (x-1)
+fact : Int -> Int
+fact x =
+  case x of
+    0 -> 1
+    1 -> 1
+    x -> x * fact (x-1)
 
 
 fact_ln : Int -> (Int, Int)
