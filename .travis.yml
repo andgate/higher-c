@@ -25,6 +25,7 @@ addons:
     sources:
       - sourceline: 'ppa:hvr/ghc' # PPA of Haskell packages
     packages:
+      - build-essential      # required by llvm
       - libgmp-dev           # required by cabal
       - cabal-install-2.0    # required by GHC 8.x
 
