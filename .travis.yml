@@ -12,29 +12,33 @@
 sudo: false
 
 # Do not choose a language; we provide our own build tools.
-language: generic
+language: haskell
 
 # Caching so the next build will be fast too.
 cache:
   directories:
-  - $HOME/.stack
+  - $HOME/.cabal
 
 # Ensure necessary system libraries are present
 addons:
   apt:
+    sources:
+      - sourceline: 'ppa:hvr/ghc' # PPA of Haskell packages
     packages:
-      - libgmp-dev
+      - libgmp-dev           # required by cabal
+      - cabal-install-2.0    # required by GHC 8.x
 
-before_install:
-# Download and unpack the stack executable
-- mkdir -p ~/.local/bin
-- export PATH=$HOME/.local/bin:$PATH
-- travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+ghc:
+  - "8.4"
+
+git:
+  depth: 5
+
 
 install:
 # Build dependencies
-- stack --no-terminal --install-ghc test --only-dependencies
+- cabal install --only-dependencies --enable-tests
 
 script:
 # Build the package, its tests, and its docs and run the tests
-- stack --no-terminal test --haddock --no-haddock-deps
+- cabal configure --enable-tests && cabal build && cabal test
