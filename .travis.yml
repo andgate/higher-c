@@ -1,6 +1,6 @@
 # Use new container infrastructure to enable caching
 dist: trusty
-sudo: enabled
+sudo: false
 
 language: haskell
 
