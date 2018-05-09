@@ -44,6 +44,9 @@ varId = unsafeExtract <$> satisfy p
     p  _                         = False
     unsafeExtract (Token (TokenVarId n) _ l) = (n, l)
 
+conId :: Prod r e Token (Text, Loc)
+conId = conSId
+
 
 conSId :: Prod r e Token (Text, Loc)
 conSId = unsafeExtract <$> satisfy p

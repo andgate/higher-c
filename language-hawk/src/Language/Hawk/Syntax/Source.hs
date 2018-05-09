@@ -158,7 +158,7 @@ data Exp
   | EFree [Text]
 
   -- Control Flow
-  | ECase Exp [(Pat, Exp)]
+  | ECase Exp [(Loc,Pat, Exp)]
   | EIf Exp Exp Exp
   | EDo [Exp]
 
@@ -168,6 +168,14 @@ data Exp
   | EParen Exp
   | EWild
   deriving (Show)
+
+
+
+instance Locatable Exp where
+  locOf = \case
+    -- Usually, we only want a top level location
+    ELoc l _ -> l
+    _        -> error "Location not found!"
 
 -- -----------------------------------------------------------------------------
 -- | Type
@@ -197,6 +205,13 @@ data QType
 data Assert
   = IsIn Text [Type]
   deriving Show
+
+
+instance Locatable Type where
+  locOf = \case
+    -- Usually, we only want a top level location
+    TLoc l _  -> l
+    _         -> error "Location not found!"
 
 
 -- -----------------------------------------------------------------------------
@@ -384,7 +399,7 @@ instance Pretty Exp where
 
       -- Control Flow
       ECase e brs -> "case" <+> pretty e
-                            <+> vcat [pretty p <+> "->" <+> pretty e | (p, e) <- brs]
+                            <+> vcat [pretty p <+> "->" <+> pretty e | (_, p, e) <- brs]
 
       EIf p a b -> "if" <+> pretty p
                         <+> "then" <+> pretty a

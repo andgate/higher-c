@@ -169,9 +169,6 @@ toplevel = mdo
     tyAssert <- rule $
         IsIn <$> (fst <$> conSId) <*> many atyp
 
--- -----------------------------------------------------------------------------
--- Statement Rules
-
 
 -- -----------------------------------------------------------------------------
 -- Expression Rules
@@ -251,7 +248,6 @@ toplevel = mdo
             = ELoc (l1<>l2) $ EApp f x
       in ex <$> bexp <*> aexp
 
-
     expLam <- rule $
       let ex (_,l1) arg ret@(ELoc l2 _) =
             ELoc (l1<>l2) $ ELam arg ret
@@ -275,16 +271,17 @@ toplevel = mdo
       in ex <$> varId <*> (rsvp "=" *> dexp)
 
     expFree <- rule $
-      let ex vs@((_,l1):_) (v, l2) =
-            ELoc (l1<>l2) $ EFree (fst <$> vs)
+      let ex (_, l1) vs =
+            let l2 = snd . last $ vs
+            in  ELoc (l1<>l2) $ EFree (fst <$> vs)
       in ex <$> rsvp "free" <*> some varId
 
 
     -- Control Flow
     expCase <- rule $
-      let ex (_, l1) (v, _) e@(ELoc l2 _) =
-            ELoc (l1<>l2) $ ECase v brs
-      in ex <$> rsvp "case" <*> exp <*> (rsvp "of" *> branches)
+      let ex (_, l1) e brs (_, l2) =
+            ELoc (l1<>l2) $ ECase e brs
+      in ex <$> rsvp "case" <*> exp <*> (rsvp "of" *> (blk *> linefolds branch)) <*> blk'
 
     expIf <- rule $
       let ex (_, l1) p a b@(ELoc l2 _) =
@@ -299,9 +296,9 @@ toplevel = mdo
 
     -- Annotations
     expType <- rule $
-      let ex e@(ELoc _ l1) t@(TLoc _ l2) =
-            ELoc (l1<>l2) $ EType e t
-      in ex <$> dexp <*> (rsvp ":" <*> typ)
+      let ex e t =
+            ELoc (locOf e<>locOf t) $ EType e t
+      in ex <$> dexp <*> (rsvp ":" *> typ)
 
     expParen <- rule $
       let ex (e, l) = ELoc l $ EParen e

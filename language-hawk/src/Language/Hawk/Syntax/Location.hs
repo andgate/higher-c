@@ -80,6 +80,7 @@ instance {-# OVERLAPPABLE #-} (Foldable f, Functor f, Locatable a) => Locatable 
 instance HasRegion Loc where
     region = locReg . region
 
+
 -- Can't make a HasPosition instance for region, since it has two positions!
 
 -- -----------------------------------------------------------------------------
