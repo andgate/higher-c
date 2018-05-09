@@ -37,8 +37,8 @@ git:
 
 install:
 # Build dependencies
-- cabal new-install --only-dependencies --enable-tests
+- cabal new-configure
 
 script:
 # Build the package, its tests, and its docs and run the tests
-- cabal new-configure --enable-tests && cabal new-build && cabal new-test
+- cabal new-build && cabal new-test
