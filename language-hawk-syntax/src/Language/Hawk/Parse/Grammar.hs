@@ -408,7 +408,7 @@ toplevel = mdo
       ClassDef <$> (rsvp "class" *> tyContext)
                <*> (fst <$> conId)
                <*> many atyp
-               <*> (rsvp "where" *> block0 sig)
+               <*> (rsvp "has" *> block0 sig)
 
 
 -- -----------------------------------------------------------------------------
@@ -419,7 +419,7 @@ toplevel = mdo
         <$> tyContext
         <*> (fst <$> conId)
         <*> many atyp
-        <*> (rsvp "where" *> block0 def)
+        <*> (rsvp "has" *> block0 def)
 
 
 -- -----------------------------------------------------------------------------

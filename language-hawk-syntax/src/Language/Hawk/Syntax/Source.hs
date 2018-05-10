@@ -27,6 +27,7 @@ data Module a =
   Module
     { modName :: Text
     , modVars :: [Text]
+    , modDeps :: [Text]
     , modContents :: a
     }
   deriving(Show)

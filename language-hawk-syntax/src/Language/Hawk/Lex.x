@@ -23,15 +23,15 @@ import Data.Monoid
 import Data.Text (Text)
 import Data.Word (Word8)
 import Language.Hawk.Lex.Error
-import Language.Hawk.Lex.Token
+import Language.Hawk.Lex.Organize (organize)
 import Language.Hawk.Lex.State
+import Language.Hawk.Lex.Token
 import Language.Hawk.Syntax.Location
 import System.FilePath (FilePath)
 
 import qualified Data.Map	     as Map
 import qualified Data.Text           as T
 import qualified Data.Text.Read      as T
-import qualified Language.Hawk.Lex.Format as Fmt
 import qualified System.FilePath     as Filesystem
 
 }
@@ -94,18 +94,20 @@ hawk :-
   \]                              { rsvp }
   \{                              { rsvp }
   \}                              { rsvp }
-  \-\o                            { rsvp }
   \-\>                            { rsvp }
   \=\>                            { rsvp }
   \:\=                            { rsvp }
-  \:                              { rsvp }
   \=                              { rsvp }
+  \<\-                            { rsvp }
+  \;                              { rsvp }
+  \:                              { rsvp }
   \\                              { rsvp }
   \@                              { rsvp }
 
   "foreign"                       { rsvp }
+  "module"                        { rsvp }
   "import"                        { rsvp }
-  "export"			  { rsvp }
+  "export"			                  { rsvp }
   "ccall"                         { rsvp }
   
   "infix"                         { rsvp }
@@ -113,23 +115,18 @@ hawk :-
   "infixr"                        { rsvp }
 
   "type"                          { rsvp }
-  "alias"                         { rsvp }
-  "data"                          { rsvp }
-  "class"                         { rsvp }  
-  "inst"                          { rsvp }
+  "class"                         { rsvp }
 
-  "forall"                        { rsvp }
   "do"                            { rsvp }
-  "where"                         { rsvp }
-  "free"                          { rsvp }
-  "dup"				                    { rsvp }
+  "has"                           { rsvp }
   "so"                            { rsvp }
 
+  "forall"                        { rsvp }
+  "free"                          { rsvp }
   "if"                            { rsvp }
   "then"                          { rsvp }
+  "elif"                          { rsvp }
   "else"                          { rsvp }
-  "let"                           { rsvp }
-  "in"                            { rsvp }
   "case"                          { rsvp }
   "of"                            { rsvp }
   
@@ -400,9 +397,9 @@ alexInputPrevChar = prevChar
 
 
 
-lex :: FilePath -> Text -> Either LexError [[Token]]
+lex :: FilePath -> Text -> Either LexError [Token]
 lex fp text =
-  Fmt.layout <$> runLexer fp start
+  organize <$> runLexer fp start
 
   where
     start = go $ AlexInput '\n' [] text

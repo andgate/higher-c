@@ -36,23 +36,23 @@ unwrapL (L l x) = (x, l)
 data Loc
   = Loc
     { _locPath  :: !FilePath
-    , _locReg   :: {-# UNPACK #-} !Region 
+    , _locReg   :: Region 
     }
     deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
 
 
 data Region
   = R
-    { _regStart :: {-# UNPACK #-} !Position
-    , _regEnd   :: {-# UNPACK #-} !Position
+    { _regStart :: Position
+    , _regEnd   :: Position
     }
     deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
 
 
 data Position
   = P
-    { _posLine    :: {-# UNPACK #-} !Int
-    , _posColumn  :: {-# UNPACK #-} !Int
+    { _posLine    :: Int
+    , _posColumn  :: Int
     }
     deriving (Eq, Read, Show, Data, Typeable, Generic)
 

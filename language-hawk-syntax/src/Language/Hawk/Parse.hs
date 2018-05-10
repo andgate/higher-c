@@ -11,6 +11,7 @@ module Language.Hawk.Parse where
 import Text.Earley (Report (..), Prod)
 
 import Language.Hawk.Lex.Token
+import Language.Hawk.Lex.LFCut
 import Language.Hawk.Parse.Error
 import Language.Hawk.Parse.Grammar
 import Language.Hawk.Syntax.Source

@@ -1,4 +1,4 @@
-name:           language-hawk
+name:           language-hawk-syntax
 version:        0.0.0
 synopsis:       Hawk programming language syntax library
 description:    Linear, Dependently Typed, Purely Functional Systems Language
@@ -46,8 +46,7 @@ library
     , lens
     , lifted-async
     , lifted-base
-    , llvm-hs
-    , llvm-hs-pure
+    , ListZipper
     , mmorph
     , monad-control
     , monad-gen
@@ -77,7 +76,7 @@ library
   exposed-modules:
       Language.Hawk.Lex
       Language.Hawk.Lex.Error
-      Language.Hawk.Lex.Format
+      Language.Hawk.Lex.Organize
       Language.Hawk.Lex.State
       Language.Hawk.Lex.Token
       
@@ -106,6 +105,6 @@ test-suite simple
     , directory
     , filepath
     , text
-    , language-hawk
+    , language-hawk-syntax
     , prettyprinter
   default-language: Haskell2010

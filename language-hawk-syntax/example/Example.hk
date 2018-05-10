@@ -1,0 +1,127 @@
+--module Core has
+
+
+-- Primitive Types
+-- Numeric: Bit, Nat, Int, Real
+-- Text:    Char, String
+-- Array:   [x]
+
+-- New memory model
+--  Needs:
+--    1)  A Single Constructor
+--    2)  Magical unboxing algorithm
+            - intelligently organizes data
+              between heap and stack.
+--
+--  Mutable, touchable objects ARE HARD.
+--  Category theory doesn't work well with them.
+--  What if delete was like (expr ; names)
+
+-- Need to import the following from C...
+--   putStr()
+
+foreign import ccall putStr : String -> ()
+
+-- Optimizes to a single bit, for single bit if checks
+Bool = True | False
+
+-- Box allows for heap storage
+Box a = Box { unbox : a }
+Ref a = Ref { deref : a }
+
+wrap : a -> Box a
+free : Box a -> a
+
+-- Linear heap storage.
+Uniq a = Uniq { destroy : a }
+
+-- Classic functiional types
+Maybe a = Nothing | Just a
+Either a b = Left a | Right b
+
+
+-- ----------------------------------
+-- Category Laws
+-- 1.  f . id  ==  f    (right identity)
+-- 2.  id . f  ==  f    (left identity)
+-- 3.  f . (g . h) == (f . g) . h   (associativity)
+-------------------------------------
+
+($) : (a -> b) 
+
+class Category cat where
+  id : cat a a
+  (.) : cat 
+
+Category (->) where
+  id = \a -> a
+  (.) g f a = g (f a) 
+
+
+-------------------------------------
+-- Functor Laws
+-- 1.  fmap id  ==  id
+-- 2.  fmap (f . g)  ==  fmap f . fmap g
+-------------------------------------
+
+-- Functor Class
+class Functor f has
+  fmap : (a -> b) -> f a -> f b
+
+
+-- Functor Instances
+Functor Box has
+  fmap f (Box x) = Box (f x)
+
+Functor Maybe has
+  fmap f Nothing = Nothing
+  fmap f (Just a) = Just (f a)
+
+Functor Either a has
+  fmap f e =
+    case e of
+      Left x -> Left x
+      Right a -> Right a
+
+Functor [a] has
+  fmap f xs = do
+    xs' <- Arr (size xs) []
+    go <- ( \i -> xs'[i] = f xs[i]; go (i-1))  
+    go (size xs)
+    xs'
+
+
+-- Applicative Class
+class Functor f => Applicative f has
+  pure : a -> f a
+  (<*>) : f (a -> b) -> f a -> f b
+
+-- Applicative Instances
+
+Applicative Box has
+  pure a = Box a
+  (<*>) (Box f) m = fmap f m
+
+Applicative Maybe has
+  pure a = Just a
+
+  (<*>) (Just f) m = fmap f m
+  (<*>) Nothing _  = Nothing
+
+
+class Applicative m => Monad m a has
+  (>>=) : m a -> (a -> m b) -> m b
+
+  (>>) : m a -> m b -> m b
+  (>>) m k = m >>= \_ -> k
+  
+  return : a -> m a
+  return = pure
+
+
+Monad Box has
+  (Box x) >>= k = k x
+
+Monad Maybe has
+  (Just x) >>= k = k x
+  Nothing >>= _ = Nothing

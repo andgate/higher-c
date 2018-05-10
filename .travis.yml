@@ -4,6 +4,7 @@ dist: trusty
 # Use new container infrastructure to enable caching
 sudo: false
 
+# Hawk uses Haskell
 language: haskell
 
 # Caching so the next build will be fast too.
@@ -14,6 +15,8 @@ cache:
 # Ensure necessary system libraries are present
 addons:
   apt:
+    # probably not neccessary
+    #update: true
     sources:
       - sourceline: 'ppa:hvr/ghc' # PPA of Haskell packages
       - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main' 
@@ -22,12 +25,12 @@ addons:
     packages:
       - libgmp-dev           # required by cabal
       - cabal-install-2.0    # required by GHC 8.x
-      - llvm-6.0-dev
+      - llvm-6.0-dev         
 
 ghc:
   - "8.4"
 
-
+# Keep git pulls small
 git:
   depth: 5
   

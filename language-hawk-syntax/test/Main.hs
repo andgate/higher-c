@@ -18,7 +18,7 @@ srcPath = "example/Example.hk"
 main = do
     srcText <- Text.readFile "example/Example.hk"
     
-    putStrLn "\n\nBeginning Lexxing:"
+    putStrLn "\n\nBeginning Lexing:"
     toks <- testLex srcText
 
     putStrLn "\n\nBeginning Parsing:"
@@ -27,7 +27,7 @@ main = do
     return ()
 
 
-testLex :: Text -> IO [[Token]]
+testLex :: Text -> IO [Token]
 testLex srcText = do
     case Hk.lex srcPath srcText of
         Left err   -> do
@@ -35,19 +35,19 @@ testLex srcText = do
             error "\nLexer encountered fatal error."
         
         Right srcToks -> do
-            putDoc $ vcat (pretty <$> srcToks) <> line
+            putDoc $ pretty srcToks <> line
             return srcToks
 
 
-testParse :: [[Token]] -> IO [TopLevelDef]
+testParse :: [Token] -> IO TopLevelDef
 testParse srcToks = do
-    case partitionEithers (Hk.parse srcPath <$> srcToks) of
-        ([], srcAst)   -> do
+    case Hk.parse srcPath srcToks of
+        Right srcAst   -> do
             putDoc $ pretty srcAst <> line
             return srcAst
 
-        (errs, _)   -> do
-            putDoc $ vcat (pretty <$> errs) <> line
+        Left err       -> do
+            putDoc $ pretty err <> line
             error "\nParser encountered fatal error."
 
     
