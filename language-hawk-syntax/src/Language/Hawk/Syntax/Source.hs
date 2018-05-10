@@ -137,26 +137,26 @@ data ForeignType =
 -- -----------------------------------------------------------------------------
 -- | Expressions
 
+
+-- Memory model: Stack only vars
+-- Evaluation model: Call-by-value
+
 data Exp
   -- Terms
   = EVar  Text
+  | ECon  Text
   | EVal  Value
   | EOp   Text
 
-  -- Magic
-  | EConS Text
-  | EConH Text
-  | EPrim PrimInstr Exp Exp
+  | EPrimCon PrimCon
+  | EPrimBinOp PrimBinOp
   
   -- Evaluation
   | EApp  Exp Exp
   | ELam  Pat Exp
 
-  -- Imperative, Impure stuff
-  | ESeq Exp Exp
   | EBind Text Exp
-  | ESet Text Exp
-  | EFree [Text]
+  | ELet Text Exp
 
   -- Control Flow
   | ECase Exp [(Loc,Pat, Exp)]

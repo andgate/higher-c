@@ -5,6 +5,14 @@
 -- Numeric: Bit, Nat, Int, Real
 -- Text:    Char, String
 -- Array:   [x]
+-- Memory:  Box, Linear, Ref, IO
+
+-- Primitive constructors
+-- Box = heap value
+-- Linear = read-once heap value
+-- Ref = Pointer to some other address.
+--   Cannot copy into, can only set the pointer to a value.
+
 
 -- New memory model
 --  Needs:
@@ -32,8 +40,11 @@ Ref a = Ref { deref : a }
 wrap : a -> Box a
 free : Box a -> a
 
--- Linear heap storage.
-Uniq a = Uniq { destroy : a }
+-- Linear heap storage. If it is copied, it is destroyed!
+Linear a = Linear { consume : a }
+
+-- Construct a constant region of memory
+Freeze a = Freeze a
 
 -- Classic functiional types
 Maybe a = Nothing | Just a
@@ -72,6 +83,9 @@ class Functor f has
 -- Functor Instances
 Functor Box has
   fmap f (Box x) = Box (f x)
+  
+Functor Linear has
+  fmap f (Linear x) = Linear (f x)
 
 Functor Maybe has
   fmap f Nothing = Nothing
@@ -102,13 +116,24 @@ Applicative Box has
   pure a = Box a
   (<*>) (Box f) m = fmap f m
 
+Applicative Linear has
+  pure a = Linear a
+  (<*>) (Linear f) m = fmap f m
+  
 Applicative Maybe has
   pure a = Just a
 
   (<*>) (Just f) m = fmap f m
   (<*>) Nothing _  = Nothing
+  
+Applicative Either e where
+  pure a = Right a
+  
+  (<*>) (Right f) m = fmap f m
+  (<*>) (Left e)  _ = Left e
 
 
+-- Monad Class
 class Applicative m => Monad m a has
   (>>=) : m a -> (a -> m b) -> m b
 
@@ -119,9 +144,53 @@ class Applicative m => Monad m a has
   return = pure
 
 
+-- Monad Instances
 Monad Box has
   (Box x) >>= k = k x
 
+Monad Linear has
+  (Linear x) >>= k = k x
+  
 Monad Maybe has
   (Just x) >>= k = k x
   Nothing >>= _ = Nothing
+
+Monad Either e has
+  (Left e) >>= k = Left e
+  (Right x) >>= k = k x
+  
+  
+-- Graph stuff
+
+Rep
+  = AdjecencyList
+  | EdgeList
+  | Matrix
+  
+IntGraph = IntGraph { edges : [[Int]] }
+
+class Graph g has
+  size : g -> Int
+  bfs : g -> Int -> ([Int], [Int], [Int])
+  
+  
+Graph IntGraph has
+  size g = size . edges $ g
+  bfs g s = do
+    par <- Array (size g) : [Int]
+    dist <- Array (size g) : [Int]
+    q <- Array (size g) : [Int]
+    
+     
+    
+    
+    
+    return ([], [], [])
+    
+  
+
+
+-- IO
+
+readFile : String -> IO String
+write
