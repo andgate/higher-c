@@ -30,12 +30,8 @@ data Token = Token
 -- The token type:
 data TokenClass
   = TokenRsvp Text
-  | TokenPrim Text
-
   | TokenVarId Text
-  | TokenDupId Text
-  | TokenConSId Text
-  | TokenConHId Text
+  | TokenConId Text
   | TokenOpId Text
   
   | TokenInteger Integer

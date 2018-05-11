@@ -135,6 +135,17 @@ data ForeignType =
 
 
 -- -----------------------------------------------------------------------------
+-- | Value
+
+data Value
+  = VInt Integer
+  | VFloat Double
+  | VChar Char
+  | VBool Bool
+  deriving (Show, Read, Eq, Ord)
+
+
+-- -----------------------------------------------------------------------------
 -- | Expressions
 
 
@@ -149,19 +160,22 @@ data Exp
   | EOp   Text
 
   | EPrimCon PrimCon
-  | EPrimBinOp PrimBinOp
+  | EPrimInstr PrimInstr
   
   -- Evaluation
   | EApp  Exp Exp
-  | ELam  Pat Exp
+  | ELam  [Pat] Exp
+  | ELet [LetStmt] Exp
 
-  | EBind Text Exp
-  | ELet Text Exp
-
-  -- Control Flow
-  | ECase Exp [(Loc,Pat, Exp)]
+  -- Data manipulation
+  | ERec Exp [(Text, Exp)]
+  | ECase Exp [(Loc, Pat, Exp)]
   | EIf Exp Exp Exp
   | EDo [Exp]
+
+  -- Built-in Containers
+  | ETuple [Exp]
+  | EArray [Exp]
 
   -- Annotations
   | EType  Exp Type
@@ -170,6 +184,13 @@ data Exp
   | EWild
   deriving (Show)
 
+
+-- Let statements allow variable
+-- and internal function binding.
+data LetStmt
+  = LBind Pat Exp
+  | LDef Text [Pat] Exp
+  deriving (Show)
 
 
 instance Locatable Exp where
@@ -182,14 +203,22 @@ instance Locatable Exp where
 -- | Type
 
 data Type
+  -- Terms
   = TVar Text
   | TCon Text
+  | TOp Text
+  
+  -- Application
   | TApp Type Type
   | TArr Type Type
-  | TLoli Type Type
-  | TForall (NonEmpty Text) Type
+  | TForall [Text] Type
 
+  -- Record Type
   | TRow [(Text, Type)] (Maybe Text)
+
+  -- Simple containers
+  | TTuple [Type]
+  | TArray Type
 
   -- Annotations
   | TKind Type Kind
@@ -245,15 +274,7 @@ data Pat
   deriving (Show)
 
 
--- -----------------------------------------------------------------------------
--- | Value
 
-data Value
-  = VInt Integer
-  | VFloat Double
-  | VChar Char
-  | VBool Bool
-  deriving (Show, Read, Eq, Ord)
 
 
 -- -----------------------------------------------------------------------------
@@ -378,28 +399,30 @@ instance Pretty ForeignType where
 
 instance Pretty Exp where
     pretty = \case
+      -- Terms
       EVar n      -> pretty n
-      EVal v      -> pretty v
+      ECon n      -> pretty n
       EOp op      -> pretty op
       
-      EConS n     -> pretty n
-      EConH n     -> pretty n
-      EPrim i a b -> pretty i <+> pretty a <+> pretty b
-      
+      -- Evaluation
       EApp e1 e2  -> pretty e1 <+> pretty e2
+      
       ELam pat e    ->
           "\\" <+> pretty pat
-            <+> vsep [ "."
+            <+> vsep [ "->"
                      , indent 2 (pretty e)
                      ]
 
-      ESeq a b -> pretty a <> ";" <+> pretty b
-      EBind v e -> pretty v <+> "<-" <+> pretty e
-      ESet v e -> pretty v <+> "=" <+> pretty e
-      EFree vs -> "free" <+> hcat (pretty <$> vs)
+      ELet xs e -> "let" <+> vcat (pretty <$> xs) <> "in" <+> pretty e
 
-      -- Control Flow
-      ECase e brs -> "case" <+> pretty e
+
+      -- Data manipulation
+      ERec e brs -> encloseSep  (pretty e <+> lbrace)
+                                rbrace
+                                comma
+                                [pretty n <+> pretty e | (n, e) <- brs]
+      
+      ECase e brs -> "case" <+> pretty e <+> "of"
                             <+> vcat [pretty p <+> "->" <+> pretty e | (_, p, e) <- brs]
 
       EIf p a b -> "if" <+> pretty p
@@ -408,6 +431,12 @@ instance Pretty Exp where
 
       EDo es -> "do" <+> vcat [pretty e | e <- es]
 
+
+      -- Built-in Containers
+      ETuple es -> tupled (pretty <$> es)
+      EArray es -> list (pretty <$> es)
+
+
       -- Annotations
       EType e t -> pretty e <+> ":" <+> pretty t
       ELoc _ e  -> pretty e -- ignore location
@@ -415,17 +444,34 @@ instance Pretty Exp where
       EWild     -> "_"
 
 
+instance Pretty LetStmt where
+    pretty = \case
+      LBind p e -> pretty p <+> "=" <+> pretty e
+      LDef n xs e -> pretty n <+> hcat (pretty <$> xs) <+> "=" <+> pretty e
+
+
 instance Pretty Type where
     pretty = \case
+      -- Terms
       TVar n      -> pretty n
       TCon n      -> pretty n
-      
+
+      -- Application
       TApp t1 t2  -> pretty t1 <+> pretty t2
       TArr t1 t2  -> pretty t1 <+> "->" <+> pretty t2
-      TLoli t1 t2  -> pretty t1 <+> "-o" <+> pretty t2
-      
-      TForall xs t -> "forall" <+> hsep (pretty <$> NE.toList xs) <+> "." <+> pretty t
+      TForall xs t -> "forall" <+> hsep (pretty <$> xs) <+> "." <+> pretty t
 
+      -- Record Type
+      TRow recs mn -> encloseSep lbrace
+                                 ("|" <+> pretty mn <+> rbrace)
+                                 comma
+                                 ([ pretty n <+> ":" <+> pretty t |(n, t) <- recs ])
+
+      -- Simple containers
+      TTuple ts -> tupled (pretty <$> ts)
+      TArray t -> list [pretty t]
+
+      -- Annotations
       TKind t k -> pretty t <+> ":" <+> pretty k
       TLoc _ t  -> pretty t -- ignore location
       TParen t  -> parens $ pretty t

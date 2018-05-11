@@ -92,7 +92,7 @@ toplevel = mdo
 
 
 -- -----------------------------------------------------------------------------
--- Literal Rules
+-- Value Rules
 
     val <- rule $
             ( first VInt <$> intLit )
@@ -100,48 +100,227 @@ toplevel = mdo
         <|> ( first VChar <$> charLit )
         <|> ( first VBool <$> boolLit )
 
+
+-- -----------------------------------------------------------------------------
+-- Expression Rules
+
+    -- The expression precedence chain, starting at aexp as the base with the highest precedence.
+    exp <- rule $
+      expType <|> dexp
+
+    dexp <- rule $
+      expCase <|> expIf
+              <|> expDo
+              <|> expLam
+              <|> cexp
+
+
+    cexp <- rule $
+      expLet <|> bexp
+
+
+    bexp <- rule $
+      expApp <|> aexp
+
+
+    aexp <- rule $
+          (expVar <?> "variable")
+      <|> (expCon <?> "constructor")
+      <|> (expOp <?> "operator")
+      <|> (expVal <?> "value")
+      <|> (expTuple <?> "operator")
+      <|> (expArray <?> "operator")
+      <|> (expParen <?> "parenthetical expression")
+      <|> (expWild <?> "wildcard expression")
+
+
+    -- Terms
+    expVar <- rule $
+      let ex (v, l) = ELoc l $ EVar v
+      in ex <$> varId
+
+    expOp <- rule $
+      let ex (op, l) = ELoc l $ EOp op
+      in ex <$> opId
+
+    expVal <- rule $
+      let ex (v, l) = ELoc l $ EVal v
+      in ex <$> val
+
+    expCon <- rule $
+      let ex (n, l) = ELoc l $ ECon n
+      in ex <$> conId
+
+
+    -- Evaluation
+    expApp <- rule $
+      let ex f@(ELoc l1 _) x@(ELoc l2 _)
+            = ELoc (l1<>l2) $ EApp f x
+      in ex <$> bexp <*> aexp
+
+    expLam <- rule $
+      let ex (_,l1) arg ret@(ELoc l2 _) =
+            ELoc (l1<>l2) $ ELam arg ret
+      in ex <$> rsvp "\\" <*> some pat <*> (rsvp "->" *> exp)
+
+    expLet <- rule $
+      let ex (_, l1) stmts e@(ELoc l2 _) =
+            ELoc (l1<>l2) $ ELet stmts e
+      in ex <$> rsvp "let" <*> block letStmt <*> (rsvp "in" *> exp)
+
+
+    -- Helpers for Let Rules
+    letStmt <- rule $
+      letBind <|> letDef
+
+    letBind <- rule $
+      let ex p e = LBind p e
+      in ex <$> pat <*> (rsvp "=" *> exp)
+    
+    letDef <- rule $
+      let ex (v, _) ps e = LDef v ps e
+      in ex <$> varId <*> many pat <*> (rsvp "=" *> exp)
+
+
+    -- Control Flow
+    expRec <- rule $
+      let ex e@(ELoc l1 _) (recs, l2) = ELoc (l1<>l2) $ ERec e recs
+      in ex <$> exp <*> curlysLoc (commaSep ( (,) <$> (fst <$> varId) <*> (rsvp "=" *> exp) )) 
+
+    expCase <- rule $
+      let ex (_, l1) e brs (_, l2) =
+            ELoc (l1<>l2) $ ECase e brs
+      in ex <$> rsvp "case" <*> exp <*> (rsvp "of" *> (blk *> linefolds branch)) <*> blk'
+
+    expIf <- rule $
+      let ex (_, l1) p a b@(ELoc l2 _) =
+            ELoc (l1<>l2) $ EIf p a b
+      in ex <$> rsvp "if" <*> exp <*> (rsvp "then" *> exp) <*> (rsvp "else" *> exp)
+
+    expDo <- rule $
+      let ex (_, l1) es (_, l2) =
+            ELoc (l1<>l2) $ EDo es
+      in ex <$> rsvp "do" <*> (blk *> linefolds0 exp) <*> blk'
+
+
+    -- Built-in Containers
+    expTuple <- rule $
+      let ex (ts, l) = ELoc l $ ETuple ts
+      in ex <$> parensLoc (commaSep exp)
+
+    expArray <- rule $
+      let ex (t, l) = ELoc l $ EArray t
+      in ex <$> bracesLoc (commaSep' exp)
+
+
+    -- Annotations
+    expType <- rule $
+      let ex e t =
+            ELoc (locOf e<>locOf t) $ EType e t
+      in ex <$> dexp <*> (rsvp ":" *> typ)
+
+    expParen <- rule $
+      let ex (e, l) = ELoc l $ EParen e
+      in ex <$> parensLoc exp
+
+    expWild <- rule $
+      let ex (_, l) = ELoc l $ EWild
+      in ex <$> rsvp "_"
+
+
 -- -----------------------------------------------------------------------------
 -- Type Rules
 
     typ <- rule $
-      ctyp 
+      tyKind <|> ctyp 
+
+    dtyp <- rule $
+      tyForall <|> ctyp
 
     ctyp <- rule $ 
-      let ex1 arg@(TLoc l1 _) ret@(TLoc l2 _)
-            = TLoc (l1<>l2) $ TArr arg ret
-          ex2 arg@(TLoc l1 _) ret@(TLoc l2 _)
-            = TLoc (l1<>l2) $ TLoli arg ret
-      in     (ex1 <$> ctyp <*> (rsvp "->" *> btyp))
-         <|> (ex2 <$> ctyp <*> (rsvp "-o" *> btyp))
-         <|> btyp
+      tyApp <|> btyp
 
     btyp <- rule $
-      let ex f@(TLoc l1 _) x@(TLoc l2 _)
-            = TLoc (l1<>l1) $ TApp f x
-      in   (ex <$> btyp <*> atyp)
-       <|> atyp
+      tyArr <|> atyp
 
     atyp <- rule $
-          gtyCon
-      <|> tyVar
+          tyVar
+      <|> gtyCon
+      <|> tyOp
       <|> tyParens
     
     gtyCon <- rule $
           tyCon
       <|> tyUnit
+      <|> tyTuple
+      <|> tyArray
 
 
+    -- Basic Types
     tyUnit <- rule $
       let ex (_, l1) (_, l2) = TLoc (l1<>l2) $ TCon "()"
       in ex <$> rsvp "(" <*> rsvp ")"
 
-    tyCon <- rule $
-      let ex (n, l) = TLoc l $ TCon n
-      in ex <$> conSId
 
+    -- Terms
     tyVar <- rule $
       let ex (n, l) = TLoc l $ TVar n
       in ex <$> varId
+
+    tyCon <- rule $
+      let ex (n, l) = TLoc l $ TCon n
+      in ex <$> conId
+
+    tyOp <- rule $
+      let ex (op, l) = TLoc l $ TOp op
+      in ex <$> opId
+
+
+    -- Application
+    tyApp <- rule $
+      let ex f@(TLoc l1 _) x@(TLoc l2 _)
+            = TLoc (l1<>l1) $ TApp f x
+      in ex <$> btyp <*> atyp
+
+    tyArr <- rule $
+      let ex1 arg@(TLoc l1 _) ret@(TLoc l2 _)
+            = TLoc (l1<>l2) $ TArr arg ret
+      in ex1 <$> ctyp <*> (rsvp "->" *> btyp)
+
+    tyForall <- rule $
+      let ex1 (_,l1) xs t@(TLoc l2 _)
+            = TLoc (l1<>l2) $ TForall (fst <$> xs) t
+      in ex1 <$> rsvp "forall" <*> many varId <*> (rsvp "." *> dtyp)
+    
+
+    -- Record Type
+    tyRow <- rule $
+      tyRow1 <|> tyRow2
+
+    tyRow1 <- rule $
+      let ex (recs,l) = TLoc l $ TRow recs Nothing
+      in ex <$> curlysLoc (commaSep ( (,) <$> (fst <$> varId) <*> (rsvp ":" *> atyp) ))
+
+    tyRow2 <- rule $
+      let ex (_,l1) recs (v, _) (_,l2) = TLoc (l1<>l2) $ TRow recs (Just v)
+      in ex <$>  rsvp "{" <*> commaSep ((,) <$> (fst <$> varId) <*> (rsvp ":" *> atyp)) <*> (rsvp "|" *> varId) <*> rsvp "}"
+
+
+    -- Simple containers    
+    tyTuple <- rule $
+      let ex (ts, l) = TLoc l $ TTuple ts
+      in ex <$> parensLoc (commaSep atyp)
+
+    tyArray <- rule $
+      let ex (t, l) = TLoc l $ TArray t
+      in ex <$> bracesLoc typ
+
+
+    -- Annotations
+    tyKind <- rule $
+      let ex1 t@(TLoc l1 _ ) k@(KLoc l2 _)
+            = TLoc (l1<>l2) $ TKind t k
+      in ex1 <$> dtyp <*> (rsvp ":" *> kind)
 
     tyParens <- rule $
       let ex (t, l) = TLoc l $ TParen t
@@ -167,146 +346,30 @@ toplevel = mdo
         <|> mono tyAssert
     
     tyAssert <- rule $
-        IsIn <$> (fst <$> conSId) <*> many atyp
+        IsIn <$> (fst <$> conId) <*> many atyp
+
 
 
 -- -----------------------------------------------------------------------------
--- Expression Rules
-
-    -- The expression precedence chain, starting at aexp as the base with the highest precedence.
-    exp <- rule $
-      fexp
-
-    fexp <- rule $
-      expType <|> eexp
-
-    eexp <- rule $
-      expSeq <|> dexp
-
-    -- new cexp for control flow
-    dexp <- rule $
-      expCase <|> expIf
-              <|> expDo
-              <|> expLam
-              <|> cexp
+-- Kind Rules
 
 
-    cexp <- rule $
-      expBind <|> expSet <|> bexp
+    kind <- rule $
+      kStar <|> kRow
+
+    akind <- rule $
+      
+
+    kStar <- rule $
+      let ex (_, l) = KLoc l $ KStar
+      in ex <$> rsvp "*"
 
 
-    bexp <- rule $
-      expApp <|> aexp
+    kRow <- rule $
+      let ex (_, l) = KLoc l $ KStar
+      in ex <$> rsvp "*"
 
-
-    aexp <- rule $
-          (expVal <?> "value")
-      <|> (expVar <?> "variable")
-      <|> (expOp <?> "operator")
-      <|> (expCon <?> "constructor")
-      <|> (expPrim <?> "primitive expression")
-      <|> (expParen <?> "parenthetical expression")
-      <|> (expWild <?> "wildcard expression")
-      <|> (expFree <?> "free <vars>")
-
-
-    -- Terms
-    expVar <- rule $
-      let ex (v, l) = ELoc l $ EVar v
-      in ex <$> varId
-
-    expVal <- rule $
-      let ex (v, l) = ELoc l $ EVal v
-      in ex <$> val
-
-    expOp <- rule $
-      let ex (n, l) = ELoc l $ EOp n
-      in ex <$> opId
-
-
-    -- Magic
-    expCon <- rule $
-      expConS <|> expConH
-
-    expConS <- rule $
-      let ex (n, l) = ELoc l $ EConS n
-      in ex <$> conSId
-
-    expConH <- rule $
-      let ex (n, l) = ELoc l $ EConH n
-      in ex <$> conHId
-
-    expPrim <- rule $
-      let ex (txt, l1) a b@(ELoc l2 _) 
-            = ELoc (l1<>l2) $ EPrim (readPrim txt) a b
-      in ex <$> primText <*> aexp <*> aexp
-
-
-    -- Evaluation
-    expApp <- rule $
-      let ex f@(ELoc l1 _) x@(ELoc l2 _)
-            = ELoc (l1<>l2) $ EApp f x
-      in ex <$> bexp <*> aexp
-
-    expLam <- rule $
-      let ex (_,l1) arg ret@(ELoc l2 _) =
-            ELoc (l1<>l2) $ ELam arg ret
-      in ex <$> rsvp "\\" <*> pat <*> (rsvp "->" *> exp)
-
-
-    -- Imperative, impure object names
-    expSeq <- rule $
-      let ex a@(ELoc l1 _) b@(ELoc l2 _) =
-            ELoc (l1<>l2) $ ESeq a b
-      in ex <$> eexp <*> (rsvp ";" *> dexp)
-
-    expBind <- rule $
-      let ex (v, l1) e@(ELoc l2 _) =
-            ELoc (l1<>l2) $ EBind v e
-      in ex <$> varId <*> (rsvp "<-" *> dexp)
-
-    expSet <- rule $
-      let ex (v, l1) e@(ELoc l2 _) =
-            ELoc (l1<>l2) $ ESet v e
-      in ex <$> varId <*> (rsvp "=" *> dexp)
-
-    expFree <- rule $
-      let ex (_, l1) vs =
-            let l2 = snd . last $ vs
-            in  ELoc (l1<>l2) $ EFree (fst <$> vs)
-      in ex <$> rsvp "free" <*> some varId
-
-
-    -- Control Flow
-    expCase <- rule $
-      let ex (_, l1) e brs (_, l2) =
-            ELoc (l1<>l2) $ ECase e brs
-      in ex <$> rsvp "case" <*> exp <*> (rsvp "of" *> (blk *> linefolds branch)) <*> blk'
-
-    expIf <- rule $
-      let ex (_, l1) p a b@(ELoc l2 _) =
-            ELoc (l1<>l2) $ EIf p a b
-      in ex <$> rsvp "if" <*> exp <*> (rsvp "then" *> exp) <*> (rsvp "else" *> exp)
-
-    expDo <- rule $
-      let ex (_, l1) es (_, l2) =
-            ELoc (l1<>l2) $ EDo es
-      in ex <$> rsvp "do" <*> (blk *> linefolds0 exp) <*> blk'
-
-
-    -- Annotations
-    expType <- rule $
-      let ex e t =
-            ELoc (locOf e<>locOf t) $ EType e t
-      in ex <$> dexp <*> (rsvp ":" *> typ)
-
-    expParen <- rule $
-      let ex (e, l) = ELoc l $ EParen e
-      in ex <$> parensLoc exp
-
-    expWild <- rule $
-      let ex (_, l) = ELoc l $ EWild
-      in ex <$> rsvp "_"
+    
 
 
 -- -----------------------------------------------------------------------------

@@ -5,14 +5,45 @@
 -- Numeric: Bit, Nat, Int, Real
 -- Text:    Char, String
 -- Array:   [x]
--- Memory:  Box, Linear, Ref, IO
+-- Memory:  Id, Cell, Box, Linear, Ref, Lazy, GC, IO
+--
+-- | Built-in Monads | --
+-- Id = constant value, stack (default) or heap (via Box)
+--   read
+-- Cell = Mutable Value, stack (default) or heap (via Box)
+--   read, write, copy
+-- Box = constant value, heap only, must be deleted
+-- Linear = constant value, read only and destroy on read, heap only
+-- Ref = Pointer to some object to an address.
+-- Lazy = Can be combined with other lazy functions and evaluated later.
+-- GC = Garbage collected values (will force gc to be included)
+        -- gc'd values are heap-only
+        -- also, gc values don't have to be managed
+        -- GC is slow, so add tag 
+-- IO = Operation external to program. All monads that communicate
+        externally, like with OS, filesystem, or network, must go
+        through IO. They may wrap IO if they wish, but IO is the core
+        Monad they are built on.
 
--- Primitive constructors
--- Box = heap value
--- Linear = read-once heap value
--- Ref = Pointer to some other address.
---   Cannot copy into, can only set the pointer to a value.
+-- Core library will have:
+--   - Category Theory
+--   - Graph Algorithms
+--   - Linear Algebra
+--   - Filesystem
 
+
+
+class Assigns f has
+  (=) :: f a  -- Destination
+      -> f a  -- Source
+      -> f a  -- Destination
+
+instance Assigns Cell has
+  (=) :: Cell a  -- Destination
+      -> Cell a  -- Source
+      -> Cell a  -- Destination
+
+<~ :: Cell a  -- Destination
 
 -- New memory model
 --  Needs:
@@ -33,18 +64,25 @@ foreign import ccall putStr : String -> ()
 -- Optimizes to a single bit, for single bit if checks
 Bool = True | False
 
+-- Id is basic stack storage
+Id a = Id { id : a }
+
+-- Cell a = Cell some
+Cell a = Cell { mutable : a }
+
 -- Box allows for heap storage
-Box a = Box { unbox : a }
+Box a = Box { modify : a }
+
+-- Some pointer to some region of data
 Ref a = Ref { deref : a }
 
-wrap : a -> Box a
-free : Box a -> a
+-- Shared pointer
+Safe a = Safe { unsafe : a }
+
+ 
 
 -- Linear heap storage. If it is copied, it is destroyed!
 Linear a = Linear { consume : a }
-
--- Construct a constant region of memory
-Freeze a = Freeze a
 
 -- Classic functiional types
 Maybe a = Nothing | Just a
@@ -98,7 +136,16 @@ Functor Either a has
       Right a -> Right a
 
 Functor [a] has
-  fmap f xs = do
+  fmap f xs =
+    let xs' <- [] 5 : [b]
+        loop : Int -> [b]
+        loop 0 = xs' 
+        loop i = 
+            let x' <- f xs[i]
+                xs'[i] = x
+            in fmap' (xs'(i-1)
+    in loop (size xs)
+    
     xs' <- Arr (size xs) []
     go <- ( \i -> xs'[i] = f xs[i]; go (i-1))  
     go (size xs)
@@ -194,3 +241,10 @@ Graph IntGraph has
 
 readFile : String -> IO String
 write
+
+
+-- Super fast, store entire game state in a 
+-- mutable cell for easy save states.
+-- Also needs to IO for loading levels
+-- and networking.
+myGame : CellT IO ()

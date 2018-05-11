@@ -58,10 +58,8 @@ $whiteNoNewline = $white # \n
 -- Alex "Regular expression macros"
 
 -- Basic Ids
-@primid = \# $small+
 @varid = $small $idcharsym*
-@conhid = \! $large $idcharsym*
-@consid = $large $idcharsym*
+@conid = $large $idcharsym*
 @opid  = $opchar+
 
 
@@ -119,10 +117,8 @@ hawk :-
 
   "do"                            { rsvp }
   "has"                           { rsvp }
-  "so"                            { rsvp }
 
   "forall"                        { rsvp }
-  "free"                          { rsvp }
   "if"                            { rsvp }
   "then"                          { rsvp }
   "elif"                          { rsvp }
@@ -130,9 +126,7 @@ hawk :-
   "case"                          { rsvp }
   "of"                            { rsvp }
   
-  @primid                         { \text -> yieldTokAt (TokenPrim text) text }
-  @conhid                          { \text -> yieldTokAt (TokenConHId text) text }
-  @consid                          { \text -> yieldTokAt (TokenConSId text) text }
+  @conid                         { \text -> yieldTokAt (TokenConId text) text }
   @varid                          { \text -> yieldTokAt (TokenVarId text) text }
   @opid                           { \text -> yieldTokAt (TokenOpId text) text }
 

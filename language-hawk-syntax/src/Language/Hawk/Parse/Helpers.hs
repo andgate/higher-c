@@ -29,10 +29,6 @@ rsvp :: Text -> Prod r e Token (Token, Loc)
 rsvp =
   match . TokenRsvp
 
-prim :: Text -> Prod r e Token (Token, Loc)
-prim =
-  match . TokenPrim
-
 
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Name Tokens
@@ -44,23 +40,13 @@ varId = unsafeExtract <$> satisfy p
     p  _                         = False
     unsafeExtract (Token (TokenVarId n) _ l) = (n, l)
 
+
 conId :: Prod r e Token (Text, Loc)
-conId = conSId
-
-
-conSId :: Prod r e Token (Text, Loc)
-conSId = unsafeExtract <$> satisfy p
+conId = unsafeExtract <$> satisfy p
   where
-    p (Token (TokenConSId _) _ _) = True
+    p (Token (TokenConId _) _ _) = True
     p  _                         = False
-    unsafeExtract (Token (TokenConSId n) _ l) = (n, l)
-
-conHId :: Prod r e Token (Text, Loc)
-conHId = unsafeExtract <$> satisfy p
-  where
-    p (Token (TokenConHId _) _ _) = True
-    p  _                         = False
-    unsafeExtract (Token (TokenConHId n) _ l) = (n, l)
+    unsafeExtract (Token (TokenConId n) _ l) = (n, l)
 
 
 opId :: Prod r e Token (Text, Loc)
@@ -69,13 +55,6 @@ opId = unsafeExtract <$> satisfy p
     p (Token (TokenOpId _) _ _) = True
     p  _                        = False
     unsafeExtract (Token (TokenOpId n) _ l) = (n, l)
-
-primText :: Prod r e Token (Text, Loc)
-primText = unsafeExtract <$> satisfy p
-  where
-    p (Token (TokenPrim _) _ _) = True
-    p _                         = False
-    unsafeExtract (Token (TokenPrim n) _ l) = (n, l)
 
 
 -- -----------------------------------------------------------------------------
@@ -164,9 +143,16 @@ parensLoc p =
   let ex (_, l1) r (_, l2) = (r, l1 <> l2)
   in ex <$> rsvp "(" <*> p <*> rsvp ")"
 
+
 braces :: Prod r e Token a -> Prod r e Token a
 braces p =
   rsvp "[" *> p <* rsvp "]"
+
+bracesLoc :: Prod r e Token a -> Prod r e Token (a, Loc)
+bracesLoc p =
+  let ex (_, l1) r (_, l2) = (r, l1 <> l2)
+  in ex <$> rsvp "[" <*> p <*> rsvp "]"
+
 
 curlys :: Prod r e Token a -> Prod r e Token a
 curlys p =
@@ -190,10 +176,11 @@ sep' :: Prod r e Token b -> Prod r e Token a -> Prod r e Token [a]
 sep' s p =
   sep s p <|> pure []
 
-
 commaSep :: Prod r e Token a -> Prod r e Token [a]
 commaSep = sep (rsvp ",")
 
+commaSep' :: Prod r e Token a -> Prod r e Token [a]
+commaSep' = sep' (rsvp ",")
   
 mono :: Prod r e Token a -> Prod r e Token [a]
 mono =

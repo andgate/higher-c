@@ -12,6 +12,22 @@ import GHC.Generics (Generic)
 -- -----------------------------------------------------------------------------
 -- | Type
 
+-- Primitive constructor.
+-- The language makes each instance a monad.
+-- Each constructor bends the language rules a little bit. 
+data PrimCon
+  = Cell
+  | Box
+  | Linear
+  | Ref
+  | Safe
+  | Dynamic
+  | Lazy
+  | GC
+  | IO
+  deriving (Read, Show, Eq, Ord, Enum, Data, Typeable, Generic)
+
+
 -- Hawk talon's are dug firmly into LLVM's instruction set.
 data PrimInstr
   = PrimAdd
@@ -64,24 +80,30 @@ floatInstrs =
 
 -- Pretty ---------------------------------------------------------------------
 
+instance Pretty PrimCon where
+    pretty =
+      pretty . pack . show
 
 instance Pretty PrimInstr where
     pretty =
       pretty . pack . show
 
 
-
-
 -- Serialize ---------------------------------------------------------------------
+
+instance Binary PrimCon
+instance FromJSON PrimCon
+instance ToJSON PrimCon
 
 instance Binary PrimInstr
 instance FromJSON PrimInstr
 instance ToJSON PrimInstr
 
+
 -- String
 
-readPrim :: Text -> PrimInstr
-readPrim = \case
+readPrimInstr :: Text -> PrimInstr
+readPrimInstr = \case
   "#add"   -> PrimAdd
   "#fadd"  -> PrimFAdd
   "#sub"   -> PrimSub
