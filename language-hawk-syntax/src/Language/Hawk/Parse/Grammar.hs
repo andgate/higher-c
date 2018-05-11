@@ -355,21 +355,39 @@ toplevel = mdo
 
 
     kind <- rule $
-      kStar <|> kRow
+      bkind
+
+    bkind <- rule $
+      kArr <|> akind
 
     akind <- rule $
-      
+      kStar <|> kRow <|> kParen <|> kWild
 
+
+    -- Kind Terms
     kStar <- rule $
       let ex (_, l) = KLoc l $ KStar
       in ex <$> rsvp "*"
 
-
+    -- Row Kinds!!
     kRow <- rule $
-      let ex (_, l) = KLoc l $ KStar
-      in ex <$> rsvp "*"
+      let ex (_, l1) k@(KLoc l2 _) = KLoc (l1<>l2) $ KRow k
+      in ex <$> rsvp "Row" <*> akind
 
-    
+    -- Basic function kind
+    kArr <- rule $
+      let ex a@(KLoc l1 _) b@(KLoc l2 _) =
+              KLoc (l1<>l2) $ KArr a b
+      in ex <$> akind <*> (rsvp "->" *> bkind)
+
+    -- Misc
+    kParen <- rule $
+      let ex (k, l) = KLoc l $ KParen k
+      in ex <$> parensLoc kind
+
+    kWild <- rule $
+      let ex (_, l) = KLoc l $ KWild
+      in ex <$> rsvp "_"
 
 
 -- -----------------------------------------------------------------------------
@@ -394,6 +412,7 @@ toplevel = mdo
       <|> patWild
       <|> patVal
       <|> parens pat
+      <|> patRec
 
     patVar <- rule $
       let ex (n, l) = PLoc l $ PVar n
@@ -403,15 +422,19 @@ toplevel = mdo
       let ex (v, l) = PLoc l $ PVal v
       in ex <$> val
 
+    patAs <- rule $
+      let ex (x, l1) (p, l2) = PLoc (l1 <> l2) $ PAs x p
+      in ex <$> (varId <* rsvp "@") <*> parensLoc pat
+
     patCon <- rule $
       let ex (n, l1) ps =
             let l2 = mconcat [ l | PLoc l _ <- ps]
             in PLoc (l2 <> l1) $ PCon n ps
       in ex <$> conId <*> many pat
 
-    patAs <- rule $
-      let ex (x, l1) (p, l2) = PLoc (l1 <> l2) $ PAs x p
-      in ex <$> (varId <* rsvp "@") <*> parensLoc pat
+    patRec <- rule $
+      let ex (recs, l) = PLoc l $ PRec recs
+      in ex <$> parensLoc (commaSep ((,) <$> (fst <$> varId) <*> pat))
     
 
     patType <- rule $

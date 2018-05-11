@@ -265,7 +265,7 @@ data Pat
   | PVal Value
   | PAs Text Pat
   | PCon Text [Pat]
-  | PRec [(Text, Text)]
+  | PRec [(Text, Pat)]
 
   | PType Pat Type
   | PLoc Loc Pat
