@@ -16,6 +16,7 @@ srcPath :: FilePath
 srcPath = "example/Example.hk"
 
 main = do
+    putStrLn "\n\nReading Example Source:"
     srcText <- Text.readFile "example/Example.hk"
     
     putStrLn "\n\nBeginning Lexing:"
