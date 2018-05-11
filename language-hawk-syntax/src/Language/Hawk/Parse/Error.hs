@@ -4,12 +4,12 @@ module Language.Hawk.Parse.Error where
 
 import Data.Text.Prettyprint.Doc
 import Language.Hawk.Lex.Token
-import Language.Hawk.Syntax.Source (TopLevelDef)
+import Language.Hawk.Syntax.Source (SrcModule)
 
 
 data ParseError
     = UnexpectedToken [Token] [String]
-    | AmbiguousGrammar [TopLevelDef]
+    | AmbiguousGrammar [SrcModule]
     deriving(Show)
 
 instance Pretty ParseError where
@@ -19,7 +19,7 @@ instance Pretty ParseError where
                  , pretty "Expected tokens:" <+> dquotes (pretty expected)
                  ]
     
-        AmbiguousGrammar parses ->
+        AmbiguousGrammar srcs ->
             vcat [ pretty "Severe Parser Error: Ambiguous grammar encountered. Please report."
-                 , vcat (pretty <$> parses)
+                 , vcat (pretty <$> srcs)
                  ]

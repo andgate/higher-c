@@ -23,16 +23,16 @@ import qualified Data.List.NonEmpty             as NE
 -- -----------------------------------------------------------------------------
 -- | Top Level Definition
 
-data Module a =
+data Module i =
   Module
     { modName :: Text
     , modVars :: [Text]
     , modDeps :: [Text]
-    , modContents :: a
+    , modItems :: [i]
     }
   deriving(Show)
 
-type TopLevelModule = Module [TopLevelDef]
+type SrcModule = Module TopLevelDef
 
 -- -----------------------------------------------------------------------------
 -- | Top Level Definition
@@ -288,6 +288,15 @@ pis ps t = foldr TPi t ps
 
 -- -----------------------------------------------------------------------------
 -- | Pretty Instances
+
+instance Pretty i => Pretty (Module i) where
+  pretty (Module n xs deps cs) =
+    vcat $  [ pretty n 
+                <+>  hcat (pretty <$> xs)
+                <+> ":"
+                <+> hcat (punctuate comma (pretty <$> deps))
+            ] ++ (pretty <$> cs)
+
 
 instance Pretty TopLevelDef where
   pretty = \case

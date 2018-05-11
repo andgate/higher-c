@@ -25,8 +25,15 @@ import qualified Data.List.NonEmpty as NE
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-toplevel :: Grammar r (Prod r String Token TopLevelDef)
+toplevel :: Grammar r (Prod r String Token SrcModule )
 toplevel = mdo
+
+-- -----------------------------------------------------------------------------
+-- Module Rules
+
+    srcMod <- rule $ undefined
+
+    modDef <- rule $ undefined
 
 
 -- -----------------------------------------------------------------------------
@@ -232,7 +239,7 @@ toplevel = mdo
 -- Type Rules
 
     typ <- rule $
-      tyKind <|> ctyp 
+      tyKind <|> dtyp 
 
     dtyp <- rule $
       tyForall <|> ctyp
@@ -251,15 +258,8 @@ toplevel = mdo
     
     gtyCon <- rule $
           tyCon
-      <|> tyUnit
       <|> tyTuple
       <|> tyArray
-
-
-    -- Basic Types
-    tyUnit <- rule $
-      let ex (_, l1) (_, l2) = TLoc (l1<>l2) $ TCon "()"
-      in ex <$> rsvp "(" <*> rsvp ")"
 
 
     -- Terms
@@ -306,10 +306,10 @@ toplevel = mdo
       in ex <$>  rsvp "{" <*> commaSep ((,) <$> (fst <$> varId) <*> (rsvp ":" *> atyp)) <*> (rsvp "|" *> varId) <*> rsvp "}"
 
 
-    -- Simple containers    
+    -- Simple containers
     tyTuple <- rule $
       let ex (ts, l) = TLoc l $ TTuple ts
-      in ex <$> parensLoc (commaSep atyp)
+      in ex <$> parensLoc (commaSep' atyp)
 
     tyArray <- rule $
       let ex (t, l) = TLoc l $ TArray t
@@ -559,4 +559,4 @@ toplevel = mdo
       Postfix <$ rsvp "postfix" 
 
 
-    return topLevelDef
+    return srcMod

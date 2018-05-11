@@ -19,7 +19,7 @@ import Language.Hawk.Syntax.Source
 import qualified Text.Earley as E
 
 
-parse :: FilePath -> [Token] -> Either ParseError TopLevelDef
+parse :: FilePath -> [Token] -> Either ParseError SrcModule
 parse fp toks = do
   let (parses, r@(Report _ expected unconsumed)) = E.fullParses (E.parser toplevel) toks
   case parses of

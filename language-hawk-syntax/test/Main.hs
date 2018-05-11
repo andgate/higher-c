@@ -1,9 +1,8 @@
 module Main where
 
 
-import Data.Either
 import Data.Text
-import Data.Text.IO as Text hiding(putStrLn)
+import Data.Text.IO as Text hiding(putStrLn, getLine)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
 import Language.Hawk.Parse  as Hk
@@ -15,6 +14,7 @@ import Language.Hawk.Syntax.Source
 srcPath :: FilePath
 srcPath = "example/Example.hk"
 
+main :: IO ()
 main = do
     putStrLn "\n\nReading Example Source:"
     srcText <- Text.readFile "example/Example.hk"
