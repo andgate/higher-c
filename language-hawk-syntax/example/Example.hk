@@ -21,9 +21,9 @@
         -- also, gc values don't have to be managed
         -- GC is slow, so add tag 
 -- IO = Operation external to program. All monads that communicate
-        externally, like with OS, filesystem, or network, must go
-        through IO. They may wrap IO if they wish, but IO is the core
-        Monad they are built on.
+--      externally, like with OS, filesystem, or network, must go
+--      through IO. They may wrap IO if they wish, but IO is the core
+--      Monad they are built on.
 
 -- Core library will have:
 --   - Category Theory

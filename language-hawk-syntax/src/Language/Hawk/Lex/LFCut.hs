@@ -11,3 +11,5 @@ lfCut' :: [Token] -> [[Token]] -> [Token] -> [[Token]]
 lfCut' cur cut [] = cur:cut
 lfCut' cur cut (t@(Token TokenLn' _ (Loc _ (R (P _ 0) _))):ts) = 
   lfCut' [] ((t:cur):cut) ts
+lfCut' cur cut (t:ts) = 
+  lfCut' (t:cur) cut ts

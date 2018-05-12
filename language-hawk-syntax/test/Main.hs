@@ -16,7 +16,7 @@ srcPath = "example/Example.hk"
 
 main :: IO ()
 main = do
-    putStrLn "\n\nReading Example Source:"
+    print "\n\nReading Example Source:"
     srcText <- Text.readFile "example/Example.hk"
     
     putStrLn "\n\nBeginning Lexing:"
@@ -40,7 +40,7 @@ testLex srcText = do
             return srcToks
 
 
-testParse :: [Token] -> IO TopLevelDef
+testParse :: [Token] -> IO SrcModule
 testParse srcToks = do
     case Hk.parse srcPath srcToks of
         Right srcAst   -> do

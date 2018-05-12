@@ -12,13 +12,12 @@ import Control.Lens
 import Control.Monad (when, unless, void)
 import Control.Monad.State.Strict (State, evalState)
 import Language.Hawk.Lex.Token
-import Language.Hawk.Syntax.Location (Loc(..), Region, locReg, regStart, posColumn)
+import Language.Hawk.Syntax.Location
 import Safe (headDef)
 import Data.List.Zipper (Zipper)
 import qualified Data.List.Zipper as Z
 
 import qualified Data.Map.Strict as Map
-import qualified Language.Hawk.Syntax.Location  as L
 
 
 -- -----------------------------------------------------------------------------
@@ -26,29 +25,28 @@ import qualified Language.Hawk.Syntax.Location  as L
 
 data CellType
   = Block
+  | Frame
   | LineFold
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Show)
 
 data Cell =
   Cell
-  { _cellIndent :: !Int
+  { _cellPos  :: Position
   , _cellType :: CellType
-  } deriving (Eq, Ord, Show)
+  } deriving (Eq, Show)
 
 makeLenses ''Cell
 
 defCell :: Cell
-defCell = Cell 0 Block
+defCell = Cell (P 0 0) Block
 
 -- -----------------------------------------------------------------------------
 -- Cell Layout
 
 data LayoutState =
     LayoutState
-    { _layFilePath  :: FilePath
-    , _layRegion    :: Region
-    , _layCells     :: [Cell]
-    , _layToks      :: Zipper Token
+    { _layCells  :: [Cell]
+    , _layToks   :: Zipper Token
     }
 
 makeLenses ''LayoutState
@@ -57,54 +55,77 @@ type Layout = State LayoutState
 
 mkLayout :: [Token] -> LayoutState
 mkLayout input =
-  LayoutState  "" mempty [defCell] (Z.fromList input)
+  LayoutState [] (Z.fromList input)
 
 
 -- -----------------------------------------------------------------------------
 -- Organize Tokens
 
--- | These tokens will trigger a block
+-- | These tokens will trigger a block open on the next token.
 blkTriggers :: [TokenClass]
-blkTriggers = [TokenRsvp "do", TokenRsvp "has", TokenRsvp "let"]
+blkTriggers = [TokenRsvp "do", TokenRsvp "has"]
+
+-- | Tokens to open a frame 
+frameOpenTriggers :: [TokenClass]
+frameOpenTriggers = [TokenRsvp "let"]
+
+-- | Tokens that close a frame
+frameCloseTriggers :: [TokenClass]
+frameCloseTriggers = [TokenRsvp "in"]
 
 -- | Organize tokens with Blocks and Linefolds
 organize :: [Token] -> [Token]
 organize =
   evalState layoutDriver . mkLayout
 
+
 -- -----------------------------------------------------------------------------
 -- Layout Driver
 
 layoutDriver :: Layout [Token]
 layoutDriver = do
+  openCell Block
   openCell LineFold
-  driver
-
+  go
   where
-    driver = do
+    go = do
       ts <- use layToks
-      if Z.endp ts || Z.emptyp ts then do
+      if Z.endp ts then do
         closeCellStack
         uses layToks Z.toList
         
       else do
         updateCursor
-        driver
+        go
 
 
 updateCursor :: Layout ()
 updateCursor = do
+      t <- cursorToken
+
+      repairBlock
+
+      -- Open a Block if the cursor requires it.
+      when (t^.tokClass `elem` frameCloseTriggers)
+           exitFrame
+      
+      nextToken
+
+      -- Open a Block if the cursor requires it.
+      when (t^.tokClass `elem` blkTriggers)
+           (openCell Block)
+
+      when (t^.tokClass `elem` frameOpenTriggers)
+           (openCell Frame)
+
       -- Close any cells the cursor has left.
       closeEscapedCells
 
-      t <- Z.cursor <$> use layToks
-      -- Open a Block if the cursor requires it.
-      when (t^.tokClass `elem` blkTriggers)
-           (openCell Block >> openCell LineFold)
 
-      -- Grab next cursor.
-      layToks %= Z.right
-      
+-- | Shift right to the next token
+nextToken :: Layout ()
+nextToken =
+  layToks %= Z.right
 
 
 -- | Close cells that the current cursor has left.
@@ -114,55 +135,82 @@ closeEscapedCells = do
   unless q (closeCell >> closeEscapedCells)
 
 
+-- | If the top cell is a block, cover with a linefold
+repairBlock :: Layout ()
+repairBlock = do
+  (Cell _ ty) <- peekCell
+  case ty of
+    Block    -> openCell LineFold
+    Frame    -> return ()
+    LineFold -> return ()
+    
+
 -- | Test if the cursor is within the current cell.
 cursorInCell :: Layout Bool
 cursorInCell = do
   i <- cursorIndent
+  ln <- cursorIndent
   cl <- peekCell
-  return $ inCell i cl
+  return $ inCell ln i cl
 
 
 -- | Predicate for testing if a cursor is in the current cell.
-inCell :: Int  -- Indent to test
-        -> Cell -- Cell to test indent on
-        -> Bool -- True is indent is within cell, false otherwise
-inCell i (Cell ci ct) =
+inCell :: Int  -- Line to test 
+       -> Int  -- Indent to test
+       -> Cell -- Cell to test indent on
+       -> Bool -- True is indent is within cell, false otherwise
+inCell ln i (Cell (P cln ci) ct) =
   case ct of
-    Block -> 
-      ci <= i
+    Block    ->  ci <= i
+    Frame    ->  ci <= i
+    LineFold ->  (ci < i) && (ln /= cln)
     
-    LineFold ->
-      ci < i
 
 
 -- -----------------------------------------------------------------------------
--- Cursor Indent Helpers
+-- Cursor Helpers
 
--- | Cursor | --
-updateIndent :: Token -> Layout ()
-updateIndent (Token _ _ (Loc fp r)) = do
-    layFilePath .= fp
-    layRegion .= r
+cursorToken :: Layout Token
+cursorToken = do
+  ts <- use layToks
+  if Z.endp ts then
+    lastCursorTokenUnsafe
+  else
+    cursorTokenUnsafe
+
+
+lastCursorTokenUnsafe :: Layout Token
+lastCursorTokenUnsafe =
+  uses layToks (Z.cursor . Z.left)
+  
+
+cursorTokenUnsafe :: Layout Token
+cursorTokenUnsafe = 
+  uses layToks Z.cursor 
 
 
 cursorIndent :: Layout Int
-cursorIndent =
-  use $ layRegion . L.regStart . L.posColumn
+cursorIndent = do
+  (^. tokLoc . locReg . regStart . posColumn) <$> cursorToken
 
 
--- | Cell | --
-cursorCellIndent :: Layout Int
-cursorCellIndent =
-  _cellIndent <$> peekCell
+cursorLine :: Layout Int
+cursorLine = do
+  (^. tokLoc . locReg . regStart . posLine) <$> cursorToken
 
 
-setCellIndent :: Int -> Layout ()
-setCellIndent i =
-  layCells . ix 0 . cellIndent .= i
+cursorFile :: Layout FilePath
+cursorFile = do
+  (^. tokLoc . locPath) <$> cursorToken
 
 
 -- -----------------------------------------------------------------------------
 -- Cell Helpers
+
+getCellIndent :: Layout Int
+getCellIndent =
+  (^. cellPos . posColumn) <$> peekCell
+
 
 pushCell :: Cell -> Layout ()
 pushCell l =
@@ -182,33 +230,45 @@ peekCell =
 
 -- | Open a cell, inserting a token at the cursor.
 openCell :: CellType -> Layout ()
-openCell ct = do
+openCell ty = do
   -- Get env info
-  fp <- use layFilePath
-  r <- use layRegion
+  fp <- cursorFile
+  ln <- cursorLine
   i <- cursorIndent
 
   -- Build cell and token
-  let cell = Cell i ct
-      tokLoc = Loc fp r
-      cellOpenTok = toCellOpenToken tokLoc cell
+  let p = P ln i
+      cell = Cell p ty
+      cellOpenTok = mkCellOpenTok cell fp
 
   -- Push new cell, insert token
   pushCell cell
-  layToks %= Z.insert cellOpenTok
+  layToks %= Z.right . Z.insert cellOpenTok
 
 
 -- | Close a cell, inserting a token at the cursor.
-closeCell :: Layout ()
+closeCell :: Layout Cell
 closeCell = do
   -- Fetch some info
-  cl <- popCell -- Conviently destroy top cell
-  fp <- use layFilePath
-  r <- use layRegion
+  c@(Cell _ ty) <- popCell -- Conviently destroy top cell
+  fp <- cursorFile
+  ln <- cursorLine
+  i <- cursorIndent
 
   -- Build and insert a closing token
-  let cellCloseTok = toCellCloseToken (Loc fp r) cl
-  layToks %= Z.insert cellCloseTok
+  let p = P ln i
+      cellClose = Cell p ty
+      cellCloseTok = mkCellCloseTok cellClose fp
+  layToks %= Z.right . Z.insert cellCloseTok
+  return cellClose
+
+
+exitFrame :: Layout ()
+exitFrame = do
+  (Cell _ ty) <- closeCell
+  case ty of
+    Frame -> return ()
+    _ -> exitFrame
 
 
 -- | Close the entire stack of cells at the cursor.
@@ -220,15 +280,19 @@ closeCellStack = do
 
 
 -- | Convert some cell to an open token
-toCellOpenToken:: Loc -> Cell -> Token
-toCellOpenToken loc cl =
-  case cl ^. cellType of
+mkCellOpenTok :: Cell -> FilePath -> Token
+mkCellOpenTok (Cell p ty) fp =
+  case ty of
       Block -> Token TokenBlk "" loc
+      Frame -> Token TokenBlk "" loc
       LineFold -> Token TokenLn "" loc
+  where loc = Loc fp (R p p)
 
 -- | Convert some cell to a closed token
-toCellCloseToken :: Loc -> Cell -> Token
-toCellCloseToken loc cl =
-  case cl ^. cellType of
+mkCellCloseTok :: Cell -> FilePath -> Token
+mkCellCloseTok (Cell p ty) fp =
+  case ty of
       Block -> Token TokenBlk' "" loc
+      Frame -> Token TokenBlk' "" loc
       LineFold -> Token TokenLn' "" loc
+  where loc = Loc fp (R p p)

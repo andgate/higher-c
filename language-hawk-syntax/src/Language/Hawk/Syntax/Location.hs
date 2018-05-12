@@ -35,7 +35,7 @@ unwrapL (L l x) = (x, l)
 
 data Loc
   = Loc
-    { _locPath  :: !FilePath
+    { _locPath  :: FilePath
     , _locReg   :: Region 
     }
     deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
