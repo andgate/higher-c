@@ -4,12 +4,12 @@ module Language.Hawk.Parse.Error where
 
 import Data.Text.Prettyprint.Doc
 import Language.Hawk.Lex.Token
-import Language.Hawk.Syntax.Source (SrcModule)
+import Language.Hawk.Syntax.Source (TopLevelDef)
 
 
 data ParseError
     = UnexpectedToken [Token] [String]
-    | AmbiguousGrammar [SrcModule]
+    | AmbiguousGrammar [TopLevelDef]
     deriving(Show)
 
 instance Pretty ParseError where

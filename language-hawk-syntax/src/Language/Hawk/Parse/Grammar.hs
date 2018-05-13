@@ -25,7 +25,7 @@ import qualified Data.List.NonEmpty as NE
 
 -- -----------------------------------------------------------------------------
 -- Grammar for Hawk
-toplevel :: Grammar r (Prod r String Token SrcModule )
+toplevel :: Grammar r (Prod r String Token TopLevelDef)
 toplevel = mdo
 
 -- -----------------------------------------------------------------------------
@@ -559,4 +559,4 @@ toplevel = mdo
       Postfix <$ rsvp "postfix" 
 
 
-    return srcMod
+    return topLevelDef

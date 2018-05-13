@@ -55,7 +55,7 @@ type Layout = State LayoutState
 
 mkLayout :: [Token] -> LayoutState
 mkLayout input =
-  LayoutState [] (Z.fromList input)
+  LayoutState [defCell] (Z.fromList input)
 
 
 -- -----------------------------------------------------------------------------
@@ -83,10 +83,8 @@ organize =
 -- Layout Driver
 
 layoutDriver :: Layout [Token]
-layoutDriver = do
-  openCell Block
-  openCell LineFold
-  go
+layoutDriver =
+  openCell LineFold >> go
   where
     go = do
       ts <- use layToks
@@ -227,6 +225,7 @@ popCell = do
 peekCell :: Layout Cell
 peekCell = 
   uses layCells (headDef defCell)
+
 
 -- | Open a cell, inserting a token at the cursor.
 openCell :: CellType -> Layout ()

@@ -76,6 +76,7 @@ library
   exposed-modules:
       Language.Hawk.Lex
       Language.Hawk.Lex.Error
+      Language.Hawk.Lex.LFCut
       Language.Hawk.Lex.Organize
       Language.Hawk.Lex.State
       Language.Hawk.Lex.Token

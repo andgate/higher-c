@@ -1,0 +1,1957 @@
+In order, the following will be built (use -v for more details):
+ - language-hawk-syntax-0.0.0 (test:Example.hk) (first run)
+Preprocessing test suite 'Example.hk' for language-hawk-syntax-0.0.0..
+Building test suite 'Example.hk' for language-hawk-syntax-0.0.0..
+Running 1 test suites...
+Test suite Example.hk: RUNNING...
+"\n\nReading Example Source:"
+
+
+Beginning Lexing:
+[ "" (TokenLn') @example/Example.hk:250:20
+, "" (TokenEof) @example/Example.hk:250:20-250:21
+, ")" (TokenRsvp ")") @example/Example.hk:250:20-250:21
+, "(" (TokenRsvp "(") @example/Example.hk:250:19-250:20
+, "IO" (TokenConId "IO") @example/Example.hk:250:16-250:18
+, "CellT" (TokenConId "CellT") @example/Example.hk:250:10-250:15
+, ":" (TokenRsvp ":") @example/Example.hk:250:8-250:9
+, "myGame" (TokenVarId "myGame") @example/Example.hk:250:1-250:7
+, "" (TokenLn) @example/Example.hk:250:1 ]
+[ "" (TokenLn') @example/Example.hk:250:1
+, "write" (TokenVarId "write") @example/Example.hk:243:1-243:6
+, "" (TokenLn) @example/Example.hk:243:1 ]
+[ "" (TokenLn') @example/Example.hk:243:1
+, "String" (TokenConId "String") @example/Example.hk:242:25-242:31
+, "IO" (TokenConId "IO") @example/Example.hk:242:22-242:24
+, "->" (TokenRsvp "->") @example/Example.hk:242:19-242:21
+, "String" (TokenConId "String") @example/Example.hk:242:12-242:18
+, ":" (TokenRsvp ":") @example/Example.hk:242:10-242:11
+, "readFile" (TokenVarId "readFile") @example/Example.hk:242:1-242:9
+, "" (TokenLn) @example/Example.hk:242:1 ]
+[ "" (TokenLn') @example/Example.hk:242:1
+, "" (TokenBlk') @example/Example.hk:242:1 ]
+[ "" (TokenLn') @example/Example.hk:242:1
+, "" (TokenBlk') @example/Example.hk:242:1 ]
+[ "" (TokenLn') @example/Example.hk:242:1
+, ")" (TokenRsvp ")") @example/Example.hk:235:23-235:24
+, "]" (TokenRsvp "]") @example/Example.hk:235:22-235:23
+, "[" (TokenRsvp "[") @example/Example.hk:235:21-235:22
+, "," (TokenRsvp ",") @example/Example.hk:235:19-235:20
+, "]" (TokenRsvp "]") @example/Example.hk:235:18-235:19
+, "[" (TokenRsvp "[") @example/Example.hk:235:17-235:18
+, "," (TokenRsvp ",") @example/Example.hk:235:15-235:16
+, "]" (TokenRsvp "]") @example/Example.hk:235:14-235:15
+, "[" (TokenRsvp "[") @example/Example.hk:235:13-235:14
+, "(" (TokenRsvp "(") @example/Example.hk:235:12-235:13
+, "return" (TokenVarId "return") @example/Example.hk:235:5-235:11
+, "" (TokenLn) @example/Example.hk:235:5
+, "" (TokenLn') @example/Example.hk:235:5
+, "]" (TokenRsvp "]") @example/Example.hk:229:31-229:32
+, "Int" (TokenConId "Int") @example/Example.hk:229:28-229:31
+, "[" (TokenRsvp "[") @example/Example.hk:229:27-229:28
+, ":" (TokenRsvp ":") @example/Example.hk:229:25-229:26
+, ")" (TokenRsvp ")") @example/Example.hk:229:23-229:24
+, "g" (TokenVarId "g") @example/Example.hk:229:22-229:23
+, "size" (TokenVarId "size") @example/Example.hk:229:17-229:21
+, "(" (TokenRsvp "(") @example/Example.hk:229:16-229:17
+, "Array" (TokenConId "Array") @example/Example.hk:229:10-229:15
+, "<-" (TokenRsvp "<-") @example/Example.hk:229:7-229:9
+, "q" (TokenVarId "q") @example/Example.hk:229:5-229:6
+, "" (TokenLn) @example/Example.hk:229:5
+, "" (TokenLn') @example/Example.hk:229:5
+, "]" (TokenRsvp "]") @example/Example.hk:228:34-228:35
+, "Int" (TokenConId "Int") @example/Example.hk:228:31-228:34
+, "[" (TokenRsvp "[") @example/Example.hk:228:30-228:31
+, ":" (TokenRsvp ":") @example/Example.hk:228:28-228:29
+, ")" (TokenRsvp ")") @example/Example.hk:228:26-228:27
+, "g" (TokenVarId "g") @example/Example.hk:228:25-228:26
+, "size" (TokenVarId "size") @example/Example.hk:228:20-228:24
+, "(" (TokenRsvp "(") @example/Example.hk:228:19-228:20
+, "Array" (TokenConId "Array") @example/Example.hk:228:13-228:18
+, "<-" (TokenRsvp "<-") @example/Example.hk:228:10-228:12
+, "dist" (TokenVarId "dist") @example/Example.hk:228:5-228:9
+, "" (TokenLn) @example/Example.hk:228:5
+, "" (TokenLn') @example/Example.hk:228:5
+, "]" (TokenRsvp "]") @example/Example.hk:227:33-227:34
+, "Int" (TokenConId "Int") @example/Example.hk:227:30-227:33
+, "[" (TokenRsvp "[") @example/Example.hk:227:29-227:30
+, ":" (TokenRsvp ":") @example/Example.hk:227:27-227:28
+, ")" (TokenRsvp ")") @example/Example.hk:227:25-227:26
+, "g" (TokenVarId "g") @example/Example.hk:227:24-227:25
+, "size" (TokenVarId "size") @example/Example.hk:227:19-227:23
+, "(" (TokenRsvp "(") @example/Example.hk:227:18-227:19
+, "Array" (TokenConId "Array") @example/Example.hk:227:12-227:17
+, "<-" (TokenRsvp "<-") @example/Example.hk:227:9-227:11
+, "par" (TokenVarId "par") @example/Example.hk:227:5-227:8
+, "" (TokenLn) @example/Example.hk:227:5
+, "" (TokenBlk) @example/Example.hk:227:5
+, "do" (TokenRsvp "do") @example/Example.hk:226:13-226:15
+, "=" (TokenRsvp "=") @example/Example.hk:226:11-226:12
+, "s" (TokenVarId "s") @example/Example.hk:226:9-226:10
+, "g" (TokenVarId "g") @example/Example.hk:226:7-226:8
+, "bfs" (TokenVarId "bfs") @example/Example.hk:226:3-226:6
+, "" (TokenLn) @example/Example.hk:226:3
+, "" (TokenLn') @example/Example.hk:226:3
+, "g" (TokenVarId "g") @example/Example.hk:225:27-225:28
+, "$" (TokenOpId "$") @example/Example.hk:225:25-225:26
+, "edges" (TokenVarId "edges") @example/Example.hk:225:19-225:24
+, "." (TokenRsvp ".") @example/Example.hk:225:17-225:18
+, "size" (TokenVarId "size") @example/Example.hk:225:12-225:16
+, "=" (TokenRsvp "=") @example/Example.hk:225:10-225:11
+, "g" (TokenVarId "g") @example/Example.hk:225:8-225:9
+, "size" (TokenVarId "size") @example/Example.hk:225:3-225:7
+, "" (TokenLn) @example/Example.hk:225:3
+, "" (TokenBlk) @example/Example.hk:225:3
+, "has" (TokenRsvp "has") @example/Example.hk:224:16-224:19
+, "IntGraph" (TokenConId "IntGraph") @example/Example.hk:224:7-224:15
+, "Graph" (TokenConId "Graph") @example/Example.hk:224:1-224:6
+, "" (TokenLn) @example/Example.hk:224:1 ]
+[ "" (TokenLn') @example/Example.hk:224:1
+, "" (TokenBlk') @example/Example.hk:224:1 ]
+[ "" (TokenLn') @example/Example.hk:224:1
+, ")" (TokenRsvp ")") @example/Example.hk:221:41-221:42
+, "]" (TokenRsvp "]") @example/Example.hk:221:40-221:41
+, "Int" (TokenConId "Int") @example/Example.hk:221:37-221:40
+, "[" (TokenRsvp "[") @example/Example.hk:221:36-221:37
+, "," (TokenRsvp ",") @example/Example.hk:221:34-221:35
+, "]" (TokenRsvp "]") @example/Example.hk:221:33-221:34
+, "Int" (TokenConId "Int") @example/Example.hk:221:30-221:33
+, "[" (TokenRsvp "[") @example/Example.hk:221:29-221:30
+, "," (TokenRsvp ",") @example/Example.hk:221:27-221:28
+, "]" (TokenRsvp "]") @example/Example.hk:221:26-221:27
+, "Int" (TokenConId "Int") @example/Example.hk:221:23-221:26
+, "[" (TokenRsvp "[") @example/Example.hk:221:22-221:23
+, "(" (TokenRsvp "(") @example/Example.hk:221:21-221:22
+, "->" (TokenRsvp "->") @example/Example.hk:221:18-221:20
+, "Int" (TokenConId "Int") @example/Example.hk:221:14-221:17
+, "->" (TokenRsvp "->") @example/Example.hk:221:11-221:13
+, "g" (TokenVarId "g") @example/Example.hk:221:9-221:10
+, ":" (TokenRsvp ":") @example/Example.hk:221:7-221:8
+, "bfs" (TokenVarId "bfs") @example/Example.hk:221:3-221:6
+, "" (TokenLn) @example/Example.hk:221:3
+, "" (TokenLn') @example/Example.hk:221:3
+, "Int" (TokenConId "Int") @example/Example.hk:220:15-220:18
+, "->" (TokenRsvp "->") @example/Example.hk:220:12-220:14
+, "g" (TokenVarId "g") @example/Example.hk:220:10-220:11
+, ":" (TokenRsvp ":") @example/Example.hk:220:8-220:9
+, "size" (TokenVarId "size") @example/Example.hk:220:3-220:7
+, "" (TokenLn) @example/Example.hk:220:3
+, "" (TokenBlk) @example/Example.hk:220:3
+, "has" (TokenRsvp "has") @example/Example.hk:219:15-219:18
+, "g" (TokenVarId "g") @example/Example.hk:219:13-219:14
+, "Graph" (TokenConId "Graph") @example/Example.hk:219:7-219:12
+, "class" (TokenRsvp "class") @example/Example.hk:219:1-219:6
+, "" (TokenLn) @example/Example.hk:219:1 ]
+[ "" (TokenLn') @example/Example.hk:219:1
+, "}" (TokenRsvp "}") @example/Example.hk:217:39-217:40
+, "]" (TokenRsvp "]") @example/Example.hk:217:37-217:38
+, "]" (TokenRsvp "]") @example/Example.hk:217:36-217:37
+, "Int" (TokenConId "Int") @example/Example.hk:217:33-217:36
+, "[" (TokenRsvp "[") @example/Example.hk:217:32-217:33
+, "[" (TokenRsvp "[") @example/Example.hk:217:31-217:32
+, ":" (TokenRsvp ":") @example/Example.hk:217:29-217:30
+, "edges" (TokenVarId "edges") @example/Example.hk:217:23-217:28
+, "{" (TokenRsvp "{") @example/Example.hk:217:21-217:22
+, "IntGraph" (TokenConId "IntGraph") @example/Example.hk:217:12-217:20
+, "=" (TokenRsvp "=") @example/Example.hk:217:10-217:11
+, "IntGraph" (TokenConId "IntGraph") @example/Example.hk:217:1-217:9
+, "" (TokenLn) @example/Example.hk:217:1 ]
+[ "" (TokenLn') @example/Example.hk:217:1
+, "Matrix" (TokenConId "Matrix") @example/Example.hk:215:5-215:11
+, "|" (TokenRsvp "|") @example/Example.hk:215:3-215:4
+, "EdgeList" (TokenConId "EdgeList") @example/Example.hk:214:5-214:13
+, "|" (TokenRsvp "|") @example/Example.hk:214:3-214:4
+, "AdjecencyList" (TokenConId "AdjecencyList") @example/Example.hk:213:5-213:18
+, "=" (TokenRsvp "=") @example/Example.hk:213:3-213:4
+, "Rep" (TokenConId "Rep") @example/Example.hk:212:1-212:4
+, "" (TokenLn) @example/Example.hk:212:1 ]
+[ "" (TokenLn') @example/Example.hk:212:1
+, "" (TokenBlk') @example/Example.hk:212:1 ]
+[ "" (TokenLn') @example/Example.hk:212:1
+, "x" (TokenVarId "x") @example/Example.hk:207:23-207:24
+, "k" (TokenVarId "k") @example/Example.hk:207:21-207:22
+, "=" (TokenRsvp "=") @example/Example.hk:207:19-207:20
+, "k" (TokenVarId "k") @example/Example.hk:207:17-207:18
+, ">>=" (TokenOpId ">>=") @example/Example.hk:207:13-207:16
+, ")" (TokenRsvp ")") @example/Example.hk:207:11-207:12
+, "x" (TokenVarId "x") @example/Example.hk:207:10-207:11
+, "Right" (TokenConId "Right") @example/Example.hk:207:4-207:9
+, "(" (TokenRsvp "(") @example/Example.hk:207:3-207:4
+, "" (TokenLn) @example/Example.hk:207:3
+, "" (TokenLn') @example/Example.hk:207:3
+, "e" (TokenVarId "e") @example/Example.hk:206:25-206:26
+, "Left" (TokenConId "Left") @example/Example.hk:206:20-206:24
+, "=" (TokenRsvp "=") @example/Example.hk:206:18-206:19
+, "k" (TokenVarId "k") @example/Example.hk:206:16-206:17
+, ">>=" (TokenOpId ">>=") @example/Example.hk:206:12-206:15
+, ")" (TokenRsvp ")") @example/Example.hk:206:10-206:11
+, "e" (TokenVarId "e") @example/Example.hk:206:9-206:10
+, "Left" (TokenConId "Left") @example/Example.hk:206:4-206:8
+, "(" (TokenRsvp "(") @example/Example.hk:206:3-206:4
+, "" (TokenLn) @example/Example.hk:206:3
+, "" (TokenBlk) @example/Example.hk:206:3
+, "has" (TokenRsvp "has") @example/Example.hk:205:16-205:19
+, "e" (TokenVarId "e") @example/Example.hk:205:14-205:15
+, "Either" (TokenConId "Either") @example/Example.hk:205:7-205:13
+, "Monad" (TokenConId "Monad") @example/Example.hk:205:1-205:6
+, "" (TokenLn) @example/Example.hk:205:1 ]
+[ "" (TokenLn') @example/Example.hk:205:1
+, "" (TokenBlk') @example/Example.hk:205:1 ]
+[ "" (TokenLn') @example/Example.hk:205:1
+, "Nothing" (TokenConId "Nothing") @example/Example.hk:203:19-203:26
+, "=" (TokenRsvp "=") @example/Example.hk:203:17-203:18
+, "_" (TokenRsvp "_") @example/Example.hk:203:15-203:16
+, ">>=" (TokenOpId ">>=") @example/Example.hk:203:11-203:14
+, "Nothing" (TokenConId "Nothing") @example/Example.hk:203:3-203:10
+, "" (TokenLn) @example/Example.hk:203:3
+, "" (TokenLn') @example/Example.hk:203:3
+, "x" (TokenVarId "x") @example/Example.hk:202:22-202:23
+, "k" (TokenVarId "k") @example/Example.hk:202:20-202:21
+, "=" (TokenRsvp "=") @example/Example.hk:202:18-202:19
+, "k" (TokenVarId "k") @example/Example.hk:202:16-202:17
+, ">>=" (TokenOpId ">>=") @example/Example.hk:202:12-202:15
+, ")" (TokenRsvp ")") @example/Example.hk:202:10-202:11
+, "x" (TokenVarId "x") @example/Example.hk:202:9-202:10
+, "Just" (TokenConId "Just") @example/Example.hk:202:4-202:8
+, "(" (TokenRsvp "(") @example/Example.hk:202:3-202:4
+, "" (TokenLn) @example/Example.hk:202:3
+, "" (TokenBlk) @example/Example.hk:202:3
+, "has" (TokenRsvp "has") @example/Example.hk:201:13-201:16
+, "Maybe" (TokenConId "Maybe") @example/Example.hk:201:7-201:12
+, "Monad" (TokenConId "Monad") @example/Example.hk:201:1-201:6
+, "" (TokenLn) @example/Example.hk:201:1 ]
+[ "" (TokenLn') @example/Example.hk:201:1
+, "" (TokenBlk') @example/Example.hk:201:1 ]
+[ "" (TokenLn') @example/Example.hk:201:1
+, "x" (TokenVarId "x") @example/Example.hk:199:24-199:25
+, "k" (TokenVarId "k") @example/Example.hk:199:22-199:23
+, "=" (TokenRsvp "=") @example/Example.hk:199:20-199:21
+, "k" (TokenVarId "k") @example/Example.hk:199:18-199:19
+, ">>=" (TokenOpId ">>=") @example/Example.hk:199:14-199:17
+, ")" (TokenRsvp ")") @example/Example.hk:199:12-199:13
+, "x" (TokenVarId "x") @example/Example.hk:199:11-199:12
+, "Linear" (TokenConId "Linear") @example/Example.hk:199:4-199:10
+, "(" (TokenRsvp "(") @example/Example.hk:199:3-199:4
+, "" (TokenLn) @example/Example.hk:199:3
+, "" (TokenBlk) @example/Example.hk:199:3
+, "has" (TokenRsvp "has") @example/Example.hk:198:14-198:17
+, "Linear" (TokenConId "Linear") @example/Example.hk:198:7-198:13
+, "Monad" (TokenConId "Monad") @example/Example.hk:198:1-198:6
+, "" (TokenLn) @example/Example.hk:198:1 ]
+[ "" (TokenLn') @example/Example.hk:198:1
+, "" (TokenBlk') @example/Example.hk:198:1 ]
+[ "" (TokenLn') @example/Example.hk:198:1
+, "x" (TokenVarId "x") @example/Example.hk:196:21-196:22
+, "k" (TokenVarId "k") @example/Example.hk:196:19-196:20
+, "=" (TokenRsvp "=") @example/Example.hk:196:17-196:18
+, "k" (TokenVarId "k") @example/Example.hk:196:15-196:16
+, ">>=" (TokenOpId ">>=") @example/Example.hk:196:11-196:14
+, ")" (TokenRsvp ")") @example/Example.hk:196:9-196:10
+, "x" (TokenVarId "x") @example/Example.hk:196:8-196:9
+, "Box" (TokenConId "Box") @example/Example.hk:196:4-196:7
+, "(" (TokenRsvp "(") @example/Example.hk:196:3-196:4
+, "" (TokenLn) @example/Example.hk:196:3
+, "" (TokenBlk) @example/Example.hk:196:3
+, "has" (TokenRsvp "has") @example/Example.hk:195:11-195:14
+, "Box" (TokenConId "Box") @example/Example.hk:195:7-195:10
+, "Monad" (TokenConId "Monad") @example/Example.hk:195:1-195:6
+, "" (TokenLn) @example/Example.hk:195:1 ]
+[ "" (TokenLn') @example/Example.hk:195:1
+, "" (TokenBlk') @example/Example.hk:195:1 ]
+[ "" (TokenLn') @example/Example.hk:195:1
+, "pure" (TokenVarId "pure") @example/Example.hk:191:12-191:16
+, "=" (TokenRsvp "=") @example/Example.hk:191:10-191:11
+, "return" (TokenVarId "return") @example/Example.hk:191:3-191:9
+, "" (TokenLn) @example/Example.hk:191:3
+, "" (TokenLn') @example/Example.hk:191:3
+, "a" (TokenVarId "a") @example/Example.hk:190:19-190:20
+, "m" (TokenVarId "m") @example/Example.hk:190:17-190:18
+, "->" (TokenRsvp "->") @example/Example.hk:190:14-190:16
+, "a" (TokenVarId "a") @example/Example.hk:190:12-190:13
+, ":" (TokenRsvp ":") @example/Example.hk:190:10-190:11
+, "return" (TokenVarId "return") @example/Example.hk:190:3-190:9
+, "" (TokenLn) @example/Example.hk:190:3
+, "" (TokenLn') @example/Example.hk:190:3
+, "k" (TokenVarId "k") @example/Example.hk:188:26-188:27
+, "->" (TokenRsvp "->") @example/Example.hk:188:23-188:25
+, "_" (TokenRsvp "_") @example/Example.hk:188:21-188:22
+, "\" (TokenRsvp "\\") @example/Example.hk:188:20-188:21
+, ">>=" (TokenOpId ">>=") @example/Example.hk:188:16-188:19
+, "m" (TokenVarId "m") @example/Example.hk:188:14-188:15
+, "=" (TokenRsvp "=") @example/Example.hk:188:12-188:13
+, "k" (TokenVarId "k") @example/Example.hk:188:10-188:11
+, "m" (TokenVarId "m") @example/Example.hk:188:8-188:9
+, ")" (TokenRsvp ")") @example/Example.hk:188:6-188:7
+, ">>" (TokenOpId ">>") @example/Example.hk:188:4-188:6
+, "(" (TokenRsvp "(") @example/Example.hk:188:3-188:4
+, "" (TokenLn) @example/Example.hk:188:3
+, "" (TokenLn') @example/Example.hk:188:3
+, "b" (TokenVarId "b") @example/Example.hk:187:26-187:27
+, "m" (TokenVarId "m") @example/Example.hk:187:24-187:25
+, "->" (TokenRsvp "->") @example/Example.hk:187:21-187:23
+, "b" (TokenVarId "b") @example/Example.hk:187:19-187:20
+, "m" (TokenVarId "m") @example/Example.hk:187:17-187:18
+, "->" (TokenRsvp "->") @example/Example.hk:187:14-187:16
+, "a" (TokenVarId "a") @example/Example.hk:187:12-187:13
+, "m" (TokenVarId "m") @example/Example.hk:187:10-187:11
+, ":" (TokenRsvp ":") @example/Example.hk:187:8-187:9
+, ")" (TokenRsvp ")") @example/Example.hk:187:6-187:7
+, ">>" (TokenOpId ">>") @example/Example.hk:187:4-187:6
+, "(" (TokenRsvp "(") @example/Example.hk:187:3-187:4
+, "" (TokenLn) @example/Example.hk:187:3
+, "" (TokenLn') @example/Example.hk:187:3
+, "b" (TokenVarId "b") @example/Example.hk:185:34-185:35
+, "m" (TokenVarId "m") @example/Example.hk:185:32-185:33
+, "->" (TokenRsvp "->") @example/Example.hk:185:29-185:31
+, ")" (TokenRsvp ")") @example/Example.hk:185:27-185:28
+, "b" (TokenVarId "b") @example/Example.hk:185:26-185:27
+, "m" (TokenVarId "m") @example/Example.hk:185:24-185:25
+, "->" (TokenRsvp "->") @example/Example.hk:185:21-185:23
+, "a" (TokenVarId "a") @example/Example.hk:185:19-185:20
+, "(" (TokenRsvp "(") @example/Example.hk:185:18-185:19
+, "->" (TokenRsvp "->") @example/Example.hk:185:15-185:17
+, "a" (TokenVarId "a") @example/Example.hk:185:13-185:14
+, "m" (TokenVarId "m") @example/Example.hk:185:11-185:12
+, ":" (TokenRsvp ":") @example/Example.hk:185:9-185:10
+, ")" (TokenRsvp ")") @example/Example.hk:185:7-185:8
+, ">>=" (TokenOpId ">>=") @example/Example.hk:185:4-185:7
+, "(" (TokenRsvp "(") @example/Example.hk:185:3-185:4
+, "" (TokenLn) @example/Example.hk:185:3
+, "" (TokenBlk) @example/Example.hk:185:3
+, "has" (TokenRsvp "has") @example/Example.hk:184:34-184:37
+, "a" (TokenVarId "a") @example/Example.hk:184:32-184:33
+, "m" (TokenVarId "m") @example/Example.hk:184:30-184:31
+, "Monad" (TokenConId "Monad") @example/Example.hk:184:24-184:29
+, "=>" (TokenRsvp "=>") @example/Example.hk:184:21-184:23
+, "m" (TokenVarId "m") @example/Example.hk:184:19-184:20
+, "Applicative" (TokenConId "Applicative") @example/Example.hk:184:7-184:18
+, "class" (TokenRsvp "class") @example/Example.hk:184:1-184:6
+, "" (TokenLn) @example/Example.hk:184:1 ]
+[ "" (TokenLn') @example/Example.hk:184:1
+, "e" (TokenVarId "e") @example/Example.hk:180:28-180:29
+, "Left" (TokenConId "Left") @example/Example.hk:180:23-180:27
+, "=" (TokenRsvp "=") @example/Example.hk:180:21-180:22
+, "_" (TokenRsvp "_") @example/Example.hk:180:19-180:20
+, ")" (TokenRsvp ")") @example/Example.hk:180:16-180:17
+, "e" (TokenVarId "e") @example/Example.hk:180:15-180:16
+, "Left" (TokenConId "Left") @example/Example.hk:180:10-180:14
+, "(" (TokenRsvp "(") @example/Example.hk:180:9-180:10
+, ")" (TokenRsvp ")") @example/Example.hk:180:7-180:8
+, "<*>" (TokenOpId "<*>") @example/Example.hk:180:4-180:7
+, "(" (TokenRsvp "(") @example/Example.hk:180:3-180:4
+, "m" (TokenVarId "m") @example/Example.hk:179:30-179:31
+, "f" (TokenVarId "f") @example/Example.hk:179:28-179:29
+, "fmap" (TokenVarId "fmap") @example/Example.hk:179:23-179:27
+, "=" (TokenRsvp "=") @example/Example.hk:179:21-179:22
+, "m" (TokenVarId "m") @example/Example.hk:179:19-179:20
+, ")" (TokenRsvp ")") @example/Example.hk:179:17-179:18
+, "f" (TokenVarId "f") @example/Example.hk:179:16-179:17
+, "Right" (TokenConId "Right") @example/Example.hk:179:10-179:15
+, "(" (TokenRsvp "(") @example/Example.hk:179:9-179:10
+, ")" (TokenRsvp ")") @example/Example.hk:179:7-179:8
+, "<*>" (TokenOpId "<*>") @example/Example.hk:179:4-179:7
+, "(" (TokenRsvp "(") @example/Example.hk:179:3-179:4
+, "a" (TokenVarId "a") @example/Example.hk:177:18-177:19
+, "Right" (TokenConId "Right") @example/Example.hk:177:12-177:17
+, "=" (TokenRsvp "=") @example/Example.hk:177:10-177:11
+, "a" (TokenVarId "a") @example/Example.hk:177:8-177:9
+, "pure" (TokenVarId "pure") @example/Example.hk:177:3-177:7
+, "where" (TokenVarId "where") @example/Example.hk:176:22-176:27
+, "e" (TokenVarId "e") @example/Example.hk:176:20-176:21
+, "Either" (TokenConId "Either") @example/Example.hk:176:13-176:19
+, "Applicative" (TokenConId "Applicative") @example/Example.hk:176:1-176:12
+, "" (TokenLn) @example/Example.hk:176:1 ]
+[ "" (TokenLn') @example/Example.hk:176:1
+, "" (TokenBlk') @example/Example.hk:176:1 ]
+[ "" (TokenLn') @example/Example.hk:176:1
+, "Nothing" (TokenConId "Nothing") @example/Example.hk:174:22-174:29
+, "=" (TokenRsvp "=") @example/Example.hk:174:20-174:21
+, "_" (TokenRsvp "_") @example/Example.hk:174:17-174:18
+, "Nothing" (TokenConId "Nothing") @example/Example.hk:174:9-174:16
+, ")" (TokenRsvp ")") @example/Example.hk:174:7-174:8
+, "<*>" (TokenOpId "<*>") @example/Example.hk:174:4-174:7
+, "(" (TokenRsvp "(") @example/Example.hk:174:3-174:4
+, "" (TokenLn) @example/Example.hk:174:3
+, "" (TokenLn') @example/Example.hk:174:3
+, "m" (TokenVarId "m") @example/Example.hk:173:29-173:30
+, "f" (TokenVarId "f") @example/Example.hk:173:27-173:28
+, "fmap" (TokenVarId "fmap") @example/Example.hk:173:22-173:26
+, "=" (TokenRsvp "=") @example/Example.hk:173:20-173:21
+, "m" (TokenVarId "m") @example/Example.hk:173:18-173:19
+, ")" (TokenRsvp ")") @example/Example.hk:173:16-173:17
+, "f" (TokenVarId "f") @example/Example.hk:173:15-173:16
+, "Just" (TokenConId "Just") @example/Example.hk:173:10-173:14
+, "(" (TokenRsvp "(") @example/Example.hk:173:9-173:10
+, ")" (TokenRsvp ")") @example/Example.hk:173:7-173:8
+, "<*>" (TokenOpId "<*>") @example/Example.hk:173:4-173:7
+, "(" (TokenRsvp "(") @example/Example.hk:173:3-173:4
+, "" (TokenLn) @example/Example.hk:173:3
+, "" (TokenLn') @example/Example.hk:173:3
+, "a" (TokenVarId "a") @example/Example.hk:171:17-171:18
+, "Just" (TokenConId "Just") @example/Example.hk:171:12-171:16
+, "=" (TokenRsvp "=") @example/Example.hk:171:10-171:11
+, "a" (TokenVarId "a") @example/Example.hk:171:8-171:9
+, "pure" (TokenVarId "pure") @example/Example.hk:171:3-171:7
+, "" (TokenLn) @example/Example.hk:171:3
+, "" (TokenBlk) @example/Example.hk:171:3
+, "has" (TokenRsvp "has") @example/Example.hk:170:19-170:22
+, "Maybe" (TokenConId "Maybe") @example/Example.hk:170:13-170:18
+, "Applicative" (TokenConId "Applicative") @example/Example.hk:170:1-170:12
+, "" (TokenLn) @example/Example.hk:170:1 ]
+[ "" (TokenLn') @example/Example.hk:170:1
+, "" (TokenBlk') @example/Example.hk:170:1 ]
+[ "" (TokenLn') @example/Example.hk:170:1
+, "m" (TokenVarId "m") @example/Example.hk:168:31-168:32
+, "f" (TokenVarId "f") @example/Example.hk:168:29-168:30
+, "fmap" (TokenVarId "fmap") @example/Example.hk:168:24-168:28
+, "=" (TokenRsvp "=") @example/Example.hk:168:22-168:23
+, "m" (TokenVarId "m") @example/Example.hk:168:20-168:21
+, ")" (TokenRsvp ")") @example/Example.hk:168:18-168:19
+, "f" (TokenVarId "f") @example/Example.hk:168:17-168:18
+, "Linear" (TokenConId "Linear") @example/Example.hk:168:10-168:16
+, "(" (TokenRsvp "(") @example/Example.hk:168:9-168:10
+, ")" (TokenRsvp ")") @example/Example.hk:168:7-168:8
+, "<*>" (TokenOpId "<*>") @example/Example.hk:168:4-168:7
+, "(" (TokenRsvp "(") @example/Example.hk:168:3-168:4
+, "" (TokenLn) @example/Example.hk:168:3
+, "" (TokenLn') @example/Example.hk:168:3
+, "a" (TokenVarId "a") @example/Example.hk:167:19-167:20
+, "Linear" (TokenConId "Linear") @example/Example.hk:167:12-167:18
+, "=" (TokenRsvp "=") @example/Example.hk:167:10-167:11
+, "a" (TokenVarId "a") @example/Example.hk:167:8-167:9
+, "pure" (TokenVarId "pure") @example/Example.hk:167:3-167:7
+, "" (TokenLn) @example/Example.hk:167:3
+, "" (TokenBlk) @example/Example.hk:167:3
+, "has" (TokenRsvp "has") @example/Example.hk:166:20-166:23
+, "Linear" (TokenConId "Linear") @example/Example.hk:166:13-166:19
+, "Applicative" (TokenConId "Applicative") @example/Example.hk:166:1-166:12
+, "" (TokenLn) @example/Example.hk:166:1 ]
+[ "" (TokenLn') @example/Example.hk:166:1
+, "" (TokenBlk') @example/Example.hk:166:1 ]
+[ "" (TokenLn') @example/Example.hk:166:1
+, "m" (TokenVarId "m") @example/Example.hk:164:28-164:29
+, "f" (TokenVarId "f") @example/Example.hk:164:26-164:27
+, "fmap" (TokenVarId "fmap") @example/Example.hk:164:21-164:25
+, "=" (TokenRsvp "=") @example/Example.hk:164:19-164:20
+, "m" (TokenVarId "m") @example/Example.hk:164:17-164:18
+, ")" (TokenRsvp ")") @example/Example.hk:164:15-164:16
+, "f" (TokenVarId "f") @example/Example.hk:164:14-164:15
+, "Box" (TokenConId "Box") @example/Example.hk:164:10-164:13
+, "(" (TokenRsvp "(") @example/Example.hk:164:9-164:10
+, ")" (TokenRsvp ")") @example/Example.hk:164:7-164:8
+, "<*>" (TokenOpId "<*>") @example/Example.hk:164:4-164:7
+, "(" (TokenRsvp "(") @example/Example.hk:164:3-164:4
+, "" (TokenLn) @example/Example.hk:164:3
+, "" (TokenLn') @example/Example.hk:164:3
+, "a" (TokenVarId "a") @example/Example.hk:163:16-163:17
+, "Box" (TokenConId "Box") @example/Example.hk:163:12-163:15
+, "=" (TokenRsvp "=") @example/Example.hk:163:10-163:11
+, "a" (TokenVarId "a") @example/Example.hk:163:8-163:9
+, "pure" (TokenVarId "pure") @example/Example.hk:163:3-163:7
+, "" (TokenLn) @example/Example.hk:163:3
+, "" (TokenBlk) @example/Example.hk:163:3
+, "has" (TokenRsvp "has") @example/Example.hk:162:17-162:20
+, "Box" (TokenConId "Box") @example/Example.hk:162:13-162:16
+, "Applicative" (TokenConId "Applicative") @example/Example.hk:162:1-162:12
+, "" (TokenLn) @example/Example.hk:162:1 ]
+[ "" (TokenLn') @example/Example.hk:162:1
+, "" (TokenBlk') @example/Example.hk:162:1 ]
+[ "" (TokenLn') @example/Example.hk:162:1
+, "b" (TokenVarId "b") @example/Example.hk:158:34-158:35
+, "f" (TokenVarId "f") @example/Example.hk:158:32-158:33
+, "->" (TokenRsvp "->") @example/Example.hk:158:29-158:31
+, "a" (TokenVarId "a") @example/Example.hk:158:27-158:28
+, "f" (TokenVarId "f") @example/Example.hk:158:25-158:26
+, "->" (TokenRsvp "->") @example/Example.hk:158:22-158:24
+, ")" (TokenRsvp ")") @example/Example.hk:158:20-158:21
+, "b" (TokenVarId "b") @example/Example.hk:158:19-158:20
+, "->" (TokenRsvp "->") @example/Example.hk:158:16-158:18
+, "a" (TokenVarId "a") @example/Example.hk:158:14-158:15
+, "(" (TokenRsvp "(") @example/Example.hk:158:13-158:14
+, "f" (TokenVarId "f") @example/Example.hk:158:11-158:12
+, ":" (TokenRsvp ":") @example/Example.hk:158:9-158:10
+, ")" (TokenRsvp ")") @example/Example.hk:158:7-158:8
+, "<*>" (TokenOpId "<*>") @example/Example.hk:158:4-158:7
+, "(" (TokenRsvp "(") @example/Example.hk:158:3-158:4
+, "" (TokenLn) @example/Example.hk:158:3
+, "" (TokenLn') @example/Example.hk:158:3
+, "a" (TokenVarId "a") @example/Example.hk:157:17-157:18
+, "f" (TokenVarId "f") @example/Example.hk:157:15-157:16
+, "->" (TokenRsvp "->") @example/Example.hk:157:12-157:14
+, "a" (TokenVarId "a") @example/Example.hk:157:10-157:11
+, ":" (TokenRsvp ":") @example/Example.hk:157:8-157:9
+, "pure" (TokenVarId "pure") @example/Example.hk:157:3-157:7
+, "" (TokenLn) @example/Example.hk:157:3
+, "" (TokenBlk) @example/Example.hk:157:3
+, "has" (TokenRsvp "has") @example/Example.hk:156:34-156:37
+, "f" (TokenVarId "f") @example/Example.hk:156:32-156:33
+, "Applicative" (TokenConId "Applicative") @example/Example.hk:156:20-156:31
+, "=>" (TokenRsvp "=>") @example/Example.hk:156:17-156:19
+, "f" (TokenVarId "f") @example/Example.hk:156:15-156:16
+, "Functor" (TokenConId "Functor") @example/Example.hk:156:7-156:14
+, "class" (TokenRsvp "class") @example/Example.hk:156:1-156:6
+, "" (TokenLn) @example/Example.hk:156:1 ]
+[ "" (TokenLn') @example/Example.hk:156:1
+, "" (TokenBlk') @example/Example.hk:156:1 ]
+[ "" (TokenLn') @example/Example.hk:156:1
+, "xs'" (TokenVarId "xs'") @example/Example.hk:152:5-152:8
+, ")" (TokenRsvp ")") @example/Example.hk:151:16-151:17
+, "xs" (TokenVarId "xs") @example/Example.hk:151:14-151:16
+, "size" (TokenVarId "size") @example/Example.hk:151:9-151:13
+, "(" (TokenRsvp "(") @example/Example.hk:151:8-151:9
+, "go" (TokenVarId "go") @example/Example.hk:151:5-151:7
+, ")" (TokenRsvp ")") @example/Example.hk:150:45-150:46
+, ")" (TokenRsvp ")") @example/Example.hk:150:44-150:45
+, "1" (TokenInteger 1) @example/Example.hk:150:43-150:44
+, "-" (TokenOpId "-") @example/Example.hk:150:42-150:43
+, "i" (TokenVarId "i") @example/Example.hk:150:41-150:42
+, "(" (TokenRsvp "(") @example/Example.hk:150:40-150:41
+, "go" (TokenVarId "go") @example/Example.hk:150:37-150:39
+, ";" (TokenRsvp ";") @example/Example.hk:150:35-150:36
+, "]" (TokenRsvp "]") @example/Example.hk:150:34-150:35
+, "i" (TokenVarId "i") @example/Example.hk:150:33-150:34
+, "[" (TokenRsvp "[") @example/Example.hk:150:32-150:33
+, "xs" (TokenVarId "xs") @example/Example.hk:150:30-150:32
+, "f" (TokenVarId "f") @example/Example.hk:150:28-150:29
+, "=" (TokenRsvp "=") @example/Example.hk:150:26-150:27
+, "]" (TokenRsvp "]") @example/Example.hk:150:24-150:25
+, "i" (TokenVarId "i") @example/Example.hk:150:23-150:24
+, "[" (TokenRsvp "[") @example/Example.hk:150:22-150:23
+, "xs'" (TokenVarId "xs'") @example/Example.hk:150:19-150:22
+, "->" (TokenRsvp "->") @example/Example.hk:150:16-150:18
+, "i" (TokenVarId "i") @example/Example.hk:150:14-150:15
+, "\" (TokenRsvp "\\") @example/Example.hk:150:13-150:14
+, "(" (TokenRsvp "(") @example/Example.hk:150:11-150:12
+, "<-" (TokenRsvp "<-") @example/Example.hk:150:8-150:10
+, "go" (TokenVarId "go") @example/Example.hk:150:5-150:7
+, "]" (TokenRsvp "]") @example/Example.hk:149:27-149:28
+, "[" (TokenRsvp "[") @example/Example.hk:149:26-149:27
+, ")" (TokenRsvp ")") @example/Example.hk:149:24-149:25
+, "xs" (TokenVarId "xs") @example/Example.hk:149:22-149:24
+, "size" (TokenVarId "size") @example/Example.hk:149:17-149:21
+, "(" (TokenRsvp "(") @example/Example.hk:149:16-149:17
+, "Arr" (TokenConId "Arr") @example/Example.hk:149:12-149:15
+, "<-" (TokenRsvp "<-") @example/Example.hk:149:9-149:11
+, "xs'" (TokenVarId "xs'") @example/Example.hk:149:5-149:8
+, ")" (TokenRsvp ")") @example/Example.hk:147:21-147:22
+, "xs" (TokenVarId "xs") @example/Example.hk:147:19-147:21
+, "size" (TokenVarId "size") @example/Example.hk:147:14-147:18
+, "(" (TokenRsvp "(") @example/Example.hk:147:13-147:14
+, "loop" (TokenVarId "loop") @example/Example.hk:147:8-147:12
+, "in" (TokenVarId "in") @example/Example.hk:147:5-147:7
+, ")" (TokenRsvp ")") @example/Example.hk:146:30-146:31
+, "1" (TokenInteger 1) @example/Example.hk:146:29-146:30
+, "-" (TokenOpId "-") @example/Example.hk:146:28-146:29
+, "i" (TokenVarId "i") @example/Example.hk:146:27-146:28
+, "(" (TokenRsvp "(") @example/Example.hk:146:26-146:27
+, "xs'" (TokenVarId "xs'") @example/Example.hk:146:23-146:26
+, "(" (TokenRsvp "(") @example/Example.hk:146:22-146:23
+, "fmap'" (TokenVarId "fmap'") @example/Example.hk:146:16-146:21
+, "in" (TokenVarId "in") @example/Example.hk:146:13-146:15
+, "x" (TokenVarId "x") @example/Example.hk:145:26-145:27
+, "=" (TokenRsvp "=") @example/Example.hk:145:24-145:25
+, "]" (TokenRsvp "]") @example/Example.hk:145:22-145:23
+, "i" (TokenVarId "i") @example/Example.hk:145:21-145:22
+, "[" (TokenRsvp "[") @example/Example.hk:145:20-145:21
+, "xs'" (TokenVarId "xs'") @example/Example.hk:145:17-145:20
+, "]" (TokenRsvp "]") @example/Example.hk:144:29-144:30
+, "i" (TokenVarId "i") @example/Example.hk:144:28-144:29
+, "[" (TokenRsvp "[") @example/Example.hk:144:27-144:28
+, "xs" (TokenVarId "xs") @example/Example.hk:144:25-144:27
+, "f" (TokenVarId "f") @example/Example.hk:144:23-144:24
+, "<-" (TokenRsvp "<-") @example/Example.hk:144:20-144:22
+, "x'" (TokenVarId "x'") @example/Example.hk:144:17-144:19
+, "let" (TokenVarId "let") @example/Example.hk:144:13-144:16
+, "=" (TokenRsvp "=") @example/Example.hk:143:16-143:17
+, "i" (TokenVarId "i") @example/Example.hk:143:14-143:15
+, "loop" (TokenVarId "loop") @example/Example.hk:143:9-143:13
+, "xs'" (TokenVarId "xs'") @example/Example.hk:142:18-142:21
+, "=" (TokenRsvp "=") @example/Example.hk:142:16-142:17
+, "0" (TokenInteger 0) @example/Example.hk:142:14-142:15
+, "loop" (TokenVarId "loop") @example/Example.hk:142:9-142:13
+, "]" (TokenRsvp "]") @example/Example.hk:141:25-141:26
+, "b" (TokenVarId "b") @example/Example.hk:141:24-141:25
+, "[" (TokenRsvp "[") @example/Example.hk:141:23-141:24
+, "->" (TokenRsvp "->") @example/Example.hk:141:20-141:22
+, "Int" (TokenConId "Int") @example/Example.hk:141:16-141:19
+, ":" (TokenRsvp ":") @example/Example.hk:141:14-141:15
+, "loop" (TokenVarId "loop") @example/Example.hk:141:9-141:13
+, "]" (TokenRsvp "]") @example/Example.hk:140:25-140:26
+, "b" (TokenVarId "b") @example/Example.hk:140:24-140:25
+, "[" (TokenRsvp "[") @example/Example.hk:140:23-140:24
+, ":" (TokenRsvp ":") @example/Example.hk:140:21-140:22
+, "5" (TokenInteger 5) @example/Example.hk:140:19-140:20
+, "]" (TokenRsvp "]") @example/Example.hk:140:17-140:18
+, "[" (TokenRsvp "[") @example/Example.hk:140:16-140:17
+, "<-" (TokenRsvp "<-") @example/Example.hk:140:13-140:15
+, "xs'" (TokenVarId "xs'") @example/Example.hk:140:9-140:12
+, "let" (TokenVarId "let") @example/Example.hk:140:5-140:8
+, "=" (TokenRsvp "=") @example/Example.hk:139:13-139:14
+, "xs" (TokenVarId "xs") @example/Example.hk:139:10-139:12
+, "f" (TokenVarId "f") @example/Example.hk:139:8-139:9
+, "fmap" (TokenVarId "fmap") @example/Example.hk:139:3-139:7
+, "" (TokenLn) @example/Example.hk:139:3
+, "" (TokenBlk) @example/Example.hk:139:3
+, "has" (TokenRsvp "has") @example/Example.hk:138:13-138:16
+, "]" (TokenRsvp "]") @example/Example.hk:138:11-138:12
+, "a" (TokenVarId "a") @example/Example.hk:138:10-138:11
+, "[" (TokenRsvp "[") @example/Example.hk:138:9-138:10
+, "Functor" (TokenConId "Functor") @example/Example.hk:138:1-138:8
+, "" (TokenLn) @example/Example.hk:138:1 ]
+[ "" (TokenLn') @example/Example.hk:138:1
+, "" (TokenBlk') @example/Example.hk:138:1 ]
+[ "" (TokenLn') @example/Example.hk:138:1
+, "a" (TokenVarId "a") @example/Example.hk:136:24-136:25
+, "Right" (TokenConId "Right") @example/Example.hk:136:18-136:23
+, "->" (TokenRsvp "->") @example/Example.hk:136:15-136:17
+, "a" (TokenVarId "a") @example/Example.hk:136:13-136:14
+, "Right" (TokenConId "Right") @example/Example.hk:136:7-136:12
+, "x" (TokenVarId "x") @example/Example.hk:135:22-135:23
+, "Left" (TokenConId "Left") @example/Example.hk:135:17-135:21
+, "->" (TokenRsvp "->") @example/Example.hk:135:14-135:16
+, "x" (TokenVarId "x") @example/Example.hk:135:12-135:13
+, "Left" (TokenConId "Left") @example/Example.hk:135:7-135:11
+, "of" (TokenRsvp "of") @example/Example.hk:134:12-134:14
+, "e" (TokenVarId "e") @example/Example.hk:134:10-134:11
+, "case" (TokenRsvp "case") @example/Example.hk:134:5-134:9
+, "=" (TokenRsvp "=") @example/Example.hk:133:12-133:13
+, "e" (TokenVarId "e") @example/Example.hk:133:10-133:11
+, "f" (TokenVarId "f") @example/Example.hk:133:8-133:9
+, "fmap" (TokenVarId "fmap") @example/Example.hk:133:3-133:7
+, "" (TokenLn) @example/Example.hk:133:3
+, "" (TokenBlk) @example/Example.hk:133:3
+, "has" (TokenRsvp "has") @example/Example.hk:132:18-132:21
+, "a" (TokenVarId "a") @example/Example.hk:132:16-132:17
+, "Either" (TokenConId "Either") @example/Example.hk:132:9-132:15
+, "Functor" (TokenConId "Functor") @example/Example.hk:132:1-132:8
+, "" (TokenLn) @example/Example.hk:132:1 ]
+[ "" (TokenLn') @example/Example.hk:132:1
+, "" (TokenBlk') @example/Example.hk:132:1 ]
+[ "" (TokenLn') @example/Example.hk:132:1
+, ")" (TokenRsvp ")") @example/Example.hk:130:30-130:31
+, "a" (TokenVarId "a") @example/Example.hk:130:29-130:30
+, "f" (TokenVarId "f") @example/Example.hk:130:27-130:28
+, "(" (TokenRsvp "(") @example/Example.hk:130:26-130:27
+, "Just" (TokenConId "Just") @example/Example.hk:130:21-130:25
+, "=" (TokenRsvp "=") @example/Example.hk:130:19-130:20
+, ")" (TokenRsvp ")") @example/Example.hk:130:17-130:18
+, "a" (TokenVarId "a") @example/Example.hk:130:16-130:17
+, "Just" (TokenConId "Just") @example/Example.hk:130:11-130:15
+, "(" (TokenRsvp "(") @example/Example.hk:130:10-130:11
+, "f" (TokenVarId "f") @example/Example.hk:130:8-130:9
+, "fmap" (TokenVarId "fmap") @example/Example.hk:130:3-130:7
+, "" (TokenLn) @example/Example.hk:130:3
+, "" (TokenLn') @example/Example.hk:130:3
+, "Nothing" (TokenConId "Nothing") @example/Example.hk:129:20-129:27
+, "=" (TokenRsvp "=") @example/Example.hk:129:18-129:19
+, "Nothing" (TokenConId "Nothing") @example/Example.hk:129:10-129:17
+, "f" (TokenVarId "f") @example/Example.hk:129:8-129:9
+, "fmap" (TokenVarId "fmap") @example/Example.hk:129:3-129:7
+, "" (TokenLn) @example/Example.hk:129:3
+, "" (TokenBlk) @example/Example.hk:129:3
+, "has" (TokenRsvp "has") @example/Example.hk:128:15-128:18
+, "Maybe" (TokenConId "Maybe") @example/Example.hk:128:9-128:14
+, "Functor" (TokenConId "Functor") @example/Example.hk:128:1-128:8
+, "" (TokenLn) @example/Example.hk:128:1 ]
+[ "" (TokenLn') @example/Example.hk:128:1
+, "" (TokenBlk') @example/Example.hk:128:1 ]
+[ "" (TokenLn') @example/Example.hk:128:1
+, ")" (TokenRsvp ")") @example/Example.hk:126:34-126:35
+, "x" (TokenVarId "x") @example/Example.hk:126:33-126:34
+, "f" (TokenVarId "f") @example/Example.hk:126:31-126:32
+, "(" (TokenRsvp "(") @example/Example.hk:126:30-126:31
+, "Linear" (TokenConId "Linear") @example/Example.hk:126:23-126:29
+, "=" (TokenRsvp "=") @example/Example.hk:126:21-126:22
+, ")" (TokenRsvp ")") @example/Example.hk:126:19-126:20
+, "x" (TokenVarId "x") @example/Example.hk:126:18-126:19
+, "Linear" (TokenConId "Linear") @example/Example.hk:126:11-126:17
+, "(" (TokenRsvp "(") @example/Example.hk:126:10-126:11
+, "f" (TokenVarId "f") @example/Example.hk:126:8-126:9
+, "fmap" (TokenVarId "fmap") @example/Example.hk:126:3-126:7
+, "" (TokenLn) @example/Example.hk:126:3
+, "" (TokenBlk) @example/Example.hk:126:3
+, "has" (TokenRsvp "has") @example/Example.hk:125:16-125:19
+, "Linear" (TokenConId "Linear") @example/Example.hk:125:9-125:15
+, "Functor" (TokenConId "Functor") @example/Example.hk:125:1-125:8
+, "" (TokenLn) @example/Example.hk:125:1 ]
+[ "" (TokenLn') @example/Example.hk:125:1
+, "" (TokenBlk') @example/Example.hk:125:1 ]
+[ "" (TokenLn') @example/Example.hk:125:1
+, ")" (TokenRsvp ")") @example/Example.hk:123:28-123:29
+, "x" (TokenVarId "x") @example/Example.hk:123:27-123:28
+, "f" (TokenVarId "f") @example/Example.hk:123:25-123:26
+, "(" (TokenRsvp "(") @example/Example.hk:123:24-123:25
+, "Box" (TokenConId "Box") @example/Example.hk:123:20-123:23
+, "=" (TokenRsvp "=") @example/Example.hk:123:18-123:19
+, ")" (TokenRsvp ")") @example/Example.hk:123:16-123:17
+, "x" (TokenVarId "x") @example/Example.hk:123:15-123:16
+, "Box" (TokenConId "Box") @example/Example.hk:123:11-123:14
+, "(" (TokenRsvp "(") @example/Example.hk:123:10-123:11
+, "f" (TokenVarId "f") @example/Example.hk:123:8-123:9
+, "fmap" (TokenVarId "fmap") @example/Example.hk:123:3-123:7
+, "" (TokenLn) @example/Example.hk:123:3
+, "" (TokenBlk) @example/Example.hk:123:3
+, "has" (TokenRsvp "has") @example/Example.hk:122:13-122:16
+, "Box" (TokenConId "Box") @example/Example.hk:122:9-122:12
+, "Functor" (TokenConId "Functor") @example/Example.hk:122:1-122:8
+, "" (TokenLn) @example/Example.hk:122:1 ]
+[ "" (TokenLn') @example/Example.hk:122:1
+, "" (TokenBlk') @example/Example.hk:122:1 ]
+[ "" (TokenLn') @example/Example.hk:122:1
+, "b" (TokenVarId "b") @example/Example.hk:118:31-118:32
+, "f" (TokenVarId "f") @example/Example.hk:118:29-118:30
+, "->" (TokenRsvp "->") @example/Example.hk:118:26-118:28
+, "a" (TokenVarId "a") @example/Example.hk:118:24-118:25
+, "f" (TokenVarId "f") @example/Example.hk:118:22-118:23
+, "->" (TokenRsvp "->") @example/Example.hk:118:19-118:21
+, ")" (TokenRsvp ")") @example/Example.hk:118:17-118:18
+, "b" (TokenVarId "b") @example/Example.hk:118:16-118:17
+, "->" (TokenRsvp "->") @example/Example.hk:118:13-118:15
+, "a" (TokenVarId "a") @example/Example.hk:118:11-118:12
+, "(" (TokenRsvp "(") @example/Example.hk:118:10-118:11
+, ":" (TokenRsvp ":") @example/Example.hk:118:8-118:9
+, "fmap" (TokenVarId "fmap") @example/Example.hk:118:3-118:7
+, "" (TokenLn) @example/Example.hk:118:3
+, "" (TokenBlk) @example/Example.hk:118:3
+, "has" (TokenRsvp "has") @example/Example.hk:117:17-117:20
+, "f" (TokenVarId "f") @example/Example.hk:117:15-117:16
+, "Functor" (TokenConId "Functor") @example/Example.hk:117:7-117:14
+, "class" (TokenRsvp "class") @example/Example.hk:117:1-117:6
+, "" (TokenLn) @example/Example.hk:117:1 ]
+[ "" (TokenLn') @example/Example.hk:117:1
+, "-------------------------------------" (TokenOpId "-------------------------------------") @example/Example.hk:114:1-114:38
+, "" (TokenLn) @example/Example.hk:114:1 ]
+[ "" (TokenLn') @example/Example.hk:114:1
+, "-------------------------------------" (TokenOpId "-------------------------------------") @example/Example.hk:110:1-110:38
+, "" (TokenLn) @example/Example.hk:110:1 ]
+[ "" (TokenLn') @example/Example.hk:110:1
+, ")" (TokenRsvp ")") @example/Example.hk:107:21-107:22
+, "a" (TokenVarId "a") @example/Example.hk:107:20-107:21
+, "f" (TokenVarId "f") @example/Example.hk:107:18-107:19
+, "(" (TokenRsvp "(") @example/Example.hk:107:17-107:18
+, "g" (TokenVarId "g") @example/Example.hk:107:15-107:16
+, "=" (TokenRsvp "=") @example/Example.hk:107:13-107:14
+, "a" (TokenVarId "a") @example/Example.hk:107:11-107:12
+, "f" (TokenVarId "f") @example/Example.hk:107:9-107:10
+, "g" (TokenVarId "g") @example/Example.hk:107:7-107:8
+, ")" (TokenRsvp ")") @example/Example.hk:107:5-107:6
+, "." (TokenRsvp ".") @example/Example.hk:107:4-107:5
+, "(" (TokenRsvp "(") @example/Example.hk:107:3-107:4
+, "a" (TokenVarId "a") @example/Example.hk:106:14-106:15
+, "->" (TokenRsvp "->") @example/Example.hk:106:11-106:13
+, "a" (TokenVarId "a") @example/Example.hk:106:9-106:10
+, "\" (TokenRsvp "\\") @example/Example.hk:106:8-106:9
+, "=" (TokenRsvp "=") @example/Example.hk:106:6-106:7
+, "id" (TokenVarId "id") @example/Example.hk:106:3-106:5
+, "where" (TokenVarId "where") @example/Example.hk:105:15-105:20
+, ")" (TokenRsvp ")") @example/Example.hk:105:13-105:14
+, "->" (TokenRsvp "->") @example/Example.hk:105:11-105:13
+, "(" (TokenRsvp "(") @example/Example.hk:105:10-105:11
+, "Category" (TokenConId "Category") @example/Example.hk:105:1-105:9
+, "" (TokenLn) @example/Example.hk:105:1 ]
+[ "" (TokenLn') @example/Example.hk:105:1
+, "cat" (TokenVarId "cat") @example/Example.hk:103:9-103:12
+, ":" (TokenRsvp ":") @example/Example.hk:103:7-103:8
+, ")" (TokenRsvp ")") @example/Example.hk:103:5-103:6
+, "." (TokenRsvp ".") @example/Example.hk:103:4-103:5
+, "(" (TokenRsvp "(") @example/Example.hk:103:3-103:4
+, "a" (TokenVarId "a") @example/Example.hk:102:14-102:15
+, "a" (TokenVarId "a") @example/Example.hk:102:12-102:13
+, "cat" (TokenVarId "cat") @example/Example.hk:102:8-102:11
+, ":" (TokenRsvp ":") @example/Example.hk:102:6-102:7
+, "id" (TokenVarId "id") @example/Example.hk:102:3-102:5
+, "where" (TokenVarId "where") @example/Example.hk:101:20-101:25
+, "cat" (TokenVarId "cat") @example/Example.hk:101:16-101:19
+, "Category" (TokenConId "Category") @example/Example.hk:101:7-101:15
+, "class" (TokenRsvp "class") @example/Example.hk:101:1-101:6
+, "" (TokenLn) @example/Example.hk:101:1 ]
+[ "" (TokenLn') @example/Example.hk:101:1
+, ")" (TokenRsvp ")") @example/Example.hk:99:14-99:15
+, "b" (TokenVarId "b") @example/Example.hk:99:13-99:14
+, "->" (TokenRsvp "->") @example/Example.hk:99:10-99:12
+, "a" (TokenVarId "a") @example/Example.hk:99:8-99:9
+, "(" (TokenRsvp "(") @example/Example.hk:99:7-99:8
+, ":" (TokenRsvp ":") @example/Example.hk:99:5-99:6
+, ")" (TokenRsvp ")") @example/Example.hk:99:3-99:4
+, "$" (TokenOpId "$") @example/Example.hk:99:2-99:3
+, "(" (TokenRsvp "(") @example/Example.hk:99:1-99:2
+, "" (TokenLn) @example/Example.hk:99:1 ]
+[ "" (TokenLn') @example/Example.hk:99:1
+, "-------------------------------------" (TokenOpId "-------------------------------------") @example/Example.hk:97:1-97:38
+, "" (TokenLn) @example/Example.hk:97:1 ]
+[ "" (TokenLn') @example/Example.hk:97:1
+, "b" (TokenVarId "b") @example/Example.hk:89:29-89:30
+, "Right" (TokenConId "Right") @example/Example.hk:89:23-89:28
+, "|" (TokenRsvp "|") @example/Example.hk:89:21-89:22
+, "a" (TokenVarId "a") @example/Example.hk:89:19-89:20
+, "Left" (TokenConId "Left") @example/Example.hk:89:14-89:18
+, "=" (TokenRsvp "=") @example/Example.hk:89:12-89:13
+, "b" (TokenVarId "b") @example/Example.hk:89:10-89:11
+, "a" (TokenVarId "a") @example/Example.hk:89:8-89:9
+, "Either" (TokenConId "Either") @example/Example.hk:89:1-89:7
+, "" (TokenLn) @example/Example.hk:89:1 ]
+[ "" (TokenLn') @example/Example.hk:89:1
+, "a" (TokenVarId "a") @example/Example.hk:88:26-88:27
+, "Just" (TokenConId "Just") @example/Example.hk:88:21-88:25
+, "|" (TokenRsvp "|") @example/Example.hk:88:19-88:20
+, "Nothing" (TokenConId "Nothing") @example/Example.hk:88:11-88:18
+, "=" (TokenRsvp "=") @example/Example.hk:88:9-88:10
+, "a" (TokenVarId "a") @example/Example.hk:88:7-88:8
+, "Maybe" (TokenConId "Maybe") @example/Example.hk:88:1-88:6
+, "" (TokenLn) @example/Example.hk:88:1 ]
+[ "" (TokenLn') @example/Example.hk:88:1
+, "}" (TokenRsvp "}") @example/Example.hk:85:33-85:34
+, "a" (TokenVarId "a") @example/Example.hk:85:31-85:32
+, ":" (TokenRsvp ":") @example/Example.hk:85:29-85:30
+, "consume" (TokenVarId "consume") @example/Example.hk:85:21-85:28
+, "{" (TokenRsvp "{") @example/Example.hk:85:19-85:20
+, "Linear" (TokenConId "Linear") @example/Example.hk:85:12-85:18
+, "=" (TokenRsvp "=") @example/Example.hk:85:10-85:11
+, "a" (TokenVarId "a") @example/Example.hk:85:8-85:9
+, "Linear" (TokenConId "Linear") @example/Example.hk:85:1-85:7
+, "" (TokenLn) @example/Example.hk:85:1 ]
+[ "" (TokenLn') @example/Example.hk:85:1
+, "}" (TokenRsvp "}") @example/Example.hk:80:28-80:29
+, "a" (TokenVarId "a") @example/Example.hk:80:26-80:27
+, ":" (TokenRsvp ":") @example/Example.hk:80:24-80:25
+, "unsafe" (TokenVarId "unsafe") @example/Example.hk:80:17-80:23
+, "{" (TokenRsvp "{") @example/Example.hk:80:15-80:16
+, "Safe" (TokenConId "Safe") @example/Example.hk:80:10-80:14
+, "=" (TokenRsvp "=") @example/Example.hk:80:8-80:9
+, "a" (TokenVarId "a") @example/Example.hk:80:6-80:7
+, "Safe" (TokenConId "Safe") @example/Example.hk:80:1-80:5
+, "" (TokenLn) @example/Example.hk:80:1 ]
+[ "" (TokenLn') @example/Example.hk:80:1
+, "}" (TokenRsvp "}") @example/Example.hk:77:25-77:26
+, "a" (TokenVarId "a") @example/Example.hk:77:23-77:24
+, ":" (TokenRsvp ":") @example/Example.hk:77:21-77:22
+, "deref" (TokenVarId "deref") @example/Example.hk:77:15-77:20
+, "{" (TokenRsvp "{") @example/Example.hk:77:13-77:14
+, "Ref" (TokenConId "Ref") @example/Example.hk:77:9-77:12
+, "=" (TokenRsvp "=") @example/Example.hk:77:7-77:8
+, "a" (TokenVarId "a") @example/Example.hk:77:5-77:6
+, "Ref" (TokenConId "Ref") @example/Example.hk:77:1-77:4
+, "" (TokenLn) @example/Example.hk:77:1 ]
+[ "" (TokenLn') @example/Example.hk:77:1
+, "}" (TokenRsvp "}") @example/Example.hk:74:26-74:27
+, "a" (TokenVarId "a") @example/Example.hk:74:24-74:25
+, ":" (TokenRsvp ":") @example/Example.hk:74:22-74:23
+, "modify" (TokenVarId "modify") @example/Example.hk:74:15-74:21
+, "{" (TokenRsvp "{") @example/Example.hk:74:13-74:14
+, "Box" (TokenConId "Box") @example/Example.hk:74:9-74:12
+, "=" (TokenRsvp "=") @example/Example.hk:74:7-74:8
+, "a" (TokenVarId "a") @example/Example.hk:74:5-74:6
+, "Box" (TokenConId "Box") @example/Example.hk:74:1-74:4
+, "" (TokenLn) @example/Example.hk:74:1 ]
+[ "" (TokenLn') @example/Example.hk:74:1
+, "}" (TokenRsvp "}") @example/Example.hk:71:29-71:30
+, "a" (TokenVarId "a") @example/Example.hk:71:27-71:28
+, ":" (TokenRsvp ":") @example/Example.hk:71:25-71:26
+, "mutable" (TokenVarId "mutable") @example/Example.hk:71:17-71:24
+, "{" (TokenRsvp "{") @example/Example.hk:71:15-71:16
+, "Cell" (TokenConId "Cell") @example/Example.hk:71:10-71:14
+, "=" (TokenRsvp "=") @example/Example.hk:71:8-71:9
+, "a" (TokenVarId "a") @example/Example.hk:71:6-71:7
+, "Cell" (TokenConId "Cell") @example/Example.hk:71:1-71:5
+, "" (TokenLn) @example/Example.hk:71:1 ]
+[ "" (TokenLn') @example/Example.hk:71:1
+, "}" (TokenRsvp "}") @example/Example.hk:68:20-68:21
+, "a" (TokenVarId "a") @example/Example.hk:68:18-68:19
+, ":" (TokenRsvp ":") @example/Example.hk:68:16-68:17
+, "id" (TokenVarId "id") @example/Example.hk:68:13-68:15
+, "{" (TokenRsvp "{") @example/Example.hk:68:11-68:12
+, "Id" (TokenConId "Id") @example/Example.hk:68:8-68:10
+, "=" (TokenRsvp "=") @example/Example.hk:68:6-68:7
+, "a" (TokenVarId "a") @example/Example.hk:68:4-68:5
+, "Id" (TokenConId "Id") @example/Example.hk:68:1-68:3
+, "" (TokenLn) @example/Example.hk:68:1 ]
+[ "" (TokenLn') @example/Example.hk:68:1
+, "False" (TokenConId "False") @example/Example.hk:65:15-65:20
+, "|" (TokenRsvp "|") @example/Example.hk:65:13-65:14
+, "True" (TokenConId "True") @example/Example.hk:65:8-65:12
+, "=" (TokenRsvp "=") @example/Example.hk:65:6-65:7
+, "Bool" (TokenConId "Bool") @example/Example.hk:65:1-65:5
+, "" (TokenLn) @example/Example.hk:65:1 ]
+[ "" (TokenLn') @example/Example.hk:65:1
+, ")" (TokenRsvp ")") @example/Example.hk:62:42-62:43
+, "(" (TokenRsvp "(") @example/Example.hk:62:41-62:42
+, "->" (TokenRsvp "->") @example/Example.hk:62:38-62:40
+, "String" (TokenConId "String") @example/Example.hk:62:31-62:37
+, ":" (TokenRsvp ":") @example/Example.hk:62:29-62:30
+, "putStr" (TokenVarId "putStr") @example/Example.hk:62:22-62:28
+, "ccall" (TokenRsvp "ccall") @example/Example.hk:62:16-62:21
+, "import" (TokenRsvp "import") @example/Example.hk:62:9-62:15
+, "foreign" (TokenRsvp "foreign") @example/Example.hk:62:1-62:8
+, "" (TokenLn) @example/Example.hk:62:1 ]
+[ "" (TokenLn') @example/Example.hk:62:1
+, "." (TokenRsvp ".") @example/Example.hk:53:37-53:38
+, "stack" (TokenVarId "stack") @example/Example.hk:53:32-53:37
+, "and" (TokenVarId "and") @example/Example.hk:53:28-53:31
+, "heap" (TokenVarId "heap") @example/Example.hk:53:23-53:27
+, "between" (TokenVarId "between") @example/Example.hk:53:15-53:22
+, "data" (TokenVarId "data") @example/Example.hk:52:39-52:43
+, "organizes" (TokenVarId "organizes") @example/Example.hk:52:29-52:38
+, "intelligently" (TokenVarId "intelligently") @example/Example.hk:52:15-52:28
+, "-" (TokenOpId "-") @example/Example.hk:52:13-52:14
+, "a" (TokenVarId "a") @example/Example.hk:46:12-46:13
+, "Cell" (TokenConId "Cell") @example/Example.hk:46:7-46:11
+, "::" (TokenOpId "::") @example/Example.hk:46:4-46:6
+, "<~" (TokenOpId "<~") @example/Example.hk:46:1-46:3
+, "" (TokenLn) @example/Example.hk:46:1 ]
+[ "" (TokenLn') @example/Example.hk:46:1
+, "" (TokenBlk') @example/Example.hk:46:1 ]
+[ "" (TokenLn') @example/Example.hk:46:1
+, "a" (TokenVarId "a") @example/Example.hk:44:15-44:16
+, "Cell" (TokenConId "Cell") @example/Example.hk:44:10-44:14
+, "->" (TokenRsvp "->") @example/Example.hk:44:7-44:9
+, "a" (TokenVarId "a") @example/Example.hk:43:15-43:16
+, "Cell" (TokenConId "Cell") @example/Example.hk:43:10-43:14
+, "->" (TokenRsvp "->") @example/Example.hk:43:7-43:9
+, "a" (TokenVarId "a") @example/Example.hk:42:15-42:16
+, "Cell" (TokenConId "Cell") @example/Example.hk:42:10-42:14
+, "::" (TokenOpId "::") @example/Example.hk:42:7-42:9
+, ")" (TokenRsvp ")") @example/Example.hk:42:5-42:6
+, "=" (TokenRsvp "=") @example/Example.hk:42:4-42:5
+, "(" (TokenRsvp "(") @example/Example.hk:42:3-42:4
+, "" (TokenLn) @example/Example.hk:42:3
+, "" (TokenBlk) @example/Example.hk:42:3
+, "has" (TokenRsvp "has") @example/Example.hk:41:23-41:26
+, "Cell" (TokenConId "Cell") @example/Example.hk:41:18-41:22
+, "Assigns" (TokenConId "Assigns") @example/Example.hk:41:10-41:17
+, "instance" (TokenVarId "instance") @example/Example.hk:41:1-41:9
+, "" (TokenLn) @example/Example.hk:41:1 ]
+[ "" (TokenLn') @example/Example.hk:41:1
+, "" (TokenBlk') @example/Example.hk:41:1 ]
+[ "" (TokenLn') @example/Example.hk:41:1
+, "a" (TokenVarId "a") @example/Example.hk:39:12-39:13
+, "f" (TokenVarId "f") @example/Example.hk:39:10-39:11
+, "->" (TokenRsvp "->") @example/Example.hk:39:7-39:9
+, "a" (TokenVarId "a") @example/Example.hk:38:12-38:13
+, "f" (TokenVarId "f") @example/Example.hk:38:10-38:11
+, "->" (TokenRsvp "->") @example/Example.hk:38:7-38:9
+, "a" (TokenVarId "a") @example/Example.hk:37:12-37:13
+, "f" (TokenVarId "f") @example/Example.hk:37:10-37:11
+, "::" (TokenOpId "::") @example/Example.hk:37:7-37:9
+, ")" (TokenRsvp ")") @example/Example.hk:37:5-37:6
+, "=" (TokenRsvp "=") @example/Example.hk:37:4-37:5
+, "(" (TokenRsvp "(") @example/Example.hk:37:3-37:4
+, "" (TokenLn) @example/Example.hk:37:3
+, "" (TokenBlk) @example/Example.hk:37:3
+, "has" (TokenRsvp "has") @example/Example.hk:36:17-36:20
+, "f" (TokenVarId "f") @example/Example.hk:36:15-36:16
+, "Assigns" (TokenConId "Assigns") @example/Example.hk:36:7-36:14
+, "class" (TokenRsvp "class") @example/Example.hk:36:1-36:6
+, "" (TokenLn) @example/Example.hk:36:1 ]
+
+
+Beginning Parsing:
+
+
+Definitions Parsed:
+
+
+Errors Parsing:
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:250:20
+, "" (TokenEof) @example/Example.hk:250:20-250:21
+, ")" (TokenRsvp ")") @example/Example.hk:250:20-250:21
+, "(" (TokenRsvp "(") @example/Example.hk:250:19-250:20
+, "IO" (TokenConId "IO") @example/Example.hk:250:16-250:18
+, "CellT" (TokenConId "CellT") @example/Example.hk:250:10-250:15
+, ":" (TokenRsvp ":") @example/Example.hk:250:8-250:9
+, "myGame" (TokenVarId "myGame") @example/Example.hk:250:1-250:7
+, "" (TokenLn) @example/Example.hk:250:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:250:1
+, "write" (TokenVarId "write") @example/Example.hk:243:1-243:6
+, "" (TokenLn) @example/Example.hk:243:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:243:1
+, "String" (TokenConId "String") @example/Example.hk:242:25-242:31
+, "IO" (TokenConId "IO") @example/Example.hk:242:22-242:24
+, "->" (TokenRsvp "->") @example/Example.hk:242:19-242:21
+, "String" (TokenConId "String") @example/Example.hk:242:12-242:18
+, ":" (TokenRsvp ":") @example/Example.hk:242:10-242:11
+, "readFile" (TokenVarId "readFile") @example/Example.hk:242:1-242:9
+, "" (TokenLn) @example/Example.hk:242:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:242:1
+, "" (TokenBlk') @example/Example.hk:242:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:242:1
+, "" (TokenBlk') @example/Example.hk:242:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:242:1
+, ")" (TokenRsvp ")") @example/Example.hk:235:23-235:24
+, "]" (TokenRsvp "]") @example/Example.hk:235:22-235:23
+, "[" (TokenRsvp "[") @example/Example.hk:235:21-235:22
+, "," (TokenRsvp ",") @example/Example.hk:235:19-235:20
+, "]" (TokenRsvp "]") @example/Example.hk:235:18-235:19
+, "[" (TokenRsvp "[") @example/Example.hk:235:17-235:18
+, "," (TokenRsvp ",") @example/Example.hk:235:15-235:16
+, "]" (TokenRsvp "]") @example/Example.hk:235:14-235:15
+, "[" (TokenRsvp "[") @example/Example.hk:235:13-235:14
+, "(" (TokenRsvp "(") @example/Example.hk:235:12-235:13
+, "return" (TokenVarId "return") @example/Example.hk:235:5-235:11
+, "" (TokenLn) @example/Example.hk:235:5
+, "" (TokenLn') @example/Example.hk:235:5
+, "]" (TokenRsvp "]") @example/Example.hk:229:31-229:32
+, "Int" (TokenConId "Int") @example/Example.hk:229:28-229:31
+, "[" (TokenRsvp "[") @example/Example.hk:229:27-229:28
+, ":" (TokenRsvp ":") @example/Example.hk:229:25-229:26
+, ")" (TokenRsvp ")") @example/Example.hk:229:23-229:24
+, "g" (TokenVarId "g") @example/Example.hk:229:22-229:23
+, "size" (TokenVarId "size") @example/Example.hk:229:17-229:21
+, "(" (TokenRsvp "(") @example/Example.hk:229:16-229:17
+, "Array" (TokenConId "Array") @example/Example.hk:229:10-229:15
+, "<-" (TokenRsvp "<-") @example/Example.hk:229:7-229:9
+, "q" (TokenVarId "q") @example/Example.hk:229:5-229:6
+, "" (TokenLn) @example/Example.hk:229:5
+, "" (TokenLn') @example/Example.hk:229:5
+, "]" (TokenRsvp "]") @example/Example.hk:228:34-228:35
+, "Int" (TokenConId "Int") @example/Example.hk:228:31-228:34
+, "[" (TokenRsvp "[") @example/Example.hk:228:30-228:31
+, ":" (TokenRsvp ":") @example/Example.hk:228:28-228:29
+, ")" (TokenRsvp ")") @example/Example.hk:228:26-228:27
+, "g" (TokenVarId "g") @example/Example.hk:228:25-228:26
+, "size" (TokenVarId "size") @example/Example.hk:228:20-228:24
+, "(" (TokenRsvp "(") @example/Example.hk:228:19-228:20
+, "Array" (TokenConId "Array") @example/Example.hk:228:13-228:18
+, "<-" (TokenRsvp "<-") @example/Example.hk:228:10-228:12
+, "dist" (TokenVarId "dist") @example/Example.hk:228:5-228:9
+, "" (TokenLn) @example/Example.hk:228:5
+, "" (TokenLn') @example/Example.hk:228:5
+, "]" (TokenRsvp "]") @example/Example.hk:227:33-227:34
+, "Int" (TokenConId "Int") @example/Example.hk:227:30-227:33
+, "[" (TokenRsvp "[") @example/Example.hk:227:29-227:30
+, ":" (TokenRsvp ":") @example/Example.hk:227:27-227:28
+, ")" (TokenRsvp ")") @example/Example.hk:227:25-227:26
+, "g" (TokenVarId "g") @example/Example.hk:227:24-227:25
+, "size" (TokenVarId "size") @example/Example.hk:227:19-227:23
+, "(" (TokenRsvp "(") @example/Example.hk:227:18-227:19
+, "Array" (TokenConId "Array") @example/Example.hk:227:12-227:17
+, "<-" (TokenRsvp "<-") @example/Example.hk:227:9-227:11
+, "par" (TokenVarId "par") @example/Example.hk:227:5-227:8
+, "" (TokenLn) @example/Example.hk:227:5
+, "" (TokenBlk) @example/Example.hk:227:5
+, "do" (TokenRsvp "do") @example/Example.hk:226:13-226:15
+, "=" (TokenRsvp "=") @example/Example.hk:226:11-226:12
+, "s" (TokenVarId "s") @example/Example.hk:226:9-226:10
+, "g" (TokenVarId "g") @example/Example.hk:226:7-226:8
+, "bfs" (TokenVarId "bfs") @example/Example.hk:226:3-226:6
+, "" (TokenLn) @example/Example.hk:226:3
+, "" (TokenLn') @example/Example.hk:226:3
+, "g" (TokenVarId "g") @example/Example.hk:225:27-225:28
+, "$" (TokenOpId "$") @example/Example.hk:225:25-225:26
+, "edges" (TokenVarId "edges") @example/Example.hk:225:19-225:24
+, "." (TokenRsvp ".") @example/Example.hk:225:17-225:18
+, "size" (TokenVarId "size") @example/Example.hk:225:12-225:16
+, "=" (TokenRsvp "=") @example/Example.hk:225:10-225:11
+, "g" (TokenVarId "g") @example/Example.hk:225:8-225:9
+, "size" (TokenVarId "size") @example/Example.hk:225:3-225:7
+, "" (TokenLn) @example/Example.hk:225:3
+, "" (TokenBlk) @example/Example.hk:225:3
+, "has" (TokenRsvp "has") @example/Example.hk:224:16-224:19
+, "IntGraph" (TokenConId "IntGraph") @example/Example.hk:224:7-224:15
+, "Graph" (TokenConId "Graph") @example/Example.hk:224:1-224:6
+, "" (TokenLn) @example/Example.hk:224:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:224:1
+, "" (TokenBlk') @example/Example.hk:224:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:224:1
+, ")" (TokenRsvp ")") @example/Example.hk:221:41-221:42
+, "]" (TokenRsvp "]") @example/Example.hk:221:40-221:41
+, "Int" (TokenConId "Int") @example/Example.hk:221:37-221:40
+, "[" (TokenRsvp "[") @example/Example.hk:221:36-221:37
+, "," (TokenRsvp ",") @example/Example.hk:221:34-221:35
+, "]" (TokenRsvp "]") @example/Example.hk:221:33-221:34
+, "Int" (TokenConId "Int") @example/Example.hk:221:30-221:33
+, "[" (TokenRsvp "[") @example/Example.hk:221:29-221:30
+, "," (TokenRsvp ",") @example/Example.hk:221:27-221:28
+, "]" (TokenRsvp "]") @example/Example.hk:221:26-221:27
+, "Int" (TokenConId "Int") @example/Example.hk:221:23-221:26
+, "[" (TokenRsvp "[") @example/Example.hk:221:22-221:23
+, "(" (TokenRsvp "(") @example/Example.hk:221:21-221:22
+, "->" (TokenRsvp "->") @example/Example.hk:221:18-221:20
+, "Int" (TokenConId "Int") @example/Example.hk:221:14-221:17
+, "->" (TokenRsvp "->") @example/Example.hk:221:11-221:13
+, "g" (TokenVarId "g") @example/Example.hk:221:9-221:10
+, ":" (TokenRsvp ":") @example/Example.hk:221:7-221:8
+, "bfs" (TokenVarId "bfs") @example/Example.hk:221:3-221:6
+, "" (TokenLn) @example/Example.hk:221:3
+, "" (TokenLn') @example/Example.hk:221:3
+, "Int" (TokenConId "Int") @example/Example.hk:220:15-220:18
+, "->" (TokenRsvp "->") @example/Example.hk:220:12-220:14
+, "g" (TokenVarId "g") @example/Example.hk:220:10-220:11
+, ":" (TokenRsvp ":") @example/Example.hk:220:8-220:9
+, "size" (TokenVarId "size") @example/Example.hk:220:3-220:7
+, "" (TokenLn) @example/Example.hk:220:3
+, "" (TokenBlk) @example/Example.hk:220:3
+, "has" (TokenRsvp "has") @example/Example.hk:219:15-219:18
+, "g" (TokenVarId "g") @example/Example.hk:219:13-219:14
+, "Graph" (TokenConId "Graph") @example/Example.hk:219:7-219:12
+, "class" (TokenRsvp "class") @example/Example.hk:219:1-219:6
+, "" (TokenLn) @example/Example.hk:219:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:219:1
+, "}" (TokenRsvp "}") @example/Example.hk:217:39-217:40
+, "]" (TokenRsvp "]") @example/Example.hk:217:37-217:38
+, "]" (TokenRsvp "]") @example/Example.hk:217:36-217:37
+, "Int" (TokenConId "Int") @example/Example.hk:217:33-217:36
+, "[" (TokenRsvp "[") @example/Example.hk:217:32-217:33
+, "[" (TokenRsvp "[") @example/Example.hk:217:31-217:32
+, ":" (TokenRsvp ":") @example/Example.hk:217:29-217:30
+, "edges" (TokenVarId "edges") @example/Example.hk:217:23-217:28
+, "{" (TokenRsvp "{") @example/Example.hk:217:21-217:22
+, "IntGraph" (TokenConId "IntGraph") @example/Example.hk:217:12-217:20
+, "=" (TokenRsvp "=") @example/Example.hk:217:10-217:11
+, "IntGraph" (TokenConId "IntGraph") @example/Example.hk:217:1-217:9
+, "" (TokenLn) @example/Example.hk:217:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:217:1
+, "Matrix" (TokenConId "Matrix") @example/Example.hk:215:5-215:11
+, "|" (TokenRsvp "|") @example/Example.hk:215:3-215:4
+, "EdgeList" (TokenConId "EdgeList") @example/Example.hk:214:5-214:13
+, "|" (TokenRsvp "|") @example/Example.hk:214:3-214:4
+, "AdjecencyList" (TokenConId "AdjecencyList") @example/Example.hk:213:5-213:18
+, "=" (TokenRsvp "=") @example/Example.hk:213:3-213:4
+, "Rep" (TokenConId "Rep") @example/Example.hk:212:1-212:4
+, "" (TokenLn) @example/Example.hk:212:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:212:1
+, "" (TokenBlk') @example/Example.hk:212:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:212:1
+, "x" (TokenVarId "x") @example/Example.hk:207:23-207:24
+, "k" (TokenVarId "k") @example/Example.hk:207:21-207:22
+, "=" (TokenRsvp "=") @example/Example.hk:207:19-207:20
+, "k" (TokenVarId "k") @example/Example.hk:207:17-207:18
+, ">>=" (TokenOpId ">>=") @example/Example.hk:207:13-207:16
+, ")" (TokenRsvp ")") @example/Example.hk:207:11-207:12
+, "x" (TokenVarId "x") @example/Example.hk:207:10-207:11
+, "Right" (TokenConId "Right") @example/Example.hk:207:4-207:9
+, "(" (TokenRsvp "(") @example/Example.hk:207:3-207:4
+, "" (TokenLn) @example/Example.hk:207:3
+, "" (TokenLn') @example/Example.hk:207:3
+, "e" (TokenVarId "e") @example/Example.hk:206:25-206:26
+, "Left" (TokenConId "Left") @example/Example.hk:206:20-206:24
+, "=" (TokenRsvp "=") @example/Example.hk:206:18-206:19
+, "k" (TokenVarId "k") @example/Example.hk:206:16-206:17
+, ">>=" (TokenOpId ">>=") @example/Example.hk:206:12-206:15
+, ")" (TokenRsvp ")") @example/Example.hk:206:10-206:11
+, "e" (TokenVarId "e") @example/Example.hk:206:9-206:10
+, "Left" (TokenConId "Left") @example/Example.hk:206:4-206:8
+, "(" (TokenRsvp "(") @example/Example.hk:206:3-206:4
+, "" (TokenLn) @example/Example.hk:206:3
+, "" (TokenBlk) @example/Example.hk:206:3
+, "has" (TokenRsvp "has") @example/Example.hk:205:16-205:19
+, "e" (TokenVarId "e") @example/Example.hk:205:14-205:15
+, "Either" (TokenConId "Either") @example/Example.hk:205:7-205:13
+, "Monad" (TokenConId "Monad") @example/Example.hk:205:1-205:6
+, "" (TokenLn) @example/Example.hk:205:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:205:1
+, "" (TokenBlk') @example/Example.hk:205:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:205:1
+, "Nothing" (TokenConId "Nothing") @example/Example.hk:203:19-203:26
+, "=" (TokenRsvp "=") @example/Example.hk:203:17-203:18
+, "_" (TokenRsvp "_") @example/Example.hk:203:15-203:16
+, ">>=" (TokenOpId ">>=") @example/Example.hk:203:11-203:14
+, "Nothing" (TokenConId "Nothing") @example/Example.hk:203:3-203:10
+, "" (TokenLn) @example/Example.hk:203:3
+, "" (TokenLn') @example/Example.hk:203:3
+, "x" (TokenVarId "x") @example/Example.hk:202:22-202:23
+, "k" (TokenVarId "k") @example/Example.hk:202:20-202:21
+, "=" (TokenRsvp "=") @example/Example.hk:202:18-202:19
+, "k" (TokenVarId "k") @example/Example.hk:202:16-202:17
+, ">>=" (TokenOpId ">>=") @example/Example.hk:202:12-202:15
+, ")" (TokenRsvp ")") @example/Example.hk:202:10-202:11
+, "x" (TokenVarId "x") @example/Example.hk:202:9-202:10
+, "Just" (TokenConId "Just") @example/Example.hk:202:4-202:8
+, "(" (TokenRsvp "(") @example/Example.hk:202:3-202:4
+, "" (TokenLn) @example/Example.hk:202:3
+, "" (TokenBlk) @example/Example.hk:202:3
+, "has" (TokenRsvp "has") @example/Example.hk:201:13-201:16
+, "Maybe" (TokenConId "Maybe") @example/Example.hk:201:7-201:12
+, "Monad" (TokenConId "Monad") @example/Example.hk:201:1-201:6
+, "" (TokenLn) @example/Example.hk:201:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:201:1
+, "" (TokenBlk') @example/Example.hk:201:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:201:1
+, "x" (TokenVarId "x") @example/Example.hk:199:24-199:25
+, "k" (TokenVarId "k") @example/Example.hk:199:22-199:23
+, "=" (TokenRsvp "=") @example/Example.hk:199:20-199:21
+, "k" (TokenVarId "k") @example/Example.hk:199:18-199:19
+, ">>=" (TokenOpId ">>=") @example/Example.hk:199:14-199:17
+, ")" (TokenRsvp ")") @example/Example.hk:199:12-199:13
+, "x" (TokenVarId "x") @example/Example.hk:199:11-199:12
+, "Linear" (TokenConId "Linear") @example/Example.hk:199:4-199:10
+, "(" (TokenRsvp "(") @example/Example.hk:199:3-199:4
+, "" (TokenLn) @example/Example.hk:199:3
+, "" (TokenBlk) @example/Example.hk:199:3
+, "has" (TokenRsvp "has") @example/Example.hk:198:14-198:17
+, "Linear" (TokenConId "Linear") @example/Example.hk:198:7-198:13
+, "Monad" (TokenConId "Monad") @example/Example.hk:198:1-198:6
+, "" (TokenLn) @example/Example.hk:198:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:198:1
+, "" (TokenBlk') @example/Example.hk:198:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:198:1
+, "x" (TokenVarId "x") @example/Example.hk:196:21-196:22
+, "k" (TokenVarId "k") @example/Example.hk:196:19-196:20
+, "=" (TokenRsvp "=") @example/Example.hk:196:17-196:18
+, "k" (TokenVarId "k") @example/Example.hk:196:15-196:16
+, ">>=" (TokenOpId ">>=") @example/Example.hk:196:11-196:14
+, ")" (TokenRsvp ")") @example/Example.hk:196:9-196:10
+, "x" (TokenVarId "x") @example/Example.hk:196:8-196:9
+, "Box" (TokenConId "Box") @example/Example.hk:196:4-196:7
+, "(" (TokenRsvp "(") @example/Example.hk:196:3-196:4
+, "" (TokenLn) @example/Example.hk:196:3
+, "" (TokenBlk) @example/Example.hk:196:3
+, "has" (TokenRsvp "has") @example/Example.hk:195:11-195:14
+, "Box" (TokenConId "Box") @example/Example.hk:195:7-195:10
+, "Monad" (TokenConId "Monad") @example/Example.hk:195:1-195:6
+, "" (TokenLn) @example/Example.hk:195:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:195:1
+, "" (TokenBlk') @example/Example.hk:195:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:195:1
+, "pure" (TokenVarId "pure") @example/Example.hk:191:12-191:16
+, "=" (TokenRsvp "=") @example/Example.hk:191:10-191:11
+, "return" (TokenVarId "return") @example/Example.hk:191:3-191:9
+, "" (TokenLn) @example/Example.hk:191:3
+, "" (TokenLn') @example/Example.hk:191:3
+, "a" (TokenVarId "a") @example/Example.hk:190:19-190:20
+, "m" (TokenVarId "m") @example/Example.hk:190:17-190:18
+, "->" (TokenRsvp "->") @example/Example.hk:190:14-190:16
+, "a" (TokenVarId "a") @example/Example.hk:190:12-190:13
+, ":" (TokenRsvp ":") @example/Example.hk:190:10-190:11
+, "return" (TokenVarId "return") @example/Example.hk:190:3-190:9
+, "" (TokenLn) @example/Example.hk:190:3
+, "" (TokenLn') @example/Example.hk:190:3
+, "k" (TokenVarId "k") @example/Example.hk:188:26-188:27
+, "->" (TokenRsvp "->") @example/Example.hk:188:23-188:25
+, "_" (TokenRsvp "_") @example/Example.hk:188:21-188:22
+, "\" (TokenRsvp "\\") @example/Example.hk:188:20-188:21
+, ">>=" (TokenOpId ">>=") @example/Example.hk:188:16-188:19
+, "m" (TokenVarId "m") @example/Example.hk:188:14-188:15
+, "=" (TokenRsvp "=") @example/Example.hk:188:12-188:13
+, "k" (TokenVarId "k") @example/Example.hk:188:10-188:11
+, "m" (TokenVarId "m") @example/Example.hk:188:8-188:9
+, ")" (TokenRsvp ")") @example/Example.hk:188:6-188:7
+, ">>" (TokenOpId ">>") @example/Example.hk:188:4-188:6
+, "(" (TokenRsvp "(") @example/Example.hk:188:3-188:4
+, "" (TokenLn) @example/Example.hk:188:3
+, "" (TokenLn') @example/Example.hk:188:3
+, "b" (TokenVarId "b") @example/Example.hk:187:26-187:27
+, "m" (TokenVarId "m") @example/Example.hk:187:24-187:25
+, "->" (TokenRsvp "->") @example/Example.hk:187:21-187:23
+, "b" (TokenVarId "b") @example/Example.hk:187:19-187:20
+, "m" (TokenVarId "m") @example/Example.hk:187:17-187:18
+, "->" (TokenRsvp "->") @example/Example.hk:187:14-187:16
+, "a" (TokenVarId "a") @example/Example.hk:187:12-187:13
+, "m" (TokenVarId "m") @example/Example.hk:187:10-187:11
+, ":" (TokenRsvp ":") @example/Example.hk:187:8-187:9
+, ")" (TokenRsvp ")") @example/Example.hk:187:6-187:7
+, ">>" (TokenOpId ">>") @example/Example.hk:187:4-187:6
+, "(" (TokenRsvp "(") @example/Example.hk:187:3-187:4
+, "" (TokenLn) @example/Example.hk:187:3
+, "" (TokenLn') @example/Example.hk:187:3
+, "b" (TokenVarId "b") @example/Example.hk:185:34-185:35
+, "m" (TokenVarId "m") @example/Example.hk:185:32-185:33
+, "->" (TokenRsvp "->") @example/Example.hk:185:29-185:31
+, ")" (TokenRsvp ")") @example/Example.hk:185:27-185:28
+, "b" (TokenVarId "b") @example/Example.hk:185:26-185:27
+, "m" (TokenVarId "m") @example/Example.hk:185:24-185:25
+, "->" (TokenRsvp "->") @example/Example.hk:185:21-185:23
+, "a" (TokenVarId "a") @example/Example.hk:185:19-185:20
+, "(" (TokenRsvp "(") @example/Example.hk:185:18-185:19
+, "->" (TokenRsvp "->") @example/Example.hk:185:15-185:17
+, "a" (TokenVarId "a") @example/Example.hk:185:13-185:14
+, "m" (TokenVarId "m") @example/Example.hk:185:11-185:12
+, ":" (TokenRsvp ":") @example/Example.hk:185:9-185:10
+, ")" (TokenRsvp ")") @example/Example.hk:185:7-185:8
+, ">>=" (TokenOpId ">>=") @example/Example.hk:185:4-185:7
+, "(" (TokenRsvp "(") @example/Example.hk:185:3-185:4
+, "" (TokenLn) @example/Example.hk:185:3
+, "" (TokenBlk) @example/Example.hk:185:3
+, "has" (TokenRsvp "has") @example/Example.hk:184:34-184:37
+, "a" (TokenVarId "a") @example/Example.hk:184:32-184:33
+, "m" (TokenVarId "m") @example/Example.hk:184:30-184:31
+, "Monad" (TokenConId "Monad") @example/Example.hk:184:24-184:29
+, "=>" (TokenRsvp "=>") @example/Example.hk:184:21-184:23
+, "m" (TokenVarId "m") @example/Example.hk:184:19-184:20
+, "Applicative" (TokenConId "Applicative") @example/Example.hk:184:7-184:18
+, "class" (TokenRsvp "class") @example/Example.hk:184:1-184:6
+, "" (TokenLn) @example/Example.hk:184:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:184:1
+, "e" (TokenVarId "e") @example/Example.hk:180:28-180:29
+, "Left" (TokenConId "Left") @example/Example.hk:180:23-180:27
+, "=" (TokenRsvp "=") @example/Example.hk:180:21-180:22
+, "_" (TokenRsvp "_") @example/Example.hk:180:19-180:20
+, ")" (TokenRsvp ")") @example/Example.hk:180:16-180:17
+, "e" (TokenVarId "e") @example/Example.hk:180:15-180:16
+, "Left" (TokenConId "Left") @example/Example.hk:180:10-180:14
+, "(" (TokenRsvp "(") @example/Example.hk:180:9-180:10
+, ")" (TokenRsvp ")") @example/Example.hk:180:7-180:8
+, "<*>" (TokenOpId "<*>") @example/Example.hk:180:4-180:7
+, "(" (TokenRsvp "(") @example/Example.hk:180:3-180:4
+, "m" (TokenVarId "m") @example/Example.hk:179:30-179:31
+, "f" (TokenVarId "f") @example/Example.hk:179:28-179:29
+, "fmap" (TokenVarId "fmap") @example/Example.hk:179:23-179:27
+, "=" (TokenRsvp "=") @example/Example.hk:179:21-179:22
+, "m" (TokenVarId "m") @example/Example.hk:179:19-179:20
+, ")" (TokenRsvp ")") @example/Example.hk:179:17-179:18
+, "f" (TokenVarId "f") @example/Example.hk:179:16-179:17
+, "Right" (TokenConId "Right") @example/Example.hk:179:10-179:15
+, "(" (TokenRsvp "(") @example/Example.hk:179:9-179:10
+, ")" (TokenRsvp ")") @example/Example.hk:179:7-179:8
+, "<*>" (TokenOpId "<*>") @example/Example.hk:179:4-179:7
+, "(" (TokenRsvp "(") @example/Example.hk:179:3-179:4
+, "a" (TokenVarId "a") @example/Example.hk:177:18-177:19
+, "Right" (TokenConId "Right") @example/Example.hk:177:12-177:17
+, "=" (TokenRsvp "=") @example/Example.hk:177:10-177:11
+, "a" (TokenVarId "a") @example/Example.hk:177:8-177:9
+, "pure" (TokenVarId "pure") @example/Example.hk:177:3-177:7
+, "where" (TokenVarId "where") @example/Example.hk:176:22-176:27
+, "e" (TokenVarId "e") @example/Example.hk:176:20-176:21
+, "Either" (TokenConId "Either") @example/Example.hk:176:13-176:19
+, "Applicative" (TokenConId "Applicative") @example/Example.hk:176:1-176:12
+, "" (TokenLn) @example/Example.hk:176:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:176:1
+, "" (TokenBlk') @example/Example.hk:176:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:176:1
+, "Nothing" (TokenConId "Nothing") @example/Example.hk:174:22-174:29
+, "=" (TokenRsvp "=") @example/Example.hk:174:20-174:21
+, "_" (TokenRsvp "_") @example/Example.hk:174:17-174:18
+, "Nothing" (TokenConId "Nothing") @example/Example.hk:174:9-174:16
+, ")" (TokenRsvp ")") @example/Example.hk:174:7-174:8
+, "<*>" (TokenOpId "<*>") @example/Example.hk:174:4-174:7
+, "(" (TokenRsvp "(") @example/Example.hk:174:3-174:4
+, "" (TokenLn) @example/Example.hk:174:3
+, "" (TokenLn') @example/Example.hk:174:3
+, "m" (TokenVarId "m") @example/Example.hk:173:29-173:30
+, "f" (TokenVarId "f") @example/Example.hk:173:27-173:28
+, "fmap" (TokenVarId "fmap") @example/Example.hk:173:22-173:26
+, "=" (TokenRsvp "=") @example/Example.hk:173:20-173:21
+, "m" (TokenVarId "m") @example/Example.hk:173:18-173:19
+, ")" (TokenRsvp ")") @example/Example.hk:173:16-173:17
+, "f" (TokenVarId "f") @example/Example.hk:173:15-173:16
+, "Just" (TokenConId "Just") @example/Example.hk:173:10-173:14
+, "(" (TokenRsvp "(") @example/Example.hk:173:9-173:10
+, ")" (TokenRsvp ")") @example/Example.hk:173:7-173:8
+, "<*>" (TokenOpId "<*>") @example/Example.hk:173:4-173:7
+, "(" (TokenRsvp "(") @example/Example.hk:173:3-173:4
+, "" (TokenLn) @example/Example.hk:173:3
+, "" (TokenLn') @example/Example.hk:173:3
+, "a" (TokenVarId "a") @example/Example.hk:171:17-171:18
+, "Just" (TokenConId "Just") @example/Example.hk:171:12-171:16
+, "=" (TokenRsvp "=") @example/Example.hk:171:10-171:11
+, "a" (TokenVarId "a") @example/Example.hk:171:8-171:9
+, "pure" (TokenVarId "pure") @example/Example.hk:171:3-171:7
+, "" (TokenLn) @example/Example.hk:171:3
+, "" (TokenBlk) @example/Example.hk:171:3
+, "has" (TokenRsvp "has") @example/Example.hk:170:19-170:22
+, "Maybe" (TokenConId "Maybe") @example/Example.hk:170:13-170:18
+, "Applicative" (TokenConId "Applicative") @example/Example.hk:170:1-170:12
+, "" (TokenLn) @example/Example.hk:170:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:170:1
+, "" (TokenBlk') @example/Example.hk:170:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:170:1
+, "m" (TokenVarId "m") @example/Example.hk:168:31-168:32
+, "f" (TokenVarId "f") @example/Example.hk:168:29-168:30
+, "fmap" (TokenVarId "fmap") @example/Example.hk:168:24-168:28
+, "=" (TokenRsvp "=") @example/Example.hk:168:22-168:23
+, "m" (TokenVarId "m") @example/Example.hk:168:20-168:21
+, ")" (TokenRsvp ")") @example/Example.hk:168:18-168:19
+, "f" (TokenVarId "f") @example/Example.hk:168:17-168:18
+, "Linear" (TokenConId "Linear") @example/Example.hk:168:10-168:16
+, "(" (TokenRsvp "(") @example/Example.hk:168:9-168:10
+, ")" (TokenRsvp ")") @example/Example.hk:168:7-168:8
+, "<*>" (TokenOpId "<*>") @example/Example.hk:168:4-168:7
+, "(" (TokenRsvp "(") @example/Example.hk:168:3-168:4
+, "" (TokenLn) @example/Example.hk:168:3
+, "" (TokenLn') @example/Example.hk:168:3
+, "a" (TokenVarId "a") @example/Example.hk:167:19-167:20
+, "Linear" (TokenConId "Linear") @example/Example.hk:167:12-167:18
+, "=" (TokenRsvp "=") @example/Example.hk:167:10-167:11
+, "a" (TokenVarId "a") @example/Example.hk:167:8-167:9
+, "pure" (TokenVarId "pure") @example/Example.hk:167:3-167:7
+, "" (TokenLn) @example/Example.hk:167:3
+, "" (TokenBlk) @example/Example.hk:167:3
+, "has" (TokenRsvp "has") @example/Example.hk:166:20-166:23
+, "Linear" (TokenConId "Linear") @example/Example.hk:166:13-166:19
+, "Applicative" (TokenConId "Applicative") @example/Example.hk:166:1-166:12
+, "" (TokenLn) @example/Example.hk:166:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:166:1
+, "" (TokenBlk') @example/Example.hk:166:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:166:1
+, "m" (TokenVarId "m") @example/Example.hk:164:28-164:29
+, "f" (TokenVarId "f") @example/Example.hk:164:26-164:27
+, "fmap" (TokenVarId "fmap") @example/Example.hk:164:21-164:25
+, "=" (TokenRsvp "=") @example/Example.hk:164:19-164:20
+, "m" (TokenVarId "m") @example/Example.hk:164:17-164:18
+, ")" (TokenRsvp ")") @example/Example.hk:164:15-164:16
+, "f" (TokenVarId "f") @example/Example.hk:164:14-164:15
+, "Box" (TokenConId "Box") @example/Example.hk:164:10-164:13
+, "(" (TokenRsvp "(") @example/Example.hk:164:9-164:10
+, ")" (TokenRsvp ")") @example/Example.hk:164:7-164:8
+, "<*>" (TokenOpId "<*>") @example/Example.hk:164:4-164:7
+, "(" (TokenRsvp "(") @example/Example.hk:164:3-164:4
+, "" (TokenLn) @example/Example.hk:164:3
+, "" (TokenLn') @example/Example.hk:164:3
+, "a" (TokenVarId "a") @example/Example.hk:163:16-163:17
+, "Box" (TokenConId "Box") @example/Example.hk:163:12-163:15
+, "=" (TokenRsvp "=") @example/Example.hk:163:10-163:11
+, "a" (TokenVarId "a") @example/Example.hk:163:8-163:9
+, "pure" (TokenVarId "pure") @example/Example.hk:163:3-163:7
+, "" (TokenLn) @example/Example.hk:163:3
+, "" (TokenBlk) @example/Example.hk:163:3
+, "has" (TokenRsvp "has") @example/Example.hk:162:17-162:20
+, "Box" (TokenConId "Box") @example/Example.hk:162:13-162:16
+, "Applicative" (TokenConId "Applicative") @example/Example.hk:162:1-162:12
+, "" (TokenLn) @example/Example.hk:162:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:162:1
+, "" (TokenBlk') @example/Example.hk:162:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:162:1
+, "b" (TokenVarId "b") @example/Example.hk:158:34-158:35
+, "f" (TokenVarId "f") @example/Example.hk:158:32-158:33
+, "->" (TokenRsvp "->") @example/Example.hk:158:29-158:31
+, "a" (TokenVarId "a") @example/Example.hk:158:27-158:28
+, "f" (TokenVarId "f") @example/Example.hk:158:25-158:26
+, "->" (TokenRsvp "->") @example/Example.hk:158:22-158:24
+, ")" (TokenRsvp ")") @example/Example.hk:158:20-158:21
+, "b" (TokenVarId "b") @example/Example.hk:158:19-158:20
+, "->" (TokenRsvp "->") @example/Example.hk:158:16-158:18
+, "a" (TokenVarId "a") @example/Example.hk:158:14-158:15
+, "(" (TokenRsvp "(") @example/Example.hk:158:13-158:14
+, "f" (TokenVarId "f") @example/Example.hk:158:11-158:12
+, ":" (TokenRsvp ":") @example/Example.hk:158:9-158:10
+, ")" (TokenRsvp ")") @example/Example.hk:158:7-158:8
+, "<*>" (TokenOpId "<*>") @example/Example.hk:158:4-158:7
+, "(" (TokenRsvp "(") @example/Example.hk:158:3-158:4
+, "" (TokenLn) @example/Example.hk:158:3
+, "" (TokenLn') @example/Example.hk:158:3
+, "a" (TokenVarId "a") @example/Example.hk:157:17-157:18
+, "f" (TokenVarId "f") @example/Example.hk:157:15-157:16
+, "->" (TokenRsvp "->") @example/Example.hk:157:12-157:14
+, "a" (TokenVarId "a") @example/Example.hk:157:10-157:11
+, ":" (TokenRsvp ":") @example/Example.hk:157:8-157:9
+, "pure" (TokenVarId "pure") @example/Example.hk:157:3-157:7
+, "" (TokenLn) @example/Example.hk:157:3
+, "" (TokenBlk) @example/Example.hk:157:3
+, "has" (TokenRsvp "has") @example/Example.hk:156:34-156:37
+, "f" (TokenVarId "f") @example/Example.hk:156:32-156:33
+, "Applicative" (TokenConId "Applicative") @example/Example.hk:156:20-156:31
+, "=>" (TokenRsvp "=>") @example/Example.hk:156:17-156:19
+, "f" (TokenVarId "f") @example/Example.hk:156:15-156:16
+, "Functor" (TokenConId "Functor") @example/Example.hk:156:7-156:14
+, "class" (TokenRsvp "class") @example/Example.hk:156:1-156:6
+, "" (TokenLn) @example/Example.hk:156:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:156:1
+, "" (TokenBlk') @example/Example.hk:156:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:156:1
+, "xs'" (TokenVarId "xs'") @example/Example.hk:152:5-152:8
+, ")" (TokenRsvp ")") @example/Example.hk:151:16-151:17
+, "xs" (TokenVarId "xs") @example/Example.hk:151:14-151:16
+, "size" (TokenVarId "size") @example/Example.hk:151:9-151:13
+, "(" (TokenRsvp "(") @example/Example.hk:151:8-151:9
+, "go" (TokenVarId "go") @example/Example.hk:151:5-151:7
+, ")" (TokenRsvp ")") @example/Example.hk:150:45-150:46
+, ")" (TokenRsvp ")") @example/Example.hk:150:44-150:45
+, "1" (TokenInteger 1) @example/Example.hk:150:43-150:44
+, "-" (TokenOpId "-") @example/Example.hk:150:42-150:43
+, "i" (TokenVarId "i") @example/Example.hk:150:41-150:42
+, "(" (TokenRsvp "(") @example/Example.hk:150:40-150:41
+, "go" (TokenVarId "go") @example/Example.hk:150:37-150:39
+, ";" (TokenRsvp ";") @example/Example.hk:150:35-150:36
+, "]" (TokenRsvp "]") @example/Example.hk:150:34-150:35
+, "i" (TokenVarId "i") @example/Example.hk:150:33-150:34
+, "[" (TokenRsvp "[") @example/Example.hk:150:32-150:33
+, "xs" (TokenVarId "xs") @example/Example.hk:150:30-150:32
+, "f" (TokenVarId "f") @example/Example.hk:150:28-150:29
+, "=" (TokenRsvp "=") @example/Example.hk:150:26-150:27
+, "]" (TokenRsvp "]") @example/Example.hk:150:24-150:25
+, "i" (TokenVarId "i") @example/Example.hk:150:23-150:24
+, "[" (TokenRsvp "[") @example/Example.hk:150:22-150:23
+, "xs'" (TokenVarId "xs'") @example/Example.hk:150:19-150:22
+, "->" (TokenRsvp "->") @example/Example.hk:150:16-150:18
+, "i" (TokenVarId "i") @example/Example.hk:150:14-150:15
+, "\" (TokenRsvp "\\") @example/Example.hk:150:13-150:14
+, "(" (TokenRsvp "(") @example/Example.hk:150:11-150:12
+, "<-" (TokenRsvp "<-") @example/Example.hk:150:8-150:10
+, "go" (TokenVarId "go") @example/Example.hk:150:5-150:7
+, "]" (TokenRsvp "]") @example/Example.hk:149:27-149:28
+, "[" (TokenRsvp "[") @example/Example.hk:149:26-149:27
+, ")" (TokenRsvp ")") @example/Example.hk:149:24-149:25
+, "xs" (TokenVarId "xs") @example/Example.hk:149:22-149:24
+, "size" (TokenVarId "size") @example/Example.hk:149:17-149:21
+, "(" (TokenRsvp "(") @example/Example.hk:149:16-149:17
+, "Arr" (TokenConId "Arr") @example/Example.hk:149:12-149:15
+, "<-" (TokenRsvp "<-") @example/Example.hk:149:9-149:11
+, "xs'" (TokenVarId "xs'") @example/Example.hk:149:5-149:8
+, ")" (TokenRsvp ")") @example/Example.hk:147:21-147:22
+, "xs" (TokenVarId "xs") @example/Example.hk:147:19-147:21
+, "size" (TokenVarId "size") @example/Example.hk:147:14-147:18
+, "(" (TokenRsvp "(") @example/Example.hk:147:13-147:14
+, "loop" (TokenVarId "loop") @example/Example.hk:147:8-147:12
+, "in" (TokenVarId "in") @example/Example.hk:147:5-147:7
+, ")" (TokenRsvp ")") @example/Example.hk:146:30-146:31
+, "1" (TokenInteger 1) @example/Example.hk:146:29-146:30
+, "-" (TokenOpId "-") @example/Example.hk:146:28-146:29
+, "i" (TokenVarId "i") @example/Example.hk:146:27-146:28
+, "(" (TokenRsvp "(") @example/Example.hk:146:26-146:27
+, "xs'" (TokenVarId "xs'") @example/Example.hk:146:23-146:26
+, "(" (TokenRsvp "(") @example/Example.hk:146:22-146:23
+, "fmap'" (TokenVarId "fmap'") @example/Example.hk:146:16-146:21
+, "in" (TokenVarId "in") @example/Example.hk:146:13-146:15
+, "x" (TokenVarId "x") @example/Example.hk:145:26-145:27
+, "=" (TokenRsvp "=") @example/Example.hk:145:24-145:25
+, "]" (TokenRsvp "]") @example/Example.hk:145:22-145:23
+, "i" (TokenVarId "i") @example/Example.hk:145:21-145:22
+, "[" (TokenRsvp "[") @example/Example.hk:145:20-145:21
+, "xs'" (TokenVarId "xs'") @example/Example.hk:145:17-145:20
+, "]" (TokenRsvp "]") @example/Example.hk:144:29-144:30
+, "i" (TokenVarId "i") @example/Example.hk:144:28-144:29
+, "[" (TokenRsvp "[") @example/Example.hk:144:27-144:28
+, "xs" (TokenVarId "xs") @example/Example.hk:144:25-144:27
+, "f" (TokenVarId "f") @example/Example.hk:144:23-144:24
+, "<-" (TokenRsvp "<-") @example/Example.hk:144:20-144:22
+, "x'" (TokenVarId "x'") @example/Example.hk:144:17-144:19
+, "let" (TokenVarId "let") @example/Example.hk:144:13-144:16
+, "=" (TokenRsvp "=") @example/Example.hk:143:16-143:17
+, "i" (TokenVarId "i") @example/Example.hk:143:14-143:15
+, "loop" (TokenVarId "loop") @example/Example.hk:143:9-143:13
+, "xs'" (TokenVarId "xs'") @example/Example.hk:142:18-142:21
+, "=" (TokenRsvp "=") @example/Example.hk:142:16-142:17
+, "0" (TokenInteger 0) @example/Example.hk:142:14-142:15
+, "loop" (TokenVarId "loop") @example/Example.hk:142:9-142:13
+, "]" (TokenRsvp "]") @example/Example.hk:141:25-141:26
+, "b" (TokenVarId "b") @example/Example.hk:141:24-141:25
+, "[" (TokenRsvp "[") @example/Example.hk:141:23-141:24
+, "->" (TokenRsvp "->") @example/Example.hk:141:20-141:22
+, "Int" (TokenConId "Int") @example/Example.hk:141:16-141:19
+, ":" (TokenRsvp ":") @example/Example.hk:141:14-141:15
+, "loop" (TokenVarId "loop") @example/Example.hk:141:9-141:13
+, "]" (TokenRsvp "]") @example/Example.hk:140:25-140:26
+, "b" (TokenVarId "b") @example/Example.hk:140:24-140:25
+, "[" (TokenRsvp "[") @example/Example.hk:140:23-140:24
+, ":" (TokenRsvp ":") @example/Example.hk:140:21-140:22
+, "5" (TokenInteger 5) @example/Example.hk:140:19-140:20
+, "]" (TokenRsvp "]") @example/Example.hk:140:17-140:18
+, "[" (TokenRsvp "[") @example/Example.hk:140:16-140:17
+, "<-" (TokenRsvp "<-") @example/Example.hk:140:13-140:15
+, "xs'" (TokenVarId "xs'") @example/Example.hk:140:9-140:12
+, "let" (TokenVarId "let") @example/Example.hk:140:5-140:8
+, "=" (TokenRsvp "=") @example/Example.hk:139:13-139:14
+, "xs" (TokenVarId "xs") @example/Example.hk:139:10-139:12
+, "f" (TokenVarId "f") @example/Example.hk:139:8-139:9
+, "fmap" (TokenVarId "fmap") @example/Example.hk:139:3-139:7
+, "" (TokenLn) @example/Example.hk:139:3
+, "" (TokenBlk) @example/Example.hk:139:3
+, "has" (TokenRsvp "has") @example/Example.hk:138:13-138:16
+, "]" (TokenRsvp "]") @example/Example.hk:138:11-138:12
+, "a" (TokenVarId "a") @example/Example.hk:138:10-138:11
+, "[" (TokenRsvp "[") @example/Example.hk:138:9-138:10
+, "Functor" (TokenConId "Functor") @example/Example.hk:138:1-138:8
+, "" (TokenLn) @example/Example.hk:138:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:138:1
+, "" (TokenBlk') @example/Example.hk:138:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:138:1
+, "a" (TokenVarId "a") @example/Example.hk:136:24-136:25
+, "Right" (TokenConId "Right") @example/Example.hk:136:18-136:23
+, "->" (TokenRsvp "->") @example/Example.hk:136:15-136:17
+, "a" (TokenVarId "a") @example/Example.hk:136:13-136:14
+, "Right" (TokenConId "Right") @example/Example.hk:136:7-136:12
+, "x" (TokenVarId "x") @example/Example.hk:135:22-135:23
+, "Left" (TokenConId "Left") @example/Example.hk:135:17-135:21
+, "->" (TokenRsvp "->") @example/Example.hk:135:14-135:16
+, "x" (TokenVarId "x") @example/Example.hk:135:12-135:13
+, "Left" (TokenConId "Left") @example/Example.hk:135:7-135:11
+, "of" (TokenRsvp "of") @example/Example.hk:134:12-134:14
+, "e" (TokenVarId "e") @example/Example.hk:134:10-134:11
+, "case" (TokenRsvp "case") @example/Example.hk:134:5-134:9
+, "=" (TokenRsvp "=") @example/Example.hk:133:12-133:13
+, "e" (TokenVarId "e") @example/Example.hk:133:10-133:11
+, "f" (TokenVarId "f") @example/Example.hk:133:8-133:9
+, "fmap" (TokenVarId "fmap") @example/Example.hk:133:3-133:7
+, "" (TokenLn) @example/Example.hk:133:3
+, "" (TokenBlk) @example/Example.hk:133:3
+, "has" (TokenRsvp "has") @example/Example.hk:132:18-132:21
+, "a" (TokenVarId "a") @example/Example.hk:132:16-132:17
+, "Either" (TokenConId "Either") @example/Example.hk:132:9-132:15
+, "Functor" (TokenConId "Functor") @example/Example.hk:132:1-132:8
+, "" (TokenLn) @example/Example.hk:132:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:132:1
+, "" (TokenBlk') @example/Example.hk:132:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:132:1
+, ")" (TokenRsvp ")") @example/Example.hk:130:30-130:31
+, "a" (TokenVarId "a") @example/Example.hk:130:29-130:30
+, "f" (TokenVarId "f") @example/Example.hk:130:27-130:28
+, "(" (TokenRsvp "(") @example/Example.hk:130:26-130:27
+, "Just" (TokenConId "Just") @example/Example.hk:130:21-130:25
+, "=" (TokenRsvp "=") @example/Example.hk:130:19-130:20
+, ")" (TokenRsvp ")") @example/Example.hk:130:17-130:18
+, "a" (TokenVarId "a") @example/Example.hk:130:16-130:17
+, "Just" (TokenConId "Just") @example/Example.hk:130:11-130:15
+, "(" (TokenRsvp "(") @example/Example.hk:130:10-130:11
+, "f" (TokenVarId "f") @example/Example.hk:130:8-130:9
+, "fmap" (TokenVarId "fmap") @example/Example.hk:130:3-130:7
+, "" (TokenLn) @example/Example.hk:130:3
+, "" (TokenLn') @example/Example.hk:130:3
+, "Nothing" (TokenConId "Nothing") @example/Example.hk:129:20-129:27
+, "=" (TokenRsvp "=") @example/Example.hk:129:18-129:19
+, "Nothing" (TokenConId "Nothing") @example/Example.hk:129:10-129:17
+, "f" (TokenVarId "f") @example/Example.hk:129:8-129:9
+, "fmap" (TokenVarId "fmap") @example/Example.hk:129:3-129:7
+, "" (TokenLn) @example/Example.hk:129:3
+, "" (TokenBlk) @example/Example.hk:129:3
+, "has" (TokenRsvp "has") @example/Example.hk:128:15-128:18
+, "Maybe" (TokenConId "Maybe") @example/Example.hk:128:9-128:14
+, "Functor" (TokenConId "Functor") @example/Example.hk:128:1-128:8
+, "" (TokenLn) @example/Example.hk:128:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:128:1
+, "" (TokenBlk') @example/Example.hk:128:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:128:1
+, ")" (TokenRsvp ")") @example/Example.hk:126:34-126:35
+, "x" (TokenVarId "x") @example/Example.hk:126:33-126:34
+, "f" (TokenVarId "f") @example/Example.hk:126:31-126:32
+, "(" (TokenRsvp "(") @example/Example.hk:126:30-126:31
+, "Linear" (TokenConId "Linear") @example/Example.hk:126:23-126:29
+, "=" (TokenRsvp "=") @example/Example.hk:126:21-126:22
+, ")" (TokenRsvp ")") @example/Example.hk:126:19-126:20
+, "x" (TokenVarId "x") @example/Example.hk:126:18-126:19
+, "Linear" (TokenConId "Linear") @example/Example.hk:126:11-126:17
+, "(" (TokenRsvp "(") @example/Example.hk:126:10-126:11
+, "f" (TokenVarId "f") @example/Example.hk:126:8-126:9
+, "fmap" (TokenVarId "fmap") @example/Example.hk:126:3-126:7
+, "" (TokenLn) @example/Example.hk:126:3
+, "" (TokenBlk) @example/Example.hk:126:3
+, "has" (TokenRsvp "has") @example/Example.hk:125:16-125:19
+, "Linear" (TokenConId "Linear") @example/Example.hk:125:9-125:15
+, "Functor" (TokenConId "Functor") @example/Example.hk:125:1-125:8
+, "" (TokenLn) @example/Example.hk:125:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:125:1
+, "" (TokenBlk') @example/Example.hk:125:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:125:1
+, ")" (TokenRsvp ")") @example/Example.hk:123:28-123:29
+, "x" (TokenVarId "x") @example/Example.hk:123:27-123:28
+, "f" (TokenVarId "f") @example/Example.hk:123:25-123:26
+, "(" (TokenRsvp "(") @example/Example.hk:123:24-123:25
+, "Box" (TokenConId "Box") @example/Example.hk:123:20-123:23
+, "=" (TokenRsvp "=") @example/Example.hk:123:18-123:19
+, ")" (TokenRsvp ")") @example/Example.hk:123:16-123:17
+, "x" (TokenVarId "x") @example/Example.hk:123:15-123:16
+, "Box" (TokenConId "Box") @example/Example.hk:123:11-123:14
+, "(" (TokenRsvp "(") @example/Example.hk:123:10-123:11
+, "f" (TokenVarId "f") @example/Example.hk:123:8-123:9
+, "fmap" (TokenVarId "fmap") @example/Example.hk:123:3-123:7
+, "" (TokenLn) @example/Example.hk:123:3
+, "" (TokenBlk) @example/Example.hk:123:3
+, "has" (TokenRsvp "has") @example/Example.hk:122:13-122:16
+, "Box" (TokenConId "Box") @example/Example.hk:122:9-122:12
+, "Functor" (TokenConId "Functor") @example/Example.hk:122:1-122:8
+, "" (TokenLn) @example/Example.hk:122:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:122:1
+, "" (TokenBlk') @example/Example.hk:122:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:122:1
+, "b" (TokenVarId "b") @example/Example.hk:118:31-118:32
+, "f" (TokenVarId "f") @example/Example.hk:118:29-118:30
+, "->" (TokenRsvp "->") @example/Example.hk:118:26-118:28
+, "a" (TokenVarId "a") @example/Example.hk:118:24-118:25
+, "f" (TokenVarId "f") @example/Example.hk:118:22-118:23
+, "->" (TokenRsvp "->") @example/Example.hk:118:19-118:21
+, ")" (TokenRsvp ")") @example/Example.hk:118:17-118:18
+, "b" (TokenVarId "b") @example/Example.hk:118:16-118:17
+, "->" (TokenRsvp "->") @example/Example.hk:118:13-118:15
+, "a" (TokenVarId "a") @example/Example.hk:118:11-118:12
+, "(" (TokenRsvp "(") @example/Example.hk:118:10-118:11
+, ":" (TokenRsvp ":") @example/Example.hk:118:8-118:9
+, "fmap" (TokenVarId "fmap") @example/Example.hk:118:3-118:7
+, "" (TokenLn) @example/Example.hk:118:3
+, "" (TokenBlk) @example/Example.hk:118:3
+, "has" (TokenRsvp "has") @example/Example.hk:117:17-117:20
+, "f" (TokenVarId "f") @example/Example.hk:117:15-117:16
+, "Functor" (TokenConId "Functor") @example/Example.hk:117:7-117:14
+, "class" (TokenRsvp "class") @example/Example.hk:117:1-117:6
+, "" (TokenLn) @example/Example.hk:117:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:117:1
+, "-------------------------------------" (TokenOpId "-------------------------------------") @example/Example.hk:114:1-114:38
+, "" (TokenLn) @example/Example.hk:114:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:114:1
+, "-------------------------------------" (TokenOpId "-------------------------------------") @example/Example.hk:110:1-110:38
+, "" (TokenLn) @example/Example.hk:110:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:110:1
+, ")" (TokenRsvp ")") @example/Example.hk:107:21-107:22
+, "a" (TokenVarId "a") @example/Example.hk:107:20-107:21
+, "f" (TokenVarId "f") @example/Example.hk:107:18-107:19
+, "(" (TokenRsvp "(") @example/Example.hk:107:17-107:18
+, "g" (TokenVarId "g") @example/Example.hk:107:15-107:16
+, "=" (TokenRsvp "=") @example/Example.hk:107:13-107:14
+, "a" (TokenVarId "a") @example/Example.hk:107:11-107:12
+, "f" (TokenVarId "f") @example/Example.hk:107:9-107:10
+, "g" (TokenVarId "g") @example/Example.hk:107:7-107:8
+, ")" (TokenRsvp ")") @example/Example.hk:107:5-107:6
+, "." (TokenRsvp ".") @example/Example.hk:107:4-107:5
+, "(" (TokenRsvp "(") @example/Example.hk:107:3-107:4
+, "a" (TokenVarId "a") @example/Example.hk:106:14-106:15
+, "->" (TokenRsvp "->") @example/Example.hk:106:11-106:13
+, "a" (TokenVarId "a") @example/Example.hk:106:9-106:10
+, "\" (TokenRsvp "\\") @example/Example.hk:106:8-106:9
+, "=" (TokenRsvp "=") @example/Example.hk:106:6-106:7
+, "id" (TokenVarId "id") @example/Example.hk:106:3-106:5
+, "where" (TokenVarId "where") @example/Example.hk:105:15-105:20
+, ")" (TokenRsvp ")") @example/Example.hk:105:13-105:14
+, "->" (TokenRsvp "->") @example/Example.hk:105:11-105:13
+, "(" (TokenRsvp "(") @example/Example.hk:105:10-105:11
+, "Category" (TokenConId "Category") @example/Example.hk:105:1-105:9
+, "" (TokenLn) @example/Example.hk:105:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:105:1
+, "cat" (TokenVarId "cat") @example/Example.hk:103:9-103:12
+, ":" (TokenRsvp ":") @example/Example.hk:103:7-103:8
+, ")" (TokenRsvp ")") @example/Example.hk:103:5-103:6
+, "." (TokenRsvp ".") @example/Example.hk:103:4-103:5
+, "(" (TokenRsvp "(") @example/Example.hk:103:3-103:4
+, "a" (TokenVarId "a") @example/Example.hk:102:14-102:15
+, "a" (TokenVarId "a") @example/Example.hk:102:12-102:13
+, "cat" (TokenVarId "cat") @example/Example.hk:102:8-102:11
+, ":" (TokenRsvp ":") @example/Example.hk:102:6-102:7
+, "id" (TokenVarId "id") @example/Example.hk:102:3-102:5
+, "where" (TokenVarId "where") @example/Example.hk:101:20-101:25
+, "cat" (TokenVarId "cat") @example/Example.hk:101:16-101:19
+, "Category" (TokenConId "Category") @example/Example.hk:101:7-101:15
+, "class" (TokenRsvp "class") @example/Example.hk:101:1-101:6
+, "" (TokenLn) @example/Example.hk:101:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:101:1
+, ")" (TokenRsvp ")") @example/Example.hk:99:14-99:15
+, "b" (TokenVarId "b") @example/Example.hk:99:13-99:14
+, "->" (TokenRsvp "->") @example/Example.hk:99:10-99:12
+, "a" (TokenVarId "a") @example/Example.hk:99:8-99:9
+, "(" (TokenRsvp "(") @example/Example.hk:99:7-99:8
+, ":" (TokenRsvp ":") @example/Example.hk:99:5-99:6
+, ")" (TokenRsvp ")") @example/Example.hk:99:3-99:4
+, "$" (TokenOpId "$") @example/Example.hk:99:2-99:3
+, "(" (TokenRsvp "(") @example/Example.hk:99:1-99:2
+, "" (TokenLn) @example/Example.hk:99:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:99:1
+, "-------------------------------------" (TokenOpId "-------------------------------------") @example/Example.hk:97:1-97:38
+, "" (TokenLn) @example/Example.hk:97:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:97:1
+, "b" (TokenVarId "b") @example/Example.hk:89:29-89:30
+, "Right" (TokenConId "Right") @example/Example.hk:89:23-89:28
+, "|" (TokenRsvp "|") @example/Example.hk:89:21-89:22
+, "a" (TokenVarId "a") @example/Example.hk:89:19-89:20
+, "Left" (TokenConId "Left") @example/Example.hk:89:14-89:18
+, "=" (TokenRsvp "=") @example/Example.hk:89:12-89:13
+, "b" (TokenVarId "b") @example/Example.hk:89:10-89:11
+, "a" (TokenVarId "a") @example/Example.hk:89:8-89:9
+, "Either" (TokenConId "Either") @example/Example.hk:89:1-89:7
+, "" (TokenLn) @example/Example.hk:89:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:89:1
+, "a" (TokenVarId "a") @example/Example.hk:88:26-88:27
+, "Just" (TokenConId "Just") @example/Example.hk:88:21-88:25
+, "|" (TokenRsvp "|") @example/Example.hk:88:19-88:20
+, "Nothing" (TokenConId "Nothing") @example/Example.hk:88:11-88:18
+, "=" (TokenRsvp "=") @example/Example.hk:88:9-88:10
+, "a" (TokenVarId "a") @example/Example.hk:88:7-88:8
+, "Maybe" (TokenConId "Maybe") @example/Example.hk:88:1-88:6
+, "" (TokenLn) @example/Example.hk:88:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:88:1
+, "}" (TokenRsvp "}") @example/Example.hk:85:33-85:34
+, "a" (TokenVarId "a") @example/Example.hk:85:31-85:32
+, ":" (TokenRsvp ":") @example/Example.hk:85:29-85:30
+, "consume" (TokenVarId "consume") @example/Example.hk:85:21-85:28
+, "{" (TokenRsvp "{") @example/Example.hk:85:19-85:20
+, "Linear" (TokenConId "Linear") @example/Example.hk:85:12-85:18
+, "=" (TokenRsvp "=") @example/Example.hk:85:10-85:11
+, "a" (TokenVarId "a") @example/Example.hk:85:8-85:9
+, "Linear" (TokenConId "Linear") @example/Example.hk:85:1-85:7
+, "" (TokenLn) @example/Example.hk:85:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:85:1
+, "}" (TokenRsvp "}") @example/Example.hk:80:28-80:29
+, "a" (TokenVarId "a") @example/Example.hk:80:26-80:27
+, ":" (TokenRsvp ":") @example/Example.hk:80:24-80:25
+, "unsafe" (TokenVarId "unsafe") @example/Example.hk:80:17-80:23
+, "{" (TokenRsvp "{") @example/Example.hk:80:15-80:16
+, "Safe" (TokenConId "Safe") @example/Example.hk:80:10-80:14
+, "=" (TokenRsvp "=") @example/Example.hk:80:8-80:9
+, "a" (TokenVarId "a") @example/Example.hk:80:6-80:7
+, "Safe" (TokenConId "Safe") @example/Example.hk:80:1-80:5
+, "" (TokenLn) @example/Example.hk:80:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:80:1
+, "}" (TokenRsvp "}") @example/Example.hk:77:25-77:26
+, "a" (TokenVarId "a") @example/Example.hk:77:23-77:24
+, ":" (TokenRsvp ":") @example/Example.hk:77:21-77:22
+, "deref" (TokenVarId "deref") @example/Example.hk:77:15-77:20
+, "{" (TokenRsvp "{") @example/Example.hk:77:13-77:14
+, "Ref" (TokenConId "Ref") @example/Example.hk:77:9-77:12
+, "=" (TokenRsvp "=") @example/Example.hk:77:7-77:8
+, "a" (TokenVarId "a") @example/Example.hk:77:5-77:6
+, "Ref" (TokenConId "Ref") @example/Example.hk:77:1-77:4
+, "" (TokenLn) @example/Example.hk:77:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:77:1
+, "}" (TokenRsvp "}") @example/Example.hk:74:26-74:27
+, "a" (TokenVarId "a") @example/Example.hk:74:24-74:25
+, ":" (TokenRsvp ":") @example/Example.hk:74:22-74:23
+, "modify" (TokenVarId "modify") @example/Example.hk:74:15-74:21
+, "{" (TokenRsvp "{") @example/Example.hk:74:13-74:14
+, "Box" (TokenConId "Box") @example/Example.hk:74:9-74:12
+, "=" (TokenRsvp "=") @example/Example.hk:74:7-74:8
+, "a" (TokenVarId "a") @example/Example.hk:74:5-74:6
+, "Box" (TokenConId "Box") @example/Example.hk:74:1-74:4
+, "" (TokenLn) @example/Example.hk:74:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:74:1
+, "}" (TokenRsvp "}") @example/Example.hk:71:29-71:30
+, "a" (TokenVarId "a") @example/Example.hk:71:27-71:28
+, ":" (TokenRsvp ":") @example/Example.hk:71:25-71:26
+, "mutable" (TokenVarId "mutable") @example/Example.hk:71:17-71:24
+, "{" (TokenRsvp "{") @example/Example.hk:71:15-71:16
+, "Cell" (TokenConId "Cell") @example/Example.hk:71:10-71:14
+, "=" (TokenRsvp "=") @example/Example.hk:71:8-71:9
+, "a" (TokenVarId "a") @example/Example.hk:71:6-71:7
+, "Cell" (TokenConId "Cell") @example/Example.hk:71:1-71:5
+, "" (TokenLn) @example/Example.hk:71:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:71:1
+, "}" (TokenRsvp "}") @example/Example.hk:68:20-68:21
+, "a" (TokenVarId "a") @example/Example.hk:68:18-68:19
+, ":" (TokenRsvp ":") @example/Example.hk:68:16-68:17
+, "id" (TokenVarId "id") @example/Example.hk:68:13-68:15
+, "{" (TokenRsvp "{") @example/Example.hk:68:11-68:12
+, "Id" (TokenConId "Id") @example/Example.hk:68:8-68:10
+, "=" (TokenRsvp "=") @example/Example.hk:68:6-68:7
+, "a" (TokenVarId "a") @example/Example.hk:68:4-68:5
+, "Id" (TokenConId "Id") @example/Example.hk:68:1-68:3
+, "" (TokenLn) @example/Example.hk:68:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:68:1
+, "False" (TokenConId "False") @example/Example.hk:65:15-65:20
+, "|" (TokenRsvp "|") @example/Example.hk:65:13-65:14
+, "True" (TokenConId "True") @example/Example.hk:65:8-65:12
+, "=" (TokenRsvp "=") @example/Example.hk:65:6-65:7
+, "Bool" (TokenConId "Bool") @example/Example.hk:65:1-65:5
+, "" (TokenLn) @example/Example.hk:65:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:65:1
+, ")" (TokenRsvp ")") @example/Example.hk:62:42-62:43
+, "(" (TokenRsvp "(") @example/Example.hk:62:41-62:42
+, "->" (TokenRsvp "->") @example/Example.hk:62:38-62:40
+, "String" (TokenConId "String") @example/Example.hk:62:31-62:37
+, ":" (TokenRsvp ":") @example/Example.hk:62:29-62:30
+, "putStr" (TokenVarId "putStr") @example/Example.hk:62:22-62:28
+, "ccall" (TokenRsvp "ccall") @example/Example.hk:62:16-62:21
+, "import" (TokenRsvp "import") @example/Example.hk:62:9-62:15
+, "foreign" (TokenRsvp "foreign") @example/Example.hk:62:1-62:8
+, "" (TokenLn) @example/Example.hk:62:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:62:1
+, "." (TokenRsvp ".") @example/Example.hk:53:37-53:38
+, "stack" (TokenVarId "stack") @example/Example.hk:53:32-53:37
+, "and" (TokenVarId "and") @example/Example.hk:53:28-53:31
+, "heap" (TokenVarId "heap") @example/Example.hk:53:23-53:27
+, "between" (TokenVarId "between") @example/Example.hk:53:15-53:22
+, "data" (TokenVarId "data") @example/Example.hk:52:39-52:43
+, "organizes" (TokenVarId "organizes") @example/Example.hk:52:29-52:38
+, "intelligently" (TokenVarId "intelligently") @example/Example.hk:52:15-52:28
+, "-" (TokenOpId "-") @example/Example.hk:52:13-52:14
+, "a" (TokenVarId "a") @example/Example.hk:46:12-46:13
+, "Cell" (TokenConId "Cell") @example/Example.hk:46:7-46:11
+, "::" (TokenOpId "::") @example/Example.hk:46:4-46:6
+, "<~" (TokenOpId "<~") @example/Example.hk:46:1-46:3
+, "" (TokenLn) @example/Example.hk:46:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:46:1
+, "" (TokenBlk') @example/Example.hk:46:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:46:1
+, "a" (TokenVarId "a") @example/Example.hk:44:15-44:16
+, "Cell" (TokenConId "Cell") @example/Example.hk:44:10-44:14
+, "->" (TokenRsvp "->") @example/Example.hk:44:7-44:9
+, "a" (TokenVarId "a") @example/Example.hk:43:15-43:16
+, "Cell" (TokenConId "Cell") @example/Example.hk:43:10-43:14
+, "->" (TokenRsvp "->") @example/Example.hk:43:7-43:9
+, "a" (TokenVarId "a") @example/Example.hk:42:15-42:16
+, "Cell" (TokenConId "Cell") @example/Example.hk:42:10-42:14
+, "::" (TokenOpId "::") @example/Example.hk:42:7-42:9
+, ")" (TokenRsvp ")") @example/Example.hk:42:5-42:6
+, "=" (TokenRsvp "=") @example/Example.hk:42:4-42:5
+, "(" (TokenRsvp "(") @example/Example.hk:42:3-42:4
+, "" (TokenLn) @example/Example.hk:42:3
+, "" (TokenBlk) @example/Example.hk:42:3
+, "has" (TokenRsvp "has") @example/Example.hk:41:23-41:26
+, "Cell" (TokenConId "Cell") @example/Example.hk:41:18-41:22
+, "Assigns" (TokenConId "Assigns") @example/Example.hk:41:10-41:17
+, "instance" (TokenVarId "instance") @example/Example.hk:41:1-41:9
+, "" (TokenLn) @example/Example.hk:41:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:41:1
+, "" (TokenBlk') @example/Example.hk:41:1 ]"
+Expected tokens: "[]"
+Unexpected tokens: "[ "" (TokenLn') @example/Example.hk:41:1
+, "a" (TokenVarId "a") @example/Example.hk:39:12-39:13
+, "f" (TokenVarId "f") @example/Example.hk:39:10-39:11
+, "->" (TokenRsvp "->") @example/Example.hk:39:7-39:9
+, "a" (TokenVarId "a") @example/Example.hk:38:12-38:13
+, "f" (TokenVarId "f") @example/Example.hk:38:10-38:11
+, "->" (TokenRsvp "->") @example/Example.hk:38:7-38:9
+, "a" (TokenVarId "a") @example/Example.hk:37:12-37:13
+, "f" (TokenVarId "f") @example/Example.hk:37:10-37:11
+, "::" (TokenOpId "::") @example/Example.hk:37:7-37:9
+, ")" (TokenRsvp ")") @example/Example.hk:37:5-37:6
+, "=" (TokenRsvp "=") @example/Example.hk:37:4-37:5
+, "(" (TokenRsvp "(") @example/Example.hk:37:3-37:4
+, "" (TokenLn) @example/Example.hk:37:3
+, "" (TokenBlk) @example/Example.hk:37:3
+, "has" (TokenRsvp "has") @example/Example.hk:36:17-36:20
+, "f" (TokenVarId "f") @example/Example.hk:36:15-36:16
+, "Assigns" (TokenConId "Assigns") @example/Example.hk:36:7-36:14
+, "class" (TokenRsvp "class") @example/Example.hk:36:1-36:6
+, "" (TokenLn) @example/Example.hk:36:1 ]"
+Expected tokens: "[]"
+Example.hk: 
+Parser encountered fatal error.
+CallStack (from HasCallStack):
+  error, called at test/Main.hs:56:13 in main:Main
+Test suite Example.hk: FAIL
+Test suite logged to:
+/home/gabe/projects/hawk/dist-newstyle/build/x86_64-linux/ghc-8.4.1/language-hawk-syntax-0.0.0/c/Example.hk/test/language-hawk-syntax-0.0.0-Example.hk.log
+0 of 1 test suites (0 of 1 test cases) passed.
