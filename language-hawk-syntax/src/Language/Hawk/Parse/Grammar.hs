@@ -29,14 +29,6 @@ toplevel :: Grammar r (Prod r String Token TopLevelDef)
 toplevel = mdo
 
 -- -----------------------------------------------------------------------------
--- Module Rules
-
-    srcMod <- rule $ undefined
-
-    modDef <- rule $ undefined
-
-
--- -----------------------------------------------------------------------------
 -- Declaration Rules
     
     topLevelDef <- rule $ linefold $

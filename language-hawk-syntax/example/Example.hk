@@ -34,23 +34,22 @@
 
 
 class Assigns f has
-  (=) :: f a  -- Destination
+  (=) :  f a  -- Destination
       -> f a  -- Source
       -> f a  -- Destination
 
-instance Assigns Cell has
-  (=) :: Cell a  -- Destination
+Assigns Cell has
+  (=) :  Cell a  -- Destination
       -> Cell a  -- Source
       -> Cell a  -- Destination
 
-<~ :: Cell a  -- Destination
 
 -- New memory model
 --  Needs:
 --    1)  A Single Constructor
 --    2)  Magical unboxing algorithm
-            - intelligently organizes data
-              between heap and stack.
+            -- intelligently organizes data
+            --  between heap and stack.
 --
 --  Mutable, touchable objects ARE HARD.
 --  Category theory doesn't work well with them.
@@ -240,7 +239,6 @@ Graph IntGraph has
 -- IO
 
 readFile : String -> IO String
-write
 
 
 -- Super fast, store entire game state in a 
