@@ -23,6 +23,7 @@ import Language.Hawk.Lex (lex)
 import Language.Hawk.Lex.Token (Token)
 import Language.Hawk.Rename
 import Language.Hawk.Typecheck
+import System.IO (hFlush, stdout)
 
 import qualified Language.Hawk.Syntax.Source as S
 import qualified Language.Hawk.Syntax.Abstract as A
@@ -61,9 +62,10 @@ repl = untilM_ (read' >>= traverse eval') (use replQuit)
 
 read' :: Repl (Maybe S.Decl)
 read' = do
-  liftIO $ T.putStr "> "
-  ln <- liftIO T.getLine
-  r <- bitraverse (liftIO . putDoc . pretty) return (parseDecl "repl" ln)
+  ln <- liftIO (T.putStr "> " >> hFlush stdout >> T.getLine)
+  r <- bitraverse (\err -> liftIO ( putDoc (pretty err) >> T.putStr "\n"))
+                  return
+                  (parseDecl "repl" ln)
   return $ eitherToMaybe r
 
 eval' :: S.Decl -> Repl ()

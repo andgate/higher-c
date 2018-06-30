@@ -24,13 +24,17 @@ library
     , either
     , exceptions
     , language-hawk-source
+    , lens
     , mtl
+    , unordered-containers
     , text
 
   exposed-modules:
       Language.Hawk.Rename
+      Language.Hawk.Rename.Error
       Language.Hawk.Syntax.Abstract
       Language.Hawk.Typecheck
+      Language.Hawk.Typecheck.Error
   
   other-modules:
   default-language: Haskell2010
