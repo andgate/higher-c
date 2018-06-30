@@ -17,8 +17,9 @@ import Data.Text (Text)
 import Text.Earley (Report (..), Prod)
 
 import Language.Hawk.Lex (lex)
-import Language.Hawk.Lex.Token
 import Language.Hawk.Lex.LFCut
+import Language.Hawk.Lex.Token
+import Language.Hawk.Lex.Organize
 import Language.Hawk.Parse.Error
 import Language.Hawk.Parse.Grammar
 import Language.Hawk.Syntax.Source
@@ -30,7 +31,7 @@ parseFile :: FilePath -> Text -> Either ParseError [Decl]
 parseFile fp srcTxt =
   runExcept $ do
     toks <- withExcept PLexErr $ lex fp srcTxt
-    mapM parse (lfCut toks)
+    mapM parse (lfCut $ organize toks)
 
 
 parseDecl :: FilePath -> Text -> Either ParseError Decl

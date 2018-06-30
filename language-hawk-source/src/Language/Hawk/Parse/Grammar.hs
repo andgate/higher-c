@@ -30,13 +30,14 @@ toplevel = mdo
 
 -- -----------------------------------------------------------------------------
 -- Declaration Rules
-    
-    decl <- rule $ linefold $
+
+    decl <- rule $ (linefold decl') <|> (decl' <* eof)
+
+    decl' <- rule $
         ( expDecl
       <|> defDecl
       <|> sigDecl)
       <?> "Declaration"
-
 
     expDecl <- rule $
       (ExpDecl <$> cexp) <?> "Top-level Expression"
@@ -46,8 +47,6 @@ toplevel = mdo
 
     sigDecl <- rule $
       (SigDecl <$> sig) <?> "Signature"
-    
-
 
 
 -- -----------------------------------------------------------------------------

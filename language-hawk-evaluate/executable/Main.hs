@@ -61,7 +61,8 @@ repl = untilM_ (read' >>= traverse eval') (use replQuit)
 
 read' :: Repl (Maybe S.Decl)
 read' = do
-  ln <- liftIO (T.putStr "> " >> T.getLine)
+  liftIO $ T.putStr "> "
+  ln <- liftIO T.getLine
   r <- bitraverse (liftIO . putDoc . pretty) return (parseDecl "repl" ln)
   return $ eitherToMaybe r
 

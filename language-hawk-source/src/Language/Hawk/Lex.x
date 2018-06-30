@@ -392,8 +392,7 @@ alexInputPrevChar = prevChar
 
 lex :: FilePath -> Text -> Except LexError [Token]
 lex fp text = do
-  toks <- runLexer fp start
-  return $ organize toks
+  runLexer fp start
 
   where
     start = go $ AlexInput '\n' [] text
