@@ -1,6 +1,0 @@
--- Function to compute factorial of some given number n
-fact : Int -> Int
-fact n =
-  if #gteq (dup n) 1
-    then #mul (dup n) (fact (#sub n 1))
-    else free n in 1

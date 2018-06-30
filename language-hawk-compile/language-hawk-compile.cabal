@@ -1,0 +1,172 @@
+name:           language-hawk-compile
+version:        0.0.0
+synopsis:       Compiler for Hawk programming language
+description:    Linear, Dependently Typed, Purely Functional Systems Language
+category:       Compilers
+homepage:       https://github.com/andgate/hawk
+bug-reports:    https://github.com/andgate/hawk/issues
+maintainer:     Gabriel Anderson
+license:        MIT
+build-type:     Simple
+cabal-version:  >= 2.0
+
+source-repository head
+  type: git
+  location: https://github.com/andgate/hawk
+
+library
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -fno-warn-name-shadowing -fno-warn-unused-binds -fno-warn-unused-matches -fno-warn-unused-do-bind -fno-warn-orphans
+  build-depends:
+      Earley
+    , aeson
+    , array
+    , base <5
+    , binary
+    , bound
+    , bytes
+    , bytestring
+    , containers
+    , data-default-class
+    , data-default-instances-text
+    , deriving-compat
+    , directory
+    , edit-distance
+    , either
+    , exceptions
+    , extra
+    , filepath
+    , ghc-prim
+    , hashable
+    , lens
+    , lifted-async
+    , lifted-base
+    , llvm-hs
+    , llvm-hs-pure
+    , mmorph
+    , monad-control
+    , monad-gen
+    , monad-logger
+    , mono-traversable
+    , mtl
+    , multimap
+    , primitive
+    , prettyprinter
+    , reducers
+    , resourcet
+    , safe
+    , streaming-commons
+    , text
+    , these
+    , time
+    , transformers
+    , transformers-base
+    , unbound-generics
+    , unordered-containers
+    , utf8-string
+    , vector
+    , yaml
+  exposed-modules:
+      Language.Hawk.Compile
+      Language.Hawk.Compile.Config
+      Language.Hawk.Compile.Error
+      Language.Hawk.Compile.Message
+      Language.Hawk.Compile.Monad
+      Language.Hawk.SubtermCheck.Error
+      Language.Hawk.SubtermCheck.Message
+      Language.Hawk.Lex
+      Language.Hawk.Lex.Error
+      Language.Hawk.Lex.Format
+      Language.Hawk.Lex.Message
+      Language.Hawk.Lex.Result
+      Language.Hawk.Lex.State
+      Language.Hawk.Lex.Token
+      Language.Hawk.LinearCheck.Error
+      Language.Hawk.LinearCheck.Message
+      Language.Hawk.Load
+      Language.Hawk.Load.Message
+      Language.Hawk.Load.Error
+      Language.Hawk.Load.Result
+      Language.Hawk.ScopeCheck
+      Language.Hawk.ScopeCheck.Environment
+      Language.Hawk.ScopeCheck.Error
+      Language.Hawk.ScopeCheck.State
+      Language.Hawk.NameGen
+      Language.Hawk.Parse
+      Language.Hawk.Parse.Error
+      Language.Hawk.Parse.Grammar
+      Language.Hawk.Parse.Helpers
+      Language.Hawk.Parse.Message
+      Language.Hawk.Syntax
+      Language.Hawk.Syntax.Branch
+      Language.Hawk.Syntax.Class
+      Language.Hawk.Syntax.Datatype.Scoped
+      Language.Hawk.Syntax.Datatype.Source
+      Language.Hawk.Syntax.Definition
+      Language.Hawk.Syntax.Definition.Scoped
+      Language.Hawk.Syntax.Definition.Source
+      Language.Hawk.Syntax.Fixity
+      Language.Hawk.Syntax.Foreign
+      Language.Hawk.Syntax.GlobalBind
+      Language.Hawk.Syntax.Location
+      Language.Hawk.Syntax.Name
+      Language.Hawk.Syntax.Pattern
+      Language.Hawk.Syntax.Pattern.Elab
+      Language.Hawk.Syntax.Pattern.Source
+      Language.Hawk.Syntax.Prim
+      Language.Hawk.Syntax.Signature
+      Language.Hawk.Syntax.Subterm
+      Language.Hawk.Syntax.Telescope
+      Language.Hawk.Syntax.Term.Basic
+      Language.Hawk.Syntax.Term.Elab
+      Language.Hawk.Syntax.Term.Sat
+      Language.Hawk.Syntax.Term.Scoped
+      Language.Hawk.Syntax.Term.Source
+      Language.Hawk.Target.LLVM.Compile
+      Language.Hawk.Target.LLVM.Generate
+      Language.Hawk.Target.LLVM.IR
+      Language.Hawk.Target.LLVM.Module
+      Language.Hawk.Target.LLVM.Instruction
+      Language.Hawk.TypeCheck
+      Language.Hawk.TypeCheck.Error
+      Language.Hawk.TypeCheck.Message
+      Data.Bag
+      --Control.Monad.Chronicle.Extra
+  other-modules:
+      Data.SnocList
+      Language.Hawk.Core.Emit
+      Language.Hawk.Dump
+      Language.Hawk.Eval
+      Language.Hawk.Lex.TokenTree
+      Language.Hawk.LinearCheck.GlobalEnvironment
+      Language.Hawk.LinearCheck.LocalEnvironment
+      Language.Hawk.LinearCheck.State
+      Language.Hawk.ScopeCheck.Message
+      Language.Hawk.SubtermCheck.Environment
+      Language.Hawk.SubtermCheck.State
+      Language.Hawk.Syntax.Definition.Basic
+      Language.Hawk.Syntax.Let
+      Language.Hawk.Syntax.Literal
+      Language.Hawk.Target.LLVM
+      Language.Hawk.Target.LLVM.Codegen
+      Language.Hawk.Target.LLVM.Result
+      Language.Hawk.Target.LLVM.Types
+      Language.Hawk.TypeCheck.Assumption
+      Language.Hawk.TypeCheck.Constraint
+      Language.Hawk.TypeCheck.Environment
+      Language.Hawk.TypeCheck.State
+      Language.Hawk.TypeCheck.Substitution
+      --Paths_hkc
+  default-language: Haskell2010
+
+executable hkc
+  main-is: Main.hs
+  hs-source-dirs:
+      executable
+  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -fno-warn-name-shadowing -fno-warn-unused-binds -fno-warn-unused-matches -fno-warn-unused-do-bind -fno-warn-orphans -rtsopts -threaded -with-rtsopts=-N -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-import-lists
+  build-depends:
+      base
+    , language-hawk-compile
+    , optparse-applicative
+  default-language: Haskell2010
