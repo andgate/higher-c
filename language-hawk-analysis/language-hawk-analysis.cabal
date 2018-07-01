@@ -19,7 +19,7 @@ library
       src
   ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -fno-warn-name-shadowing -fno-warn-unused-binds -fno-warn-unused-matches -fno-warn-unused-do-bind -fno-warn-orphans
   build-depends:
-      base <5
+      base
     , containers
     , either
     , exceptions
@@ -32,7 +32,7 @@ library
   exposed-modules:
       Language.Hawk.Rename
       Language.Hawk.Rename.Error
-      Language.Hawk.Syntax.Abstract
+      Language.Hawk.Syntax.Suspension
       Language.Hawk.Typecheck
       Language.Hawk.Typecheck.Error
   

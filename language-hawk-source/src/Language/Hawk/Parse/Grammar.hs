@@ -34,16 +34,16 @@ toplevel = mdo
     decl <- rule $ (linefold decl') <|> (decl' <* eof)
 
     decl' <- rule $
-        ( expDecl
-      <|> defDecl
+        ( termDecl
+      <|> funDecl
       <|> sigDecl)
       <?> "Declaration"
 
-    expDecl <- rule $
-      (ExpDecl <$> cexp) <?> "Top-level Expression"
+    termDecl <- rule $
+      (TermDecl <$> term) <?> "Top-level Expression"
 
-    defDecl <- rule $
-      (DefDecl <$> def) <?> "Function"
+    funDecl <- rule $
+      (FunDecl <$> fun) <?> "Function"
 
     sigDecl <- rule $
       (SigDecl <$> sig) <?> "Signature"
@@ -53,14 +53,14 @@ toplevel = mdo
 -- Declaration Rules
 
 
-    def <- rule $
-      let ex (n, _) xs body = Def n (fst <$> xs) body
-      in ex <$> varId <*> many varId <*> (rsvp "=" *> exp)
+    fun <- rule $
+      let ex (n, _) xs body = Fun n (fst <$> xs) body
+      in ex <$> varId <*> many varId <*> (rsvp "=" *> term)
 
     sig <- rule $
       let ex (n, _) t = Sig n t
       in ex <$> varId
-            <*> (rsvp ":" *> typ)
+            <*> (rsvp ":" *> term)
 
 
 -- -----------------------------------------------------------------------------
@@ -74,84 +74,93 @@ toplevel = mdo
 
 
 -- -----------------------------------------------------------------------------
--- Expression Rules
+-- Term Rules
 
     -- The expression precedence chain, starting at aexp as the base with the highest precedence.
-    exp <- rule $
-      expType <|> cexp
+    term <- rule $
+      termAnn <|> cterm
 
-    cexp <- rule $
-      expLam <|> bexp
+    cterm <- rule $
+          termLam
+      <|> termPi
+      <|> termSigma
+      <|> bterm
 
-    bexp <- rule $
-      expApp <|> aexp
+    bterm <- rule $
+      termApp <|> aterm
 
-    aexp <- rule $
-          (expVar <?> "variable")
-      <|> (expVal <?> "value")
-      <|> (expPrim <?> "primitive operation")
+    aterm <- rule $
+          (termTy <?> "Type")
+      <|> (termLn <?> "Linear")
+      <|> (termVar <?> "variable")
+      <|> (termCon <?> "constructor")
+      <|> (termVal <?> "value")
+      <|> (termPrim <?> "operation")
+      <|> (termParen <?> "parens")
 
 
     -- Terms
-    expVar <- rule $
-      let ex (v, l) = ELoc l $ EVar v
+    termTy <- rule $
+      let ex (_, l) = TLoc l Type
+      in ex <$> rsvp "Type"
+
+    termLn <- rule $
+      let ex (_, l) = TLoc l Linear
+      in ex <$> rsvp "Linear"
+
+    termVar <- rule $
+      let ex (v, l) = TLoc l $ TVar v
       in ex <$> varId
 
-    expVal <- rule $
-      let ex (v, l) = ELoc l $ EVal v
-      in ex <$> val
-
-    expPrim <- rule $
-      let ex (i, l) = ELoc l $ EPrim (readPrimInstr i)
-      in ex <$> primId
-
-    -- Evaluation
-    expApp <- rule $
-      let ex f@(ELoc l1 _) x@(ELoc l2 _)
-            = ELoc (l1<>l2) $ EApp f x
-      in ex <$> bexp <*> aexp
-
-    expLam <- rule $
-      let ex (_,l1) (arg, _) ret@(ELoc l2 _) =
-            ELoc (l1<>l2) $ ELam arg ret
-      in ex <$> rsvp "\\" <*> varId <*> (rsvp "->" *> exp)
-
-    -- Annotations
-    expType <- rule $
-      let ex e t =
-            ELoc (locOf e<>locOf t) $ EType e t
-      in ex <$> cexp <*> (rsvp ":" *> typ)
-
-
--- -----------------------------------------------------------------------------
--- Type Rules
-
-    typ <- rule $
-      tyArr <|> atyp 
-
-    atyp <- rule $
-      tyCon
-
-    tyCon <- rule $
-      let ex (n, l) = TLoc l $ TCon n
+    termCon <- rule $
+      let ex (c, l) = TLoc l $ TCon c
       in ex <$> conId
 
-    tyArr <- rule $
-      let ex1 arg@(TLoc l1 _) ret@(TLoc l2 _)
-            = TLoc (l1<>l2) $ TArr arg ret
-      in ex1 <$> atyp <*> (rsvp "->" *> typ)
+    termVal <- rule $
+      let ex (v, l) = TLoc l $ TVal v
+      in ex <$> val
 
+    termPrim <- rule $
+      let ex (i, l) t1 t2 = TLoc l $ TPrim (readPrimInstr i) t1 t2
+      in ex <$> primId <*> aterm <*> aterm
 
--- -----------------------------------------------------------------------------
--- Kind Rules
+    -- Evaluation
+    termApp <- rule $
+      let ex f@(TLoc l1 _) x@(TLoc l2 _)
+            = TLoc (l1<>l2) $ TApp f x
+      in ex <$> bterm <*> aterm
 
+    termLam <- rule $
+      let ex (_,l1) (n, _) mt body@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TLam n mt body
+      in ex <$> rsvp "\\" <*> varId <*> termLamType0 <*> (rsvp "." *> term)
 
-    kind <- rule $ kStar
+    termLamType0 <- rule $
+      termLamType <|> pure Nothing
 
-    -- Kind Terms
-    kStar <- rule $
-      let ex (_, l) = KLoc l $ KStar
-      in ex <$> rsvp "*"
+    termLamType <- rule $
+      Just <$> (rsvp ":" *> term)
+
+    termPi <- rule $
+      let ex (v, l1) t1 t2@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TPi v t2 t1
+      in ex <$> (varId <* rsvp "@") <*> bterm <*> (rsvp "->" *> term)
+
+    termSigma <- rule $
+      let ex t1@(TLoc l1 _) t2@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TSigma t1 t2
+      in ex <$> bterm <*> (rsvp "->" *> term)
+
+    -- Annotations
+    termAnn <- rule $
+      let ex t t' =
+            TLoc (locOf t<>locOf t') $ TAnn t t'
+      in ex <$> cterm <*> (rsvp ":" *> term)
+
+    termParen <- rule $
+      let ex (t, l) =
+            TLoc l $ TParen t
+      in ex <$> parensLoc term
 
 {-
 -- -----------------------------------------------------------------------------

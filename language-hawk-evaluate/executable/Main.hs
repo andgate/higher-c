@@ -26,7 +26,7 @@ import Language.Hawk.Typecheck
 import System.IO (hFlush, stdout)
 
 import qualified Language.Hawk.Syntax.Source as S
-import qualified Language.Hawk.Syntax.Abstract as A
+import qualified Language.Hawk.Syntax.Suspension as Ss
 import qualified Data.Text.IO as T
 
 

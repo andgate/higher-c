@@ -15,6 +15,7 @@ import GHC.Generics (Generic)
 -- Primitive constructor.
 -- The language makes each instance a monad.
 -- Each constructor bends the language rules a little bit. 
+{-
 data PrimCon
   = Cell
   | Box
@@ -26,6 +27,14 @@ data PrimCon
   | GC
   | IO
   deriving (Read, Show, Eq, Ord, Enum, Data, Typeable, Generic)
+-}
+
+data PrimVal
+  = VInt Integer
+  | VFloat Double
+  | VChar Char
+  | VBool Bool
+  deriving (Read, Show, Eq, Ord, Data, Typeable, Generic)
 
 
 -- Hawk talon's are dug firmly into LLVM's instruction set.
@@ -80,9 +89,21 @@ floatInstrs =
 
 -- Pretty ---------------------------------------------------------------------
 
-instance Pretty PrimCon where
-    pretty =
-      pretty . pack . show
+
+instance Pretty PrimVal where
+  pretty = \case
+    VInt v ->
+      pretty v
+        
+    VFloat v ->
+      pretty v
+    
+    VChar c ->
+      squotes $ pretty c
+    
+    VBool v ->
+      pretty v
+
 
 instance Pretty PrimInstr where
     pretty =
@@ -91,9 +112,9 @@ instance Pretty PrimInstr where
 
 -- Serialize ---------------------------------------------------------------------
 
-instance Binary PrimCon
-instance FromJSON PrimCon
-instance ToJSON PrimCon
+instance Binary PrimVal
+instance FromJSON PrimVal
+instance ToJSON PrimVal
 
 instance Binary PrimInstr
 instance FromJSON PrimInstr
@@ -128,3 +149,28 @@ readPrimInstr = \case
    -- What was this for?
   
   _ -> PrimBad
+
+
+
+
+solve :: (PrimInstr, PrimVal, PrimVal) -> PrimVal
+solve = \case
+  (PrimAdd, VInt x, VInt y) -> VInt (x + y)
+  (PrimFAdd, VFloat x, VFloat y) -> VFloat (x + y)
+  (PrimSub, VInt x, VInt y) -> VInt (x - y)
+  (PrimFSub, VFloat x, VFloat y) -> VFloat (x - y)
+  (PrimMul, VInt x, VInt y) -> VInt (x * y)
+  (PrimFMul, VFloat x, VFloat y) -> VFloat (x * y)
+  (PrimDiv, VInt x, VInt y) -> VInt (div x y)
+  (PrimFDiv, VFloat x, VFloat y) -> VFloat (x / y)
+  (PrimEq, VInt x, VInt y) -> VBool (x == y)
+  (PrimLt, VInt x, VInt y) -> VBool (x <= y)
+  (PrimLtEq, VInt x, VInt y) -> VBool (x <= y)
+  (PrimGt, VInt x, VInt y) -> VBool (x > y)
+  (PrimtGtEq, VInt x, VInt y) -> VBool (x >= y)
+  (PrimNEq, VInt x, VInt y) -> VBool (not $ x == y)
+  (PrimNLt, VInt x, VInt y) -> VBool (not $ x < y)
+  (PrimNLtEq, VInt x, VInt y) -> VBool (not $ x <= y)
+  (PrimNGt, VInt x, VInt y) -> VBool (not $ x > y)
+  (PrimNGtEq, VInt x, VInt y) -> VBool (not $ x >= y)
+  _ -> error "Unsupported operation"

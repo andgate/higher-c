@@ -1,6 +1,7 @@
 module Language.Hawk.Typecheck.Error where
 
-import Language.Hawk.Syntax.Abstract
+import Data.Text (Text)
+import Language.Hawk.Syntax.Suspension
 
 data TcError
-  = TypeMismatch Type Type
+  = TypeMismatch (Type Text) (Type Text)

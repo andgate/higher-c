@@ -101,6 +101,9 @@ hawk :-
   \\                              { rsvp }
   \@                              { rsvp }
 
+  "Type"                          { rsvp }
+  "LType"                         { rsvp }
+
   "foreign"                       { rsvp }
   "module"                        { rsvp }
   "import"                        { rsvp }

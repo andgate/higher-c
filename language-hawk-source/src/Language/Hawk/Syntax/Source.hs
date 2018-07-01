@@ -1,4 +1,5 @@
 {-# LANGUAGE  DeriveGeneric
+            , DeriveDataTypeable
             , FlexibleContexts
             , OverloadedStrings
             , LambdaCase
@@ -8,6 +9,9 @@ module Language.Hawk.Syntax.Source
   , module X
   )
   where
+
+import GHC.Generics
+import Data.Typeable (Typeable)
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.Text (Text, pack)
@@ -37,9 +41,11 @@ data Module =
 -- | Top Level Definition
 
 data Decl
-  = ExpDecl       Exp
-  | DefDecl       Def
-  | SigDecl       Sig
+  = TermDecl Term
+  | FunDecl  Fun
+  | SigDecl  Sig
+  deriving (Show)
+
 {-
   | TopLevelAliasDef    AliasDef
   | TopLevelDataDef     DataDef
@@ -48,14 +54,13 @@ data Decl
   | TopLevelForeignDef  Foreign
   | TopLevelFixityDef   Fixity
 -}
-  deriving (Show)
 
 
 -- -----------------------------------------------------------------------------
 -- | Definitions
 
-data Def
-  = Def Text [Text] Exp
+data Fun
+  = Fun Text [Text] Term
   deriving (Show)
 
 data Sig
@@ -63,65 +68,36 @@ data Sig
   deriving (Show)
 
 -- -----------------------------------------------------------------------------
--- | Value
+-- | Terms
 
-data Value
-  = VInt Integer
-  | VFloat Double
-  | VChar Char
-  | VBool Bool
-  deriving (Show, Read, Eq, Ord)
+type Type = Term
 
-
--- -----------------------------------------------------------------------------
--- | Expressions
-
-data Exp
-  -- Terms
-  = EVar  Text
-  | EVal  Value
-  | EPrim PrimInstr
+data Term
+  = Type
+  | Linear
+  | TVar  Text
+  | TCon  Text
+  | TVal  PrimVal
+  | TPrim PrimInstr Term Term
   
   -- Evaluation
-  | EApp  Exp Exp
-  | ELam  Text Exp
+  | TApp   Term Term
+  | TLam   Text (Maybe Type) Term
+  | TPi    Text Type Type
+  | TSigma Type Type
 
   -- Annotations
-  | EType  Exp Type
-  | ELoc Loc Exp
-  deriving (Show)
+  | TAnn  Term Type
+  | TParen Term
+  | TLoc Loc Term
+  deriving (Show, Generic, Typeable)
 
 
-instance Locatable Exp where
+instance Locatable Term where
   locOf = \case
     -- Usually, we only want a top level location
-    ELoc l _ -> l
+    TLoc l _ -> l
     _        -> error "Location not found!"
-
--- -----------------------------------------------------------------------------
--- | Type
-
-data Type
-  -- Terms
-  = TCon Text
-  | TArr Type Type
-  | TLoc Loc Type
-  deriving (Show)
-
-instance Locatable Type where
-  locOf = \case
-    -- Usually, we only want a top level location
-    TLoc l _  -> l
-    _         -> error "Location not found!"
-
-
--- -----------------------------------------------------------------------------
--- | Kind
-
-data Kind
-  = KStar
-  | KLoc Loc Kind
-  deriving (Show)
 
 
 -- -----------------------------------------------------------------------------
@@ -233,8 +209,8 @@ instance Pretty Module where
 
 instance Pretty Decl where
   pretty = \case
-    ExpDecl         x -> pretty x
-    DefDecl         x -> pretty x
+    TermDecl        x -> pretty x
+    FunDecl         x -> pretty x
     SigDecl         x -> pretty x
 {-
     TopLevelAliasDef    x -> pretty x
@@ -245,8 +221,8 @@ instance Pretty Decl where
     TopLevelFixityDef   x -> pretty x
 -}
 
-instance Pretty Def where
-  pretty (Def n xs body) =
+instance Pretty Fun where
+  pretty (Fun n xs body) =
     pretty n <+> hcat (pretty <$> xs) <+> "=" <+> pretty body
 
 instance Pretty Sig where
@@ -254,52 +230,33 @@ instance Pretty Sig where
     pretty n <+> ":" <+> pretty qt
 
 
-instance Pretty Value where
-  pretty = \case
-    VInt v ->
-      pretty v
-        
-    VFloat v ->
-      pretty v
-    
-    VChar c ->
-      squotes $ pretty c
-    
-    VBool v ->
-      pretty v
-
-
-instance Pretty Exp where
+instance Pretty Term where
     pretty = \case
       -- Terms
-      EVar n      -> pretty n
-      EVal v      -> pretty v
+      Type        -> "Type"
+      Linear      -> "Linear"
+      TVar n      -> pretty n
+      TCon n      -> pretty n
+      TVal v      -> pretty v
+      TPrim i t t' -> pretty (show i) <+> pretty t <+> pretty t'
       
       -- Evaluation
-      EApp e1 e2  -> pretty e1 <+> pretty e2
+      TApp e1 e2  -> pretty e1 <+> pretty e2
       
-      ELam pat e    ->
-          "\\" <+> pretty pat
-            <+> vsep [ "->"
-                     , indent 2 (pretty e)
-                     ]
+      TLam n mt body    ->
+        case mt of
+          Nothing -> "\\" <+> pretty n <+> "." <+> pretty body 
+          Just t  -> "\\" <+> parens (pretty n <+> ":" <+> pretty t) <+> "." <+> pretty body 
+          
 
       -- Annotations
-      EType e t -> pretty e <+> ":" <+> pretty t
-      ELoc _ e  -> pretty e -- ignore location
+      TPi n t t'  -> pretty n <> "@" <> pretty t <+> "->" <+> pretty t'
+      TSigma t t' -> pretty t <+> "->" <+> pretty t'
+      
+      TAnn t t' -> pretty t <+> ":" <+> pretty t'
+      TParen t  -> parens (pretty t)
+      TLoc _ t  -> pretty t -- ignore location
 
-
-instance Pretty Type where
-    pretty = \case
-      TCon n      -> pretty n
-      TArr t1 t2  -> pretty t1 <+> "->" <+> pretty t2
-      TLoc _ t  -> pretty t
-
-
-instance Pretty Kind where
-    pretty = \case
-      KStar       -> "*"
-      KLoc _ k    -> pretty k
 
 {-
 

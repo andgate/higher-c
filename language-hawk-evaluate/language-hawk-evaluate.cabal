@@ -20,8 +20,10 @@ library
   ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -fno-warn-name-shadowing -fno-warn-unused-binds -fno-warn-unused-matches -fno-warn-unused-do-bind -fno-warn-orphans
   build-depends:
       base <5
+    , language-hawk-source
     , language-hawk-analysis
     , mtl
+    , text
   exposed-modules:
       Language.Hawk.Eval
   

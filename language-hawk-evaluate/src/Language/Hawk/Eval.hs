@@ -4,31 +4,32 @@
 module Language.Hawk.Eval where
 
 
-import Control.Monad.Except
-import Control.Monad.Reader
 import Data.Either (fromRight)
-import Language.Hawk.Syntax.Abstract
+import Data.Text (Text)
+import Language.Hawk.Syntax.Suspension
+import Language.Hawk.Syntax.Prim
 
 
-newtype Env a = Env { unEnv :: ReaderT [Value] (Except String) a }
-  deriving (Functor, Applicative, Monad, MonadReader [Value], MonadError String)
+data Eval a
+  = EvalLam Text (Term (Var a))
+  | EvalNeutral a [Term a]
+  | EvalInstrElim PrimInstr [Term a]
+  | EvalVal PrimVal
 
-runEnv :: [Value] -> Env a -> Either String a
-runEnv vs env = runExcept (runReaderT (unEnv env) vs) 
+evalTerm :: Term a -> Eval a
+evalTerm = undefined
+{-
+eval = \case
+  TVar v -> EvalNeutral v []
+  TVal v -> EvalValue v
+  TLam v body -> EvalLam v body
+  TApp f a -> case eval (removeSusp f) of
+    EvalNeutral v as -> EvalNeutral v (as ++ [a])
+    EvalInstr i t -> Eval 
+  TPrim PrimInstr t1 t2
+  TAnn (Term a) Type
+  TLoc Loc (Term a)
+  -}
 
-evalChk :: TermChk -> Env Value
-evalChk = \case
-  TAnn e _ -> evalInf e
-  TFree x -> return $ vfree x
-  TBound i -> reader (!! i)
-  TApp e e' -> vapp <$> (evalChk e) <*> (evalInf e')
-
-evalInf :: TermInf -> Env Value
-evalInf = \case
-  TInf i -> evalChk i
-  TLam e -> do
-    vs <- ask
-    let f v = case runEnv (v:vs) (evalInf e) of
-                Left e -> error e
-                Right v' -> v' 
-    return $ VLam f
+evalSyntax :: Term a -> Eval a
+evalSyntax = undefined
