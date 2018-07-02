@@ -29,6 +29,9 @@ rsvp :: Text -> Prod r e Token (Token, Loc)
 rsvp =
   match . TokenRsvp
 
+optional :: Prod r e Token a -> Prod r e Token (Maybe a)
+optional p = (Just <$> p) <|> pure Nothing
+
 
 -- -----------------------------------------------------------------------------
 -- Terminal Productions Helpers for Name Tokens

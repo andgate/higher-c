@@ -3,6 +3,8 @@
             , FlexibleContexts
             , OverloadedStrings
             , LambdaCase
+            , TypeSynonymInstances
+            , FlexibleInstances
   #-}
 module Language.Hawk.Syntax.Source
   ( module Language.Hawk.Syntax.Source
@@ -72,24 +74,88 @@ data Sig
 
 type Type = Term
 
+data Plicity = Implicit | Explicit
+  deriving (Show, Generic, Typeable)
+
 data Term
-  = Type
-  | Linear
-  | TVar  Text
+  = Type  -- Types are first class
+  | Linear -- Types can be normal or linear
+  
+  -- x
+  | TVar  Text 
+  -- A
   | TCon  Text
+  -- integers, floats, characters, booleans, etc.
   | TVal  PrimVal
+  
+  -- #add, #sub, #eq, etc.
   | TPrim PrimInstr Term Term
   
-  -- Evaluation
-  | TApp   Term Term
-  | TLam   Text (Maybe Type) Term
-  | TPi    Text Type Type
-  | TSigma Type Type
+  -- f a
+  | TApp   Term (NonEmpty Term)
+  
+  -- Lambda types represent term functions
+  -- λ x . body
+  -- \ x . body
+  -- forall x . body
+  | TLam (NonEmpty Pat) Term
+
+  -- Pi types represent type functions
+  -- Π (x1:A1) .. (xn:An) -> B x1 .. xn
+  -- \ (x1:A1) .. (xn:An) -> B x1 .. xn
+  -- \ x -> B x
+  -- A -> B
+  --
+  -- We can also have an implicit Pi
+  -- \@(x1) .. @(xn:An) -> B
+  -- \@(x1) .. @(xn) -> B
+  -- @(x:A) B -> C
+  -- @x A
+  | TPi (NonEmpty PlicitPat) Type
+
+  -- let x = t in body
+  | TLet (NonEmpty PatBind) Term
+
+  -- Dependent product, Sigma Type, or a Tuple
+  -- We can accept multiple patterns.
+  -- (x, y)
+  -- (A, B)
+  -- (x:A, B)
+  -- We can have multiple dependent terms
+  -- (x:A, y:B x, C x y) : \ x:A (y:B) -> (x:A, y:B x, C x y)
+  -- Or a single term without dependence
+  -- (x)
+  | TSigma [Pat] Term
 
   -- Annotations
+  -- x : A
   | TAnn  Term Type
-  | TParen Term
+  
+  -- Location decorator
   | TLoc Loc Term
+  deriving (Show, Generic, Typeable)
+
+
+data Val
+  = VPrim PrimVal
+  | VLam Pat Term
+  | VPi Pat Plicity Term
+  deriving (Show, Generic, Typeable)
+
+
+data Pat
+  = PVar Text
+  | PWild
+  | PAnn Pat Term
+  | PParen Pat
+  | PLoc Loc Pat
+  deriving (Show, Generic, Typeable)
+
+
+data PlicitPat = PlicitPat Loc Plicity Pat
+  deriving (Show, Generic, Typeable)
+
+data PatBind = PatBind Pat Term
   deriving (Show, Generic, Typeable)
 
 
@@ -98,6 +164,15 @@ instance Locatable Term where
     -- Usually, we only want a top level location
     TLoc l _ -> l
     _        -> error "Location not found!"
+
+
+checkPatAnn :: Pat -> Maybe Term
+checkPatAnn = \case 
+  PVar _   -> Nothing
+  PWild    -> Nothing
+  PAnn _ t -> Just t
+  PLoc _ p -> checkPatAnn p
+  PParen p -> checkPatAnn p
 
 
 -- -----------------------------------------------------------------------------
@@ -235,50 +310,40 @@ instance Pretty Term where
       -- Terms
       Type        -> "Type"
       Linear      -> "Linear"
+
       TVar n      -> pretty n
       TCon n      -> pretty n
       TVal v      -> pretty v
+      
       TPrim i t t' -> pretty (show i) <+> pretty t <+> pretty t'
       
-      -- Evaluation
-      TApp e1 e2  -> pretty e1 <+> pretty e2
+      TApp e1 e2  -> pretty e1 <+> hcat (pretty <$> NE.toList e2)
       
-      TLam n mt body    ->
-        case mt of
-          Nothing -> "\\" <+> pretty n <+> "." <+> pretty body 
-          Just t  -> "\\" <+> parens (pretty n <+> ":" <+> pretty t) <+> "." <+> pretty body 
-          
+      TLam ps body -> "\\" <+> hcat (pretty <$> NE.toList ps) <+> "." <+> pretty body 
 
-      -- Annotations
-      TPi n t t'  -> pretty n <> "@" <> pretty t <+> "->" <+> pretty t'
-      TSigma t t' -> pretty t <+> "->" <+> pretty t'
+      TPi ps body -> "\\" <+> hcat (pretty <$> NE.toList ps) <+> "->" <+> pretty body
+
+      TLet vs body -> "let" <+> nest 2 (vcat (pretty <$> NE.toList vs)) <+> pretty body
+      TSigma ps t -> tupled ((pretty <$> ps) ++ [pretty t])
       
       TAnn t t' -> pretty t <+> ":" <+> pretty t'
-      TParen t  -> parens (pretty t)
       TLoc _ t  -> pretty t -- ignore location
 
-
-{-
 
 instance Pretty Pat where
   pretty = \case
     PVar x -> pretty x
-    PVal v -> pretty v
-
-    PAs n p ->
-      pretty n <> "@" <> parens (pretty p)
-
-    PCon c pats ->
-      pretty c <+> hsep (pretty <$> pats)
-
-    PType p t ->
-      pretty p <+> ":" <+> pretty t
-
-
-    PLoc _ p -> pretty p -- omit location
-    PParen p  -> parens $ pretty p
     PWild -> "_"
--}
+    PAnn p t -> pretty p <+> ":" <+> pretty t
+    PParen p  -> parens $ pretty p
+    PLoc _ p -> pretty p -- omit location
+
+instance Pretty PlicitPat where
+  pretty (PlicitPat _ Implicit p) = "@" <> pretty p
+  pretty (PlicitPat _ Explicit p) = pretty p
+
+instance Pretty PatBind where
+  pretty (PatBind p t) = pretty p <+> "=" <+> pretty t
 
 {-
 instance Pretty DataDef where

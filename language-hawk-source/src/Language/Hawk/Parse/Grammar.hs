@@ -6,7 +6,7 @@
   #-}
 module Language.Hawk.Parse.Grammar where
 
-import Control.Applicative
+import Control.Applicative hiding (optional)
 import Data.Bifunctor
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Monoid
@@ -80,11 +80,14 @@ toplevel = mdo
     term <- rule $
       termAnn <|> cterm
 
+    term0 <- rule $ optional term
+
     cterm <- rule $
           termLam
       <|> termPi
-      <|> termSigma
       <|> bterm
+
+    cterm0 <- rule $ optional cterm
 
     bterm <- rule $
       termApp <|> aterm
@@ -96,7 +99,7 @@ toplevel = mdo
       <|> (termCon <?> "constructor")
       <|> (termVal <?> "value")
       <|> (termPrim <?> "operation")
-      <|> (termParen <?> "parens")
+      <|> (termSigma <?> "parens")
 
 
     -- Terms
@@ -126,30 +129,42 @@ toplevel = mdo
 
     -- Evaluation
     termApp <- rule $
-      let ex f@(TLoc l1 _) x@(TLoc l2 _)
-            = TLoc (l1<>l2) $ TApp f x
-      in ex <$> bterm <*> aterm
+      let ex f@(TLoc l1 _) xs
+            = TLoc (mconcat $ l1:(locOf <$> xs)) $ TApp f (NE.fromList xs)
+      in ex <$> aterm <*> some aterm
+
 
     termLam <- rule $
-      let ex (_,l1) (n, _) mt body@(TLoc l2 _) =
-            TLoc (l1<>l2) $ TLam n mt body
-      in ex <$> rsvp "\\" <*> varId <*> termLamType0 <*> (rsvp "." *> term)
-
-    termLamType0 <- rule $
-      termLamType <|> pure Nothing
-
-    termLamType <- rule $
-      Just <$> (rsvp ":" *> term)
+      let ex (_,l1) ps body@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TLam (NE.fromList ps) body
+      in ex <$> rsvp "\\" <*> some pat <*> (rsvp "." *> term)
 
     termPi <- rule $
-      let ex (v, l1) t1 t2@(TLoc l2 _) =
-            TLoc (l1<>l2) $ TPi v t2 t1
-      in ex <$> (varId <* rsvp "@") <*> bterm <*> (rsvp "->" *> term)
+      termPiA <|> termPiB <|> termPiC
+
+    termPiA <- rule $
+      let ex t1@(TLoc l1 _) t2@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TPi ((PlicitPat l1 Explicit $ PLoc l1 $ PAnn PWild t2):| []) t1
+      in ex <$> bterm <*> (rsvp "->" *> term)
+
+    termPiB <- rule $
+      let ex (_, l1) ps body@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TPi (NE.fromList ps) body
+      in ex <$> rsvp "\\" <*> some plicitPat <*> (rsvp "->" *> term)
+
+    termPiC <- rule $
+      let ex ip@(PlicitPat l1 _ _) body@(TLoc l2 _) =
+            TLoc (l1<>l2) $ TPi (ip :| []) body
+      in ex <$> implicitPat <*> term
+
+    termLet <- rule $
+      let ex (_, l1) bs body@(TLoc l2 _) = TLoc (l1<>l2) $ TLet (NE.fromList bs) body
+      in ex <$> rsvp "let" <*> some patBind <*> (rsvp "in" *> term)
+
 
     termSigma <- rule $
-      let ex t1@(TLoc l1 _) t2@(TLoc l2 _) =
-            TLoc (l1<>l2) $ TSigma t1 t2
-      in ex <$> bterm <*> (rsvp "->" *> term)
+      let ex (_, l1) ps t (_, l2) = TLoc (l1<>l2) $ TSigma ps t
+      in ex <$> rsvp "(" <*> many (pat <* rsvp ",") <*> term <*> rsvp ")"
 
     -- Annotations
     termAnn <- rule $
@@ -157,70 +172,50 @@ toplevel = mdo
             TLoc (locOf t<>locOf t') $ TAnn t t'
       in ex <$> cterm <*> (rsvp ":" *> term)
 
-    termParen <- rule $
-      let ex (t, l) =
-            TLoc l $ TParen t
-      in ex <$> parensLoc term
-
-{-
 -- -----------------------------------------------------------------------------
 -- Pattern Rules
     
-    pat <- rule dpat
-
-    dpat <- rule $
-          parens patType
-      <|> cpat
-
-    cpat <- rule $
-          parens patAs
-      <|> bpat
-
-    bpat <- rule $
-          parens patCon
-      <|> apat
+    pat <- rule apat
 
     apat <- rule $
           patVar
       <|> patWild
-      <|> patVal
-      <|> parens pat
-      <|> patRec
+      <|> patParens
+
 
     patVar <- rule $
       let ex (n, l) = PLoc l $ PVar n
       in ex <$> varId
-    
-    patVal <- rule $
-      let ex (v, l) = PLoc l $ PVal v
-      in ex <$> val
-
-    patAs <- rule $
-      let ex (x, l1) (p, l2) = PLoc (l1 <> l2) $ PAs x p
-      in ex <$> (varId <* rsvp "@") <*> parensLoc pat
-
-    patCon <- rule $
-      let ex (n, l1) ps =
-            let l2 = mconcat [ l | PLoc l _ <- ps]
-            in PLoc (l2 <> l1) $ PCon n ps
-      in ex <$> conId <*> many pat
-
-    patRec <- rule $
-      let ex (recs, l) = PLoc l $ PRec recs
-      in ex <$> parensLoc (commaSep ((,) <$> (fst <$> varId) <*> pat))
-    
-
-    patType <- rule $
-      let ex p@(PLoc l1 _) t@(TLoc l2 _)
-            = PLoc (l1<>l2) $ PType p t
-      in ex <$> (pat <* rsvp ":") <*> typ
 
     patWild <- rule $
       let ex (_, l) = PLoc l PWild
       in ex <$> rsvp "_"
 
-    
+    patAnn <- rule $
+      let ex p@(PLoc l1 _) t@(TLoc l2 _)
+            = PLoc (l1<>l2) $ PAnn p t
+      in ex <$> (pat <* rsvp ":") <*> bterm
+  
+    patParens <- rule $
+      let ex (p, l) = PLoc l $ PParen p
+      in ex <$> parensLoc (patAnn <|> pat)    
 
+
+    plicitPat <- rule $
+      let ex (Just (v, l1)) p@(PLoc l2 _) = PlicitPat (l1<>l2) Implicit p 
+          ex _ p@(PLoc l _) = PlicitPat l Explicit p
+      in ex <$> optional (rsvp "@") <*> pat
+
+    implicitPat <- rule $
+      let ex (v, l1) p@(PLoc l2 _) = PlicitPat (l1<>l2) Implicit p 
+      in ex <$> rsvp "@" <*> pat
+
+
+    patBind <- rule $
+      let ex p t = PatBind p t 
+      in ex <$> pat <*> (rsvp "=" *> term)
+
+{-
 -- -----------------------------------------------------------------------------
 -- Branch Rules
 

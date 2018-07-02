@@ -37,6 +37,7 @@ library
     , prettyprinter
     , prettyprinter-ansi-terminal
     , safe
+    , semigroups
     , text
 
   build-tools:
