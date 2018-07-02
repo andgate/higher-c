@@ -1,7 +1,7 @@
 {-# Language GADTs
+           , OverloadedStrings
            , LambdaCase
            , ExistentialQuantification
-           , StrictData
            , ScopedTypeVariables
   #-}
 module Language.Hawk.Syntax.Suspension where
@@ -29,11 +29,11 @@ data Syntax a
   | TPrim PrimInstr (Term a) (Term a)
   
   | TApp   (Term a) (Term a)
-  | TLam   Text (Maybe (Type a)) (Term (Var a))
+  | TLam   Text (Maybe (Type Text)) (Term (Var a))
   | TPi    Text (Type a) (Type (Var a))
   | TSigma (Type a) (Type a)
 
-  | TAnn (Term a) (Type a)
+  | TAnn (Term a) (Type Text)
   | TParen (Term a)
   | TLoc Loc (Term a)
 
@@ -45,7 +45,7 @@ var v = Syntax (TVar v)
 lam :: Text -> Term (Var a) -> Term a
 lam n body = Syntax (TLam n Nothing body)
 
-lamty :: Text -> Type a -> Term (Var a) -> Term a
+lamty :: Text -> Type Text -> Term (Var a) -> Term a
 lamty n ty body = Syntax (TLam n (Just ty) body)
 
 
@@ -70,7 +70,7 @@ data Env from to where
 
 -- Environment Helpers
 
-susp :: Env b a -> Term b -> Term a
+susp :: Env from to -> Term from -> Term to
 susp env = \case
   Syntax t -> Susp env t
   Susp env' t -> Susp (EnvComp env' env) t
@@ -89,6 +89,7 @@ envWeaken env wk = envComp env (EnvCanonical (EnvNil wk))
 
 envAbs :: Text -> Env from to -> Env (Var from) (Var to)
 envAbs v env = envCons v (var B) (envWeaken env (WeakenSucc WeakenZero))
+
 
 evalEnv :: Env from to -> CanonicalEnv from to
 evalEnv = \case
@@ -138,10 +139,33 @@ removeSusp = \case
     
     TPrim i t t'    -> TPrim i (susp env t) (susp env t')
     TApp t t'       -> TApp (susp env t) (susp env t')
-    TLam v mty body -> TLam v (susp env <$> mty) (susp (envAbs v env) body)
+    TLam v mty body -> TLam v (susp envNil <$> mty) (susp (envAbs v env) body)
     TPi n ty ty'    -> TPi n (susp env ty) (susp (envAbs n env) ty')
     TSigma ty ty'   -> TSigma (susp env ty) (susp env ty')
 
-    TAnn tm ty  -> TAnn (susp env tm) (susp env ty)
+    TAnn tm ty  -> TAnn (susp env tm) (susp envNil ty)
     TParen t    -> TParen (susp env t)
     TLoc l t    -> TLoc l (susp env t) 
+
+
+removeAllSusps :: Term a -> Term a
+removeAllSusps e = Syntax $ case removeSusp e of
+  Type    -> Type
+  Linear  -> Linear
+  TVar v  -> TVar v
+  TCon c  -> TCon c
+  TVal v  -> TVal v
+  
+  TPrim i t t'    -> TPrim i (removeAllSusps t) (removeAllSusps t')
+  TApp t t'       -> TApp (removeAllSusps t) (removeAllSusps t')
+  TLam v mty body -> TLam v (removeAllSusps <$> mty) (removeAllSusps body)
+  TPi n ty ty'    -> TPi n (removeAllSusps ty) (removeAllSusps ty')
+  TSigma ty ty'   -> TSigma (removeAllSusps ty) (removeAllSusps ty')
+
+  TAnn tm ty  -> TAnn (removeAllSusps tm) (removeAllSusps ty)
+  TParen t    -> TParen (removeAllSusps t)
+  TLoc l t    -> TLoc l (removeAllSusps t)
+
+
+subst :: Text -> Term a -> Term (Var a) -> Term a
+subst v tm body = susp (envCons v tm envNil) body

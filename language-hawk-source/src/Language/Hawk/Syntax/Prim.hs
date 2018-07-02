@@ -153,8 +153,8 @@ readPrimInstr = \case
 
 
 
-solve :: (PrimInstr, PrimVal, PrimVal) -> PrimVal
-solve = \case
+evalInstr :: (PrimInstr, PrimVal, PrimVal) -> PrimVal
+evalInstr = \case
   (PrimAdd, VInt x, VInt y) -> VInt (x + y)
   (PrimFAdd, VFloat x, VFloat y) -> VFloat (x + y)
   (PrimSub, VInt x, VInt y) -> VInt (x - y)

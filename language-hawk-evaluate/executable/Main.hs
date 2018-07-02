@@ -69,7 +69,11 @@ read' = do
   return $ eitherToMaybe r
 
 eval' :: S.Decl -> Repl ()
-eval' d = return ()
+eval' d = do
+  liftIO $ do
+    putDoc $ "parsed:" <+> pretty d
+    T.putStr "\n"
+  -- suspend and pretty print suspended
 
 loadPrelude :: Repl ()
 loadPrelude = return ()

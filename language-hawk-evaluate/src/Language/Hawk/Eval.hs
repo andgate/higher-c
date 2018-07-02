@@ -4,6 +4,7 @@
 module Language.Hawk.Eval where
 
 
+import Data.List (foldl')
 import Data.Either (fromRight)
 import Data.Text (Text)
 import Language.Hawk.Syntax.Suspension
@@ -12,24 +13,51 @@ import Language.Hawk.Syntax.Prim
 
 data Eval a
   = EvalLam Text (Term (Var a))
+  | EvalPi Text (Type (Var a))
   | EvalNeutral a [Term a]
-  | EvalInstrElim PrimInstr [Term a]
+  | EvalCon Text [Term a]
   | EvalVal PrimVal
+  | EvalType
+  | EvalLinear
 
-evalTerm :: Term a -> Eval a
-evalTerm = undefined
-{-
+eval :: Syntax a -> Eval a
 eval = \case
+  Type   -> EvalType
+  Linear -> EvalLinear
+  
   TVar v -> EvalNeutral v []
-  TVal v -> EvalValue v
-  TLam v body -> EvalLam v body
+  TCon n -> EvalCon n []
+  TVal v -> EvalVal v
+  
+  TPrim i t1 t2 ->
+    let (EvalVal v1) = eval (removeSusp t1)
+        (EvalVal v2) = eval (removeSusp t2)
+    in EvalVal $ evalInstr (i, v1, v2)
+
   TApp f a -> case eval (removeSusp f) of
     EvalNeutral v as -> EvalNeutral v (as ++ [a])
-    EvalInstr i t -> Eval 
-  TPrim PrimInstr t1 t2
-  TAnn (Term a) Type
-  TLoc Loc (Term a)
-  -}
+    EvalCon c as -> EvalCon c (as ++ [a])
+    EvalLam v body -> eval . removeSusp $ subst v a body
+    EvalPi v body  -> eval . removeSusp $ subst v a body
+    EvalVal v -> EvalVal v
+    EvalType -> EvalType
+    EvalLinear -> EvalLinear
 
-evalSyntax :: Term a -> Eval a
-evalSyntax = undefined
+  TLam v mt body ->
+    EvalLam v body
+
+  TPi v _ body ->
+    EvalPi v body
+  
+  TSigma t1 t2 ->
+    EvalType
+
+  TAnn tm ty -> eval (removeSusp tm) -- ignore annotations!
+  TParen t -> eval (removeSusp t)
+  TLoc l t -> eval (removeSusp t)
+
+
+evalToSyntax :: Eval a -> Syntax a
+evalToSyntax = \case
+  EvalLam n body -> TLam n Nothing body
+  EvalNeutral v args -> foldl' (\e -> TApp (Syntax e)) (TVar v) args

@@ -12,7 +12,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Data.Map.Strict (Map)
 import Data.Set
-import Data.Text (Text)
+import Data.Text (Text, unpack)
 import Language.Hawk.Rename.Error
 import Language.Hawk.Syntax.Prim
 
@@ -29,31 +29,35 @@ data RenameEnv a where
   RenameEnvCons :: Text -> RenameEnv a -> RenameEnv (Var a)
 
 
-type Globals = Set Text
+type Globals = [Text]
 
-newtype Renamer a = Rn { unRn :: ReaderT Globals (Except RnError) a }
+newtype Renamer a = Rn { unRn :: ReaderT Globals (Except RenameError) a }
   deriving ( Functor
            , Applicative
            , Monad
            , MonadReader Globals
-           , MonadError RnError
+           , MonadError RenameError
            )
 
 
-runRename :: Globals -> Renamer a -> Either RnError a  
+runRename :: Globals -> Renamer a -> Either RenameError a  
 runRename gs rn = runExcept (runReaderT (unRn rn) gs)
 
 
-rename :: Globals -> S.Term -> Either RnError (Term Text)
+rename :: Globals -> S.Term -> Either RenameError (Term Text)
 rename gs = runRename gs . renameTerm RenameEnvNil
 
 
-renameEnvLookup :: RenameEnv a -> Text -> a
+renameEnvLookup :: RenameEnv a -> Text -> Renamer a
 renameEnvLookup env0 txt = case env0 of
-  RenameEnvNil -> txt
+  RenameEnvNil -> do
+    gs <- ask
+    if txt `elem` gs
+      then return txt
+      else throwError $ UndeclaredName txt 
   RenameEnvCons txt' env -> if txt == txt'
-    then B
-    else F (renameEnvLookup env txt)
+    then return B
+    else F <$> renameEnvLookup env txt
 
 
 renameTerm :: RenameEnv a -> S.Term -> Renamer (Term a)
@@ -75,7 +79,7 @@ renameSyntax env = \case
       TLam n Nothing <$> (renameTerm (RenameEnvCons n env) body)
   
   S.TLam n (Just ty) body ->
-      TLam n <$> (Just <$> renameTerm env ty) <*> (renameTerm (RenameEnvCons n env) body)
+      TLam n <$> (Just <$> renameTerm RenameEnvNil ty) <*> (renameTerm (RenameEnvCons n env) body)
 
   
   S.TPi n ty body ->
@@ -84,10 +88,10 @@ renameSyntax env = \case
   S.TSigma ty ty' ->
       TSigma <$> (renameTerm env ty) <*> (renameTerm env ty')
   
-  S.TAnn tm ty -> TAnn   <$> renameTerm env tm <*> renameTerm env ty
+  S.TAnn tm ty -> TAnn   <$> renameTerm env tm <*> renameTerm RenameEnvNil ty
   S.TParen t   -> TParen <$> renameTerm env t
   S.TLoc l t   -> TLoc l <$> renameTerm env t
 
 
 renameVar :: RenameEnv a -> Text -> Renamer a
-renameVar env = return . renameEnvLookup env
+renameVar env = renameEnvLookup env
