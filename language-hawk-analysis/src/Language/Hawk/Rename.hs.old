@@ -1,0 +1,169 @@
+{-# LANGUAGE LambdaCase
+           , OverloadedStrings
+           , GADTs
+           , GeneralizedNewtypeDeriving
+           , ScopedTypeVariables
+           , ExistentialQuantification
+  #-}
+module Language.Hawk.Rename where
+
+import Control.Monad.Except
+import Control.Monad.Reader
+import Control.Monad.State
+import Data.List.NonEmpty ( NonEmpty(..) )
+import Data.Map.Strict (Map)
+import Data.Set
+import Data.Text (Text, unpack)
+import Language.Hawk.Rename.Error
+import Language.Hawk.Syntax.Prim
+
+
+import qualified Data.Map.Strict as Map
+import qualified Language.Hawk.Syntax.Source as S
+
+import Language.Hawk.Syntax.Suspension
+
+import qualified Data.List.NonEmpty             as NE
+
+
+
+data RenameEnv a where
+  RenameEnvNil :: RenameEnv Text
+  RenameEnvCons :: Text -> RenameEnv a -> RenameEnv (Var a)
+
+
+type Globals = [Text]
+
+newtype Renamer a = Rn { unRn :: ReaderT Globals (Except RenameError) a }
+  deriving ( Functor
+           , Applicative
+           , Monad
+           , MonadReader Globals
+           , MonadError RenameError
+           )
+
+
+runRename :: Globals -> Renamer a -> Either RenameError a  
+runRename gs rn = runExcept (runReaderT (unRn rn) gs)
+
+
+rename :: Globals -> S.Term -> Either RenameError (Term Text)
+rename gs = runRename gs . renameTerm RenameEnvNil
+
+
+renameEnvLookup :: RenameEnv a -> Text -> Renamer a
+renameEnvLookup env0 txt = case env0 of
+  RenameEnvNil -> do
+    gs <- ask
+    if txt `elem` gs
+      then return txt
+      else throwError $ UndeclaredName txt 
+  RenameEnvCons txt' env -> if txt == txt'
+    then return B
+    else F <$> renameEnvLookup env txt
+
+
+renameTerm :: RenameEnv a -> S.Term -> Renamer (Term a)
+renameTerm env t = Syntax <$> renameSyntax env t
+
+renameSyntax :: RenameEnv a -> S.Term -> Renamer (Syntax a)
+renameSyntax env = \case
+  S.Type      -> return Type
+  S.Linear    -> return Linear
+
+  S.TVar n    -> TVar <$> renameVar env n
+  S.TCon n    -> return $ TCon n
+  S.TVal v    -> return $ TVal v
+  
+  S.TPrim i t t' -> TPrim i <$> renameTerm env t <*> renameTerm env t'
+
+  S.TApp f (a:|[]) -> TApp <$> renameTerm env f <*> renameTerm env a
+  S.TApp f as -> TApp <$> renameTerm env (S.TApp f (NE.fromList $ NE.init as)) <*> renameTerm env (NE.last as)
+  
+
+  S.TLam (p :| []) body ->
+    let v   = S.pvarFind' p 
+        mty = S.ptypeFind p
+    in TLam v <$> (traverse (renameTerm RenameEnvNil) mty)
+              <*> (renameTerm (RenameEnvCons v env) body)
+
+  S.TLam (p :| ps) body ->
+    let v   = S.pvarFind' p 
+        mty = S.ptypeFind p
+    in TLam v <$> (traverse (renameTerm RenameEnvNil) mty)
+              <*> (renameTerm (RenameEnvCons v env) (S.TLam (NE.fromList ps) body))
+  
+
+  S.TPi ((S.PlicitPat _ pl p) :| []) body ->
+    case (S.pvarFind p, S.ptypeFind p) of
+      (Just v, mty) ->
+        TPi (v, renamePlicity pl)
+          <$> (traverse (renameTerm env) mty)
+          <*> (renameTerm (RenameEnvCons v env) body)
+      (Nothing, Just ty) ->
+        TArrow <$> (renameTerm env ty) <*> (renameTerm env body)
+      (Nothing, Nothing) ->
+        renameSyntax env body
+
+  S.TPi ((S.PlicitPat _ pl p) :| ps) body ->
+    let body' = S.TPi (NE.fromList ps) body in
+    case (S.pvarFind p, S.ptypeFind p) of
+      (Just v, mty) ->
+        TPi (v, renamePlicity pl)
+          <$> (traverse (renameTerm env) mty)
+          <*> (renameTerm (RenameEnvCons v env) body')
+      (Nothing, Just ty) ->
+        TArrow <$> (renameTerm env ty) <*> (renameTerm env body')
+      (Nothing, Nothing) ->
+        renameSyntax env body'
+
+  
+  S.TSigma [] body ->
+        renameSyntax env body
+
+  S.TSigma (p:ps) body ->
+    let body' = S.TSigma ps body in
+    case (S.pvarFind p, S.ptypeFind p) of
+      (Just v, mty) ->
+        TSigma v <$> (traverse (renameTerm env) mty)
+                 <*> (renameTerm (RenameEnvCons v env) body')
+      (Nothing, Just tm) ->
+        TTuple <$> (renameTerm env tm) <*> (renameTerm env body')
+      (Nothing, Nothing) ->
+        renameSyntax env body'
+
+
+  S.TLet ((S.PatBind p a) :| []) body -> do
+    let v   = S.pvarFind' p
+    a' <- case S.ptypeFind p of
+            Just ty -> TAnn <$> (renameTerm env a) <*> (renameTerm RenameEnvNil ty)
+            Nothing -> renameSyntax env a
+    TLet v (Syntax a') <$> (renameTerm (RenameEnvCons v env) body)
+
+  S.TLet ((S.PatBind p a) :| ps) body -> do
+    let v   = S.pvarFind' p
+    let body' = S.TLet (NE.fromList ps) body
+    a' <- case S.ptypeFind p of
+            Just ty -> TAnn <$> renameTerm env a <*> (renameTerm RenameEnvNil ty)
+            Nothing -> renameSyntax env a
+    TLet v (Syntax a') <$> (renameTerm (RenameEnvCons v env) body')
+
+
+  S.TLet ((S.PatBind p a) :| []) body -> 
+    TApp <$> (renameTerm env $ S.TLam (p:|[]) body) <*> (renameTerm env a)
+
+  S.TLet ((S.PatBind p a) :| ps) body ->
+    TApp <$> (renameTerm env $ S.TLam (p :| []) (S.TLet (NE.fromList ps) body)) <*> (renameTerm env a)
+  
+  S.TAnn tm ty -> TAnn   <$> renameTerm env tm <*> renameTerm RenameEnvNil ty
+  S.TLoc l t   -> TLoc l <$> renameTerm env t
+
+
+renameVar :: RenameEnv a -> Text -> Renamer a
+renameVar env = renameEnvLookup env
+
+
+renamePlicity :: S.Plicity -> Plicity
+renamePlicity = \case
+  S.Implicit -> Implicit
+  S.Explicit -> Explicit

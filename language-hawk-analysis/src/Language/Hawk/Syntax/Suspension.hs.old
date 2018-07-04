@@ -1,0 +1,316 @@
+{-# Language GADTs
+           , OverloadedStrings
+           , LambdaCase
+           , ExistentialQuantification
+           , ScopedTypeVariables
+           , RankNTypes
+           , DeriveFunctor
+           , DataKinds
+           , TypeFamilies
+           , TypeOperators
+           , UndecidableInstances
+  #-}
+module Language.Hawk.Syntax.Suspension where
+
+import Control.Monad
+import Control.Applicative
+import Data.Functor
+import Data.Text (Text)
+import Language.Hawk.Syntax.Location
+import Language.Hawk.Syntax.Prim
+
+import Data.Nat
+import Data.List.Sized (SList((:#)))
+
+
+import qualified Data.List.Sized as SL
+
+
+data Var a
+  = B
+  | F a
+
+instance Functor Var where
+  fmap f = \case
+    B -> B
+    F a -> F $ f a
+
+instance Applicative Var where
+  pure = F
+
+  F f <*> v = fmap f v
+  B   <*> _ = B
+
+  liftA2 f (F a) (F b) = F $ f a b
+  liftA2 _ _ _         = B
+
+  F v *> m = m
+  B   *> _ = B
+
+
+instance Monad Var where
+  B   >>= _  = B
+  F a >>= f  = f a
+
+  (>>) = (*>)
+
+type family Nest (n :: Nat) f a where
+  -- Nest :: Nat -> (a -> b) -> a -> b
+  Nest Z f a = a
+  Nest (S n) f a = f (Nest n f a)
+
+
+
+newtype Scope f a = Scope { runScope :: f (Var (f a))}
+
+type Type = Term
+
+data Plicity = Implicit | Explicit
+
+data Term a where
+  Syntax :: Syntax a -> Term a
+  Susp :: Env from to -> Syntax from -> Term to
+
+data Syntax a where
+  Type  :: Syntax a
+  Linear :: Syntax a
+
+  TVar :: a -> Syntax a
+  TCon :: Text -> Syntax a
+  TVal :: PrimVal -> Syntax a
+
+  TPrim :: PrimInstr -> Term a -> Term a -> Syntax a
+  
+  TApp   :: forall n a. Term a -> SList n (Term a) -> Syntax a
+  TLam   :: forall n a. SList n (Text, Maybe (Type Text)) ->  Term (Nest n Var a) -> Syntax a
+  TPi    :: forall n a. SList n (Text, Plicity, Type a) -> Type (Nest n Var a) -> Syntax a
+  TSigma :: forall n a. SList n (Text, Maybe (Type a)) -> Type (Nest n Var a) -> Syntax a
+
+  TLet   :: forall n a. SList n (Text, Maybe (Type a), Term a) -> Term (Nest n Var a) -> Syntax a
+  TArrow :: Term a -> Term a -> Syntax a
+  TTuple :: Term a-> Term a -> Syntax a
+
+  TAnn :: Term a -> Type Text -> Syntax a
+  TLoc :: Loc -> Term a -> Syntax a
+
+data Pat a
+  = PVar Text
+  | PWild
+  | PAnn (Pat a) (Term a)
+  | PLoc Loc (Pat a)
+
+
+-- Smart Constructors
+var :: a -> Term a
+var v = Syntax (TVar v)
+
+lam :: Text -> Term (Var a) -> Term a
+lam v body = Syntax $ TLam (SL.mono (v, Nothing)) body
+
+lamty :: Text -> Type Text -> Term (Var a) -> Term a
+lamty v ty body = Syntax $ TLam (SL.mono (v, Just ty)) body
+
+
+-- Pattern Helpers
+
+pvar :: Text -> Pat a
+pvar = PVar
+
+pbind :: Text -> Term a -> Pat a
+pbind v t = PAnn (pvar v) t
+
+pbind' :: (Maybe Text, Maybe (Term a)) -> Pat a
+pbind' = \case
+  (Just v,  Nothing) -> PVar v
+  (Nothing, Nothing) -> PWild
+  (Just v,       Just t)  -> pbind v t
+
+punbind :: Pat a -> (Maybe Text, Maybe (Term a))
+punbind p = 
+  (pvarFind p, ptermFind p)
+
+
+pvarFind :: Pat a -> Maybe Text
+pvarFind = \case
+  PVar v -> Just v
+  PWild -> Nothing
+  PAnn p t -> pvarFind p 
+  PLoc l p -> pvarFind p
+
+
+ptypeFind :: Pat a -> Maybe (Type a)
+ptypeFind = ptermFind
+
+
+ptermFind :: Pat a -> Maybe (Term a)
+ptermFind = \case
+  PVar v -> Nothing
+  PWild -> Nothing
+  PAnn p t -> Just t
+  PLoc l p -> ptermFind p
+
+
+psuspTerm :: Env from to -> Pat from -> Pat from
+psuspTerm env = \case
+  PVar v   -> PVar v
+  PWild    -> PWild
+  PAnn p t -> PAnn (psuspTerm env p) (susp envNil t)
+  PLoc l p -> psuspTerm env p
+
+
+psuspType :: Env from to -> Pat from -> Pat to
+psuspType env = \case
+  PVar v   -> PVar v
+  PWild    -> PWild
+  PAnn p t -> PAnn (psuspType env p) (susp env t)
+  PLoc l p -> psuspType env p
+
+------------------------------------------------------------------------------------
+-- Environment
+
+data Weaken from to where
+  WeakenZero :: Weaken a a
+  WeakenSucc :: Weaken from to -> Weaken from (Var to)
+
+data CanonicalEnv from to where
+  EnvNil :: Weaken from to -> CanonicalEnv from to
+  EnvCons :: Text -> Term to -> Env from to -> CanonicalEnv (Var from) to
+
+
+
+data Env from to where
+  EnvCanonical :: CanonicalEnv from to -> Env from to
+  EnvComp :: Env a b -> Env b c -> Env a c
+
+
+
+-- Environment Helpers
+
+susp :: Env from to -> Term from -> Term to
+susp env = \case
+  Syntax t -> Susp env t
+  Susp env' t -> Susp (EnvComp env' env) t
+
+envNil :: Env a a
+envNil = EnvCanonical (EnvNil WeakenZero)
+
+envCons :: Text -> Term to -> Env from to -> Env (Var from) to
+envCons v t env = EnvCanonical (EnvCons v t env)
+
+envComp :: Env a b -> Env b c -> Env a c
+envComp = EnvComp
+
+envWeaken :: Env a b -> Weaken b c -> Env a c
+envWeaken env wk = envComp env (EnvCanonical (EnvNil wk))
+
+envAbs :: Text -> Env from to -> Env (Var from) (Var to)
+envAbs v env = envCons v (var B) (envWeaken env (WeakenSucc WeakenZero))
+
+
+-- (forall from' to'. Text -> Env from' to' -> Env (Var from') (Var to')) -> Env from to -> SList n Text -> -> Env (Nest n Var from) (Nest n Var to) 
+
+-- Note, depth is assigned by the depth in SList. Reverse SList to abs properly
+envAbsMany :: forall from to n. SList n Text -> Env from to -> Env (Nest n Var from) (Nest n Var to)
+envAbsMany SL.Nil env = (env :: Env (Nest Z Var from) (Nest Z Var to)) 
+envAbsMany (v :# vs) env = envAbs v (envAbsMany vs env)
+
+
+
+evalEnv :: Env from to -> CanonicalEnv from to
+evalEnv = \case
+  EnvCanonical env -> env
+  EnvComp env1 env2 -> goComp (evalEnv env1) env2
+  where
+    goComp :: CanonicalEnv a b -> Env b c -> CanonicalEnv a c
+    goComp (EnvNil wk) env2 = goCompWeaken wk env2
+    goComp (EnvCons n e env1) env2 = EnvCons n (susp env2 e) (EnvComp env1 env2)
+
+    -- Composes a weakening and an environment.
+    goCompWeaken :: Weaken a b -> Env b c -> CanonicalEnv a c
+    goCompWeaken wk = \case
+      EnvCanonical (EnvNil wk') -> EnvNil (compWeaken wk wk')
+      EnvCanonical (EnvCons v e env) -> case wk of
+        WeakenZero -> EnvCons v e env
+        WeakenSucc wk' -> goCompWeaken wk' env
+      EnvComp env1 env2 -> goComp (goCompWeaken wk env1) env2
+
+    compWeaken :: Weaken a b -> Weaken b c -> Weaken a c
+    compWeaken wk1 WeakenZero = wk1
+    compWeaken wk1 (WeakenSucc wk2) = WeakenSucc (compWeaken wk1 wk2)
+
+
+envLookup :: Env from to -> from -> Term to
+envLookup env0 v = case evalEnv env0 of
+  EnvNil wk -> var (weakenVar wk v)
+  EnvCons _ t env -> case v of
+    B -> t
+    F v' -> envLookup env v'
+
+weakenVar :: Weaken from to -> from -> to
+weakenVar wk0 v = case wk0 of
+  WeakenZero -> v
+  WeakenSucc wk -> F (weakenVar wk v)
+
+
+removeSusp :: Term a -> Syntax a
+removeSusp = \case
+  Syntax t -> t
+  Susp env t0 -> case t0 of
+    Type    -> Type
+    Linear  -> Linear
+   
+    TVar v  -> removeSusp (envLookup env v)
+    TCon c  -> TCon c
+    TVal v  -> TVal v
+    
+    TPrim i t t'    -> TPrim i (susp env t) (susp env t')
+    TApp t t'       -> TApp    (susp env t) (susp env t')
+  
+    TLam vs body       ->
+      let vs' = map (\(n, mty) -> (n, susp envNil <$> mty)) vs
+          ns = map (\(n, _) -> n) vs
+      in TLam vs' (susp (envAbsMany ns env) body)
+    
+    TPi (v, pl) body  ->
+      TPi (v, pl) (susp env <$> mty) (susp (envAbs v env) body)
+    
+    TSigma v mt1 t2 ->
+      let vs' = map (\(n, mty) -> (n, susp envNil <$> mty)) vs
+          ns = map (\(n, _) -> n) vs
+      in TSigma vs' (susp (envAbs ns env) t2)
+
+    TLet v t body  ->
+      TLet v (susp env t) (susp (envAbs v env) body)
+
+    TArrow t t' -> TArrow (susp env t) (susp env t')
+    TTuple t t' -> TTuple (susp env t) (susp env t')
+
+    TAnn tm ty  -> TAnn (susp env tm) (susp envNil ty)
+    TLoc l t    -> TLoc l (susp env t) 
+
+
+removeAllSusps :: Term a -> Term a
+removeAllSusps e = Syntax $ case removeSusp e of
+  Type    -> Type
+  Linear  -> Linear
+  TVar v  -> TVar v
+  TCon c  -> TCon c
+  TVal v  -> TVal v
+  
+  TPrim i t t'     -> TPrim i (removeAllSusps t) (removeAllSusps t')
+  TApp t t'        -> TApp (removeAllSusps t) (removeAllSusps t')
+  
+  TLam v mty body  -> TLam v (removeAllSusps <$> mty) (removeAllSusps body)
+  TPi v mty body   -> TPi v (removeAllSusps <$> mty) (removeAllSusps body)
+  TSigma v mt1 t2  -> TSigma v (removeAllSusps <$> mt1) (removeAllSusps t2)
+
+  TLet v t body -> TLet v (removeAllSusps t) (removeAllSusps body)
+  TArrow t1 t2 -> TArrow (removeAllSusps t1) (removeAllSusps t2)
+  TTuple t1 t2 -> TTuple (removeAllSusps t1) (removeAllSusps t2)
+
+  TAnn tm ty  -> TAnn (removeAllSusps tm) (removeAllSusps ty)
+  TLoc l t    -> TLoc l (removeAllSusps t)
+
+
+subst :: Text -> Term a -> Term (Var a) -> Term a
+subst v tm body = susp (envCons v tm envNil) body

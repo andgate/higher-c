@@ -10,26 +10,28 @@ module Language.Hawk.Rename where
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.List.NonEmpty ( NonEmpty(..) )
 import Data.Map.Strict (Map)
 import Data.Set
 import Data.Text (Text, unpack)
 import Language.Hawk.Rename.Error
 import Language.Hawk.Syntax.Prim
+import Unbound.Generics.LocallyNameless
 
 
 import qualified Data.Map.Strict as Map
 import qualified Language.Hawk.Syntax.Source as S
 
-import Language.Hawk.Syntax.Suspension
+import Language.Hawk.Syntax.Bound
 
-
-
-data RenameEnv a where
-  RenameEnvNil :: RenameEnv Text
-  RenameEnvCons :: Text -> RenameEnv a -> RenameEnv (Var a)
+import qualified Data.List.NonEmpty             as NE
 
 
 type Globals = [Text]
+
+rename :: Globals -> S.Term -> Either RenameError Term
+rename gs = runRenamer gs . renameTerm
+
 
 newtype Renamer a = Rn { unRn :: ReaderT Globals (Except RenameError) a }
   deriving ( Functor
@@ -40,58 +42,62 @@ newtype Renamer a = Rn { unRn :: ReaderT Globals (Except RenameError) a }
            )
 
 
-runRename :: Globals -> Renamer a -> Either RenameError a  
-runRename gs rn = runExcept (runReaderT (unRn rn) gs)
+runRenamer :: Globals -> Renamer a -> Either RenameError a  
+runRenamer gs rn = runExcept $ runReaderT (unRn rn) gs
 
 
-rename :: Globals -> S.Term -> Either RenameError (Term Text)
-rename gs = runRename gs . renameTerm RenameEnvNil
-
-
-renameEnvLookup :: RenameEnv a -> Text -> Renamer a
-renameEnvLookup env0 txt = case env0 of
-  RenameEnvNil -> do
-    gs <- ask
-    if txt `elem` gs
-      then return txt
-      else throwError $ UndeclaredName txt 
-  RenameEnvCons txt' env -> if txt == txt'
-    then return B
-    else F <$> renameEnvLookup env txt
-
-
-renameTerm :: RenameEnv a -> S.Term -> Renamer (Term a)
-renameTerm env t = Syntax <$> renameSyntax env t
-
-renameSyntax :: RenameEnv a -> S.Term -> Renamer (Syntax a)
-renameSyntax env = \case
+renameTerm :: S.Term -> Renamer Term
+renameTerm = \case
   S.Type      -> return Type
   S.Linear    -> return Linear
-  S.TVar n    -> TVar <$> renameVar env n
-  S.TCon n    -> return $ TCon n
+
+  S.TVar n    -> return $ tvar (unpack n)
+  S.TCon n    -> return $ TCon (unpack n)
   S.TVal v    -> return $ TVal v
-  S.TPrim i t t' -> TPrim i <$> renameTerm env t <*> renameTerm env t'
   
-  S.TApp t t' ->
-      TApp <$> renameTerm env t <*> renameTerm env t'
-  
-  S.TLam n Nothing body ->
-      TLam n Nothing <$> (renameTerm (RenameEnvCons n env) body)
-  
-  S.TLam n (Just ty) body ->
-      TLam n <$> (Just <$> renameTerm RenameEnvNil ty) <*> (renameTerm (RenameEnvCons n env) body)
+  S.TPrim i t1 t2 -> TPrim i <$> renameTerm t1 <*> renameTerm t2
 
-  
-  S.TPi n ty body ->
-      TPi n <$> (renameTerm env ty) <*> (renameTerm (RenameEnvCons n env) body)
-  
-  S.TSigma ty ty' ->
-      TSigma <$> (renameTerm env ty) <*> (renameTerm env ty')
-  
-  S.TAnn tm ty -> TAnn   <$> renameTerm env tm <*> renameTerm RenameEnvNil ty
-  S.TParen t   -> TParen <$> renameTerm env t
-  S.TLoc l t   -> TLoc l <$> renameTerm env t
+  S.TApp f as -> 
+    tapps <$> renameTerm f <*> traverse renameTerm (NE.toList as)
+
+  S.TLam ps body ->
+    tlam <$> traverse renamePat (NE.toList ps) <*> renameTerm body
+
+  S.TPi ps body ->
+    tpi <$> traverse renamePlicitPat (NE.toList ps) <*> renameTerm body
+
+  S.TSigma ps body ->
+    tsigma <$> traverse renamePat ps <*> renameTerm body
+
+  S.TLet bs body ->
+    tlet <$> traverse renamePatBind (NE.toList bs) <*> renameTerm body
+
+  S.TAnn tm ty -> TAnn   <$> renameTerm tm <*> renameTerm ty
+  S.TLoc l t   -> TLoc l <$> renameTerm t
+  S.TWild      -> return TWild
 
 
-renameVar :: RenameEnv a -> Text -> Renamer a
-renameVar env = renameEnvLookup env
+
+renamePlicity :: S.Plicity -> Plicity
+renamePlicity = \case
+  S.Implicit -> Implicit
+  S.Explicit -> Explicit
+
+
+renamePat :: S.Pat -> Renamer (String, Term)
+renamePat p = do
+  let (v, t) = S.pfree p
+  t' <- renameTerm t
+  return (unpack v, t')
+
+
+renamePlicitPat :: S.PlicitPat -> Renamer (String, Term, Plicity)
+renamePlicitPat (S.PlicitPat l pl pt) = do
+  (v, t) <- renamePat pt
+  return (v, t, renamePlicity pl)
+
+renamePatBind :: S.PatBind -> Renamer (String, Term)
+renamePatBind (S.PatBind p t) = do
+  (v, ty) <- renamePat p
+  t'      <- renameTerm t
+  return (v, TAnn t' ty)

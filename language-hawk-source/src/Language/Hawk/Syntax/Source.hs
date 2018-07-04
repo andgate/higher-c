@@ -15,9 +15,10 @@ module Language.Hawk.Syntax.Source
 import GHC.Generics
 import Data.Typeable (Typeable)
 
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.Text (Text, pack)
 import Data.Text.Prettyprint.Doc
+import Data.Maybe
 
 import Language.Hawk.Syntax.Location as X
 import Language.Hawk.Syntax.Name as X
@@ -113,9 +114,6 @@ data Term
   -- @x A
   | TPi (NonEmpty PlicitPat) Type
 
-  -- let x = t in body
-  | TLet (NonEmpty PatBind) Term
-
   -- Dependent product, Sigma Type, or a Tuple
   -- We can accept multiple patterns.
   -- (x, y)
@@ -127,12 +125,17 @@ data Term
   -- (x)
   | TSigma [Pat] Term
 
+  -- let x = t in body
+  | TLet (NonEmpty PatBind) Term
+
   -- Annotations
   -- x : A
   | TAnn  Term Type
   
   -- Location decorator
   | TLoc Loc Term
+
+  | TWild
   deriving (Show, Generic, Typeable)
 
 
@@ -166,13 +169,38 @@ instance Locatable Term where
     _        -> error "Location not found!"
 
 
-checkPatAnn :: Pat -> Maybe Term
-checkPatAnn = \case 
-  PVar _   -> Nothing
+-- Grab free vars in pattern
+pfree :: Pat -> (Text, Term)
+pfree p = case (pvarFind p, ptermFind p) of
+  (Just v, Just t)  -> (v, t)
+  (Just v, Nothing) -> (v, TWild)
+  (Just v, Just t)  -> (v, t)
+  (Just v, Nothing) -> (v, TWild)
+
+
+
+pvarFind' = fromJust . pvarFind
+ptermFind' = fromJust . ptermFind
+ptypeFind' = fromJust . ptypeFind
+
+pvarFind :: Pat -> Maybe Text
+pvarFind = \case
+  PVar v   -> Just v
   PWild    -> Nothing
-  PAnn _ t -> Just t
-  PLoc _ p -> checkPatAnn p
-  PParen p -> checkPatAnn p
+  PAnn p t -> pvarFind p
+  PParen p -> pvarFind p
+  PLoc l p -> pvarFind p
+
+ptypeFind :: Pat -> Maybe Type
+ptypeFind = ptermFind
+
+ptermFind :: Pat -> Maybe Term
+ptermFind = \case
+  PVar v   -> Nothing
+  PWild    -> Nothing
+  PAnn p t -> Just t
+  PParen p -> ptermFind p
+  PLoc l p -> ptermFind p
 
 
 -- -----------------------------------------------------------------------------

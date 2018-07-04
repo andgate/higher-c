@@ -27,13 +27,19 @@ library
     , lens
     , mtl
     , prettyprinter
-    , unordered-containers
+    , semigroups
+    , singletons
+    , singleton-nats
     , text
+    , unbound-generics
+    , unordered-containers
+    , vector
 
   exposed-modules:
+      Data.List.Sized
       Language.Hawk.Rename
       Language.Hawk.Rename.Error
-      Language.Hawk.Syntax.Suspension
+      Language.Hawk.Syntax.Bound
       Language.Hawk.Typecheck
       Language.Hawk.Typecheck.Error
   

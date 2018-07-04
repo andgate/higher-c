@@ -4,7 +4,7 @@ module Language.Hawk.Typecheck where
 import Control.Monad.State
 import Control.Monad.Except
 import Language.Hawk.Typecheck.Error
-import Language.Hawk.Syntax.Suspension
+import Language.Hawk.Syntax.Bound
 
 
 newtype Tc a = Tc { runTc :: StateT () (Except TcError) a}
@@ -15,8 +15,8 @@ newtype Tc a = Tc { runTc :: StateT () (Except TcError) a}
            , MonadError TcError
            )
 
-typecheckTerm :: (Term a) -> Tc (Type a)
+typecheckTerm :: Term -> Tc Type
 typecheckTerm m = undefined
 
-inferTerm :: Term a -> Tc (Type a)
+inferTerm :: Term -> Tc Type
 inferTerm m = undefined

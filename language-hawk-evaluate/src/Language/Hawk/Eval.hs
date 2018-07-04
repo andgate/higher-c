@@ -43,17 +43,20 @@ eval = \case
     EvalType -> EvalType
     EvalLinear -> EvalLinear
 
-  TLam v mt body ->
+  TLam v _ body ->
     EvalLam v body
 
-  TPi v _ body ->
+  TPi (v, Explicit) _ body ->
     EvalPi v body
   
-  TSigma t1 t2 ->
+  TSigma v t1 t2 ->
     EvalType
 
+  TLet v t body -> eval $ TApp (lam v body) t
+  TArrow t1 t2 -> undefined
+  TTuple t1 t2  -> undefined
+
   TAnn tm ty -> eval (removeSusp tm) -- ignore annotations!
-  TParen t -> eval (removeSusp t)
   TLoc l t -> eval (removeSusp t)
 
 

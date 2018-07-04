@@ -21,7 +21,7 @@ import Data.Text.Prettyprint.Doc.Render.Text
 import Language.Hawk.Parse
 import Language.Hawk.Lex (lex)
 import Language.Hawk.Lex.Token (Token)
-import Language.Hawk.Rename
+import Language.Hawk.Rename (rename)
 import Language.Hawk.Typecheck
 import System.IO (hFlush, stdout)
 
@@ -69,11 +69,17 @@ read' = do
   return $ eitherToMaybe r
 
 eval' :: S.Decl -> Repl ()
-eval' d = do
-  liftIO $ do
-    putDoc $ "parsed:" <+> pretty d
-    T.putStr "\n"
-  -- suspend and pretty print suspended
+eval' = \case
+  TermDecl t -> do
+    liftIO $ do
+      putDoc $ "parsed:" <+> pretty d
+      T.putStr "\n"
+    rename' t >>= (liftIO . putStr . show)
+
+rename' :: S.Term -> Repl Term
+rename' t = case rename [] t of
+  Left err -> liftIO . putDoc . pretty $ err
+  Right t' -> return t'
 
 loadPrelude :: Repl ()
 loadPrelude = return ()

@@ -98,7 +98,8 @@ toplevel = mdo
       <|> (termVar <?> "variable")
       <|> (termCon <?> "constructor")
       <|> (termVal <?> "value")
-      <|> (termPrim <?> "operation")
+      <|> (termPrim)
+      <|> (termWild <?> "_")
       <|> (termSigma <?> "parens")
 
 
@@ -171,6 +172,10 @@ toplevel = mdo
       let ex t t' =
             TLoc (locOf t<>locOf t') $ TAnn t t'
       in ex <$> cterm <*> (rsvp ":" *> term)
+
+    termWild <- rule $
+      let ex (_, l) = TLoc l $ TWild
+      in ex <$> rsvp "_"
 
 -- -----------------------------------------------------------------------------
 -- Pattern Rules
