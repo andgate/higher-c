@@ -1,9 +1,15 @@
-{-# Language  DeriveDataTypeable, DeriveGeneric, MultiParamTypeClasses
+{-# Language DeriveDataTypeable
+           , DeriveGeneric
+           , MultiParamTypeClasses
+           , OverloadedStrings
+           , LambdaCase
+           , RankNTypes
   #-}
 module Language.Hawk.Syntax.Bound where
 
-import GHC.Generics
+import Data.Text.Prettyprint.Doc
 import Data.Typeable (Typeable)
+import GHC.Generics
 import Unbound.Generics.LocallyNameless
 
 import Language.Hawk.Syntax.Prim
@@ -62,6 +68,14 @@ mkTele ((v, b) : t) = ScopeCons (rebind (string2Name v, embed b) $ mkTele t)
 mkTeleP :: [(String, Term, Plicity)] -> TeleP
 mkTeleP []              = ScopeNilP
 mkTeleP ((v, b, p) : t) = ScopeConsP (rebind (string2Name v, embed b, p) $ mkTeleP t)
+
+untele :: forall m. Fresh m => Tele -> m [(Var, Term)]
+untele = \case
+  ScopeNil     -> return []
+  ScopeCons rb -> do
+    let ((v, Embed t), tele) = unrebind rb
+    tele' <- untele tele
+    return $ (v, t) : tele'
 
 
 tlam :: [(String, Term)] -> Term -> Term
@@ -138,3 +152,88 @@ instance Subst Term TeleP
 instance Subst Term Term where
   isvar (TVar x) = Just (SubstName x)
   isvar _ = Nothing
+
+
+instance Pretty Term where
+  pretty = runFreshM . prettyFresh
+
+
+prettyFresh :: Term -> FreshM (Doc ann)
+prettyFresh = \case
+  Type   -> return "Type"
+  Linear -> return "Linear"
+  
+  TVar v        -> return . pretty . show $ v
+  TVal v        -> return $ pretty v
+  TCon c        -> return $ pretty c
+  TPrim i t1 t2 -> do
+    t1' <- prettyFresh t1
+    t2' <- prettyFresh t2
+    return $ pretty i <+> parens t1' <+> parens t2'
+  
+  TApp f as -> do
+    f' <- prettyFresh f 
+    as' <- mapM prettyFresh as
+    return $ f' <+> hcat as'
+
+  TLam bnd -> do
+    (t, body) <- unbind bnd
+    t' <- prettyFreshTele t
+    body' <- prettyFresh body
+    return $ "\\" <+> t' <+> "." <+> body'
+
+  TPi bnd -> do
+    (t, body) <- unbind bnd
+    t' <- prettyFreshTeleP t
+    body' <- prettyFresh body
+    return $ "\\" <+> t' <+> "->" <+> body'
+
+  TSigma bnd -> do
+    (t, body) <- unbind bnd
+    t' <- prettyFreshSigma t
+    body' <- prettyFresh body
+    return $ tupled (t' ++ [body'])
+
+  TLet bnd -> undefined
+  
+  TAnn tm ty -> do
+    tm' <- prettyFresh tm
+    ty' <- prettyFresh ty
+    return $ tm' <+> ":" <+> ty'
+
+  TLoc _ t -> prettyFresh t
+  TWild -> return "_"
+
+
+prettyFreshTele :: Tele -> FreshM (Doc ann)
+prettyFreshTele = \case
+  ScopeNil     -> return emptyDoc
+  ScopeCons rb -> do
+    let ((x, Embed t), tele) = unrebind rb
+        x' = pretty $ show x
+    t'    <- prettyFresh t 
+    tele' <- prettyFreshTele tele
+    return $ parens (x' <+> t') <+> tele'
+
+
+prettyFreshTeleP :: TeleP -> FreshM (Doc ann)
+prettyFreshTeleP = \case
+  ScopeNilP     -> return emptyDoc
+  ScopeConsP rb -> do
+    let ((x, Embed t, pl), tele) = unrebind rb
+        x' = pretty $ show x
+    t'    <- prettyFresh t 
+    tele' <- prettyFreshTeleP tele
+    case pl of
+      Explicit -> return $ parens (x' <+> t') <+> tele'
+      Implicit -> return $ "@" <+> parens (x' <+> t') <+> tele'
+
+prettyFreshSigma :: Tele -> FreshM [Doc ann]
+prettyFreshSigma = \case
+  ScopeNil     -> return [] 
+  ScopeCons rb -> do
+    let ((x, Embed t), tele) = unrebind rb
+        x' = pretty $ show x
+    t'    <- prettyFresh t 
+    tele' <- prettyFreshSigma tele
+    return $ (x' <+> t') : tele'

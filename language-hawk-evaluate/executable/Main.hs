@@ -104,21 +104,22 @@ execute = \case
 frontend :: S.Term -> Repl (Maybe B.Term)
 frontend = rename'
 
-eval' :: B.Term -> Repl Value
+eval' :: B.Term -> Repl B.Term
 eval' t = do
-  let v = eval CL.empty t
-  liftIO . putDoc . pretty $ v
-  return v 
+  let r = eval CL.empty t
+  liftIO $ do
+    putDoc . pretty $ r
+    putStr "\n"
+  return r
 
 rename' :: S.Term -> Repl (Maybe B.Term)
 rename' t = case rename [] t of
   Left err -> do 
     liftIO . putDoc . pretty $ err
-    liftIO . putDoc . pretty $ err
     return Nothing
 
   Right t' -> do
-    liftIO . putStr . show $ t'
+    -- liftIO . putStr . show $ t'
     return $ Just t'
 
 loadPrelude :: Repl ()

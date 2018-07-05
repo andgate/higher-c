@@ -27,6 +27,7 @@ library
     , mtl
     , prettyprinter
     , text
+    , unbound-generics
   exposed-modules:
       Language.Hawk.Closure
       Language.Hawk.Eval

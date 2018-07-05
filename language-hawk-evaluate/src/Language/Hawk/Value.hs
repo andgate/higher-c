@@ -8,24 +8,34 @@ import Data.Text.Prettyprint.Doc
 
 
 data Value
-  = VLam Text Value
-  | VPi Text Value
-  | VNeutral Text [Value]
-  | VCon Text [Value]
-  | VPrim PrimVal
-  | VType
+  = VType
   | VLinear
+  | VLam Text Term
+  | VCon Text
+  | VPrim PrimVal
+  | VConst Const
   | VError String -- something bad happened!!
   deriving (Show)
 
 
+data Const
+  = CApp Const Value
+  | CVar String
+  deriving (Show)
+
+
+
 instance Pretty Value where
   pretty = \case
-    VLam v t      -> "\\" <+> pretty v <+> "."  <+> pretty t
-    VPi v t       -> "\\" <+> pretty v <+> "->" <+> pretty t
-    VNeutral v xs -> pretty v <+> hcat (pretty <$> xs)
-    VCon n xs     -> pretty n <+> hcat (pretty <$> xs)
-    VPrim v       -> pretty v
     VType         -> "Type"
     VLinear       -> "Linear"
+    VCon n        -> pretty n
+    VPrim v       -> pretty v
+    VConst v      -> pretty v
     VError err    -> pretty err
+
+
+instance Pretty Const where
+  pretty = \case
+    CApp c v -> pretty c <+> pretty v
+    CVar v   -> pretty v

@@ -1,67 +1,97 @@
 {-# LANGUAGE LambdaCase
            , GeneralizedNewtypeDeriving
+           , OverloadedStrings
  #-}
 module Language.Hawk.Eval where
 
 
-import Data.List (foldl')
-import Data.Either (fromRight)
-import Data.Text (Text)
-import Data.Map.Strict (Map)
-
-import Language.Hawk.Closure
+import Control.Monad.Reader
+import Data.Text (Text, pack)
+import Language.Hawk.Closure (Closure)
 import Language.Hawk.Syntax.Bound
 import Language.Hawk.Syntax.Prim
 import Language.Hawk.Value
+import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
+
+import qualified Language.Hawk.Closure as CL
 
 
-eval :: Closure -> Term -> Value
-eval clos = \case
-  _ -> undefined
-{-
-eval = \case
-  Type   -> EvalType
-  Linear -> EvalLinear
+eval :: Closure -> Term -> Term
+eval clos t = runEval clos (evalTerm t)
+
+newtype Eval a = Eval { unEval :: ReaderT Closure FreshM a } 
+  deriving (Functor, Applicative, Monad, MonadReader Closure, Fresh)
+
+
+runEval :: Closure -> Eval a -> a
+runEval clos (Eval m) = runFreshM $ runReaderT m clos
+
+evalTerm :: Term -> Eval Term
+evalTerm = \case
+  Type   -> return $ Type
+  Linear -> return $ Linear
   
-  TVar v -> EvalNeutral v []
-  TCon n -> EvalCon n []
-  TVal v -> EvalVal v
+  TVar v -> return $ TVar v -- substitute in from the closure?
+
+  TCon n -> return $ TCon n
+  TVal v -> return $ TVal v
   
-  TPrim i t1 t2 ->
-    let (EvalVal v1) = eval (removeSusp t1)
-        (EvalVal v2) = eval (removeSusp t2)
-    in EvalVal $ evalInstr (i, v1, v2)
+  TPrim i t1 t2 -> do
+    t1' <- evalTerm t1
+    t2' <- evalTerm t2
+    case (t1', t2') of
+      (TVal v1, TVal v2) ->
+           return . TVal $ evalInstr (i, v1, v2)
+      _ -> return $ TPrim i t1' t2'
 
-  TApp f a -> case eval (removeSusp f) of
-    EvalNeutral v as -> EvalNeutral v (as ++ [a])
-    EvalCon c as -> EvalCon c (as ++ [a])
-    EvalLam v body -> eval . removeSusp $ subst v a body
-    EvalPi v body  -> eval . removeSusp $ subst v a body
-    EvalVal v -> EvalVal v
-    EvalType -> EvalType
-    EvalLinear -> EvalLinear
+  TApp f as -> do
+    f' <- evalTerm f
+    case f' of
+      TLam bnd -> do
+        (tele, body)   <- unbind bnd
+        (body', tele') <- applyTele body tele as 
+        case tele' of
+          ScopeNil -> return $ body'
+          _        -> return $ TLam (bind tele' body') 
+     
+      TApp g bs -> evalTerm $ TApp g (bs ++ as)
+      _         -> TApp f' <$> mapM evalTerm as
 
-  TLam v _ body ->
-    EvalLam v body
 
-  TPi (v, Explicit) _ body ->
-    EvalPi v body
+  TLam bnd -> do
+    (tele, body) <- unbind bnd
+    body' <- evalTerm body
+    return $ TLam (bind tele body')
+
+  TPi _ ->
+    return Type
   
-  TSigma v t1 t2 ->
-    EvalType
+  TSigma _ ->
+    return Type
 
-  TLet v t body -> eval $ TApp (lam v body) t
-  TArrow t1 t2 -> undefined
-  TTuple t1 t2  -> undefined
-
-  TAnn tm ty -> eval (removeSusp tm) -- ignore annotations!
-  TLoc l t -> eval (removeSusp t)
-
-
-evalToSyntax :: Eval a -> Syntax a
-evalToSyntax = \case
-  EvalLam n body -> TLam n Nothing body
-  EvalNeutral v args -> foldl' (\e -> TApp (Syntax e)) (TVar v) args
+  TLet bnd -> do
+    (r, body) <- unbind bnd
+    let vars = unrec r
+        -- Substitute all the terms into the body
+        body' = foldr (\(v, Embed rhs) body -> subst v rhs body) body vars
+        fvs = toListOf fv body'
+    if any (\(v,_) -> v `elem` fvs) vars
+      then evalTerm . TLet $ bind (rec vars) body'
+      else evalTerm body'
 
 
--}
+  TAnn tm ty -> evalTerm tm -- ignore annotations!
+  TLoc l t   -> evalTerm t
+
+
+applyTele :: Term -> Tele -> [Term] -> Eval (Term, Tele)
+applyTele t (ScopeCons rb) (a:as) = do
+  let ((v, _), tele) = unrebind rb
+  a' <- evalTerm a
+  applyTele (subst v a' t) tele as
+
+applyTele t ScopeNil (_:_) =  error "Too many arguments applied through telescope"
+applyTele t tele _ = do
+  t' <- evalTerm t
+  return (t', tele)
