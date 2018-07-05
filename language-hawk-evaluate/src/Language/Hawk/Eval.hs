@@ -7,20 +7,18 @@ module Language.Hawk.Eval where
 import Data.List (foldl')
 import Data.Either (fromRight)
 import Data.Text (Text)
-import Language.Hawk.Syntax.Suspension
+import Data.Map.Strict (Map)
+
+import Language.Hawk.Closure
+import Language.Hawk.Syntax.Bound
 import Language.Hawk.Syntax.Prim
+import Language.Hawk.Value
 
 
-data Eval a
-  = EvalLam Text (Term (Var a))
-  | EvalPi Text (Type (Var a))
-  | EvalNeutral a [Term a]
-  | EvalCon Text [Term a]
-  | EvalVal PrimVal
-  | EvalType
-  | EvalLinear
-
-eval :: Syntax a -> Eval a
+eval :: Closure -> Term -> Value
+eval clos = \case
+  _ -> undefined
+{-
 eval = \case
   Type   -> EvalType
   Linear -> EvalLinear
@@ -64,3 +62,6 @@ evalToSyntax :: Eval a -> Syntax a
 evalToSyntax = \case
   EvalLam n body -> TLam n Nothing body
   EvalNeutral v args -> foldl' (\e -> TApp (Syntax e)) (TVar v) args
+
+
+-}
