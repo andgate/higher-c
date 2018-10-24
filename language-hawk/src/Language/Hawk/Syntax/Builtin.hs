@@ -33,9 +33,7 @@ data Val
   | VFloat Double
   | VChar Char
   | VBool Bool
-  | VArr Int
-  | VPtr
-  | VRef
+  | VString String
   deriving (Read, Show, Eq, Ord, Data, Typeable, Generic)
 
 

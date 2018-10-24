@@ -55,8 +55,10 @@ library
 
       Language.Hawk.Syntax.Abstract
       Language.Hawk.Syntax.Builtin
+      Language.Hawk.Syntax.Canonical
       Language.Hawk.Syntax.Concrete
       Language.Hawk.Syntax.Location
+      Language.Hawk.Syntax.Typed
 
       Language.Hawk.Lex
       Language.Hawk.Lex.Error

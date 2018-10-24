@@ -7,7 +7,7 @@ import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Language.Hawk.Analysis.Equality
 import Language.Hawk.Syntax.Abstract
-import Language.Hawk.Syntax.Prim
+import Language.Hawk.Syntax.Builtin
 import Language.Hawk.Syntax.Location
 import Unbound.Generics.LocallyNameless
 
@@ -20,13 +20,13 @@ data TcError
   = TypeMismatch Type Type
 
 
-data Hint = Hint TName Term
+data Hint = Hint Text Exp
 
 data TcEnv
   = TcEnv
     { _tcDict :: Map Text Type
     , _tcHints :: [Hint]
-    , _tcLoc :: Location
+    , _tcLoc :: Loc
     }
 
 
@@ -38,7 +38,7 @@ newtype Tc a = Tc { unTc :: ReaderT TcEnv (ExceptT TcError FreshM) a}
            , MonadError TcError
            , Fresh
            )
-
+{-
 
 runTc :: TcEnv -> Tc a -> Either TcError a
 runTc env tc = runFreshM $ runExceptT $ runReaderT (unTc tc) env
@@ -64,3 +64,5 @@ check' = \case
   (TVar x, Nothing) -> do
     ty <- lookupTy x
     return ty
+
+-}

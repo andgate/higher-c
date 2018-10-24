@@ -19,18 +19,18 @@ import Data.Bitraversable
 import Data.Either
 import Data.Either.Extra (eitherToMaybe)
 import Data.Map.Strict (Map)
+import Data.Maybe (Maybe, fromJust)
 import Data.Monoid
 import Data.Set (Set)
 import Data.Text (Text, pack, unpack)
 import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text
-import Language.Alonzo.Analysis
-import Language.Alonzo.Analysis.Error
-import Language.Alonzo.Lex.Error
-import Language.Alonzo.Parse.Error
-import Language.Alonzo.Syntax.Location
-import Language.Alonzo.Transform
-import Language.Alonzo.Transform.Reduce (reduce)
+--import Language.Hawk.Analysis.Error
+import Language.Hawk.Lex.Error
+import Language.Hawk.Parse.Error
+import Language.Hawk.Syntax.Location
+--import Language.Hawk.Transform
+--import Language.Hawk.Transform.Reduce (reduce)
 import System.IO (hFlush, stdout)
 import System.Exit
 import System.Console.Repline
@@ -39,11 +39,10 @@ import qualified Data.List       as List
 import qualified Data.Map.Strict as Map
 import qualified Data.Set        as Set
 
-import qualified Language.Alonzo.Parse              as P
-import qualified Language.Alonzo.Transform.ANorm    as A
-import qualified Language.Alonzo.Transform.NameBind as B
-import qualified Language.Alonzo.Analysis.NameCheck as N
-import qualified Language.Alonzo.Syntax.Source      as S
+import qualified Language.Hawk.Parse           as P
+import qualified Language.Hawk.Lex             as L
+import qualified Language.Hawk.Lex.Token       as L
+import qualified Language.Hawk.Syntax.Concrete as C
 
 import qualified Data.Text.IO as T
 
@@ -68,8 +67,8 @@ instance Pretty ReplError where
 data ReplState
   = ReplState
     { _replDict     :: Map Text Loc
-    , _replFiles    :: Map FilePath S.Closure
-    , _replPrograms :: Map Text A.Term
+    , _replFiles    :: Map FilePath C.Src
+    , _replPrograms :: Map Text C.Func
     }
 
 
@@ -97,21 +96,22 @@ type Repl a = HaskelineT (StateT ReplState IO) a
 
 repl :: IO ()
 repl = flip evalStateT mempty
-     $ evalRepl ">>> " cmd opts (Word comp) enter
+     $ evalRepl (pure ">>> ") cmd opts (Just ':') (Word comp) enter
 
 -- Start-up
 enter :: Repl ()
 enter = do
-  loadPrelude
+ -- loadPrelude
+  loadMain
   liftIO $ putStrLn "Hello!"
 
 -- Evalution
 cmd :: String -> Repl ()
-cmd input = do
-  cl <- S.closure <$> parseText "" (pack input)
-  --printPretty cl
+cmd input = return ()
+ -- src <- P.parseHk . L.lex "" $ pack input
+  --printPretty src
   -- Validate programs and terms
-  checkClosure cl
+  --checkClosure cl
   -- Store programs
   -- evalute terms
 
@@ -136,14 +136,64 @@ quitRepl _ = liftIO $ exitWith ExitSuccess
 
 opts :: [(String, [String] -> Repl ())]
 opts = [
-    ("load", loadFiles) -- :load <files>
+    ("load", loadFilesCmd) -- :load <files>
   , ("quit", quitRepl) -- :quit
   ]
+
+loadFilesCmd :: [String] -> Repl ()
+loadFilesCmd fps = do
+  mapM_ loadFile fps
+  return ()
+
+------------------------------------------------------------------------
+-- Helpers
+
+
+-- Parsing and Lexing
+lexFile :: FilePath -> Text -> Repl [L.Token]
+lexFile fp contents =
+  case runExcept $ L.lex fp contents of
+    Left err -> printPretty err >> abort
+    Right toks -> return toks
+
+parseFile :: [L.Token] -> Repl C.Src
+parseFile toks = return $ P.parseHk toks
+{-
+  case P.parseHk toks of
+    Left err -> printPretty err >> abort
+    Right ast -> return ast
+-}
+
+-- Loading source files
+loadMain :: Repl C.Src
+loadMain = do
+  src <- loadFile "Main.hk"
+  printPretty src
+  return src
+
+loadFile :: FilePath -> Repl C.Src
+loadFile fp = do
+  contents <- liftIO $ T.readFile fp
+  toks <- lexFile fp contents
+  ast <- parseFile toks
+  printPretty ast
+  return ast
+
+
+-- Pretty printing in repl
+printPretty :: Pretty p => p -> Repl ()
+printPretty p =
+  liftIO $ putDoc (pretty p) >> putStr "\n"
+
+printPretties :: Pretty p => [p] -> Repl ()
+printPretties ps =
+  liftIO $ putDoc (vsep $ pretty <$> ps) >> putStr "\n"
 
 
 ------------------------------------------------------------------------
 -- Parsing
 
+{-
 parseFiles :: [(FilePath, Text)] -> Repl [[S.Stmt]]
 parseFiles fs = do
   case P.parseFiles fs of
@@ -177,7 +227,6 @@ loadFiles paths = do
   storeClosures $ zip paths cs
 
   reduceTerms ts
-
 
 
 ------------------------------------------------------------------------
@@ -227,37 +276,8 @@ storeClosures cls = do
   replDict %= Map.union (Map.fromList $ S._progName <$> ps)
   replFiles %= Map.union (Map.fromList cls)
   replPrograms %= Map.union (Map.fromList ps')
+-}
 
-
-
-------------------------------------------------------------------------
--- Term Transformation
-
-transformTerm :: S.Term -> A.Term 
-transformTerm t = undefined
-
-------------------------------------------------------------------------
--- Term Reduction
-
-reduceTerms :: [A.Term] -> Repl ()
-reduceTerms ts = undefined
-
-      
-
-------------------------------------------------------------------------
--- Helpers
-
-loadPrelude :: Repl ()
-loadPrelude = loadFiles ["prelude/Prelude.al"]
-
-
-printPretty :: Pretty p => p -> Repl ()
-printPretty p =
-  liftIO $ putDoc (pretty p) >> putStr "\n"
-
-printPretties :: Pretty p => [p] -> Repl ()
-printPretties ps =
-  liftIO $ putDoc (vsep $ pretty <$> ps) >> putStr "\n"
 
 
 {-

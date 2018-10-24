@@ -1,0 +1,9 @@
+glMatrixMode(GL_PROJECTION);
+glLoadIdentity();
+gluOrtho2d(0, 640, 0, 480);
+glViewport(0, 0, 640, 480);
+for(int x = 0; x < 640; x += 640/100) {
+  int y = sin(x);
+  int w = cos(x);
+  S(x,y,w);
+}

@@ -25,6 +25,9 @@ data L a = L { unLoc :: Loc
   deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
 
 
+instance Functor L where
+  fmap f (L l a) = L l (f a) 
+
 wrapL :: (a, Loc) -> L a
 wrapL (x, l) = L l x
 

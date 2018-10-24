@@ -30,7 +30,7 @@ instance Pretty NameError where
                  , pretty n <+> "at" <+> pretty l'
                  , "and" <+> pretty n <+> "at" <+> pretty l
                  ]
-
+{-
 namecheckTerms :: Map Text Loc -> [Term] -> [NameError]
 namecheckTerms d = mconcat . map (namecheck d)
 
@@ -86,3 +86,5 @@ conflicts = snd . dups' Map.empty []
       case Map.lookup n seen of
         Nothing -> (Map.insert n l seen, ns')
         Just l' -> (seen, (n, l, l'):ns')
+
+-}

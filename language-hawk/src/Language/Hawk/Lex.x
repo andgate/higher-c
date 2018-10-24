@@ -28,7 +28,7 @@ import Language.Hawk.Lex.Token
 import Language.Hawk.Syntax.Location
 import System.FilePath (FilePath)
 
-import qualified Data.Map	     as Map
+import qualified Data.Map            as Map
 import qualified Data.Text           as T
 import qualified Data.Text.Read      as T
 import qualified System.FilePath     as Filesystem
@@ -76,8 +76,8 @@ hawk :-
   -- Skip whitespace everywhere
   $whiteNoNewline                 { skipBreak }
   [\n\r]                          { \ _ _ -> nextLineBreak }
-  "--|"                           { beginComment }
-  "--"                            { beginLineComment }
+  "/*"                            { beginComment }
+  "//"                            { beginLineComment }
   
   \"                              { beginString }
   \' .* \'                        { handleChar }
@@ -145,8 +145,8 @@ hawk :-
 }
 
 <commentSC> {
-  "--|"                           { continueComment }
-  "|--"                           { endComment }
+  "/*"                            { continueComment }
+  "*/"                            { endComment }
   [\n\r]                          { \_ _ -> nextLineContinue }
   [.]                             { skipContinue }
 }
@@ -409,14 +409,14 @@ lex fp text = do
             reverse <$> use lexTokAcc
 
         AlexError (AlexInput p cs text) -> do
-	    fp <- use lexFilePath
-	    r  <- use lexRegion
-	    let l = Loc fp r
+            fp <- use lexFilePath
+            r  <- use lexRegion
+            let l = Loc fp r
             throwError $ UnproducibleToken (show cs) l
-        
+
         AlexSkip  input' len           -> do
             throwError IllegalLexerSkip
-        
+
         AlexToken input' len act       -> do
             act (T.take (fromIntegral len) (currInput input)) (fromIntegral len)
             go input'

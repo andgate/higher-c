@@ -11,7 +11,7 @@ import Language.Hawk.Syntax.Location
 
 }
 
-%name hawkFile TopLevels
+%name parseHk Src
 %tokentype { Token }
 %error { parseError }
 
@@ -58,8 +58,10 @@ import Language.Hawk.Syntax.Location
 
 %%
 
+Src : TopLevels { Src "" $1 }
+
 TopLevelBlock : '{' '}'           { [] }
-              | '{' TopLevels '}' { $1 }
+              | '{' TopLevels '}' { $2 }
 
 TopLevels : TopLevel { [$1] }
           | TopLevels TopLevel { $2 : $1 }
@@ -67,11 +69,20 @@ TopLevels : TopLevel { [$1] }
 TopLevel : ModDecl { $1 }
          | Func { TFunc $1 }
 
-ModDecl : module ModName '{' TopLevelBlock '}' { ModDecl $2 $4 }
+ModDecl : module ModName TopLevelBlock { TMod $2 $3 }
 
 ModName : conId        { mkQName (extractId $1) }
         | qconId       { mkQName (extractId $1) }
 
+
+VarId : varId { extractId $1 }
+ConId : conId { extractId $1 }
+
+VarName : VarId { mkName $1 }
+ConName : ConId { mkName $1 }
+
+Name : VarName { $1 }
+     | ConName { $1 }
 
 
 Value : integer  { fmap VInt    (extractInteger $1) }
@@ -83,26 +94,26 @@ Value : integer  { fmap VInt    (extractInteger $1) }
 
 
 
-Import : import ModName { $2 }
+Import : import ModName { TImport $2 }
 
 
 Func : FuncDecl Block { Func $1 $2 }
 
-FuncDecl : varId '(' Args0 ')'          { FuncDecl $1 $3 Nothing   }
-         | varId '(' Args0 ')' ':' Type { FuncDecl $1 $3 (Just $6) }
+FuncDecl : VarName '(' Args0 ')'          { FuncDecl $1 $3 Nothing   }
+         | VarName '(' Args0 ')' ':' Type { FuncDecl $1 $3 (Just $6) }
 
-Args0 : {- empty -} { [] }
-      | Args        { $1 }
+Args0 : {- empty -} { Args [] }
+      | Args        { Args $1 }
 
 Args : Arg            { [$1] }
-     | Args ',' Arg { $3 : $1 }
+     | Args ',' Arg   { $3 : $1 }
 
-Arg : varId          { Arg $1 Nothing   }
-    | varId ':' Type { Arg $1 (Just $3) }
+Arg : VarName          { Arg $1 Nothing   }
+    | VarName ':' Type { Arg $1 (Just $3) }
 
 
-Block : '{' '}'       { [] }
-      | '{' Stmts '}' { $2 }
+Block : '{' '}'       { Block [] }
+      | '{' Stmts '}' { Block $2 }
 
 
 Stmts : Stmt       { [$1] }
@@ -113,13 +124,13 @@ Stmt : AStmt ';' { $1 }
 AStmt : SCall { $1 }
       | SDecl { $1 }
 
-SDecl : varId                  { SDecl $1 Nothing Nothing }
-      | varId ':' Type         { SDecl $1 Nothing Nothing }
-      | varId ':' Type '=' Exp { SDecl $1 (Just $3) (Just $5) }
+SDecl : VarName                  { SDecl $1 Nothing Nothing }
+      | VarName ':' Type         { SDecl $1 Nothing Nothing }
+      | VarName ':' Type '=' Exp { SDecl $1 (Just $3) (Just $5) }
 
-SCall : varId '(' ExpList0  ')' { SCall $1 $3 }
+SCall : Exp '(' ExpList0  ')' { SCall $1 $3 }
 
-SReturn : return Exp { SReturn Exp }
+SReturn : return Exp { SReturn $2 }
 
 ExpList0 : {- empty -} { [] }
          | ExpList     { $1 }
@@ -127,11 +138,12 @@ ExpList0 : {- empty -} { [] }
 ExpList : Exp             { [$1] }
         | ExpList ',' Exp { $3 : $1 }
 
-Exp : varId { EVar $1 }
-    | Value { EVal $1 }
+Exp : VarId { mkVar $1 }
+    | ConId { mkCon $1 }
+    | Value { mkVal $1 }
 
-Type : varId { TVar $1 }
-     | conId { TCon $1 }
+Type : VarId { mkTVar $1 }
+     | ConId { mkTCon $1 }
 
 {
 parseError :: [Token] -> a

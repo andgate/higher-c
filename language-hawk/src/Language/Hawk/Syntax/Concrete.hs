@@ -64,8 +64,8 @@ data Src = Src FilePath [TopLevel]
 
 
 data TopLevel
-  = TMod Name [TopLevel]
-  | TImport Name
+  = TMod QName [TopLevel]
+  | TImport QName
   | TFunc Func
   deriving (Show)
 
@@ -107,7 +107,7 @@ data Block = Block [Stmt]
 
 data Stmt
   = SCall Exp [Exp]
-  | SDecl Exp (Maybe Type) (Maybe Exp)
+  | SDecl Name (Maybe Type) (Maybe Exp)
   | SAssign Exp (Maybe Type) Exp
   | SReturn Exp
   | SLoc Loc Stmt
@@ -145,6 +145,22 @@ data Kind
   | KArr Kind Kind
   | KLoc Loc Kind
   deriving (Show)
+
+
+mkVar :: L Text -> Exp
+mkVar i@(L l n) = ELoc l (EVar (mkName i))
+
+mkCon :: L Text -> Exp
+mkCon i@(L l n) = ELoc l (ECon (mkName i))
+
+mkVal :: L Val -> Exp
+mkVal (L l v) = ELoc l (EVal v)
+
+mkTVar :: L Text -> Type
+mkTVar i@(L l n) = TLoc l (TVar (mkName i))
+
+mkTCon :: L Text -> Type
+mkTCon i@(L l n) = TLoc l (TCon (mkName i))
 
 
 -- -----------------------------------------------------------------------------
@@ -260,6 +276,12 @@ data ForeignType =
 
 instance Pretty Name where
   pretty (Name n _) = pretty n
+
+
+instance Pretty QName where
+  pretty (QName n ns _) = hcat (punctuate "." (pretty <$> ns'))
+    where ns' = reverse (n:ns)
+
 
 instance Pretty Src where
   pretty (Src fp tls) =
