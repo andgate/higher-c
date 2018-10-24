@@ -1,0 +1,94 @@
+name:           language-hawk
+version:        0.0.0
+synopsis:       Hawk programming language
+description:    Typed Systems Programming
+category:       Compilers
+homepage:       https://github.com/andgate/hawk
+bug-reports:    https://github.com/andgate/hawk/issues
+maintainer:     Gabriel Anderson
+license:        MIT
+build-type:     Simple
+cabal-version:  >= 2.0
+
+extra-source-files:
+    src/Language/Hawk/Lex.x
+    src/Language/Hawk/Parse.y
+
+
+source-repository head
+  type: git
+  location: https://github.com/andgate/hawk
+
+library
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -fno-warn-name-shadowing -fno-warn-unused-binds -fno-warn-unused-matches -fno-warn-unused-do-bind -fno-warn-orphans
+  build-depends:
+      array
+    , base <5
+    , binary
+    , containers
+    , directory
+    , either
+    , exceptions
+    , extra
+    , lens
+    , ListZipper
+    , filepath
+    , mtl
+    , prettyprinter
+    , prettyprinter-ansi-terminal
+    , safe
+    , semigroups
+    , text
+    , unbound-generics
+    , unordered-containers
+    , vector
+
+
+  build-tools:
+      alex ==3.2.4, happy==1.19.9
+
+  exposed-modules:
+      Language.Hawk.Analysis.Namecheck
+      Language.Hawk.Analysis.Infer
+
+      Language.Hawk.Syntax.Abstract
+      Language.Hawk.Syntax.Builtin
+      Language.Hawk.Syntax.Concrete
+      Language.Hawk.Syntax.Location
+
+      Language.Hawk.Lex
+      Language.Hawk.Lex.Error
+      Language.Hawk.Lex.State
+      Language.Hawk.Lex.Token
+      
+      Language.Hawk.Parse
+      Language.Hawk.Parse.Error
+      
+      
+  
+  other-modules:
+  default-language: Haskell2010
+
+
+executable hkci
+  main-is: Main.hs
+  ghc-options: -Wall -O2 -Wincomplete-uni-patterns -Wincomplete-record-updates -fno-warn-name-shadowing -fno-warn-unused-binds -fno-warn-unused-matches -fno-warn-unused-do-bind -fno-warn-orphans -rtsopts -threaded -with-rtsopts=-N -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-import-lists
+  default-language: Haskell2010
+  hs-source-dirs:
+      hkci
+  build-depends:
+      base
+    , bifunctors
+    , containers
+    , extra
+    , language-hawk
+    , lens
+    , hashmap
+    , monad-loops
+    , mtl
+    , prettyprinter
+    , repline
+    , text
+    , transformers

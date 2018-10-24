@@ -29,9 +29,7 @@ runEval clos (Eval m) = runFreshM $ runReaderT m clos
 
 evalTerm :: Term -> Eval Term
 evalTerm = \case
-  Type   -> return $ Type
-  Linear -> return $ Linear
-  
+  TUni u   -> return $ TUni u
   TVar v -> return $ TVar v -- substitute in from the closure?
 
   TCon n -> return $ TCon n
@@ -65,10 +63,10 @@ evalTerm = \case
     return $ TLam (bind tele body')
 
   TPi _ ->
-    return Type
+    return $ TUni Type
   
   TSigma _ ->
-    return Type
+    return $ TUni Type
 
   TLet bnd -> do
     (r, body) <- unbind bnd
