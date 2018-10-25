@@ -1,36 +1,37 @@
-let x : y = 7
+let x : I32 = 7
 
-add2(x: Int): Int {
-  return add(x, 2);
+add2(x) : Int -> Int {
+  return add x 2;
 }
 
 module Foo
 {
-  add3(x) { return add(x, 3); }
+//  add3 x : Int -> Int { return add x 3; }
+  add3 x { return add x 3; }
 }
 
 /*
-class List(a)
+class List (l : * -> *)
 {
-  length(): int;
-  copy<List l>(): l a;
-  get(index: I32): a;
-  set(index: I32, x: a): Void;
-  update(index: I32, f: a -> b): Void;
+  length: l a -> int;
+  copy: l a -> l a;
+  get: forall a. I32 -> l a -> a;
+  set: forall a. I32 -> l a -> a -> Void;
+  update: forall a b. I32 -> (a -> b) -> &(l a) -> Void;
 }
 
 
-mapList<List l, a, b>(f: a -> b, xs: l a): l b 
+mapList(f xs): List l => forall a b. (a -> b) -> Ptr (l a) -> l b 
 {
-  let ys = xs.copy();
-  for(int i = 0; i < l.length(); inc(i))
+  let ys = copy xs;
+  for(int i = 0; i < length l; inc i)
     ys.update( i, f );
 
   return ys;
 }
 */
 
-main(): Int
+main: Int
 {
   return add2(2);
 }

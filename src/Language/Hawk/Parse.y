@@ -74,6 +74,7 @@ ModDecl : module ModName TopLevelBlock { TMod $2 $3 }
 ModName : conId        { mkQName (extractId $1) }
         | qconId       { mkQName (extractId $1) }
 
+VarDecl : SDecl
 
 VarId : varId { extractId $1 }
 ConId : conId { extractId $1 }
@@ -124,9 +125,9 @@ Stmt : AStmt ';' { $1 }
 AStmt : SCall { $1 }
       | SDecl { $1 }
 
-SDecl : VarName                  { SDecl $1 Nothing Nothing }
-      | VarName ':' Type         { SDecl $1 Nothing Nothing }
-      | VarName ':' Type '=' Exp { SDecl $1 (Just $3) (Just $5) }
+SDecl : let VarName                  { SDecl $2 Nothing   Nothing }
+      | let VarName ':' Type         { SDecl $2 (Just $4) Nothing }
+      | let VarName ':' Type '=' Exp { SDecl $2 (Just $4) (Just $6) }
 
 SCall : Exp '(' ExpList0  ')' { SCall $1 $3 }
 

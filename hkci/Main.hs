@@ -175,6 +175,7 @@ loadFile :: FilePath -> Repl C.Src
 loadFile fp = do
   contents <- liftIO $ T.readFile fp
   toks <- lexFile fp contents
+  printPretties toks
   ast <- parseFile toks
   printPretty ast
   return ast

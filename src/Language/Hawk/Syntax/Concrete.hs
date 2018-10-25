@@ -67,6 +67,7 @@ data TopLevel
   = TMod QName [TopLevel]
   | TImport QName
   | TFunc Func
+  | TopVar VarDecl
   deriving (Show)
 
 {-
@@ -98,6 +99,9 @@ data Arg
   = Arg Name (Maybe Type)
   deriving (Show)
 
+data VarDecl
+  = VarDecl Name (Maybe Type) (Maybe Exp)
+  deriving (Show)
 
 -- -----------------------------------------------------------------------------
 -- | Statement
@@ -107,7 +111,7 @@ data Block = Block [Stmt]
 
 data Stmt
   = SCall Exp [Exp]
-  | SDecl Name (Maybe Type) (Maybe Exp)
+  | SDecl VarDecl
   | SAssign Exp (Maybe Type) Exp
   | SReturn Exp
   | SLoc Loc Stmt
