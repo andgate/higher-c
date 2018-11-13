@@ -83,48 +83,73 @@ hawk :-
   \' .* \'                        { handleChar }
   
 
-  \_                              { rsvp }
-  \|                              { rsvp }
-  \.                              { rsvp }
+  \\                              { rsvp }
+  \-\>                            { rsvp }
+  \:                              { rsvp }
+  \:\:                            { rsvp }
+  \;                              { rsvp }
   \,                              { rsvp }
+  \.                              { rsvp }
+  \=                              { rsvp }
+  \_                              { rsvp }
+  \~                              { rsvp }
+  \*                              { rsvp }
+  \&                              { rsvp }
+
   \(                              { rsvp }
   \)                              { rsvp }
   \[                              { rsvp }
   \]                              { rsvp }
   \{                              { rsvp }
   \}                              { rsvp }
-  \-\>                            { rsvp }
-  \=\>                            { rsvp }
-  \:\=                            { rsvp }
-  \=                              { rsvp }
-  \<\-                            { rsvp }
-  \;                              { rsvp }
-  \:                              { rsvp }
-  \\                              { rsvp }
-  \@                              { rsvp }
+  \<                              { rsvp }
+  \>                              { rsvp }
 
   "Type"                          { rsvp }
+  "Void"                          { rsvp }
+  "I32"                           { rsvp }
 
   "module"                        { rsvp }
   "import"                        { rsvp }
 
-  "foreign"                       { rsvp }
-  "export"			                  { rsvp }
-  "ccall"                         { rsvp }
-  
-  "infix"                         { rsvp }
-  "infixl"                        { rsvp }
-  "infixr"                        { rsvp }
-
-  "data"                          { rsvp }
+  "type"                          { rsvp }
   "class"                         { rsvp }
   "impl"                          { rsvp }
 
-  "forall"                        { rsvp }
   "if"                            { rsvp }
   "elif"                          { rsvp }
   "else"                          { rsvp }
   "case"                          { rsvp }
+
+  "try"                           { rsvp }
+  "catch"                         { rsvp }
+  "finally"                       { rsvp }
+
+  "return"                        { rsvp }
+  "break"                         { rsvp }
+  "continue"                      { rsvp }
+
+  "do"                            { rsvp }
+  "while"                         { rsvp }
+  "for"                           { rsvp }
+
+  "foreign"                       { rsvp }
+  "export"			                  { rsvp }
+  "ccall"                         { rsvp }
+
+  "infix"                         { rsvp }
+  "infixl"                        { rsvp }
+  "infixr"                        { rsvp }
+
+  "let"                           { rsvp }
+  "static"                        { rsvp }
+  "inline"                        { rsvp }
+  "const"                         { rsvp }
+  "as"                            { rsvp }
+
+  "new"                           { rsvp }
+  "newer"                         { rsvp }
+  "delete"                        { rsvp }
 
   @primid                         { \text -> yieldTokAt (TokenPrimId text) text }
   @qconid                         { \text -> yieldTokAt (TokenQConId text) text }
@@ -135,7 +160,7 @@ hawk :-
   $digit* \. $digit+              { \text -> yieldTokAt (TokenDouble $ readDbl text) text }
   $digit+ \. $digit*              { \text -> yieldTokAt (TokenDouble $ readDbl text) text }
   
-  $digit+                         { \text -> yieldTokAt (TokenInteger $ readInt text) text }
+($digit)+                         { \text -> yieldTokAt (TokenInteger $ readInt text) text }
 }
 
 <stringSC> {

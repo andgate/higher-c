@@ -68,6 +68,11 @@ data TopLevel
   | TImport QName
   | TFunc Func
   | TopVar VarDecl
+  | TClass
+  | TImpl
+  | TTyDef
+  | TConstr
+  | TDestr
   deriving (Show)
 
 {-
@@ -99,9 +104,21 @@ data Arg
   = Arg Name (Maybe Type)
   deriving (Show)
 
-data VarDecl
-  = VarDecl Name (Maybe Type) (Maybe Exp)
+data LetBind
+  = LetBind1 Initializer (Maybe Type)
+  | LetBind2 Name (Maybe Type) (Maybe Exp)
   deriving (Show)
+
+data Initializer =
+  Initializer Name [Exp]
+
+data InitList = InitList [Initializer]
+
+data ConstrDef =
+  ConstrDef Name Args InitList Block
+
+data DestrDef =
+  DestrDef Name Args Block
 
 -- -----------------------------------------------------------------------------
 -- | Statement
@@ -111,9 +128,16 @@ data Block = Block [Stmt]
 
 data Stmt
   = SCall Exp [Exp]
-  | SDecl VarDecl
+  | SDecl LetBind
   | SAssign Exp (Maybe Type) Exp
+
+  | SBreak
+  | SContinue
   | SReturn Exp
+
+  | SDo Block
+  | SDoWhile Exp Block
+
   | SLoc Loc Stmt
   deriving (Show)
 
@@ -138,8 +162,14 @@ data Exp
 data Type
   = TVar Name
   | TCon Name
-  | TApp Type Type
+
+  | TApp Type [Type]
   | TArr Type Type
+
+  | TRef   Type
+  | TPtr   Type
+  | TConst Type
+
   | TKind Type Kind
   | TLoc Loc Type
   deriving (Show)

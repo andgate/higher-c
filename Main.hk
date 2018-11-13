@@ -1,13 +1,138 @@
-let x : I32 = 7
+type Array(x) {
+  Array(data: *x, size: I32);
+}
+
+Array(): data(Null), size(0)
+{ /* empty */ }
+
+Array(other: const &Array(x))
+  : data(new x[other.size])
+  , size(other.size)
+{
+  // we can use x as the type constructor
+  // New will look at x and determine its type.
+  // Since x is polymorphic, the type won't be
+  // determined until monomorphization.
+  data(new x[other.size]);
+  size(other.size);
+
+  for(int i = 0; i < size; ++i)
+  {
+    data[i] = other.data[i];
+  }
+}
+
+Array(other: &&Array(x))
+{
+  data(other.data);
+  size(other.size);
+
+  other.data = null;
+  other.size = 0;
+}
+
+~Array()
+{
+  delete(data, size);
+}
+
+
+class HasLength(f) {
+  getLength(item): const &f -> I32;
+}
+
+
+impl HasLength<x>(Array(x))
+{
+  getLength(arr) : const &Array x -> I32
+  {
+    return arr.size;
+  }
+}
+
+
+doStuff<HasLength a>(thingy: a) {
+  // do some stuff
+  var len := getLength(thingy);
+  // do more stuff
+  return;
+}
+
+
+let x : Int32 = 7;
+
+type Color {
+  Red();
+  Green();
+  Blue();
+}
+
+
+type RGB { RGB(r : I32, g : I32, b : I32); }
+
+RGB()
+{
+  // We can just change the fields
+  r = 0; g = 0; b = 0;
+}
+
+RGB(val other: &RGB)
+{
+  r = other.r;
+  g = other.g;
+  b = other.b;
+}
+
+RGB(var other: &&RGB)
+  : r(other.r)  // Initializer lists
+  , g(other.g)  // We can do this, becuase
+  , b(other.b)  // constructors are parsed differently from functions.
+{
+  other.r = 0;
+  other.g = 0;
+  other.b = 0;
+}
+
+RGB(val red: &I32, val green: &I32, val blue: &I32)
+{
+  r = red;
+  g = green;
+  b = blue;
+}
+
+~RGB() {}
+
+sayHello(name) : String -> Void
+{
+  print("Hello " + name);
+}
+
+class HasRGB(c) {
+  getValue(x) : c -> RGB;
+}
+
+impl HasRGB(Color) {
+  getValue(color) {
+    case(color) {
+    Red()   { return RGB(255,   0,   0); }
+    Green() { return RGB(  0, 255,   0); }
+    Blue()  { return RGB(  0,   0, 255); }
+    }
+  }
+}
 
 add2(x) : Int -> Int {
   return add x 2;
 }
 
+five : I32 {
+  return 5;
+}
+
 module Foo
 {
-//  add3 x : Int -> Int { return add x 3; }
-  add3 x { return add x 3; }
+//  add3(x) : Int -> Int { return add x 3; }
+  add3(x) { return add x 3; }
 }
 
 /*
@@ -31,7 +156,7 @@ mapList(f xs): List l => forall a b. (a -> b) -> Ptr (l a) -> l b
 }
 */
 
-main: Int
+main(): Int
 {
   return add2(2);
 }

@@ -18,13 +18,17 @@ import Language.Hawk.Syntax.Location
 
 %token
   backslash          { Token (TokenRsvp "\\") _ $$ }
+  rarrow             { Token (TokenRsvp "->") _ $$ }
   ':'                { Token (TokenRsvp ":") _ $$ }
+  '::'               { Token (TokenRsvp "::") _ $$ }
   ';'                { Token (TokenRsvp ";") _ $$ }
   ','                { Token (TokenRsvp ",") _ $$ }
-  '='                { Token (TokenRsvp "=") _ $$ }
-  lambda             { Token (TokenRsvp "λ") _ $$ }
   '.'                { Token (TokenRsvp ".") _ $$ }
+  '='                { Token (TokenRsvp "=") _ $$ }
   '_'                { Token (TokenRsvp "_") _ $$ }
+  '~'                { Token (TokenRsvp "~") _ $$ }
+  '*'                { Token (TokenRsvp "*") _ $$ }
+  '&'                { Token (TokenRsvp "&") _ $$ }
 
   '('                { Token (TokenRsvp "(") _ $$ }
   ')'                { Token (TokenRsvp ")") _ $$ }
@@ -32,15 +36,47 @@ import Language.Hawk.Syntax.Location
   ']'                { Token (TokenRsvp "]") _ $$ }
   '{'                { Token (TokenRsvp "{") _ $$ }
   '}'                { Token (TokenRsvp "}") _ $$ }
+  '<'                { Token (TokenRsvp "<") _ $$ }
+  '>'                { Token (TokenRsvp ">") _ $$ }
+
+  Type               { Token (TokenRsvp "Type") _ $$ }
+  Void               { Token (TokenRsvp "Void") _ $$ }
+  I32                { Token (TokenRsvp "I32" ) _ $$ }
+
+  let                { Token (TokenRsvp "let"   ) _ $$ }
+  static             { Token (TokenRsvp "static") _ $$ }
+  inline             { Token (TokenRsvp "inline") _ $$ }
+  const              { Token (TokenRsvp "const" ) _ $$ }
+  as                 { Token (TokenRsvp "as"    ) _ $$ }
+
+  new                { Token (TokenRsvp "new"  ) _ $$ }
+  newer              { Token (TokenRsvp "newer") _ $$ }
+  delete             { Token (TokenRsvp "delete) _ $$ }
 
   module             { Token (TokenRsvp "module") _ $$ }
   import             { Token (TokenRsvp "import") _ $$ }
-  data               { Token (TokenRsvp "data"  ) _ $$ }
+
+  type               { Token (TokenRsvp "type" ) _ $$ }
+  class              { Token (TokenRsvp "class") _ $$ }
+  impl               { Token (TokenRsvp "impl" ) _ $$ }
+
+  if                 { Token (TokenRsvp "if"  ) _ $$ }
+  else               { Token (TokenRsvp "else") _ $$ }
+  elif               { Token (TokenRsvp "elif") _ $$ }
+  case               { Token (TokenRsvp "case") _ $$ }
+
+  try                { Token (TokenRsvp "try"    ) _ $$ }
+  catch              { Token (TokenRsvp "catch"  ) _ $$ }
+  finally            { Token (TokenRsvp "finally") _ $$ }
 
   return             { Token (TokenRsvp "return") _ $$ }
-  let                { Token (TokenRsvp "let")  _ $$ }
-  in                 { Token (TokenRsvp "in")   _ $$ }
-  where              { Token (TokenRsvp "where") _ $$ }
+  break              { Token (TokenRsvp "break" ) _ $$ }
+  continue           { Token (TokenRsvp "continue") _ $$ }
+
+  do                 { Token (TokenRsvp "do") _ $$ }
+  while              { Token (TokenRsvp "while") _ $$ }
+  for                { Token (TokenRsvp "for") _ $$ }
+
 
   varId              { Token (TokenVarId  _) _ _ }
   conId              { Token (TokenConId  _) _ _ }
@@ -68,6 +104,7 @@ TopLevels : TopLevel { [$1] }
 
 TopLevel : ModDecl { $1 }
          | Func { TFunc $1 }
+         | VarDecl {
 
 ModDecl : module ModName TopLevelBlock { TMod $2 $3 }
 
@@ -143,8 +180,13 @@ Exp : VarId { mkVar $1 }
     | ConId { mkCon $1 }
     | Value { mkVal $1 }
 
-Type : VarId { mkTVar $1 }
-     | ConId { mkTCon $1 }
+Type : Type2 { $1 }
+
+Type2 : '*' Type1 { }
+      | '&' Type1 {}
+
+Type1 : VarId { mkTVar $1 }
+      | ConId { mkTCon $1 }
 
 {
 parseError :: [Token] -> a
