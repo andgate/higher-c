@@ -22,6 +22,14 @@ Array ( other: (Const Ref Array)(x) )
   }
 }
 
+Array ( initialSize: I32 )
+  : data(new x[initialSize])
+  | size(initialSize)
+{
+  for (int i = 0; i < initialSize; ++i)
+    data[i] = 0;
+}
+
 Array ( other: (RVal Array)(x) )
 {
   data(other.data);
@@ -31,7 +39,7 @@ Array ( other: (RVal Array)(x) )
   othe.rsize = 0;
 }
 
-Array ( data: Ptr(x), size: Const Ref (I32) )
+Array ( data: Ptr(x), size: Const+Ref(I32) )
   : data(null), size(size)
 {
   for (i = 0; i < size; ++i)
@@ -78,71 +86,9 @@ doStuff<HasLength a>(thingy: a) {
   return;
 }
 
-
-let x : Int32 = 7;
-
-type Color {
-  Red();
-  Green();
-  Blue();
-}
-
-
-type RGB { RGB(r : I32, g : I32, b : I32); }
-
-RGB()
-{
-  // We can just change the fields
-  r = 0; g = 0; b = 0;
-}
-
-RGB(val other: &RGB)
-{
-  r = other.r;
-  g = other.g;
-  b = other.b;
-}
-
-RGB(var other: &&RGB)
-  : r(other.r)  // Initializer lists
-  , g(other.g)  // We can do this, becuase
-  , b(other.b)  // constructors are parsed differently from functions.
-{
-  other.r = 0;
-  other.g = 0;
-  other.b = 0;
-}
-
-RGB(val red: &I32, val green: &I32, val blue: &I32)
-{
-  r = red;
-  g = green;
-  b = blue;
-}
-
-~RGB() {}
-
-sayHello(name) : String -> Void
-{
-  print("Hello " + name);
-}
-
-class HasRGB(c) {
-  getValue(x) : c -> RGB;
-}
-
-impl HasRGB(Color) {
-  getValue(color) {
-    case(color) {
-    Red()   { return RGB(255,   0,   0); }
-    Green() { return RGB(  0, 255,   0); }
-    Blue()  { return RGB(  0,   0, 255); }
-    }
-  }
-}
-
 main(): Int
 {
-  let a = Arr(
-  return add2(2);
+  let a(): Arr(I32);
+  doStuff(a);
+  return 0;
 }
