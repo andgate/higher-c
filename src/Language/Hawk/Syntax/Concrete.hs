@@ -71,8 +71,8 @@ data TopLevelStmt
   | TDecl Decl
   | TFuncDefn FuncDefn
   | TTypeDefn
-  | TConstr
-  | TDestr
+  | TCtor  CtorDefn
+  | TDtor  DtorDefn
   | TClass
   | TImpl
   deriving (Show)
@@ -136,13 +136,13 @@ data Parameter
 -- | Constructor/Destructor Definitions
 
 data CtorDefn =
-  CtorDefn Name Scheme Args InitList Block
+  CtorDefn Name Scheme Parameters InitList Block
 
 data InitList =
   InitList [Initializer]
 
 data DtorDefn =
-  DtorDefn Name Scheme Args Block
+  DtorDefn Name Scheme Parameters Block
 
 
 -- -----------------------------------------------------------------------------

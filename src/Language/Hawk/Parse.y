@@ -93,6 +93,11 @@ import qualified Data.Set as Set
   string             { Token (TokenString  _) _ _ }
   boolean            { Token (TokenBool    _) _ _ }
 
+
+%nonassoc IFX
+%nonassoc Elif
+%nonassoc Else
+
 %%
 
 -- -----------------------------------------------------------------------------
@@ -124,17 +129,19 @@ top_level_stmts0
   : {- empty -}     { [] }
   | top_level_stmts { $1 }
 
-top_level_stmts : top_level_stmts { reverse $1 }
+top_level_stmts : top_level_stmts_r { reverse $1 }
 
 top_level_stmts_r
-  : top_level { [$1] }
+  : top_level_stmt { [$1] }
   | top_level_stmts_r top_level_stmt { $2 : $1 }
 
 top_level_stmt
-  : module_defn   { TModule $1 }
-  | import_stmt   { TImport $1 }
-  | declaration   { TDecl $1 }
-  | function_defn { TFuncDefn $1 }
+  : module_defn      { TModule $1 }
+  | import_stmt      { TImport $1 }
+  | declaration      { TDecl $1 }
+  | function_defn    { TFuncDefn $1 }
+  | constructor_defn { TCtorDefn $1 }
+  | destructor_defn  { TDtorDefn $1 }
 
 
 -- -----------------------------------------------------------------------------
@@ -161,20 +168,13 @@ import_stmt : Import mod_path ';' { Import $2 }
 
 -- Let-bound variable declarations
 declaration
-  : declaration_1 { $1 }
-  | declaration_2 { $1 }
+  : decl_head maybe_type_annot ';'                   { Decl2 (Init $1 []) $2 }
+  | decl_head maybe_type_annot '=' exp ';'           { Decl1 $1 $2 $4 }
+  | decl_head '(' exp_args0 ')' maybe_type_annot ';' { Decl2 (Init $1 $3) $5 }
 
 -- Two kinds of declarations
-declaration_1
-  : Let name maybe_type_annot '=' exp ';' { Decl1 ($1 <> $6) $2 $3 $5 }
-
-declaration_2
-  : Let initializer maybe_type_annot ';' { Decl2 ($1 <> $4) $2 $3 }
-
--- Helpers
-initializer
-  : name                  { Init $1 [] }
-  | name '(' exp_args0 ')' { Init $1 $3 }
+decl_head
+  : Let name  { $2 }
 
 maybe_type_annot
   : {- empty -} { Nothing }
@@ -220,6 +220,26 @@ parameter
   : var_name maybe_type_annot { Parameter $1 $2 }
 
 
+-- -----------------------------------------------------------------------------
+-- | Constructor and Destructor Definitions
+
+constructor_defn :
+  con_name '(' parameters0 ')' maybe_init_list block { CtorDefn $1 mempty $3 $4 $5 }
+
+destructor_defn :
+  '~' con_name '(' parameters0 ')' block { DtorDefn $2 $4 $6 }
+
+maybe_init_list
+  : {- empty -}   { [] }
+  | ':' init_list { $2 }
+
+init_list : init_list_r { reverse $1 }
+init_list_r
+  : initializer                 { [$1] }
+  | init_list_r ',' initializer { $3 : $1 }
+
+initializer
+  : name '(' exp_args0 ')' { Init $1 $3 }
 
 -- -----------------------------------------------------------------------------
 -- | Statements
@@ -237,6 +257,8 @@ stmt : stmt_decl     { $1 }
 
 
 
+
+
 block : '{' '}'       { Block [] }
       | '{' stmts '}' { Block $2 }
 
@@ -247,7 +269,7 @@ stmts_r
   | stmts_r stmt { $2 : $1 }
 
 
-stmt_decl : stmt_decl_specs0 declaration { SDecl $1 }
+stmt_decl : stmt_decl_specs0 declaration { SDecl $1 $2 }
 
 stmt_decl_specs0
   : {- empty -}     { Set.empty }
@@ -272,16 +294,20 @@ stmt_return   : Return exp ';' { SReturn $2 }
 
 
 stmt_if
-  : If '(' exp ')' stmt maybe_else { SIf $3 $5 $6 }
+  : If '(' exp ')' stmt %prec IFX { EIf $3 $5 Nothing }
+  | If '(' exp ')' stmt stmt_elif { EIf $3 $5 (Just $6) }
+  | If '(' exp ')' stmt stmt_else { EIf $3 $5 (Just $6) }
 
 maybe_else
   : {- empty -} { Nothing }
-  | stmt_elif   { Just $1 }
-  | stmt_else   { Just $1 }
+  | stmt_elif   { $1 }
+  | stmt_else   { $1 }
 
 
 stmt_elif
-  : Elif '(' exp ')' stmt maybe_else { SIf $3 $5 $6 }
+  : Elif '(' exp ')' stmt %prec IFX { EIf $3 $5 Nothing }
+  | Elif '(' exp ')' stmt stmt_elif { EIf $3 $5 (Just $6) }
+  | Elif '(' exp ')' stmt stmt_else { EIf $3 $5 (Just $6) }
 
 stmt_else
   : Else stmt { $2 }
@@ -295,9 +321,9 @@ stmt_do_while
 
 
 stmt_for
-  : For '(' stmt_for_init maybe_exp ';' maybe_exp ')' stmt { SFor $3 $4 $6 $7 }
+  : For '(' for_init maybe_exp ';' maybe_exp ')' stmt { SFor $3 $4 $6 $7 }
 
-stmt_for_init
+for_init
   : maybe_exp ';'         { Left $1 }
   | declaration           { Right $1 }
 
@@ -312,13 +338,13 @@ maybe_exp
 exp : cexp { $1 }
 
 cexp
-  : bexp { $1 }
-  | bexp ':' type { EType $1 $3 }
+  : bexp ':' type { EType $1 $3 }
+  | bexp { $1 }
 
 bexp
-  : aexp { $1 }
-  | bexp '(' exp_args0 ')' { ECall $1 $3 }
+  : bexp '(' exp_args0 ')' { ECall $1 $3 }
   | bexp '.' name          { EMember $1 $3 }
+  | aexp { $1 }
 
 aexp : exp_var    { $1 }
      | exp_con    { $1 }
@@ -348,11 +374,15 @@ exp_args_r
 -- -----------------------------------------------------------------------------
 -- | Types
 
-type : ctype { $1}
+type : dtype { $1 }
+
+dtype
+  : ctype            { $1 }
+  | ctype kind_annot { TKind $1 $2 }
 
 ctype
   : btype { $1 }
-  | ctype '->' btype { TArr $1 $3 }
+  | btype '->' ctype { TArr $1 $3 }
 
 btype
   : atype { $1 }
@@ -371,6 +401,17 @@ atype : var_id        { mkTVar $1 }
 
 -- -----------------------------------------------------------------------------
 -- | Kinds
+
+kind
+  : akind           { $1 }
+  | kind '->' akind { KArr $1 $3 }
+
+
+akind : TYPE { KType }
+
+kind_annot
+  : ':' kind { $2 }
+
 
 {
 parseError :: [Token] -> a
