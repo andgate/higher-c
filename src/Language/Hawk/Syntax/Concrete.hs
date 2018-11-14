@@ -22,10 +22,12 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Data.Text (Text, pack)
 import Data.Text.Prettyprint.Doc
 import Data.Maybe
+import Data.Set (Set)
 
 
 import qualified Data.List.NonEmpty as NE
-import qualified Data.Text as T
+import qualified Data.Set           as S
+import qualified Data.Text          as T
 
 -- -----------------------------------------------------------------------------
 -- | Names
@@ -60,19 +62,19 @@ mkQName (L l n) = case T.splitOn "." n of
 -- -----------------------------------------------------------------------------
 -- | Toplevel Constructs
 
-data Src = Src FilePath [TopLevel]
-
-
 data TopLevel
-  = TMod QName [TopLevel]
-  | TImport QName
-  | TFunc Func
-  | TopVar VarDecl
-  | TClass
-  | TImpl
-  | TTyDef
+  = TopLevel [TopLevelStmt]
+
+data TopLevelStmt
+  = TModule Module
+  | TImport Import
+  | TDecl Decl
+  | TFuncDefn FuncDefn
+  | TTypeDefn
   | TConstr
   | TDestr
+  | TClass
+  | TImpl
   deriving (Show)
 
 {-
@@ -84,63 +86,93 @@ data TopLevel
   | TopLevelFixityDef   Fixity
 -}
 
+-- -----------------------------------------------------------------------------
+-- | Module
+
+data Module =
+  Module Loc ModulePath ModuleBlock
+
+data ModulePath =
+  MPath [Name]
+
+data ModuleBlock =
+  MBlock [TopLevelStmt]
+
+data Import =
+  Import ModulePath
 
 -- -----------------------------------------------------------------------------
--- | Function
+-- | Declaration
 
-data Func
-  = Func FuncDecl Block
-  deriving (Show)
-
-data FuncDecl
-  = FuncDecl Name Args (Maybe Type)
-  deriving (Show)
-
-
-data Args = Args [Arg]
-  deriving (Show)
-
-data Arg
-  = Arg Name (Maybe Type)
-  deriving (Show)
-
-data LetBind
-  = LetBind1 Initializer (Maybe Type)
-  | LetBind2 Name (Maybe Type) (Maybe Exp)
+data Decl
+  = Decl1 Loc Name (Maybe Type) Exp
+  | Decl2 Loc Initializer (Maybe Type)
   deriving (Show)
 
 data Initializer =
-  Initializer Name [Exp]
+  Init Name [Exp]
 
-data InitList = InitList [Initializer]
 
-data ConstrDef =
-  ConstrDef Name Args InitList Block
+-- -----------------------------------------------------------------------------
+-- | Function Definition
 
-data DestrDef =
-  DestrDef Name Args Block
+data FuncDefn
+  = FuncDefn (Set FuncSpec) FuncDecl Block
+
+data FuncSpec
+  = InlineFunc
+  | RecursiveFunc
+
+data FuncDecl
+  = FuncDecl Name Scheme Args (Maybe Type)
+
+data Parameters = Parameterss [Parameter]
+
+data Parameter
+  = Parameter Name (Maybe Type)
+
+
+-- -----------------------------------------------------------------------------
+-- | Constructor/Destructor Definitions
+
+data CtorDefn =
+  CtorDefn Name Scheme Args InitList Block
+
+data InitList =
+  InitList [Initializer]
+
+data DtorDefn =
+  DtorDefn Name Scheme Args Block
+
 
 -- -----------------------------------------------------------------------------
 -- | Statement
 
 data Block = Block [Stmt]
-  deriving (Show)
 
 data Stmt
-  = SCall Exp [Exp]
-  | SDecl LetBind
-  | SAssign Exp (Maybe Type) Exp
+  = SExp Loc (Maybe Exp)
+  | SDecl Loc (Set SDeclSpec) Decl
 
-  | SBreak
-  | SContinue
-  | SReturn Exp
+  | SBlock Loc Block
+  | SWith Loc Exp Stmt
 
-  | SDo Block
-  | SDoWhile Exp Block
+  | SBreak Loc
+  | SContinue Loc
+  | SReturn Loc Exp
 
-  | SLoc Loc Stmt
-  deriving (Show)
+  | SIf Loc Exp Stmt (Maybe Stmt)
 
+  | SWhile Loc Exp Stmt
+  | SDoWhile Loc Stmt Exp
+
+  | SFor Loc (Either (Maybe Exp) Decl) (Maybe Exp) (Maybe Exp) Stmt
+
+-- | SCase -- Locked until patterns are figured out
+
+
+data SDeclSpec
+  = StaticDecl
 
 -- -----------------------------------------------------------------------------
 -- | Expression
@@ -150,11 +182,12 @@ data Exp
   | ECon Name
   | EVal Val
   | EInstr Instr Exp Exp
-  | ECall Name [Exp]
+  | EMember Exp Name
+  | ECall Exp [Exp]
+
+  | EParens Exp
   | EType Exp Type
   | ELoc Loc Exp
-  deriving (Show)
-
 
 -- -----------------------------------------------------------------------------
 -- | Type and Kind
@@ -170,16 +203,36 @@ data Type
   | TPtr   Type
   | TConst Type
 
+  | TParens Type
   | TKind Type Kind
   | TLoc Loc Type
-  deriving (Show)
+
 
 data Kind
   = KType
   | KArr Kind Kind
-  | KLoc Loc Kind
-  deriving (Show)
+  | KLoc Loc  Kind
 
+
+-- -----------------------------------------------------------------------------
+-- | Type Scheme
+
+data Scheme =
+  Scheme [Pred]
+
+data Pred
+  = Forall Name
+  | IsIn Name (NonEmpty Type)
+
+
+instance Semigroup Scheme where
+  (<>) (Scheme p1) (Scheme p2) = Scheme (p1 <> p2)
+
+instance Monoid Scheme where
+  mempty = Scheme mempty
+
+-- -----------------------------------------------------------------------------
+-- | Smart Constructors
 
 mkVar :: L Text -> Exp
 mkVar i@(L l n) = ELoc l (EVar (mkName i))

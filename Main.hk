@@ -1,11 +1,11 @@
 type Array(x) {
-  Array(data: *x, size: I32);
+  Array(data: *x, size: I32, cap: I32);
 }
 
 Array(): data(Null), size(0)
 { /* empty */ }
 
-Array(other: const &Array(x))
+Array ( other: (Const Ref Array)(x) )
   : data(new x[other.size])
   , size(other.size)
 {
@@ -22,18 +22,38 @@ Array(other: const &Array(x))
   }
 }
 
-Array(other: &&Array(x))
+Array ( other: (RVal Array)(x) )
 {
   data(other.data);
   size(other.size);
 
   other.data = null;
-  other.size = 0;
+  othe.rsize = 0;
+}
+
+Array ( data: Ptr(x), size: Const Ref (I32) )
+  : data(null), size(size)
+{
+  for (i = 0; i < size; ++i)
+  {
+    this.data[i] = data[i];
+  }
 }
 
 ~Array()
 {
   delete(data, size);
+}
+
+append<x>(array: Array(x), elem: x)
+{
+  if (array.length >= array.capacity)
+     array.resize(capacity*2);
+
+  with (array) {
+    data[size] = x;
+    ++size;
+  }
 }
 
 
@@ -53,7 +73,7 @@ impl HasLength<x>(Array(x))
 
 doStuff<HasLength a>(thingy: a) {
   // do some stuff
-  var len := getLength(thingy);
+  let len = getLength(thingy);
   // do more stuff
   return;
 }
@@ -121,42 +141,8 @@ impl HasRGB(Color) {
   }
 }
 
-add2(x) : Int -> Int {
-  return add x 2;
-}
-
-five : I32 {
-  return 5;
-}
-
-module Foo
-{
-//  add3(x) : Int -> Int { return add x 3; }
-  add3(x) { return add x 3; }
-}
-
-/*
-class List (l : * -> *)
-{
-  length: l a -> int;
-  copy: l a -> l a;
-  get: forall a. I32 -> l a -> a;
-  set: forall a. I32 -> l a -> a -> Void;
-  update: forall a b. I32 -> (a -> b) -> &(l a) -> Void;
-}
-
-
-mapList(f xs): List l => forall a b. (a -> b) -> Ptr (l a) -> l b 
-{
-  let ys = copy xs;
-  for(int i = 0; i < length l; inc i)
-    ys.update( i, f );
-
-  return ys;
-}
-*/
-
 main(): Int
 {
+  let a = Arr(
   return add2(2);
 }

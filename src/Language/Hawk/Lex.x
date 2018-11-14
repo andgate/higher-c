@@ -129,6 +129,7 @@ hawk :-
   "break"                         { rsvp }
   "continue"                      { rsvp }
 
+  "with"                          { rsvp }
   "do"                            { rsvp }
   "while"                         { rsvp }
   "for"                           { rsvp }
@@ -144,7 +145,6 @@ hawk :-
   "let"                           { rsvp }
   "static"                        { rsvp }
   "inline"                        { rsvp }
-  "const"                         { rsvp }
   "as"                            { rsvp }
 
   "new"                           { rsvp }
@@ -152,15 +152,13 @@ hawk :-
   "delete"                        { rsvp }
 
   @primid                         { \text -> yieldTokAt (TokenPrimId text) text }
-  @qconid                         { \text -> yieldTokAt (TokenQConId text) text }
-  @qvarid                         { \text -> yieldTokAt (TokenQVarId text) text }
   @conid                          { \text -> yieldTokAt (TokenConId  text) text }
   @varid                          { \text -> yieldTokAt (TokenVarId text) text }
 
   $digit* \. $digit+              { \text -> yieldTokAt (TokenDouble $ readDbl text) text }
   $digit+ \. $digit*              { \text -> yieldTokAt (TokenDouble $ readDbl text) text }
   
-($digit)+                         { \text -> yieldTokAt (TokenInteger $ readInt text) text }
+  ($digit)+                       { \text -> yieldTokAt (TokenInteger $ readInt text) text }
 }
 
 <stringSC> {
