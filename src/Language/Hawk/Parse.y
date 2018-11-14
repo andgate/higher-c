@@ -298,12 +298,6 @@ stmt_if
   | If '(' exp ')' stmt stmt_elif { EIf $3 $5 (Just $6) }
   | If '(' exp ')' stmt stmt_else { EIf $3 $5 (Just $6) }
 
-maybe_else
-  : {- empty -} { Nothing }
-  | stmt_elif   { $1 }
-  | stmt_else   { $1 }
-
-
 stmt_elif
   : Elif '(' exp ')' stmt %prec IFX { EIf $3 $5 Nothing }
   | Elif '(' exp ')' stmt stmt_elif { EIf $3 $5 (Just $6) }

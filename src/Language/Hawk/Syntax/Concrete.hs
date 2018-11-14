@@ -26,7 +26,7 @@ import Data.Set (Set)
 
 
 import qualified Data.List.NonEmpty as NE
-import qualified Data.Set           as S
+import qualified Data.Set           as Set
 import qualified Data.Text          as T
 
 -- -----------------------------------------------------------------------------
@@ -70,9 +70,9 @@ data TopLevelStmt
   | TImport Import
   | TDecl Decl
   | TFuncDefn FuncDefn
-  | TTypeDefn
   | TCtor  CtorDefn
   | TDtor  DtorDefn
+  | TTypeDefn
   | TClass
   | TImpl
   deriving (Show)
@@ -124,9 +124,9 @@ data FuncSpec
   | RecursiveFunc
 
 data FuncDecl
-  = FuncDecl Name Scheme Args (Maybe Type)
+  = FuncDecl Name Scheme Parameters (Maybe Type)
 
-data Parameters = Parameterss [Parameter]
+data Parameters = Parameters [Parameter]
 
 data Parameter
   = Parameter Name (Maybe Type)
@@ -370,46 +370,115 @@ instance Pretty QName where
     where ns' = reverse (n:ns)
 
 
-instance Pretty Src where
-  pretty (Src fp tls) =
-    vcat [ "filename:" <+> pretty fp
-         , vcat $ fmap pretty tls
+instance Pretty TopLevel where
+  pretty (TopLevel stmts) =
+    vcat (pretty <$> stmts)
+
+instance Pretty TopLevelStmt where
+  pretty = \case
+    TModule mpath mblk -> "module" <+> pretty mpath <+> pretty mblock
+    TImport i -> pretty i
+
+    TDecl decl -> pretty decl
+    TFuncDefn fn   -> pretty fn
+
+    TCtor ctor -> pretty ctor
+    TDtor dtor -> pretty dtor
+
+    _ -> error "Undefined top level statement encountered"
+
+
+instance Pretty Import where
+  pretty (Import mpath) =
+    "import" <+> pretty mpath <> ";"
+
+instance Pretty ModuleBlock where
+  pretty (MBlock stmts) =
+    vcat [ "{"
+         , indent 4 (vsep $ fmap pretty stmts)
+         , "}"
          ]
 
-instance Pretty TopLevel where
+instance Pretty ModulePath where
+  pretty (MPath ns) =
+    concatWith (surround dot) [pretty n | n <- ns]
+
+instance Pretty Decl where
   pretty = \case
-    TMod n tls -> vcat [ "module" <+> pretty n <+> "{"
-                       , indent 4 (vsep $ fmap pretty tls)
-                       , "}"
-                       ]
+    Decl1 l n Nothing   body -> "let" <+> pretty n <+> "=" <+> pretty body <> ";"
+    Decl1 l n (Just ty) body -> "let" <+> pretty n <> ":" <+> pretty ty <+> "=" <+> pretty body <> ";"
 
-    TImport n -> pretty n
-    TFunc f   -> pretty f
+    Decl2 l init Nothing   -> "let" <+> pretty init <> ";"
+    Decl2 l init (Just ty) -> "let" <+> pretty init <> ":" <+> pretty ty ";"
 
 
-
-instance Pretty Func where
-  pretty (Func (FuncDecl n args Nothing) body) =
-    pretty n <+> pretty args <+> pretty body
-
-  pretty (Func (FuncDecl n args (Just ty)) body) =
-    pretty n <+> pretty args <+> ":" <+> pretty ty <+> pretty body
+instance Pretty Initializer where
+  pretty (Init n []) = pretty n
+  pretty (Init n es) =
+    pretty n <> tupled [pretty e | e <- es]
 
 
-instance Pretty Args where
-  pretty (Args args) =
+instance Pretty FuncDefn where
+  pretty (FuncDefn specs fdecl blk)
+    | Set.null specs
+      = vcat [ pretty fdecl
+             , pretty blk
+             ]
+
+    | otherwise
+      = let pretty_specs = hcat (pretty <$> (Set.toList specs))
+        in vcat [ pretty_specs <+> pretty fdecl
+                , pretty blk
+                ]
+
+
+instance Pretty FuncSpec where
+  pretty = \case
+    InlineFunc    -> "inline"
+    RecursiveFunc -> "rec"
+
+
+instance Pretty FuncDecl where
+  pretty (FuncDecl n scheme params Nothing)
+    = pretty n <> pretty scheme <> pretty params
+  pretty (FuncDecl n scheme params (Just typ))
+    = pretty n <> pretty scheme <> pretty params <> ":" <+> typ
+
+instance Pretty Parameters where
+  pretty (Parameter args) =
     tupled (pretty <$> args)
 
+instance Pretty Parameter where
+  pretty (Parameter n mtyp) =
+    case mtyp of
+      Nothing  -> pretty n
+      Just typ -> pretty n <> ":" <+> pretty typ
 
-instance Pretty Arg where
-  pretty (Arg n Nothing) = pretty n
-  pretty (Arg n (Just ty)) = pretty n <+> colon <+> pretty ty
+
+
+instance Pretty CtorDefn where
+  pretty (CtorDefn n scheme params inits blk)
+    = vcat [ pretty n <> pretty scheme <> pretty params
+           , indent 2 (pretty inits)
+           , pretty blk
+           ]
+
+instance Pretty InitList where
+  pretty (InitList inits) = ":" <+> hsep (punctuate "," (pretty <$> inits))
+
+
+
+instance Pretty DtorDefn where
+  pretty (DtorDefn n scheme params blk)
+    = vcat [ "~" <> pretty n <> pretty scheme <> pretty params
+           , pretty blk
+           ]
 
 
 instance Pretty Block where
   pretty (Block stmts) =
     vsep [ lbrace
-         , indent 4 (vsep [ s <+> semi | s <- fmap pretty stmts])
+         , indent 4 (vsep $ fmap pretty stmts)
          , rbrace
          ]
 
@@ -433,6 +502,17 @@ instance Pretty Exp where
 instance Pretty Type where
     pretty = \case
       TVar n -> pretty n
+
+
+instance Pretty Scheme where
+  pretty = \case
+    Scheme    [] -> mempty
+    Scheme preds -> encloseSep "<" ">" "," (pretty <$> preds)
+
+instance Pretty Pred where
+  pretty = \case
+    Forall n   -> pretty n
+    IsIn n tys -> pretty n <+> hcat (pretty <$> NE.toList tys)
 
 {-
 instance Pretty DataDef where
