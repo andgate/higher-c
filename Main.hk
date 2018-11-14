@@ -1,21 +1,23 @@
-type Array(x) {
-  Array(data: *x, size: I32, cap: I32);
+type REF(a) = Const(Ref(a));
+
+type Array(x : Type) {
+  Array( data: Ptr(x)
+       , size: I32
+       , cap: I32
+       );
 }
 
-Array(): data(Null), size(0)
-{ /* empty */ }
+Array()
+  : data(Null)
+  , size(0)
+  , cap(0);
+{}
 
-Array ( other: (Const Ref Array)(x) )
+
+Array ( other: REF(Array(x)) )
   : data(new x[other.size])
   , size(other.size)
 {
-  // we can use x as the type constructor
-  // New will look at x and determine its type.
-  // Since x is polymorphic, the type won't be
-  // determined until monomorphization.
-  data(new x[other.size]);
-  size(other.size);
-
   for(int i = 0; i < size; ++i)
   {
     data[i] = other.data[i];
@@ -30,7 +32,7 @@ Array ( initialSize: I32 )
     data[i] = 0;
 }
 
-Array ( other: (RVal Array)(x) )
+Array ( other: RVal(Array(x)) )
 {
   data(other.data);
   size(other.size);
@@ -39,8 +41,8 @@ Array ( other: (RVal Array)(x) )
   othe.rsize = 0;
 }
 
-Array ( data: Ptr(x), size: Const+Ref(I32) )
-  : data(null), size(size)
+Array ( data: REF(x), size: Const(I32) )
+  : data(new x[size]), size(size), capacity(size)
 {
   for (i = 0; i < size; ++i)
   {
@@ -65,16 +67,49 @@ append<x>(array: Array(x), elem: x)
 }
 
 
-class HasLength(f) {
-  getLength(item): const &f -> I32;
+class GetLength(f) {
+  getLength(item: REF(f)): I32;
+}
+
+class SetLength(f) {
+  setLength(thing: Ref(f)): Ref(f); 
 }
 
 
-impl HasLength<x>(Array(x))
+impl GetLength<x>(Array(x))
 {
-  getLength(arr) : const &Array x -> I32
+  length(arr: REF(Array(x)) -> I32
   {
     return arr.size;
+  }
+}
+
+impl SetLength<x>(Array(x))
+{
+  length(arr: Ref(Array(x), newLength: Const(I32)): Ref(Array(x))
+  {
+    // Newer allows arrays to resize intelligently.
+    // Basically accepts a pointer and reallocs.
+    // This will result in a new array.
+    // Any given ptr might be invalidated.
+    // If the resize is efficient, the array boundary will
+    // simply grow.
+    newer arr.data [newLength];
+    arr.size = newLength;
+    arr.cap = newLength;
+  }
+}
+
+class Sortable(f : Type -> Type)
+{
+  sort<a>( container: Ref(f(a)) ): Ref(f(a)) -> Ref(f(a)); 
+}
+
+impl Sortable<x>(Array(x))
+{
+  sort(container) // optional : Ref(Array(x))
+  {
+    /* Implement quicksort or something */
   }
 }
 
@@ -88,7 +123,7 @@ doStuff<HasLength a>(thingy: a) {
 
 main(): Int
 {
-  let a(): Arr(I32);
-  doStuff(a);
+  let foo([1, 2, 3], 3): Arr(I32);
+  doStuff(foo);
   return 0;
 }
