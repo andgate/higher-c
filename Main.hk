@@ -114,16 +114,90 @@ impl Sortable<x>(Array(x))
 }
 
 
-doStuff<HasLength a>(thingy: a) {
+doStuff<HasLength(a)>(thingy: a) {
   // do some stuff
   let len = getLength(thingy);
   // do more stuff
   return;
 }
 
-main(): Int
+
+// Algebra!
+
+class Category(c)
 {
-  let foo([1, 2, 3], 3): Arr(I32);
+  compose(a: c, b: c): c;
+}
+
+class Semigroup(m)
+{
+  mappend(a: Const(m), b: Const(m)): m;
+}
+
+class Monoid<Semigroup m>(m)
+{
+  mempty(): m;
+}
+
+class Functor(f: Type -> Type)
+{
+  fmap<a,b>(f: REF(a) -> b, x: REF(f( Const(a) )) ): f(b);
+}
+
+
+// We can have a maybe type
+
+type Maybe(x)
+{
+  Nothing();
+  Just(x);
+}
+
+
+// And we can write Maybe to act algebraically.
+impl Semigroup<Semigroup x>(Maybe(x))
+{
+  mappend(a, b)
+  {
+    case(a, b) {
+      Nothing(), _ {
+        return b;
+      Just(_), Nothing() {
+        return a;
+      }
+      Just(x), Just(y) {
+        return Just(x<>y);
+      }
+    }
+  }
+}
+
+impl Monoid<Monoid x>(Maybe(x))
+{
+  mempty() { return Just(mempty()); }
+}
+
+
+// Functors are easily expressible
+impl Functor(Maybe(x))
+{
+  fmap(f, m)
+  {
+    case(m) {
+      Nothing()
+        return Nothing();
+      Just(x)
+        return Just(f(x)); 
+    }
+  }
+}
+
+/* Simple main function */
+main(): I32
+{
+  let foo([2, 3, 100, 4, 7], 5): Arr(I32);
   doStuff(foo);
+
+  foo.sort();
   return 0;
 }
