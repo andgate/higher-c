@@ -1,5 +1,5 @@
 
-# Hawk Language Reference
+# Higher-C Language Reference
 
 ## Table of Contents
 
@@ -7,4 +7,14 @@
 2. Functions
 3. Expressions
 4. Types
-5. 
+
+
+## Modules
+
+```
+module Foo {
+    bar() { print("Hello); }
+}
+
+Foo.bar();
+```

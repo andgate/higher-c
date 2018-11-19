@@ -1,23 +1,23 @@
-name:           language-hawk
+name:           language-higher-c
 version:        0.0.0
-synopsis:       Hawk programming language
-description:    Typed Systems Programming
+synopsis:       Higher-C Programming Language
+description:    Strongly Typed Systems Programming
 category:       Compilers
-homepage:       https://github.com/andgate/hawk
-bug-reports:    https://github.com/andgate/hawk/issues
+homepage:       https://github.com/andgate/higher-c
+bug-reports:    https://github.com/andgate/higher-c/issues
 maintainer:     Gabriel Anderson
-license:        MIT
+license:        BSD-3-Clause
 build-type:     Simple
 cabal-version:  >= 2.0
 
 extra-source-files:
-    src/Language/Hawk/Lex.x
-    src/Language/Hawk/Parse.y
+    src/Language/HigherC/Lex.x
+    src/Language/HigherC/Parse.y
 
 
 source-repository head
   type: git
-  location: https://github.com/andgate/hawk
+  location: https://github.com/andgate/higher-c
 
 library
   hs-source-dirs:
@@ -50,23 +50,23 @@ library
       alex ==3.2.4, happy==1.19.9
 
   exposed-modules:
-      Language.Hawk.Analysis.Namecheck
-      Language.Hawk.Analysis.Infer
+      Language.HigherC.Analysis.Namecheck
+      Language.HigherC.Analysis.Infer
 
-      Language.Hawk.Syntax.Abstract
-      Language.Hawk.Syntax.Builtin
-      Language.Hawk.Syntax.Canonical
-      Language.Hawk.Syntax.Concrete
-      Language.Hawk.Syntax.Location
-      Language.Hawk.Syntax.Typed
+      Language.HigherC.Syntax.Abstract
+      Language.HigherC.Syntax.Builtin
+      Language.HigherC.Syntax.Canonical
+      Language.HigherC.Syntax.Concrete
+      Language.HigherC.Syntax.Location
+      Language.HigherC.Syntax.Typed
 
-      Language.Hawk.Lex
-      Language.Hawk.Lex.Error
-      Language.Hawk.Lex.State
-      Language.Hawk.Lex.Token
+      Language.HigherC.Lex
+      Language.HigherC.Lex.Error
+      Language.HigherC.Lex.State
+      Language.HigherC.Lex.Token
       
-      Language.Hawk.Parse
-      Language.Hawk.Parse.Error
+      Language.HigherC.Parse
+      Language.HigherC.Parse.Error
       
       
   
@@ -74,18 +74,18 @@ library
   default-language: Haskell2010
 
 
-executable hkci
+executable hcc
   main-is: Main.hs
   ghc-options: -Wall -O2 -Wincomplete-uni-patterns -Wincomplete-record-updates -fno-warn-name-shadowing -fno-warn-unused-binds -fno-warn-unused-matches -fno-warn-unused-do-bind -fno-warn-orphans -rtsopts -threaded -with-rtsopts=-N -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-import-lists
   default-language: Haskell2010
   hs-source-dirs:
-      hkci
+      hcc
   build-depends:
       base
     , bifunctors
     , containers
     , extra
-    , language-hawk
+    , language-higher-c
     , lens
     , hashmap
     , monad-loops

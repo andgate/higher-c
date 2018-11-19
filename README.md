@@ -1,37 +1,26 @@
-# Hawk Compiler Toolchain
-[![Build Status](https://travis-ci.org/andgate/hawk.svg?branch=master)](https://travis-ci.org/andgate/hawk)
+# Higher-C Compiler Toolchain
 
-## Building with Stack
+This is a WIP
 
-Install stack and then initalize the project with
+## Building with Cabal New
+
+Install cabal and then initalize then simply run
 
 ```bash
-$ stack setup
-$ stack build
+$ cabal new-build hcc
 ```
 
-Once you have a successful build, you can run the following commands.
+In addition to building, you can also run the compiler.
 
 ``` sh
-# Build the project.
-stack build
-
 # Run the test suite.
-stack test
-
-# Run the benchmarks.
-stack bench
-
-# Generate documentation. (windows may require -j1 for a successful build)
-stack haddock
-
-# All three at once, rebuilding when changes are saved
-stack build --test --bench --haddock --file-watch
+cabal new-run hcc
 ```
+
 
 ## On Windows
 
-To build on windows, llvm must be built and installed manually. This process can take a very, very long time.
+LLVM complicates building on windows. First, LLVM must be built and installed manually. This process can take a very, very long time.
 
 First, install MSYS2. Then install the following packages.
 
