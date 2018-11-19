@@ -1,22 +1,44 @@
-type REF(a) = Const(Ref(a));
+
 
 type Array(x : Type) {
-  Array( data: Ptr(x)
-       , size: I32
-       , cap: I32
-       );
+  data Array {
+    data: Ptr(x) = null;
+    size: I32 = 10;
+    cap: I32 = 100;
+    maxSize: const I32 = 10000;  // Hashtags forbid mutability
+  }
+}
+
+// Immutable list, not that useful
+type const Node(x: Type){
+  data Node {
+    data: x;
+    next: Ptr(Node(x));
+  }
 }
 
 Array()
-  : data(Null)
+  : data(null)
   , size(0)
-  , cap(0);
+  , cap(0)
 {}
 
+~Array()
+  : data(null)
+  , size(0)
+  , cap(0)
+{}
 
-Array ( other: REF(Array(x)) )
-  : data(new x[other.size])
+Array(n: I32)
+  : data(new I32[n*2])
+  , size(n)
+  , cap(n*2)
+{}
+
+Array ( other: &Array(x) )
+  : data(new x[other.cap])
   , size(other.size)
+  , cap(other.cap)
 {
   for(int i = 0; i < size; ++i)
   {
@@ -24,25 +46,30 @@ Array ( other: REF(Array(x)) )
   }
 }
 
-Array ( initialSize: I32 )
-  : data(new x[initialSize])
-  | size(initialSize)
+Array ( n: I32, initial: &x )
+  : data(new x[n*2])
+  , size(n)
+  , cap(n*2)
 {
   for (int i = 0; i < initialSize; ++i)
-    data[i] = 0;
+    data[i] = initial;
 }
 
-Array ( other: RVal(Array(x)) )
+Array ( other: mut &&Array(x) )
+  : data(other.data)
+  , size(other.size)
+  , cap(other.cap)
 {
-  data(other.data);
-  size(other.size);
-
   other.data = null;
-  othe.rsize = 0;
+  other.size = 0;
+  other.cap = 0;
 }
 
-Array ( data: REF(x), size: Const(I32) )
-  : data(new x[size]), size(size), capacity(size)
+
+Array ( data: ptr(x), size: Const(I32) )
+  : data(x)
+  , size(size)
+  , capacity(size)
 {
   for (i = 0; i < size; ++i)
   {
@@ -146,7 +173,6 @@ class Functor(f: Type -> Type)
 
 
 // We can have a maybe type
-
 type Maybe(x)
 {
   Nothing();

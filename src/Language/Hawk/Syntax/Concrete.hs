@@ -181,13 +181,27 @@ data Exp
   = EVar Name
   | ECon Name
   | EVal Val
+  | EOps [Term Exp]
   | EInstr Instr Exp Exp
-  | EMember Exp Name
   | ECall Exp [Exp]
+
+  | EAssign Exp Exp
+  | EArrayAccess Exp Exp
+  | EPtrAccess Exp Name
+  | EMember Exp Name
+
+  | EAs Exp Type
 
   | EParens Exp
   | EType Exp Type
   | ELoc Loc Exp
+
+data OperatorChain a
+  = Chain (ChainLink a) OperatorChain
+
+data ChainLink a
+  = OperandLink a
+  | OperatorLink Name
 
 -- -----------------------------------------------------------------------------
 -- | Type and Kind
@@ -200,8 +214,11 @@ data Type
   | TArr Type Type
 
   | TRef   Type
-  | TPtr   Type
+  | TRVal  Type
   | TConst Type
+  | TMut   Type
+  | TArr   Type
+  | TArrS  Type Exp
 
   | TParens Type
   | TKind Type Kind
