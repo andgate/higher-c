@@ -6,14 +6,14 @@
             , TypeSynonymInstances
             , FlexibleInstances
   #-}
-module Language.Hawk.Syntax.Concrete
-  ( module Language.Hawk.Syntax.Concrete
+module Language.HigherC.Syntax.Concrete
+  ( module Language.HigherC.Syntax.Concrete
   , module X
   )
   where
 
-import Language.Hawk.Syntax.Location as X
-import Language.Hawk.Syntax.Builtin  as X
+import Language.HigherC.Syntax.Location as X
+import Language.HigherC.Syntax.Builtin  as X
 
 import GHC.Generics
 import Data.Typeable (Typeable)
@@ -53,11 +53,13 @@ mkName (L l n) =
   Name { nameText = n, nameLoc = l }
 
 
-mkQName :: L Text -> QName
-mkQName (L l n) = case T.splitOn "." n of
-  []     -> error "Empty name encountered"
-  (n:[]) -> QName { qnameText = n, qnamePath = [], qnameLoc = l }
-  ns     -> QName { qnameText = last ns, qnamePath = init ns, qnameLoc = l} 
+mkQName :: [L Text] -> L Text -> QName
+mkQName qs n
+  = QName
+    { qnameText = unL n
+    , qnamePath = map unL qs
+    , qnameLoc = locOf qs <> locOf n
+    }
 
 -- -----------------------------------------------------------------------------
 -- | Toplevel Constructs
@@ -75,7 +77,6 @@ data TopLevelStmt
   | TTypeDefn
   | TClass
   | TImpl
-  deriving (Show)
 
 {-
   | TopLevelAliasDef    AliasDef
@@ -93,44 +94,55 @@ data Module =
   Module Loc ModulePath ModuleBlock
 
 data ModulePath =
-  MPath [Name]
+  MPath Loc [Name]
 
 data ModuleBlock =
-  MBlock [TopLevelStmt]
+  MBlock Loc [TopLevelStmt]
+
+instance Locatable ModuleBlock where
+  locOf (MBlock l _) = l
 
 data Import =
-  Import ModulePath
+  Import Loc ModulePath
 
 -- -----------------------------------------------------------------------------
 -- | Declaration
 
 data Decl
-  = Decl1 Loc Name (Maybe Type) Exp
-  | Decl2 Loc Initializer (Maybe Type)
-  deriving (Show)
+  = Decl1 Loc DeclHead (Maybe TypeSig)
+  | Decl2 Loc DeclHead (Maybe TypeSig) Exp
+  | Decl3 Loc DeclHead [Exp] (Maybe TypeSig)
 
-data Initializer =
-  Init Name [Exp]
+data DeclHead
+  = DeclHead Loc Name
 
+instance Locatable DeclHead where
+  locOf (DeclHead l _) = l
+
+
+data TypeSig
+  = TypeSig Loc Type
+
+instance Locatable TypeSig where
+  locOf (TypeSig l _) = l
 
 -- -----------------------------------------------------------------------------
 -- | Function Definition
 
 data FuncDefn
-  = FuncDefn (Set FuncSpec) FuncDecl Block
+  = FuncDefn Loc (Set FuncSpec) FuncDecl Block
 
 data FuncSpec
-  = InlineFunc
-  | RecursiveFunc
+  = InlineFunc Loc
+  | RecursiveFunc Loc
 
 data FuncDecl
-  = FuncDecl Name Scheme Parameters (Maybe Type)
+  = FuncDecl Name (Maybe Scheme) Parameters (Maybe TypeSig)
 
 data Parameters = Parameters [Parameter]
 
 data Parameter
-  = Parameter Name (Maybe Type)
-
+  = Parameter Loc Name (Maybe Type)
 
 -- -----------------------------------------------------------------------------
 -- | Constructor/Destructor Definitions
@@ -140,6 +152,9 @@ data CtorDefn =
 
 data InitList =
   InitList [Initializer]
+
+data Initializer =
+  Init Loc Name [Exp]
 
 data DtorDefn =
   DtorDefn Name Scheme Parameters Block
@@ -181,7 +196,7 @@ data Exp
   = EVar Name
   | ECon Name
   | EVal Val
-  | EOps [Term Exp]
+  | EOps OperatorChain
   | EInstr Instr Exp Exp
   | ECall Exp [Exp]
 
@@ -196,11 +211,11 @@ data Exp
   | EType Exp Type
   | ELoc Loc Exp
 
-data OperatorChain a
-  = Chain (ChainLink a) OperatorChain
+data OperatorChain
+  = Chain [ChainLink]
 
-data ChainLink a
-  = OperandLink a
+data ChainLink
+  = OperandLink Exp
   | OperatorLink Name
 
 -- -----------------------------------------------------------------------------
@@ -217,8 +232,8 @@ data Type
   | TRVal  Type
   | TConst Type
   | TMut   Type
-  | TArr   Type
-  | TArrS  Type Exp
+  | TArray Type
+  | TArrayS Type Exp
 
   | TParens Type
   | TKind Type Kind
@@ -232,14 +247,22 @@ data Kind
 
 
 -- -----------------------------------------------------------------------------
--- | Type Scheme
+-- | Type Scheme and Predicates
 
 data Scheme =
-  Scheme [Pred]
+  Scheme Loc [Pred]
+
+instance Locatable Scheme where
+  locOf (Scheme l _) = l
 
 data Pred
-  = Forall Name
-  | IsIn Name (NonEmpty Type)
+  = Forall Loc Name
+  | IsIn Loc Name (NonEmpty Type)
+
+instance Locatable Pred where
+  locOf = \case
+    Forall l _ -> l
+    IsIn l _   -> l
 
 
 instance Semigroup Scheme where
@@ -393,7 +416,7 @@ instance Pretty TopLevel where
 
 instance Pretty TopLevelStmt where
   pretty = \case
-    TModule mpath mblk -> "module" <+> pretty mpath <+> pretty mblock
+    TModule m -> pretty m
     TImport i -> pretty i
 
     TDecl decl -> pretty decl
@@ -405,34 +428,37 @@ instance Pretty TopLevelStmt where
     _ -> error "Undefined top level statement encountered"
 
 
+instance Pretty Module where
+  pretty (Module _ mpath mblk) = "module" <+> pretty mpath <+> pretty mblk
+
 instance Pretty Import where
-  pretty (Import mpath) =
+  pretty (Import _ mpath) =
     "import" <+> pretty mpath <> ";"
 
+
 instance Pretty ModuleBlock where
-  pretty (MBlock stmts) =
+  pretty (MBlock _ stmts) =
     vcat [ "{"
          , indent 4 (vsep $ fmap pretty stmts)
          , "}"
          ]
 
 instance Pretty ModulePath where
-  pretty (MPath ns) =
+  pretty (MPath _ ns) =
     concatWith (surround dot) [pretty n | n <- ns]
 
 instance Pretty Decl where
   pretty = \case
-    Decl1 l n Nothing   body -> "let" <+> pretty n <+> "=" <+> pretty body <> ";"
-    Decl1 l n (Just ty) body -> "let" <+> pretty n <> ":" <+> pretty ty <+> "=" <+> pretty body <> ";"
+    Decl1 _ h msig        -> pretty h <> pretty msig <> ";"
+    Decl2 _ h msig body   -> pretty h <> pretty msig <+> "=" <+> pretty body <> ";"
+    Decl3 _ h inits msig  -> pretty h <> tupled (pretty <$> inits) <> pretty msig <> ";"
 
-    Decl2 l init Nothing   -> "let" <+> pretty init <> ";"
-    Decl2 l init (Just ty) -> "let" <+> pretty init <> ":" <+> pretty ty ";"
+instance Pretty DeclHead where
+  pretty (DeclHead _ n) = "let" <> pretty n
 
+instance Pretty TypeSig where
+  pretty (TypeSig _ ty) = ":" <+> pretty ty
 
-instance Pretty Initializer where
-  pretty (Init n []) = pretty n
-  pretty (Init n es) =
-    pretty n <> tupled [pretty e | e <- es]
 
 
 instance Pretty FuncDefn where
@@ -459,10 +485,10 @@ instance Pretty FuncDecl where
   pretty (FuncDecl n scheme params Nothing)
     = pretty n <> pretty scheme <> pretty params
   pretty (FuncDecl n scheme params (Just typ))
-    = pretty n <> pretty scheme <> pretty params <> ":" <+> typ
+    = pretty n <> pretty scheme <> pretty params <> ":" <+> pretty typ
 
 instance Pretty Parameters where
-  pretty (Parameter args) =
+  pretty (Parameters args) =
     tupled (pretty <$> args)
 
 instance Pretty Parameter where
@@ -484,6 +510,10 @@ instance Pretty InitList where
   pretty (InitList inits) = ":" <+> hsep (punctuate "," (pretty <$> inits))
 
 
+instance Pretty Initializer where
+  pretty (Init _ n es) =
+    pretty n <> tupled (pretty <$> es)
+
 
 instance Pretty DtorDefn where
   pretty (DtorDefn n scheme params blk)
@@ -502,7 +532,57 @@ instance Pretty Block where
 
 instance Pretty Stmt where
     pretty = \case
-      SCall n args -> pretty n <+> tupled (pretty <$> args)
+      SExp _ Nothing -> ";"
+      SExp _ (Just e) -> pretty e <> ";"
+      SDecl _ specs decl ->
+        hcat (map pretty (Set.toList specs)) <+> pretty decl
+    
+      SBlock _ blk -> pretty blk
+      SWith _ e body ->
+        "with (" <> pretty e <> ")" <+> pretty body
+    
+      SBreak _ -> "break;"
+      SContinue _ -> "continue;"
+      SReturn _ e -> "return" <+> pretty e <> ";"
+    
+      SIf _ p then_branch Nothing ->
+        "if (" <> pretty p <> ")" <+> pretty then_branch
+
+      SIf _ p then_branch (Just else_branch) ->
+        vcat [ "if (" <> pretty p <> ")" <+> pretty then_branch
+             , "else" <+> pretty then_branch
+             ]
+        
+      SWhile _ p body ->
+
+        vcat [ "do" <+> pretty body
+             , "while (" <> pretty p <> ");"
+             ]
+
+      SDoWhile _ body p ->
+        "while (" <> pretty p <> ")" <+> pretty body
+
+      SFor _ header cond counter body ->
+        let pheader = case header of
+                        Left (Nothing) -> ";"
+                        Left (Just e) -> pretty e <> ";"
+                        Right decl -> pretty decl
+
+            pcond   = case cond of
+                        Nothing -> ";"
+                        Just e  -> pretty e <> ";"
+
+            pcounter = case counter of
+                         Nothing -> mempty
+                         Just e -> pretty e
+
+        in "for (" <> pheader <> pcond <> pcounter <> ")" <+> pretty body
+
+
+instance Pretty SDeclSpec where
+  pretty = \case
+    StaticDecl -> "static"
+
 
 instance Pretty Exp where
     pretty = \case

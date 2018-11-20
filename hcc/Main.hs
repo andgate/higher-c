@@ -6,8 +6,71 @@
   #-}
 module Main where
 
+{-
+What input does the compiler take?
+
+- Basic syntax
+hcc <in..>
+Passing just source files will
+cause the compiler to check the files.
+However, no ouput is produced.
+
+- Simple output is produced with the '-o' flag.
+hcc <in..> <out>
+
+-- Ouputs are
+.hci
+.o
+.exe
+.lib
+.dll
+.dll.a
+.so
+.lib
+
+- Executable binaries
+hcc Main.hc main.exe
+
+- Object files
+hcc Moo.hc foo.o
+
+- Windows libaries
+hcc A.hc B.hc C.hc MyLib.dll
+
+Note: This will also generate .lib and .dll.a files.
+
+- Linux libaries
+hcc src MyLib.so
+
+- You can specify a source directory
+hcc src program.exe
+
+And hcc will search for higher-c source files
+in that directory. Specify recursive search
+with '-r'.
+
+hcc -r src program.exe
+
+-}
+
 import Prelude hiding (lex)
 
+import System.Console.GetOpt
+
+data Flag
+  = IncludePath FilePath
+  | LibraryPath FilePath
+  | OutputDir FilePath
+
+data Options = Options
+{ optVerbose     :: Bool
+, optShowVersion :: Bool 
+, optInput       :: [FilePath]
+, optOutput      :: Maybe FilePath
+} deriving Show
+
+
+{-
 import Control.Lens hiding (transform)
 import Control.Monad
 import Control.Monad.State.Strict
@@ -148,7 +211,6 @@ loadFilesCmd fps = do
 ------------------------------------------------------------------------
 -- Helpers
 
-
 -- Parsing and Lexing
 lexFile :: FilePath -> Text -> Repl [L.Token]
 lexFile fp contents =
@@ -190,7 +252,7 @@ printPretties :: Pretty p => [p] -> Repl ()
 printPretties ps =
   liftIO $ putDoc (vsep $ pretty <$> ps) >> putStr "\n"
 
-
+-}
 ------------------------------------------------------------------------
 -- Parsing
 

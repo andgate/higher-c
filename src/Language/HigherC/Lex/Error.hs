@@ -1,8 +1,8 @@
 {-# LANGUAGE LambdaCase #-}
-module Language.Hawk.Lex.Error where
+module Language.HigherC.Lex.Error where
 
-import Language.Hawk.Lex.Token
-import Language.Hawk.Syntax.Location
+import Language.HigherC.Lex.Token
+import Language.HigherC.Syntax.Location
 import Data.Text (Text, pack)
 import Data.Text.Prettyprint.Doc
 

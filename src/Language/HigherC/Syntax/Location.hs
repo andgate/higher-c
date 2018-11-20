@@ -5,7 +5,7 @@
             , TemplateHaskell
             , DeriveDataTypeable
   #-}
-module Language.Hawk.Syntax.Location where
+module Language.HigherC.Syntax.Location where
 
 import Control.Lens
 import Data.Binary
@@ -74,6 +74,9 @@ makeClassy ''Position
 
 class Locatable a where
     locOf :: a -> Loc
+
+instance Locatable (L a) where
+  locOf (L l a) = l
 
 -- Location can be taken from any foldable functor
 instance {-# OVERLAPPABLE #-} (Foldable f, Functor f, Locatable a) => Locatable (f a) where

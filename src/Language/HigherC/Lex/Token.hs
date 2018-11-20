@@ -6,14 +6,14 @@
            , BangPatterns
            , DeriveDataTypeable
   #-}
-module Language.Hawk.Lex.Token where
+module Language.HigherC.Lex.Token where
 
 import Control.Lens
 import Data.Binary hiding (encode)
 import Data.Data
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
-import Language.Hawk.Syntax.Location
+import Language.HigherC.Syntax.Location
 import Data.Text.Prettyprint.Doc
 
 -- -----------------------------------------------------------------------------

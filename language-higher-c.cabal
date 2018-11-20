@@ -91,6 +91,5 @@ executable hcc
     , monad-loops
     , mtl
     , prettyprinter
-    , repline
     , text
     , transformers

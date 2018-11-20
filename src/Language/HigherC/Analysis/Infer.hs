@@ -1,14 +1,14 @@
 {-# Language GeneralizedNewtypeDeriving, LambdaCase #-}
-module Language.Hawk.Analysis.Infer where
+module Language.HigherC.Analysis.Infer where
 
 import Control.Monad.Reader
 import Control.Monad.Except
 import Data.Map.Strict (Map)
 import Data.Text (Text)
-import Language.Hawk.Analysis.Equality
-import Language.Hawk.Syntax.Abstract
-import Language.Hawk.Syntax.Builtin
-import Language.Hawk.Syntax.Location
+import Language.HigherC.Analysis.Equality
+import Language.HigherC.Syntax.Abstract
+import Language.HigherC.Syntax.Builtin
+import Language.HigherC.Syntax.Location
 import Unbound.Generics.LocallyNameless
 
 

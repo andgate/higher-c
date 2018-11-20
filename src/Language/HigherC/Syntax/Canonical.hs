@@ -1,2 +1,2 @@
-module Language.Hawk.Syntax.Canonical where
+module Language.HigherC.Syntax.Canonical where
 

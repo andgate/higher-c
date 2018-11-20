@@ -1,9 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Language.Hawk.Lex.State where
+module Language.HigherC.Lex.State where
 
 import Control.Lens
-import Language.Hawk.Syntax.Location
-import Language.Hawk.Lex.Token (Token)
+import Language.HigherC.Syntax.Location
+import Language.HigherC.Lex.Token (Token)
 
 data LexState =
   LexState  { _lexTokAcc :: [Token]

@@ -5,22 +5,22 @@
            , ScopedTypeVariables
            , ExistentialQuantification
   #-}
-module Language.Hawk.Rename where
+module Language.HigherC.Rename where
 
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.List.NonEmpty ( NonEmpty(..) )
 import Data.Set (Set)
 import Data.Text (Text, unpack)
-import Language.Hawk.Rename.Error
-import Language.Hawk.Syntax.Bound
-import Language.Hawk.Syntax.Location
-import Language.Hawk.Syntax.Prim
+import Language.HigherC.Rename.Error
+import Language.HigherC.Syntax.Bound
+import Language.HigherC.Syntax.Location
+import Language.HigherC.Syntax.Prim
 import Unbound.Generics.LocallyNameless
 
 
 import qualified Data.Set as Set
-import qualified Language.Hawk.Syntax.Source as S
+import qualified Language.HigherC.Syntax.Source as S
 
 
 import qualified Data.List.NonEmpty             as NE

@@ -1,2 +1,2 @@
-module Language.Hawk.Syntax.Typed where
+module Language.HigherC.Syntax.Typed where
 

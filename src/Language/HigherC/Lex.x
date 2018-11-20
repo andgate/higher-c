@@ -5,7 +5,7 @@
              , GeneralizedNewtypeDeriving
   #-}
 
-module Language.Hawk.Lex where
+module Language.HigherC.Lex where
 
 
 import Prelude hiding (lex)
@@ -22,10 +22,10 @@ import Data.Map.Strict (Map)
 import Data.Monoid
 import Data.Text (Text)
 import Data.Word (Word8)
-import Language.Hawk.Lex.Error
-import Language.Hawk.Lex.State
-import Language.Hawk.Lex.Token
-import Language.Hawk.Syntax.Location
+import Language.HigherC.Lex.Error
+import Language.HigherC.Lex.State
+import Language.HigherC.Lex.Token
+import Language.HigherC.Syntax.Location
 import System.FilePath (FilePath)
 
 import qualified Data.Map            as Map

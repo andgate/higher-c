@@ -5,7 +5,7 @@
            , LambdaCase
            , RankNTypes
   #-}
-module Language.Hawk.Syntax.Abstract where
+module Language.HigherC.Syntax.Abstract where
 
 import Data.Text (Text, pack)
 import Data.Text.Prettyprint.Doc
@@ -14,13 +14,13 @@ import GHC.Generics
 import Unbound.Generics.LocallyNameless
 import Unbound.Generics.LocallyNameless.Internal.Fold (Fold, toListOf)
 
-import Language.Hawk.Syntax.Builtin
-import Language.Hawk.Syntax.Location
+import Language.HigherC.Syntax.Builtin
+import Language.HigherC.Syntax.Location
 
 
 import qualified Data.List.NonEmpty            as NE
 import qualified Data.Set                      as Set
-import qualified Language.Hawk.Syntax.Concrete as C
+import qualified Language.HigherC.Syntax.Concrete as C
 
 
 {-

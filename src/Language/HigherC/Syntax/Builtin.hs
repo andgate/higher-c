@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, DeriveDataTypeable, LambdaCase #-}
-module Language.Hawk.Syntax.Builtin where
+module Language.HigherC.Syntax.Builtin where
 
 import Data.Binary
 import Data.Data

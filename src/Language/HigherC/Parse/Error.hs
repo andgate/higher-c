@@ -1,17 +1,16 @@
 {-# LANGUAGE LambdaCase #-}
-module Language.Hawk.Parse.Error where
+module Language.HigherC.Parse.Error where
 
 import Data.Text.Prettyprint.Doc
-import Language.Hawk.Lex.Error
-import Language.Hawk.Lex.Token
-import Language.Hawk.Syntax.Concrete (Stmt)
+import Language.HigherC.Lex.Error
+import Language.HigherC.Lex.Token
+import Language.HigherC.Syntax.Concrete (Stmt)
 
 
 data ParseError
     = UnexpectedToken [Token] [String]
     | AmbiguousGrammar [Stmt]
     | PLexErr LexError
-    deriving(Show)
 
 instance Pretty ParseError where
     pretty = \case

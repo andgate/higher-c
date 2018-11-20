@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, OverloadedStrings #-}
-module Language.Hawk.Analysis.Namecheck where
+module Language.HigherC.Analysis.Namecheck where
 
 import Data.Foldable
 import Data.List
@@ -8,8 +8,8 @@ import Data.Text.Prettyprint.Doc hiding (group)
 import Data.Text (Text, pack)
 import Data.Map.Strict (Map)
 import Data.Set (Set)
-import Language.Hawk.Syntax.Concrete
-import Language.Hawk.Syntax.Location
+import Language.HigherC.Syntax.Concrete
+import Language.HigherC.Syntax.Location
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
