@@ -109,8 +109,11 @@ import qualified Data.Set as Set
 name : var_name { $1 }
      | con_name { $1 }
 
-qvar_name : mod_id '::' var_id { mkQName $1 $3 }
-qcon_name : mod_id '::' con_id { mkQName $1 $3 }
+qname : qvar_name { $1 }
+      | qcon_name { $1 }
+
+qvar_name : mod_path '::' var_id { mkQName $1 $3 }
+qcon_name : mod_path '::' con_id { mkQName $1 $3 }
 
 var_name : var_id { mkName $1 }
 con_name : con_id { mkName $1 }
@@ -119,10 +122,12 @@ mod_name : con_name { $1 }
 var_id : varId { extractId $1 }
 con_id : conId { extractId $1 }
 
+{-
 mod_id : mod_id_r { reverse $1 }
-mod_id_r 
+mod_id_r
   : conId { [extractId $1] }
-  | mod_id '.' con_id { (extractId $3) : $1 }     
+  | mod_id '.' con_id { (extractId $3) : $1 }
+-}
 
 value : integer  { fmap VInt    (extractInteger $1) }
       | double   { fmap VFloat  (extractDouble  $1) }
@@ -156,8 +161,8 @@ top_level_stmt
   | import_stmt      { TImport $1 }
   | declaration      { TDecl $1 }
   | function_defn    { TFuncDefn $1 }
-  | constructor_defn { TCtorDefn $1 }
-  | destructor_defn  { TDtorDefn $1 }
+  | constructor_defn { TCtor $1 }
+  | destructor_defn  { TDtor $1 }
 
 
 -- -----------------------------------------------------------------------------
@@ -165,9 +170,9 @@ top_level_stmt
 
 module_defn : Module mod_path module_block { Module ($1 <> locOf $3) $2 $3 }
 
-module_block : '{' top_level_stmts0 '}' { MBlock (locOf $1 <> locOf $3) $2 }
+module_block : '{' top_level_stmts0 '}' { MBlock ($1 <> $3) $2 }
 
-mod_path   : mod_path_r              { let path = reverse $1 in MPath (locOf path) path }
+mod_path   : mod_path_r              { MPath (locOf $1) (NE.fromList $ reverse $1) }
 mod_path_r : mod_name                { [$1] }
            | mod_path_r '.' mod_name { $3 : $1 }
 
@@ -201,22 +206,23 @@ type_sig
 -- -----------------------------------------------------------------------------
 -- | Function Definition
 
-function_defn : func_specs0 function_decl block { FuncDefn $1 $2 $3 }
+function_defn : function_decl block { FuncDefn (locOf $1 <> locOf $2) $1 $2 }
 
-function_decl : var_name maybe_scheme '(' parameters0 ')' maybe_type_sig  { let l1 = locOf $1
-                                                                                l2 = maybe $5 locOf $6
-                                                                            in FuncDecl (l1<>l2) $1 $2 $4 $6
-                                                                          }
+function_decl : maybe_func_specs var_name maybe_scheme '(' parameters0 ')' maybe_type_sig
+              { FuncDecl (maybe (locOf $2) locOf $1 <> maybe $6 locOf $7) $1 $2 $3 $5 $7 }
 
 
 -- | Function Specializers
-func_specs0
-  : {- empty -}  { Set.empty }
-  | func_specs   { $1 } 
+maybe_func_specs
+  : {- empty -}  { Nothing }
+  | func_specs   { Just $1 }
 
-func_specs
-  : func_spec            { Set.singleton $1 }
-  | func_specs func_spec { Set.insert $2 $1 }
+func_specs : func_specs_list { FuncSpecs (locOf $1) (NE.fromList $1) }
+
+func_specs_list : func_specs_rlist  { reverse $1 }
+func_specs_rlist
+  : func_spec              { [$1] }
+  | func_specs_rlist func_spec { $2 : $1 }
 
 func_spec
   : Inline    { InlineFunc $1    }
@@ -235,7 +241,6 @@ parameters_r
 
 parameter
   : var_name maybe_type_sig   { let l1 = locOf $1
-                                    l2 = locOf $2
                                 in Parameter (l1 <> maybe l1 locOf $2) $1 $2
                               }
 
@@ -244,27 +249,36 @@ parameter
 -- | Constructor and Destructor Definitions
 
 constructor_defn :
-  con_name '(' parameters0 ')' maybe_init_list block { CtorDefn $1 mempty $3 $4 $5 }
+   constructor_decl block { CtorDefn (locOf $1 <> locOf $2) $1 $2 } 
+
+constructor_decl :
+  con_name '(' parameters0 ')' maybe_init_list { CtorDecl (locOf $1 <> maybe $4 locOf $5) $1 $3 $5 }
 
 destructor_defn :
-  '~' con_name '(' parameters0 ')' block { DtorDefn $2 $4 $6 }
+  destructor_decl block { DtorDefn (locOf $1 <> locOf $2) $1 $2 }
+
+destructor_decl :
+  '~' con_name  '(' parameters0 ')' { DtorDecl ($1 <> $5) $2 $4 }
 
 maybe_init_list
-  : {- empty -}   { [] }
-  | ':' init_list { $2 }
+  : {- empty -}    { Nothing }
+  | ':' inits      { Just (InitList ($1 <> locOf $2) $2) }
 
-init_list : init_list_r { reverse $1 }
-init_list_r
-  : initializer                 { [$1] }
-  | init_list_r ',' initializer { $3 : $1 }
+init_list : inits { InitList (locOf $1) $1 }
+
+inits : inits_r { reverse $1 }
+inits_r
+  : initializer             { [$1] }
+  | inits_r ',' initializer { $3 : $1 }
 
 initializer
-  : name '(' exp_args0 ')' { Init $1 $3 }
+  : name '(' exp_args0 ')' { Init (locOf $1 <> $4) $1 $3 }
 
 -- -----------------------------------------------------------------------------
 -- | Statements
 
-stmt : stmt_decl     { $1 }
+stmt : stmt_exp      { $1 }
+     | stmt_decl     { $1 }
      | stmt_block    { $1 }
      | stmt_with     { $1 }
      | stmt_break    { $1 }
@@ -274,54 +288,60 @@ stmt : stmt_decl     { $1 }
      | stmt_while    { $1 }
      | stmt_do_while { $1 }
      | stmt_for      { $1 }
+     | stmt_case     { $1 }
 
 
-
-
-
-block : '{' '}'       { Block [] }
-      | '{' stmts '}' { Block $2 }
+block : '{' '}'       { Block ($1 <> $2) [] }
+      | '{' stmts '}' { Block ($1 <> $3) $2 }
 
 
 stmts : stmts_r  { reverse $1 }
 stmts_r
-  : stmt         { [$1] } 
+  : stmt         { [$1] }
   | stmts_r stmt { $2 : $1 }
 
 
-stmt_decl : stmt_decl_specs0 declaration { SDecl $1 $2 }
+stmt_exp
+  : exp ';' { SExp (locOf $1 <> $2) $1 }
 
-stmt_decl_specs0
-  : {- empty -}     { Set.empty }
-  | stmt_decl_specs { $1 } 
+stmt_decl
+  : maybe_stmt_decl_specs declaration { SDecl (maybe (locOf $2) locOf $1 <> locOf $2) $1 $2 }
 
-stmt_decl_specs
-  : stmt_decl_spec                 { Set.singleton $1 }
-  | stmt_decl_specs stmt_decl_spec { Set.insert $2 $1 }
+
+maybe_stmt_decl_specs
+  : {- empty -}      { Nothing }
+  | stmt_decl_specs { Just $1 }
+
+stmt_decl_specs : stmt_decl_specs_list { SDeclSpecs (locOf $1) (NE.fromList $1) }
+
+stmt_decl_specs_list : stmt_decl_specs_rlist { reverse $1 }
+stmt_decl_specs_rlist
+  : stmt_decl_spec                       { [$1] }
+  | stmt_decl_specs_rlist stmt_decl_spec { $2 : $1 }
 
 stmt_decl_spec
-  : Static { StaticDecl }
+  : Static { StaticDecl $1 }
 
 
-stmt_block : block { SBlock $1 }
+stmt_block : block { SBlock (locOf $1) $1 }
 
 stmt_with
   : With '(' exp ')' stmt { SWith ($1 <> locOf $5) $3 $5 } 
 
-stmt_break    :      Break ';' { SBreak }
-stmt_continue :   Continue ';' { SContinue }
-stmt_return   : Return exp ';' { SReturn $2 }
+stmt_break    :      Break ';' { SBreak    ($1 <> $2) }
+stmt_continue :   Continue ';' { SContinue ($1 <> $2) }
+stmt_return   : Return exp ';' { SReturn   ($1 <> $3) $2 }
 
 
 stmt_if
-  : If '(' exp ')' stmt %prec IFX { EIf $3 $5 Nothing }
-  | If '(' exp ')' stmt stmt_elif { EIf $3 $5 (Just $6) }
-  | If '(' exp ')' stmt stmt_else { EIf $3 $5 (Just $6) }
+  : If '(' exp ')' stmt %prec IFX { SIf ($1 <> locOf $5) $3 $5 Nothing }
+  | If '(' exp ')' stmt stmt_elif { SIf ($1 <> locOf $6) $3 $5 (Just $6) }
+  | If '(' exp ')' stmt stmt_else { SIf ($1 <> locOf $6) $3 $5 (Just $6) }
 
 stmt_elif
-  : Elif '(' exp ')' stmt %prec IFX { EIf $3 $5 Nothing }
-  | Elif '(' exp ')' stmt stmt_elif { EIf $3 $5 (Just $6) }
-  | Elif '(' exp ')' stmt stmt_else { EIf $3 $5 (Just $6) }
+  : Elif '(' exp ')' stmt %prec IFX { SIf $3 $5 Nothing }
+  | Elif '(' exp ')' stmt stmt_elif { SIf $3 $5 (Just $6) }
+  | Elif '(' exp ')' stmt stmt_else { SIf $3 $5 (Just $6) }
 
 stmt_else
   : Else stmt { $2 }
@@ -341,10 +361,32 @@ for_init
   : maybe_exp ';'         { Left $1 }
   | declaration           { Right $1 }
 
+
+stmt_case
+  : Case '(' exp ')' case_alts { SCase ($1 <> locOf $5) $3 $5 }
+
+case_alts : '{' case_alt_list '}' { Alts ($1 <> $3) (NE.fromList $2) }
+
+case_alt_list : case_alt_rlist { reverse $1 }
+case_alt_rlist
+  : case_alt                { [$1] } 
+  | case_alt_rlist case_alt { $2 : $1 }
+
+case_alt
+  : pat stmt { Alt (locOf $1 <> locOf $2) $1 $2 }
+
+
 maybe_exp
   : {- empty -} { Nothing }
   | exp         { Just $1 }
 
+
+-- -----------------------------------------------------------------------------
+-- | Patterns
+
+pat : pvar { $1 }
+
+pvar : var_name { PVar $1 }
 
 -- -----------------------------------------------------------------------------
 -- | Expressions
@@ -365,9 +407,9 @@ aexp : exp_var    { $1 }
      | exp_value  { $1 }
      | exp_parens { $1 }
 
-exp_var : var_id { mkVar $1 }
+exp_var : var_name { EVar $1 }
 
-exp_con : con_id { mkCon $1 }
+exp_con : con_name { ECon $1 }
 
 exp_value : value { mkVal $1 }
 

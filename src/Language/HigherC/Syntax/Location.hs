@@ -22,7 +22,7 @@ import Data.Text.Prettyprint.Doc
 data L a = L { unLoc :: Loc
              , unL   :: a
              }
-  deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
+  deriving (Eq, Read, Show, Data, Typeable, Generic)
 
 
 instance Functor L where
@@ -40,7 +40,7 @@ data Loc
     { _locPath  :: FilePath
     , _locReg   :: Region 
     }
-    deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
+    deriving (Eq, Read, Show, Data, Typeable, Generic)
 
 
 data Region
@@ -48,7 +48,7 @@ data Region
     { _regStart :: Position
     , _regEnd   :: Position
     }
-    deriving (Eq, Ord, Read, Show, Data, Typeable, Generic)
+    deriving (Eq, Read, Show, Data, Typeable, Generic)
 
 
 data Position

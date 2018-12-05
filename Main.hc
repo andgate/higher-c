@@ -1,12 +1,21 @@
+type Void();
 
+alias Empty() = Void();
+
+
+infixr 5 + -;
+
+extern "ccall" print(str: *Char() );
+
+type Colors() { Red(); Green(); Blue(); }
 
 type Array(x : Type) {
-  data Array {
-    data: Ptr(x) = null;
-    size: I32 = 10;
-    cap: I32 = 100;
-    maxSize: const I32 = 10000;  // Hashtags forbid mutability
-  }
+  Array(
+    data: Ptr(x) = null,
+    size: I32 = 10,
+    cap: I32 = 100,
+    maxSize: const I32 = 10000,
+  );
 }
 
 // Immutable list, not that useful
@@ -103,7 +112,7 @@ class SetLength(f) {
 }
 
 
-impl GetLength<x>(Array(x))
+inst GetLength<x>(Array(x))
 {
   length(arr: REF(Array(x)) -> I32
   {
@@ -111,7 +120,7 @@ impl GetLength<x>(Array(x))
   }
 }
 
-impl SetLength<x>(Array(x))
+inst SetLength<x>(Array(x))
 {
   length(arr: Ref(Array(x), newLength: Const(I32)): Ref(Array(x))
   {
@@ -132,7 +141,7 @@ class Sortable(f : Type -> Type)
   sort<a>( container: Ref(f(a)) ): Ref(f(a)) -> Ref(f(a)); 
 }
 
-impl Sortable<x>(Array(x))
+inst Sortable<x>(Array(x))
 {
   sort(container) // optional : Ref(Array(x))
   {

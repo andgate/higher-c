@@ -15,51 +15,35 @@ module Language.HigherC.Syntax.Concrete
 import Language.HigherC.Syntax.Location as X
 import Language.HigherC.Syntax.Builtin  as X
 
-import GHC.Generics
-import Data.Typeable (Typeable)
-
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Text (Text, pack)
+import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
-import Data.Maybe
-import Data.Set (Set)
-
 
 import qualified Data.List.NonEmpty as NE
-import qualified Data.Set           as Set
-import qualified Data.Text          as T
 
 -- -----------------------------------------------------------------------------
 -- | Names
 
 data Name
   = Name { nameText :: Text
+         , namePath :: Maybe ModulePath
          , nameLoc  :: Loc
          }
-  deriving (Show, Generic, Typeable)
-
-
-data QName
-  = QName
-    { qnameText :: Text
-    , qnamePath :: [Text]
-    , qnameLoc :: Loc
-    }
-  deriving (Show, Generic, Typeable)
 
 
 mkName :: L Text -> Name
 mkName (L l n) =
-  Name { nameText = n, nameLoc = l }
+  Name { nameText = n, namePath = Nothing, nameLoc = l }
 
 
-mkQName :: [L Text] -> L Text -> QName
-mkQName qs n
-  = QName
-    { qnameText = unL n
-    , qnamePath = map unL qs
-    , qnameLoc = locOf qs <> locOf n
+mkQName :: ModulePath -> L Text -> Name
+mkQName mp n
+  = Name
+    { nameText = unL n
+    , namePath = Just mp
+    , nameLoc = locOf mp <> locOf n
     }
+
 
 -- -----------------------------------------------------------------------------
 -- | Toplevel Constructs
@@ -94,13 +78,10 @@ data Module =
   Module Loc ModulePath ModuleBlock
 
 data ModulePath =
-  MPath Loc [Name]
+  MPath Loc (NonEmpty Name)
 
 data ModuleBlock =
   MBlock Loc [TopLevelStmt]
-
-instance Locatable ModuleBlock where
-  locOf (MBlock l _) = l
 
 data Import =
   Import Loc ModulePath
@@ -116,28 +97,24 @@ data Decl
 data DeclHead
   = DeclHead Loc Name
 
-instance Locatable DeclHead where
-  locOf (DeclHead l _) = l
-
-
 data TypeSig
   = TypeSig Loc Type
 
-instance Locatable TypeSig where
-  locOf (TypeSig l _) = l
 
 -- -----------------------------------------------------------------------------
 -- | Function Definition
 
 data FuncDefn
-  = FuncDefn Loc (Set FuncSpec) FuncDecl Block
+  = FuncDefn Loc FuncDecl Block
+
+data FuncDecl
+  = FuncDecl Loc (Maybe FuncSpecs) Name (Maybe Scheme) Parameters (Maybe TypeSig)
+
+data FuncSpecs = FuncSpecs Loc (NonEmpty FuncSpec)
 
 data FuncSpec
   = InlineFunc Loc
   | RecursiveFunc Loc
-
-data FuncDecl
-  = FuncDecl Name (Maybe Scheme) Parameters (Maybe TypeSig)
 
 data Parameters = Parameters [Parameter]
 
@@ -147,27 +124,41 @@ data Parameter
 -- -----------------------------------------------------------------------------
 -- | Constructor/Destructor Definitions
 
+-- Constructor Definition
 data CtorDefn =
-  CtorDefn Name Scheme Parameters InitList Block
+  CtorDefn Loc CtorDecl Block
 
+-- Constructor Declaration
+data CtorDecl =
+  CtorDecl Loc Name Parameters (Maybe InitList)
+
+-- Destructor Definition
+data DtorDefn =
+  DtorDefn Loc DtorDecl Block
+
+-- Destructor Declaration
+data DtorDecl =
+  DtorDecl Loc Name Parameters
+
+-- Initializer List
 data InitList =
-  InitList [Initializer]
+  InitList Loc [Initializer]
 
+-- Variable Initializer
 data Initializer =
   Init Loc Name [Exp]
 
-data DtorDefn =
-  DtorDefn Name Scheme Parameters Block
+
 
 
 -- -----------------------------------------------------------------------------
 -- | Statement
 
-data Block = Block [Stmt]
+data Block = Block Loc [Stmt]
 
 data Stmt
   = SExp Loc (Maybe Exp)
-  | SDecl Loc (Set SDeclSpec) Decl
+  | SDecl Loc (Maybe SDeclSpecs) Decl
 
   | SBlock Loc Block
   | SWith Loc Exp Stmt
@@ -183,11 +174,38 @@ data Stmt
 
   | SFor Loc (Either (Maybe Exp) Decl) (Maybe Exp) (Maybe Exp) Stmt
 
--- | SCase -- Locked until patterns are figured out
+  | SCase Exp Alts
 
+
+-- Statement Declaration Specifier
+data SDeclSpecs = SDeclSpecs Loc (NonEmpty SDeclSpec)
 
 data SDeclSpec
-  = StaticDecl
+  = StaticDecl Loc
+
+
+-- -----------------------------------------------------------------------------
+-- | Patterns
+
+data Pat
+  = PVar Name
+  | PVal Loc Val
+  | PAs Loc Name Pat
+  | PCon Loc Name [Pat]
+  | PRec Loc Name [RecFieldPat]
+
+  | PType Loc Pat Type
+
+  | PParen Loc Pat
+  | PWild Loc
+
+data RecFieldPat
+  = PRecField Loc Name Pat
+
+data Alts = Alts Loc (NonEmpty Alt)
+
+data Alt
+  = Alt Loc Pat Stmt
 
 -- -----------------------------------------------------------------------------
 -- | Expression
@@ -195,28 +213,26 @@ data SDeclSpec
 data Exp
   = EVar Name
   | ECon Name
-  | EVal Val
-  | EOps OperatorChain
-  | EInstr Instr Exp Exp
-  | ECall Exp [Exp]
+  | EVal Loc Val
+  | EOp Loc [OpTerm]
+  | EInstr Loc Instr Exp Exp
+  | ECall Loc Exp [Exp]
 
-  | EAssign Exp Exp
-  | EArrayAccess Exp Exp
-  | EPtrAccess Exp Name
-  | EMember Exp Name
+  | EAssign Loc Exp Exp
+  | EArrayAccess Loc Exp Exp
+  | EPtrAccess Loc Exp Name
+  | EMember Loc Exp Name
 
-  | EAs Exp Type
+  | EAs Loc Exp Type
 
-  | EParens Exp
-  | EType Exp Type
-  | ELoc Loc Exp
+  | EParens Loc Exp
+  | EType Loc Exp Type
 
-data OperatorChain
-  = Chain [ChainLink]
 
-data ChainLink
-  = OperandLink Exp
-  | OperatorLink Name
+data OpTerm
+  = Operand Exp
+  | Operator Name
+
 
 -- -----------------------------------------------------------------------------
 -- | Type and Kind
@@ -225,25 +241,24 @@ data Type
   = TVar Name
   | TCon Name
 
-  | TApp Type [Type]
-  | TArr Type Type
+  | TApp Loc Type [Type]
+  | TArr Loc Type Type
 
-  | TRef   Type
-  | TRVal  Type
-  | TConst Type
-  | TMut   Type
-  | TArray Type
-  | TArrayS Type Exp
+  | TRef   Loc Type
+  | TRVal  Loc Type
+  | TConst Loc Type
+  | TMut   Loc Type
+  | TArray Loc Type
+  | TArrayS Loc Type Exp
 
-  | TParens Type
-  | TKind Type Kind
+  | TParens Loc Type
+  | TKind Loc Type Kind
   | TLoc Loc Type
 
 
 data Kind
-  = KType
-  | KArr Kind Kind
-  | KLoc Loc  Kind
+  = KType Loc
+  | KArr Loc Kind Kind
 
 
 -- -----------------------------------------------------------------------------
@@ -252,112 +267,269 @@ data Kind
 data Scheme =
   Scheme Loc [Pred]
 
-instance Locatable Scheme where
-  locOf (Scheme l _) = l
-
 data Pred
   = Forall Loc Name
   | IsIn Loc Name (NonEmpty Type)
 
-instance Locatable Pred where
-  locOf = \case
-    Forall l _ -> l
-    IsIn l _   -> l
 
-
+-- This helps a little bit
 instance Semigroup Scheme where
-  (<>) (Scheme p1) (Scheme p2) = Scheme (p1 <> p2)
+  (<>) (Scheme l1 p1) (Scheme l2 p2) = Scheme (l1 <> l2) (p1 <> p2)
 
 instance Monoid Scheme where
-  mempty = Scheme mempty
+  mempty = Scheme mempty mempty
 
 -- -----------------------------------------------------------------------------
 -- | Smart Constructors
 
-mkVar :: L Text -> Exp
-mkVar i@(L l n) = ELoc l (EVar (mkName i))
-
-mkCon :: L Text -> Exp
-mkCon i@(L l n) = ELoc l (ECon (mkName i))
-
 mkVal :: L Val -> Exp
-mkVal (L l v) = ELoc l (EVal v)
-
-mkTVar :: L Text -> Type
-mkTVar i@(L l n) = TLoc l (TVar (mkName i))
-
-mkTCon :: L Text -> Type
-mkTCon i@(L l n) = TLoc l (TCon (mkName i))
+mkVal (L l v) = EVal l v
 
 
 -- -----------------------------------------------------------------------------
 -- | Locatable
 
+
+-- Names
+instance Locatable Name where
+  locOf (Name _ mp l) = maybe l locOf mp <> l
+
+
+-- Toplevel
+instance Locatable TopLevel where
+  locOf (TopLevel stmts) = locOf stmts
+
+instance Locatable TopLevelStmt where
+  locOf = \case
+    TModule m   -> locOf m
+    TImport i   -> locOf i
+    TDecl d     -> locOf d
+    TFuncDefn f -> locOf f
+    TCtor  c    -> locOf c
+    TDtor  d    -> locOf d
+
+
+-- Modules
+instance Locatable Module where
+  locOf (Module l _ _) = l
+
+instance Locatable ModulePath where
+  locOf (MPath l _) = l
+
+instance Locatable ModuleBlock where
+  locOf (MBlock l _) = l
+
+instance Locatable Import where
+  locOf (Import l _) = l
+
+
+-- Declarations
+instance Locatable Decl where
+  locOf = \case
+    Decl1 l _ _   -> l
+    Decl2 l _ _ _ -> l
+    Decl3 l _ _ _ -> l
+
+instance Locatable DeclHead where
+  locOf (DeclHead l _) = l
+
+instance Locatable TypeSig where
+  locOf (TypeSig l _) = l
+
+
+-- Functions
+instance Locatable FuncDefn where
+  locOf (FuncDefn l _ _) = l
+
+instance Locatable FuncDecl where
+  locOf (FuncDecl l _ _ _ _ _) = l
+
+instance Locatable FuncSpecs where
+  locOf (FuncSpecs l _) = l
+
+instance Locatable FuncSpec where
+  locOf = \case
+    InlineFunc    l -> l
+    RecursiveFunc l -> l
+
+instance Locatable Parameters where
+  locOf (Parameters ps) = mconcat (map locOf ps)
+
+instance Locatable Parameter where
+  locOf (Parameter l _ _) = l
+
+
+-- Constructors and destructors
+instance Locatable CtorDefn where
+  locOf (CtorDefn l _ _) = l
+
+instance Locatable CtorDecl where
+  locOf (CtorDecl l _ _ _) = l
+
+instance Locatable DtorDefn where
+  locOf (DtorDefn l _ _) = l
+
+instance Locatable DtorDecl where
+  locOf (DtorDecl l _ _) = l
+
+instance Locatable InitList where
+  locOf (InitList l _) = l
+
+instance Locatable Initializer where
+  locOf (Init l _ _) = l
+
+-- Statements
+instance Locatable Block where
+  locOf (Block l _) = l
+
+instance Locatable Stmt where
+  locOf = \case
+    SExp l _ -> l
+    SDecl l _ _ -> l
+
+    SBlock l _ -> l
+    SWith l _ _ -> l
+
+    SBreak l -> l
+    SContinue l -> l
+    SReturn l _ -> l
+
+    SIf l _ _ _ -> l
+
+    SWhile l _ _ -> l
+    SDoWhile l _ _ -> l
+
+    SFor l _ _ _ _ -> l
+
+
+instance Locatable SDeclSpecs where
+  locOf (SDeclSpecs l _) = l
+
+instance Locatable SDeclSpec where
+  locOf = \case
+    StaticDecl l -> l
+
+
+-- Patterns
+instance Locatable Pat where
+  locOf = \case
+    PVar n -> locOf n
+    PVal l _ -> l
+    PAs l _ _ -> l
+    PCon l _ _ -> l
+    PRec l _ _ -> l
+    PType l _ _ -> l
+    PParen l _ -> l
+    PWild l -> l
+
+
+instance Locatable RecFieldPat where
+  locOf (PRecField l _ _) = l
+
+
+instance Locatable Alts where
+  locOf (Alts l _) = l
+
+instance Locatable Alt where
+  locOf (Alt l _ _) = l
+
+
+-- Expressions
 instance Locatable Exp where
   locOf = \case
-    -- Usually, we only want a top level location
-    ELoc l _ -> l
-    _        -> error "Location not found!"
+    EVar n -> locOf n
+
+instance Locatable OpTerm where
+  locOf = \case
+    Operator n -> locOf n
+    Operand e -> locOf e
 
 
+-- Types
+instance Locatable Type where
+  locOf = \case
+    TVar n -> locOf n
 
--- -----------------------------------------------------------------------------
--- | Patterns
-
-{-
-data Pat
-  = PVar Text
-  | PVal Value
-  | PAs Text Pat
-  | PCon Text [Pat]
-  | PRec [(Text, Pat)]
-
-  | PType Pat TypeEInst
-
-  | PLoc Loc Pat
-  | PParen Pat
-  | PWild
-  deriving (Show)
--}
+instance Locatable Kind where
+  locOf = \case
+    KType l    -> l
+    KArr l _ _ -> l
 
 
+-- Type schems and predicates
+instance Locatable Scheme where
+  locOf (Scheme l _) = l
 
-{-
+instance Locatable Pred where
+  locOf = \case
+    Forall l _ -> l
+    IsIn l _ _  -> l
+
 ------------------------------------------------------------------------
--- Data Definition
+-- Type Definition
 
-data DataDef
-  = DataDef Text [Text] [ConstrDef]
+data TypeDefn
+  = TypeDefn Loc Name (Maybe Scheme) TypeParameters (Maybe TyDefnBody)
+
+data TyParameters
+  = TyParameters Loc [TyParameter]
+
+data TyParameter
+  = TyParameter Loc Name (Maybe Kind)
+
+data TyDefnBody
+  = TyDefnBody Loc [DataDef]
+
+
+data DataDefn
+  = DataDefn (Maybe Name) DataParameters
   deriving (Show)
 
+data DataFields
+  = DataParameters Loc [DataParameter]
 
-data ConstrDef
-  = ConstrDef Text [Type]
-  | RecordDef Text [(Text, Type)]
-  deriving (Show)
+data DataField
+  = DataParameter Loc (Maybe Name) TypeSig (Maybe Exp)
 
 ------------------------------------------------------------------------
 -- Type Alias Definition
 
-data AliasDef
-  = AliasDef Text [Text] Type
-  deriving Show
+data AliasDefn
+  = AliasDefn Loc Name (Maybe Scheme) TyParameters Type
+
 
 -- -----------------------------------------------------------------------------
 -- | Class Definition
 
-data ClassDef
-  = ClassDef [Assert] Text [Type] [Sig]
-  deriving (Show)
+data ClassDefn
+  = ClassDefn Loc ClassDel ClassBody
 
+data ClassDecl
+  = ClassDecl Loc Name (Maybe Scheme) TyParameters
+
+data ClassBody
+  = ClassBody Loc [ClassMethod]
+
+data ClassMethod
+  = CMethodDecl Loc FuncDecl
+  | CMethodDefn Loc FuncDefn
 
 -- -----------------------------------------------------------------------------
 -- | Instance Definition
 
-data InstDef
-  = InstDef [Assert] Text [Type] [Def]
-  deriving (Show)
--}
+data InstDefn
+  = InstDefn InstDecl InstBody
+
+data InstDecl
+  = InstDecl Loc Name (Maybe Scheme) TyArgs
+
+data TyArgs = TyArgs Loc [Type]
+
+data InstBody = InstBody Loc [InstMethod]
+
+data InstMethod
+  = IMethodDecl Loc FuncDefn
+
 
 -- -----------------------------------------------------------------------------
 -- | Fixity Declarations
@@ -401,15 +573,14 @@ data ForeignType =
 -- | Pretty Instances
 
 
+-- Names
 instance Pretty Name where
-  pretty (Name n _) = pretty n
+  pretty (Name n mp _) = case mp of
+    Nothing -> pretty n
+    Just p -> pretty p <> "::" <> pretty n
+    
 
-
-instance Pretty QName where
-  pretty (QName n ns _) = hcat (punctuate "." (pretty <$> ns'))
-    where ns' = reverse (n:ns)
-
-
+-- Toplevel
 instance Pretty TopLevel where
   pretty (TopLevel stmts) =
     vcat (pretty <$> stmts)
@@ -428,6 +599,7 @@ instance Pretty TopLevelStmt where
     _ -> error "Undefined top level statement encountered"
 
 
+-- Modules
 instance Pretty Module where
   pretty (Module _ mpath mblk) = "module" <+> pretty mpath <+> pretty mblk
 
@@ -445,8 +617,10 @@ instance Pretty ModuleBlock where
 
 instance Pretty ModulePath where
   pretty (MPath _ ns) =
-    concatWith (surround dot) [pretty n | n <- ns]
+    concatWith (surround dot) [pretty n | n <- NE.toList ns]
 
+
+-- Declarations
 instance Pretty Decl where
   pretty = \case
     Decl1 _ h msig        -> pretty h <> pretty msig <> ";"
@@ -460,54 +634,49 @@ instance Pretty TypeSig where
   pretty (TypeSig _ ty) = ":" <+> pretty ty
 
 
-
+-- Functions
 instance Pretty FuncDefn where
-  pretty (FuncDefn specs fdecl blk)
-    | Set.null specs
-      = vcat [ pretty fdecl
-             , pretty blk
-             ]
-
-    | otherwise
-      = let pretty_specs = hcat (pretty <$> (Set.toList specs))
-        in vcat [ pretty_specs <+> pretty fdecl
-                , pretty blk
-                ]
-
-
-instance Pretty FuncSpec where
-  pretty = \case
-    InlineFunc    -> "inline"
-    RecursiveFunc -> "rec"
+  pretty (FuncDefn _ fdecl blk) =
+    pretty fdecl <+> pretty blk
 
 
 instance Pretty FuncDecl where
-  pretty (FuncDecl n scheme params Nothing)
-    = pretty n <> pretty scheme <> pretty params
-  pretty (FuncDecl n scheme params (Just typ))
-    = pretty n <> pretty scheme <> pretty params <> ":" <+> pretty typ
+  pretty (FuncDecl _ n specs scheme params ts) =
+    pretty n <> pretty specs <> pretty scheme <> pretty params <> pretty ts
+
+
+instance Pretty FuncSpecs where
+  pretty (FuncSpecs l s) = hsep . fmap pretty $ NE.toList s
+
+instance Pretty FuncSpec where
+  pretty = \case
+    InlineFunc _    -> "inline"
+    RecursiveFunc _ -> "rec"
 
 instance Pretty Parameters where
   pretty (Parameters args) =
     tupled (pretty <$> args)
 
 instance Pretty Parameter where
-  pretty (Parameter n mtyp) =
-    case mtyp of
-      Nothing  -> pretty n
-      Just typ -> pretty n <> ":" <+> pretty typ
+  pretty (Parameter _ n mtysig) =
+    pretty n <> ":" <+> pretty mtysig
 
 
-
+-- Constructor definitions
 instance Pretty CtorDefn where
-  pretty (CtorDefn n scheme params inits blk)
-    = vcat [ pretty n <> pretty scheme <> pretty params
-           , indent 2 (pretty inits)
+  pretty (CtorDefn _ decl blk)
+    = vsep [ pretty decl
            , pretty blk
            ]
 
+instance Pretty CtorDecl where
+  pretty (CtorDecl _ n params inits) =
+    vsep [ pretty n <> pretty params
+         , indent 2 (pretty inits)
+         ]
+
 instance Pretty InitList where
-  pretty (InitList inits) = ":" <+> hsep (punctuate "," (pretty <$> inits))
+  pretty (InitList _ inits) = ":" <+> vsep (punctuate "," (pretty <$> inits))
 
 
 instance Pretty Initializer where
@@ -516,14 +685,17 @@ instance Pretty Initializer where
 
 
 instance Pretty DtorDefn where
-  pretty (DtorDefn n scheme params blk)
-    = vcat [ "~" <> pretty n <> pretty scheme <> pretty params
-           , pretty blk
-           ]
+  pretty (DtorDefn _ decl blk) =
+    vsep [ pretty decl
+         , pretty blk
+         ]
 
+instance Pretty DtorDecl where
+  pretty (DtorDecl _ n params) =
+     "~" <> pretty n <> pretty params
 
 instance Pretty Block where
-  pretty (Block stmts) =
+  pretty (Block _ stmts) =
     vsep [ lbrace
          , indent 4 (vsep $ fmap pretty stmts)
          , rbrace
@@ -535,7 +707,7 @@ instance Pretty Stmt where
       SExp _ Nothing -> ";"
       SExp _ (Just e) -> pretty e <> ";"
       SDecl _ specs decl ->
-        hcat (map pretty (Set.toList specs)) <+> pretty decl
+        pretty specs <+> pretty decl
     
       SBlock _ blk -> pretty blk
       SWith _ e body ->
@@ -579,9 +751,13 @@ instance Pretty Stmt where
         in "for (" <> pheader <> pcond <> pcounter <> ")" <+> pretty body
 
 
+instance Pretty SDeclSpecs where
+  pretty (SDeclSpecs _ specs) =
+    hsep (pretty <$> NE.toList specs)
+
 instance Pretty SDeclSpec where
   pretty = \case
-    StaticDecl -> "static"
+    StaticDecl _ -> "static"
 
 
 instance Pretty Exp where
@@ -589,27 +765,31 @@ instance Pretty Exp where
       -- Terms
       EVar n      -> pretty n
       ECon n      -> pretty n
-      EVal v      -> pretty v
-      EInstr i e1 e2 -> pretty (show i) <+> pretty e1 <+> pretty e2
-      ECall n es   -> pretty n <+> ( tupled $ pretty <$> es)
-      EType ty e   -> pretty e <+> ":" <+> pretty ty
-      ELoc _ e     -> pretty e -- ignore location
+      EVal _ v      -> pretty v
+      EInstr _ i e1 e2 -> pretty (show i) <+> pretty e1 <+> pretty e2
+      ECall _ n es   -> pretty n <+> ( tupled $ pretty <$> es)
+      EType _ ty e   -> pretty e <+> ":" <+> pretty ty
 
 
 instance Pretty Type where
     pretty = \case
       TVar n -> pretty n
 
+instance Pretty Kind where
+    pretty = \case
+      KType _    -> "Type"
+      KArr _ a b -> pretty a <+> "->" <+> pretty b
+
 
 instance Pretty Scheme where
   pretty = \case
-    Scheme    [] -> mempty
-    Scheme preds -> encloseSep "<" ">" "," (pretty <$> preds)
+    Scheme _    [] -> mempty
+    Scheme _ preds -> encloseSep "<" ">" "," (pretty <$> preds)
 
 instance Pretty Pred where
   pretty = \case
-    Forall n   -> pretty n
-    IsIn n tys -> pretty n <+> hcat (pretty <$> NE.toList tys)
+    Forall _ n   -> pretty n
+    IsIn _ n tys -> pretty n <+> hcat (pretty <$> NE.toList tys)
 
 {-
 instance Pretty DataDef where

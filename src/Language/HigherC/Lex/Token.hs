@@ -24,7 +24,7 @@ data Token = Token
     { _tokClass     :: !TokenClass
     , _tokText      :: !Text
     , _tokLoc       :: !Loc
-    } deriving (Eq, Show, Ord, Data, Typeable, Generic)
+    } deriving (Eq, Show, Data, Typeable, Generic)
 
 -- The token type:
 data TokenClass
