@@ -63,11 +63,13 @@ data Flag
   | OutputDir FilePath
 
 data Options = Options
-{ optVerbose     :: Bool
-, optShowVersion :: Bool 
-, optInput       :: [FilePath]
-, optOutput      :: Maybe FilePath
-} deriving Show
+  { optVerbose     :: Bool
+  , optShowVersion :: Bool 
+  , optInput       :: [FilePath]
+  , optOutput      :: Maybe FilePath
+  } deriving Show
+
+main = return ()
 
 
 {-

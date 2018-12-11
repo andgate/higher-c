@@ -41,6 +41,7 @@ import qualified System.FilePath     as Filesystem
 $digit = 0-9
 
 
+-- Allowed operator characters
 $opchar = [\!\#\$\%\&\*\+\/\<\=\>\?\@\\\^\|\-\~\:]
 
 $small        = [a-z]
@@ -105,6 +106,8 @@ hawk :-
   \<                              { rsvp }
   \>                              { rsvp }
 
+  $opchar                         { \text -> yieldTokAt (TokenOpId text) text }
+
   "Type"                          { rsvp }
   "Void"                          { rsvp }
   "I32"                           { rsvp }
@@ -154,6 +157,7 @@ hawk :-
   @primid                         { \text -> yieldTokAt (TokenPrimId text) text }
   @conid                          { \text -> yieldTokAt (TokenConId  text) text }
   @varid                          { \text -> yieldTokAt (TokenVarId text) text }
+
 
   $digit* \. $digit+              { \text -> yieldTokAt (TokenDouble $ readDbl text) text }
   $digit+ \. $digit*              { \text -> yieldTokAt (TokenDouble $ readDbl text) text }

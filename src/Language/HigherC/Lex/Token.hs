@@ -31,6 +31,7 @@ data TokenClass
   = TokenRsvp Text
   | TokenVarId Text
   | TokenConId Text
+  | TokenOpId  Text
   | TokenPrimId Text
 
   | TokenInteger Integer
@@ -58,6 +59,7 @@ extractId :: Token -> L Text
 extractId (Token c _ l) = case c of
   TokenVarId  n -> L l n
   TokenConId  n -> L l n
+  TokenOpId   n -> L l n
   _ -> error "unexpected token"
 
 

@@ -119,7 +119,8 @@ data FuncSpec
 data Parameters = Parameters [Parameter]
 
 data Parameter
-  = Parameter Loc Name (Maybe Type)
+  = Parameter Loc Name (Maybe TypeSig)
+
 
 -- -----------------------------------------------------------------------------
 -- | Constructor/Destructor Definitions
@@ -130,7 +131,7 @@ data CtorDefn =
 
 -- Constructor Declaration
 data CtorDecl =
-  CtorDecl Loc Name Parameters (Maybe InitList)
+  CtorDecl Loc Name Parameters (Maybe Inits)
 
 -- Destructor Definition
 data DtorDefn =
@@ -141,14 +142,12 @@ data DtorDecl =
   DtorDecl Loc Name Parameters
 
 -- Initializer List
-data InitList =
-  InitList Loc [Initializer]
+data Inits =
+  Inits Loc (NonEmpty Initializer)
 
 -- Variable Initializer
 data Initializer =
   Init Loc Name [Exp]
-
-
 
 
 -- -----------------------------------------------------------------------------
@@ -157,7 +156,8 @@ data Initializer =
 data Block = Block Loc [Stmt]
 
 data Stmt
-  = SExp Loc (Maybe Exp)
+  = SNop Loc
+  | SExp Loc Exp
   | SDecl Loc (Maybe SDeclSpecs) Decl
 
   | SBlock Loc Block
@@ -165,7 +165,7 @@ data Stmt
 
   | SBreak Loc
   | SContinue Loc
-  | SReturn Loc Exp
+  | SReturn Loc (Maybe Exp)
 
   | SIf Loc Exp Stmt (Maybe Stmt)
 
@@ -174,7 +174,7 @@ data Stmt
 
   | SFor Loc (Either (Maybe Exp) Decl) (Maybe Exp) (Maybe Exp) Stmt
 
-  | SCase Exp Alts
+  | SCase Loc Exp Alts
 
 
 -- Statement Declaration Specifier
@@ -214,24 +214,28 @@ data Exp
   = EVar Name
   | ECon Name
   | EVal Loc Val
+
   | EOp Loc [OpTerm]
+  | EOpPrefix  Loc Name Exp
+  | EOpPostfix Loc Exp Name
+  | EOpInfix   Loc Exp Name Exp
   | EInstr Loc Instr Exp Exp
+
   | ECall Loc Exp [Exp]
-
   | EAssign Loc Exp Exp
-  | EArrayAccess Loc Exp Exp
-  | EPtrAccess Loc Exp Name
   | EMember Loc Exp Name
+  | EPtrAccess Loc Exp Name
+  | EArrayAccess Loc Exp Exp
 
-  | EAs Loc Exp Type
 
   | EParens Loc Exp
+  | EAs Loc Exp Type
   | EType Loc Exp Type
 
 
 data OpTerm
-  = Operand Exp
-  | Operator Name
+  = Operand Loc Exp
+  | Operator Loc Name
 
 
 -- -----------------------------------------------------------------------------
@@ -240,6 +244,7 @@ data OpTerm
 data Type
   = TVar Name
   | TCon Name
+  | TOp Loc [TyOpTerm]
 
   | TApp Loc Type [Type]
   | TArr Loc Type Type
@@ -249,7 +254,7 @@ data Type
   | TConst Loc Type
   | TMut   Loc Type
   | TArray Loc Type
-  | TArrayS Loc Type Exp
+  | TArraySized Loc Type Exp
 
   | TParens Loc Type
   | TKind Loc Type Kind
@@ -259,6 +264,11 @@ data Type
 data Kind
   = KType Loc
   | KArr Loc Kind Kind
+
+
+data TyOpTerm
+  = TyOperator Name
+  | TyOperand Type
 
 
 -- -----------------------------------------------------------------------------
@@ -278,6 +288,111 @@ instance Semigroup Scheme where
 
 instance Monoid Scheme where
   mempty = Scheme mempty mempty
+
+
+------------------------------------------------------------------------
+-- Type Definition
+
+data TypeDefn
+  = TypeDefn Loc Name (Maybe Scheme) TypeParameters (Maybe TyDefnBody)
+
+data TypeParameters
+  = TypeParameters Loc [TypeParameter]
+
+data TypeParameter
+  = TypeParameter Loc Name (Maybe Kind)
+
+data TyDefnBody
+  = TyDefnBody Loc [DataDefn]
+
+
+data DataDefn
+  = DataDefn (Maybe Name) DataFields
+
+data DataFields
+  = DataFields Loc [DataField]
+
+data DataField
+  = DataField Loc (Maybe Name) TypeSig (Maybe Exp)
+
+
+------------------------------------------------------------------------
+-- Type Alias Definition
+
+data AliasDefn
+  = AliasDefn Loc Name (Maybe Scheme) TypeParameters Type
+
+
+-- -----------------------------------------------------------------------------
+-- | Class Definition
+
+data ClassDefn
+  = ClassDefn Loc ClassDecl ClassBody
+
+data ClassDecl
+  = ClassDecl Loc Name (Maybe Scheme) TypeParameters
+
+data ClassBody
+  = ClassBody Loc [ClassMethod]
+
+data ClassMethod
+  = CMethodDecl Loc FuncDecl
+  | CMethodDefn Loc FuncDefn
+
+
+-- -----------------------------------------------------------------------------
+-- | Instance Definition
+
+data InstDefn
+  = InstDefn InstDecl InstBody
+
+data InstDecl
+  = InstDecl Loc Name (Maybe Scheme) TyArgs
+
+data TyArgs = TyArgs Loc [Type]
+
+data InstBody = InstBody Loc [InstMethod]
+
+data InstMethod
+  = IMethodDecl Loc FuncDefn
+
+
+-- -----------------------------------------------------------------------------
+-- | Fixity Declarations
+
+{-
+-- A fixity declaration
+data Fixity = Fixity FixityKind (L Int) [L Text]
+  deriving (Show, Eq)
+
+-- The kinds of fixity
+data FixityKind
+  = InfixN
+  | InfixL
+  | InfixR
+  | Prefix
+  | Postfix
+  deriving (Show, Eq)
+
+-}
+
+-- -----------------------------------------------------------------------------
+-- | Foreign Declarations
+
+{-
+data Foreign
+  = ForeignImport ForeignType (L Text) (L Text) Type
+  | ForeignExport ForeignType (L Text)
+  deriving (Show)
+
+
+data ForeignType =
+  ForeignC
+  deriving (Show)
+-}
+
+
+
 
 -- -----------------------------------------------------------------------------
 -- | Smart Constructors
@@ -372,8 +487,8 @@ instance Locatable DtorDefn where
 instance Locatable DtorDecl where
   locOf (DtorDecl l _ _) = l
 
-instance Locatable InitList where
-  locOf (InitList l _) = l
+instance Locatable Inits where
+  locOf (Inits l _) = l
 
 instance Locatable Initializer where
   locOf (Init l _ _) = l
@@ -384,6 +499,7 @@ instance Locatable Block where
 
 instance Locatable Stmt where
   locOf = \case
+    SNop l -> l
     SExp l _ -> l
     SDecl l _ _ -> l
 
@@ -441,8 +557,8 @@ instance Locatable Exp where
 
 instance Locatable OpTerm where
   locOf = \case
-    Operator n -> locOf n
-    Operand e -> locOf e
+    Operator l _ -> l
+    Operand l _ -> l
 
 
 -- Types
@@ -464,109 +580,6 @@ instance Locatable Pred where
   locOf = \case
     Forall l _ -> l
     IsIn l _ _  -> l
-
-------------------------------------------------------------------------
--- Type Definition
-
-data TypeDefn
-  = TypeDefn Loc Name (Maybe Scheme) TypeParameters (Maybe TyDefnBody)
-
-data TyParameters
-  = TyParameters Loc [TyParameter]
-
-data TyParameter
-  = TyParameter Loc Name (Maybe Kind)
-
-data TyDefnBody
-  = TyDefnBody Loc [DataDef]
-
-
-data DataDefn
-  = DataDefn (Maybe Name) DataParameters
-  deriving (Show)
-
-data DataFields
-  = DataParameters Loc [DataParameter]
-
-data DataField
-  = DataParameter Loc (Maybe Name) TypeSig (Maybe Exp)
-
-------------------------------------------------------------------------
--- Type Alias Definition
-
-data AliasDefn
-  = AliasDefn Loc Name (Maybe Scheme) TyParameters Type
-
-
--- -----------------------------------------------------------------------------
--- | Class Definition
-
-data ClassDefn
-  = ClassDefn Loc ClassDel ClassBody
-
-data ClassDecl
-  = ClassDecl Loc Name (Maybe Scheme) TyParameters
-
-data ClassBody
-  = ClassBody Loc [ClassMethod]
-
-data ClassMethod
-  = CMethodDecl Loc FuncDecl
-  | CMethodDefn Loc FuncDefn
-
--- -----------------------------------------------------------------------------
--- | Instance Definition
-
-data InstDefn
-  = InstDefn InstDecl InstBody
-
-data InstDecl
-  = InstDecl Loc Name (Maybe Scheme) TyArgs
-
-data TyArgs = TyArgs Loc [Type]
-
-data InstBody = InstBody Loc [InstMethod]
-
-data InstMethod
-  = IMethodDecl Loc FuncDefn
-
-
--- -----------------------------------------------------------------------------
--- | Fixity Declarations
-
-{-
--- A fixity declaration
-data Fixity = Fixity FixityKind (L Int) [L Text]
-  deriving (Show, Eq)
-
--- The kinds of fixity
-data FixityKind
-  = InfixN
-  | InfixL
-  | InfixR
-  | Prefix
-  | Postfix
-  deriving (Show, Eq)
-
--}
-
--- -----------------------------------------------------------------------------
--- | Foreign Declarations
-
-{-
-data Foreign
-  = ForeignImport ForeignType (L Text) (L Text) Type
-  | ForeignExport ForeignType (L Text)
-  deriving (Show)
-
-
-data ForeignType =
-  ForeignC
-  deriving (Show)
--}
-
-
-
 
 
 -- -----------------------------------------------------------------------------
@@ -675,8 +688,8 @@ instance Pretty CtorDecl where
          , indent 2 (pretty inits)
          ]
 
-instance Pretty InitList where
-  pretty (InitList _ inits) = ":" <+> vsep (punctuate "," (pretty <$> inits))
+instance Pretty Inits where
+  pretty (Inits _ inits) = ":" <+> vsep (punctuate "," (pretty <$> NE.toList inits))
 
 
 instance Pretty Initializer where
@@ -704,8 +717,8 @@ instance Pretty Block where
 
 instance Pretty Stmt where
     pretty = \case
-      SExp _ Nothing -> ";"
-      SExp _ (Just e) -> pretty e <> ";"
+      SNop _ -> ";"
+      SExp _ e -> pretty e <> ";"
       SDecl _ specs decl ->
         pretty specs <+> pretty decl
     
