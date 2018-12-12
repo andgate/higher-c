@@ -55,7 +55,9 @@ hcc -r src program.exe
 
 import Prelude hiding (lex)
 
+import System.Environment
 import System.Console.GetOpt
+import Data.Maybe (fromMaybe)
 
 data Flag
   = IncludePath FilePath
@@ -63,13 +65,57 @@ data Flag
   | OutputDir FilePath
 
 data Options = Options
-  { optVerbose     :: Bool
-  , optShowVersion :: Bool 
+  { optShowVersion :: Bool 
   , optInput       :: [FilePath]
   , optOutput      :: Maybe FilePath
+  , optLibDirs     :: [FilePath]
   } deriving Show
 
-main = return ()
+defaultOptions =
+  Options
+    { optShowVersion = False
+    , optInput       = []
+    , optOutput      = Nothing
+    , optLibDirs     = []
+    }
+
+options :: [OptDescr (Options -> Options)]
+options =
+  [ Option ['c','?'] ["version"]
+      (NoArg (\ opts -> opts { optShowVersion = True }))
+      "show version number"
+
+  , Option ['i']     ["input"]
+      (OptArg ((\ f opts -> opts { optInput = optInput opts ++ [f] }) . fromMaybe "input")
+             "FILE")
+      "input FILE"
+
+  , Option ['o']     []
+      (OptArg ((\ f opts -> opts { optOutput = Just f }) . fromMaybe "output")
+             "FILE")
+      "output FILE"
+
+  , Option ['L']     ["libdir"]
+      (ReqArg (\ d opts -> opts { optLibDirs = optLibDirs opts ++ [d] }) "DIR")
+      "library directory"
+  ]
+
+
+
+compilerOpts :: [String] -> IO (Options, [String])
+compilerOpts argv =
+  case getOpt Permute options argv of
+    (o,n,[]  ) -> return (foldl (flip id) defaultOptions o, n)
+    (_,_,errs) -> ioError (userError (concat errs ++ usageInfo header options))
+  where header = "Usage: ic [OPTION...] <inputs..> <output>"
+
+
+main :: IO ()
+main = do
+  argv <- getArgs
+  (opts, nopts)<- compilerOpts argv
+  print opts
+  return ()
 
 
 {-

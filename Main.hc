@@ -1,7 +1,14 @@
+operator(prefix,  9, { + - * & && } );
+operator(prefix,  9, { ++ -- } );
+operator(postfix, 9, { ++ -- } );
+
+operator(inifxr, 6, { * / } ); 
+operator(infixr, 5, { + - } );
+
+
 type Void();
 
 alias Empty() = Void();
-
 
 infixr 5 + -;
 

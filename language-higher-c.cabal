@@ -51,6 +51,7 @@ library
   exposed-modules:
       Language.HigherC.Analysis.Namecheck
       Language.HigherC.Analysis.Infer
+      Language.HigherC.Analysis.Equality
 
       Language.HigherC.Syntax.Abstract
       Language.HigherC.Syntax.Builtin

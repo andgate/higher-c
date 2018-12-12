@@ -56,20 +56,14 @@ data TopLevelStmt
   | TImport Import
   | TDecl Decl
   | TFuncDefn FuncDefn
+  | TFuncExtern FuncExtern
   | TCtor  CtorDefn
   | TDtor  DtorDefn
-  | TTypeDefn
-  | TClass
-  | TImpl
-
-{-
-  | TopLevelAliasDef    AliasDef
-  | TopLevelDataDef     DataDef
-  | TopLevelClassDef    ClassDef
-  | TopLevelInstDef     InstDef
-  | TopLevelForeignDef  Foreign
-  | TopLevelFixityDef   Fixity
--}
+  | TTypeDefn TypeDefn
+  | TAliasDefn AliasDefn
+  | TClass ClassDefn
+  | TInst InstDefn
+  | TOpDecl OpDecl
 
 -- -----------------------------------------------------------------------------
 -- | Module
@@ -109,6 +103,9 @@ data FuncDefn
 
 data FuncDecl
   = FuncDecl Loc (Maybe FuncSpecs) Name (Maybe Scheme) Parameters (Maybe TypeSig)
+
+data FuncExtern
+  = FuncExtern Loc Name Parameters TypeSig
 
 data FuncSpecs = FuncSpecs Loc (NonEmpty FuncSpec)
 
@@ -166,6 +163,7 @@ data Stmt
   | SBreak Loc
   | SContinue Loc
   | SReturn Loc (Maybe Exp)
+  | SThrow Loc Exp
 
   | SIf Loc Exp Stmt (Maybe Stmt)
 
@@ -175,7 +173,17 @@ data Stmt
   | SFor Loc (Either (Maybe Exp) Decl) (Maybe Exp) (Maybe Exp) Stmt
 
   | SCase Loc Exp Alts
+  | STryCatch Loc Try [Catch] (Maybe Finally)
 
+
+data Try
+  = Try Loc Stmt
+
+data Catch
+  = Catch Loc Exp Stmt
+
+data Finally
+  = Finally Loc Stmt
 
 -- Statement Declaration Specifier
 data SDeclSpecs = SDeclSpecs Loc (NonEmpty SDeclSpec)
@@ -221,12 +229,14 @@ data Exp
   | EOpInfix   Loc Exp Name Exp
   | EInstr Loc Instr Exp Exp
 
-  | ECall Loc Exp [Exp]
+  | ECall Loc Exp Arguments
   | EAssign Loc Exp Exp
   | EMember Loc Exp Name
   | EPtrAccess Loc Exp Name
   | EArrayAccess Loc Exp Exp
 
+  | ENew Loc Exp
+  | EDelete Loc Exp
 
   | EParens Loc Exp
   | EAs Loc Exp Type
@@ -234,8 +244,12 @@ data Exp
 
 
 data OpTerm
-  = Operand Loc Exp
-  | Operator Loc Name
+  = Operand Exp
+  | Operator Name
+
+
+data Arguments
+  = Arguments Loc [Exp]
 
 
 -- -----------------------------------------------------------------------------
@@ -246,18 +260,18 @@ data Type
   | TCon Name
   | TOp Loc [TyOpTerm]
 
-  | TApp Loc Type [Type]
+  | TApp Loc Type TypeArguments
   | TArr Loc Type Type
 
   | TRef   Loc Type
   | TRVal  Loc Type
+  | TPtr   Loc Type
   | TConst Loc Type
-  | TMut   Loc Type
   | TArray Loc Type
-  | TArraySized Loc Type Exp
+  | TArraySized Loc Type (L Integer)
 
   | TParens Loc Type
-  | TKind Loc Type Kind
+  | TKind Loc Type KindSig
   | TLoc Loc Type
 
 
@@ -265,10 +279,23 @@ data Kind
   = KType Loc
   | KArr Loc Kind Kind
 
+data KindSig
+  = KindSig Loc Kind
 
 data TyOpTerm
   = TyOperator Name
   | TyOperand Type
+
+
+data TypeArguments
+  = TypeArguments Loc [Type]
+
+
+data TypeParameters
+  = TypeParameters Loc [TypeParameter]
+
+data TypeParameter
+  = TypeParameter Loc Name (Maybe KindSig)
 
 
 -- -----------------------------------------------------------------------------
@@ -294,33 +321,42 @@ instance Monoid Scheme where
 -- Type Definition
 
 data TypeDefn
-  = TypeDefn Loc Name (Maybe Scheme) TypeParameters (Maybe TyDefnBody)
+  = TypeDefn Loc TypeDecl TyDefnBody
 
-data TypeParameters
-  = TypeParameters Loc [TypeParameter]
+data TypeDecl
+  = TypeDecl Loc Name (Maybe Scheme) TypeParameters
 
-data TypeParameter
-  = TypeParameter Loc Name (Maybe Kind)
 
 data TyDefnBody
   = TyDefnBody Loc [DataDefn]
 
-
 data DataDefn
-  = DataDefn (Maybe Name) DataFields
+  = DataDefn Loc Name DataFields
+  | ObjectDefn Loc Name ObjectFields
 
 data DataFields
   = DataFields Loc [DataField]
 
 data DataField
-  = DataField Loc (Maybe Name) TypeSig (Maybe Exp)
+  = DataField Loc Type (Maybe DataFieldDefault)
+
+data DataFieldDefault
+  = DataFieldDefault Loc Exp
+
+data ObjectFields
+  = ObjectFields Loc [ObjectField]
+
+data ObjectField
+  = ObjectField Loc Name TypeSig (Maybe DataFieldDefault)
 
 
-------------------------------------------------------------------------
 -- Type Alias Definition
 
 data AliasDefn
-  = AliasDefn Loc Name (Maybe Scheme) TypeParameters Type
+  = AliasDefn Loc AliasDecl Type
+
+data AliasDecl
+  = AliasDecl Loc Name (Maybe Scheme) TypeParameters
 
 
 -- -----------------------------------------------------------------------------
@@ -336,62 +372,38 @@ data ClassBody
   = ClassBody Loc [ClassMethod]
 
 data ClassMethod
-  = CMethodDecl Loc FuncDecl
-  | CMethodDefn Loc FuncDefn
-
+  = ClassMethod Loc FuncDecl (Maybe Block)
 
 -- -----------------------------------------------------------------------------
 -- | Instance Definition
 
 data InstDefn
-  = InstDefn InstDecl InstBody
+  = InstDefn Loc InstDecl InstBody
 
 data InstDecl
-  = InstDecl Loc Name (Maybe Scheme) TyArgs
+  = InstDecl Loc Name (Maybe Scheme) TypeArguments
 
-data TyArgs = TyArgs Loc [Type]
-
-data InstBody = InstBody Loc [InstMethod]
+data InstBody
+  = InstBody Loc [InstMethod]
 
 data InstMethod
-  = IMethodDecl Loc FuncDefn
+  = InstMethod Loc FuncDefn
 
 
 -- -----------------------------------------------------------------------------
--- | Fixity Declarations
+-- | Operator Declaration
 
-{-
 -- A fixity declaration
-data Fixity = Fixity FixityKind (L Int) [L Text]
-  deriving (Show, Eq)
+data OpDecl
+  = OpDecl Loc Fixity (L Integer) [Name]
 
 -- The kinds of fixity
-data FixityKind
-  = InfixN
-  | InfixL
-  | InfixR
-  | Prefix
-  | Postfix
-  deriving (Show, Eq)
-
--}
-
--- -----------------------------------------------------------------------------
--- | Foreign Declarations
-
-{-
-data Foreign
-  = ForeignImport ForeignType (L Text) (L Text) Type
-  | ForeignExport ForeignType (L Text)
-  deriving (Show)
-
-
-data ForeignType =
-  ForeignC
-  deriving (Show)
--}
-
-
+data Fixity
+  = InfixN Loc
+  | InfixL Loc
+  | InfixR Loc
+  | Prefix Loc
+  | Postfix Loc
 
 
 -- -----------------------------------------------------------------------------
@@ -516,6 +528,18 @@ instance Locatable Stmt where
     SDoWhile l _ _ -> l
 
     SFor l _ _ _ _ -> l
+    SCase l _ _ -> l
+    STryCatch l _ _ _ -> l
+
+
+instance Locatable Try where
+  locOf (Try l _) = l
+
+instance Locatable Catch where
+  locOf (Catch l _ _) = l
+
+instance Locatable Finally where
+  locOf (Finally l _) = l
 
 
 instance Locatable SDeclSpecs where
@@ -557,8 +581,11 @@ instance Locatable Exp where
 
 instance Locatable OpTerm where
   locOf = \case
-    Operator l _ -> l
-    Operand l _ -> l
+    Operator n -> locOf n
+    Operand e -> locOf e
+
+instance Locatable Arguments where
+  locOf (Arguments l _) = l
 
 
 -- Types
@@ -571,6 +598,24 @@ instance Locatable Kind where
     KType l    -> l
     KArr l _ _ -> l
 
+instance Locatable KindSig where
+  locOf (KindSig l _) = l
+
+instance Locatable TyOpTerm where
+  locOf = \case
+    TyOperator n -> locOf n
+    TyOperand  ty -> locOf ty
+
+instance Locatable TypeArguments where
+  locOf (TypeArguments l _) = l
+
+
+instance Locatable TypeParameters where
+  locOf (TypeParameters l _) = l
+
+instance Locatable TypeParameter where
+  locOf (TypeParameter l _ _) = l
+
 
 -- Type schems and predicates
 instance Locatable Scheme where
@@ -581,6 +626,84 @@ instance Locatable Pred where
     Forall l _ -> l
     IsIn l _ _  -> l
 
+
+-- Type Definitions
+instance Locatable TypeDefn where
+  locOf (TypeDefn l _ _) = l
+
+instance Locatable TypeDecl where
+  locOf (TypeDecl l _ _ _) = l
+
+instance Locatable TyDefnBody where
+  locOf (TyDefnBody l _) = l
+
+instance Locatable DataDefn where
+  locOf (DataDefn l _ _) = l
+  locOf (ObjectDefn l _ _) = l
+
+instance Locatable DataFields where
+  locOf (DataFields l _) = l
+
+instance Locatable DataField where
+  locOf (DataField l _ _) = l
+
+instance Locatable DataFieldDefault where
+  locOf (DataFieldDefault l _) = l
+
+instance Locatable ObjectFields where
+  locOf (ObjectFields l _) = l
+
+instance Locatable ObjectField where
+  locOf (ObjectField l _ _ _) = l
+
+
+-- Type alias
+instance Locatable AliasDefn where
+  locOf (AliasDefn l _ _) = l
+
+instance Locatable AliasDecl where
+  locOf (AliasDecl l _ _ _) = l
+
+
+-- Class Definitions
+instance Locatable ClassDefn where
+  locOf (ClassDefn l _ _) = l
+
+instance Locatable ClassDecl where
+  locOf (ClassDecl l _ _ _) = l
+
+instance Locatable ClassBody where
+  locOf (ClassBody l _) = l
+
+instance Locatable ClassMethod where
+  locOf (ClassMethod l _ _) = l
+
+
+-- Instance Definitions
+instance Locatable InstDefn where
+  locOf (InstDefn l _ _) = l
+
+instance Locatable InstDecl where
+  locOf (InstDecl l _ _ _) = l
+
+instance Locatable InstBody where
+  locOf (InstBody l _) = l
+
+instance Locatable InstMethod where
+  locOf (InstMethod l _) = l
+
+
+-- Operator Declaration
+instance Locatable OpDecl where
+  locOf (OpDecl l _ _ _) = l
+
+instance Locatable Fixity where
+  locOf = \case
+    InfixN  l -> l
+    InfixR  l -> l
+    InfixL  l -> l
+    Postfix l -> l
+    Prefix  l -> l
 
 -- -----------------------------------------------------------------------------
 -- | Pretty Instances
@@ -763,6 +886,30 @@ instance Pretty Stmt where
 
         in "for (" <> pheader <> pcond <> pcounter <> ")" <+> pretty body
 
+      SCase _ e alts ->
+        vsep [ "case (" <> pretty e <> ") {"
+             , pretty alts
+             , "}"
+             ]
+
+      STryCatch _ t cs mf ->
+        vsep [ pretty t
+             , vsep (pretty <$> cs)
+             , pretty mf
+             ]
+
+instance Pretty Try where
+  pretty (Try _ stmt) =
+    "try" <+> pretty stmt
+
+instance Pretty Catch where
+  pretty (Catch _ ex stmt) =
+    "catch (" <> pretty ex <> ")" <+> pretty stmt
+
+instance Pretty Finally where
+  pretty (Finally _ stmt) =
+    "finally" <+> pretty stmt
+
 
 instance Pretty SDeclSpecs where
   pretty (SDeclSpecs _ specs) =
@@ -773,6 +920,21 @@ instance Pretty SDeclSpec where
     StaticDecl _ -> "static"
 
 
+
+instance Pretty Pat where
+  pretty = \case
+    PVar n -> pretty n
+
+
+instance Pretty Alts where
+  pretty (Alts _ alts) =
+    vsep (pretty <$> NE.toList alts)
+
+instance Pretty Alt where
+  pretty (Alt _ p stmt) =
+    pretty p <+> pretty stmt
+
+
 instance Pretty Exp where
     pretty = \case
       -- Terms
@@ -780,8 +942,12 @@ instance Pretty Exp where
       ECon n      -> pretty n
       EVal _ v      -> pretty v
       EInstr _ i e1 e2 -> pretty (show i) <+> pretty e1 <+> pretty e2
-      ECall _ n es   -> pretty n <+> ( tupled $ pretty <$> es)
+      ECall _ n args -> pretty n <> pretty args
       EType _ ty e   -> pretty e <+> ":" <+> pretty ty
+
+
+instance Pretty Arguments where
+  pretty (Arguments _ es) = tupled $ pretty <$> es
 
 
 instance Pretty Type where
@@ -792,6 +958,9 @@ instance Pretty Kind where
     pretty = \case
       KType _    -> "Type"
       KArr _ a b -> pretty a <+> "->" <+> pretty b
+
+instance Pretty KindSig where
+  pretty (KindSig _ k) = ":" <+> pretty k
 
 
 instance Pretty Scheme where

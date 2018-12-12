@@ -116,8 +116,9 @@ hawk :-
   "import"                        { rsvp }
 
   "type"                          { rsvp }
+  "alias"                         { rsvp }
   "class"                         { rsvp }
-  "impl"                          { rsvp }
+  "inst"                          { rsvp }
 
   "if"                            { rsvp }
   "elif"                          { rsvp }
@@ -127,6 +128,7 @@ hawk :-
   "try"                           { rsvp }
   "catch"                         { rsvp }
   "finally"                       { rsvp }
+  "throw"                         { rsvp }
 
   "return"                        { rsvp }
   "break"                         { rsvp }
@@ -137,21 +139,23 @@ hawk :-
   "while"                         { rsvp }
   "for"                           { rsvp }
 
-  "foreign"                       { rsvp }
-  "export"			                  { rsvp }
-  "ccall"                         { rsvp }
-
+  "operator"                      { rsvp }
+  "prefix"                        { rsvp }
   "infix"                         { rsvp }
   "infixl"                        { rsvp }
   "infixr"                        { rsvp }
+  "postfix"                       { rsvp }
 
-  "let"                           { rsvp }
   "static"                        { rsvp }
   "inline"                        { rsvp }
+  "extern"                        { rsvp }
+  "rec"                           { rsvp }
+
+  "let"                           { rsvp }
   "as"                            { rsvp }
+  "const"                         { rsvp }
 
   "new"                           { rsvp }
-  "newer"                         { rsvp }
   "delete"                        { rsvp }
 
   @primid                         { \text -> yieldTokAt (TokenPrimId text) text }

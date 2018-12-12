@@ -37,6 +37,7 @@ import qualified Data.Set as Set
   '~'                { Token (TokenRsvp "~") _ $$ }
   '*'                { Token (TokenRsvp "*") _ $$ }
   '&'                { Token (TokenRsvp "&") _ $$ }
+  '&&'               { Token (TokenRsvp "&&") _ $$ }
 
   '('                { Token (TokenRsvp "(") _ $$ }
   ')'                { Token (TokenRsvp ")") _ $$ }
@@ -51,22 +52,32 @@ import qualified Data.Set as Set
   Void               { Token (TokenRsvp "Void") _ $$ }
   I32                { Token (TokenRsvp "I32" ) _ $$ }
 
-  Let                { Token (TokenRsvp "let"   ) _ $$ }
+  Operator           { Token (TokenRsvp "operator") _ $$ }
+  Prefix             { Token (TokenRsvp "prefix") _ $$ }
+  Infix              { Token (TokenRsvp "infix") _ $$ }
+  Infixl             { Token (TokenRsvp "infixl") _ $$ }
+  Infixr             { Token (TokenRsvp "infixr") _ $$ }
+  Postfix            { Token (TokenRsvp "postfix") _ $$ }
+
   Static             { Token (TokenRsvp "static") _ $$ }
   Inline             { Token (TokenRsvp "inline") _ $$ }
-  Recursive          { Token (TokenRsvp "recursive") _ $$ }
-  As                 { Token (TokenRsvp "as"    ) _ $$ }
+  Recursive          { Token (TokenRsvp "rec") _ $$ }
+  Extern             { Token (TokenRsvp "extern") _ $$ }
 
   New                { Token (TokenRsvp "new"  ) _ $$ }
-  Newer              { Token (TokenRsvp "newer") _ $$ }
   Delete             { Token (TokenRsvp "delete") _ $$ }
 
   Module             { Token (TokenRsvp "module") _ $$ }
   Import             { Token (TokenRsvp "import") _ $$ }
 
   Type               { Token (TokenRsvp "type" ) _ $$ }
+  Alias              { Token (TokenRsvp "alias") _ $$ }
   Class              { Token (TokenRsvp "class") _ $$ }
-  Impl               { Token (TokenRsvp "impl" ) _ $$ }
+  Inst               { Token (TokenRsvp "inst" ) _ $$ }
+
+  Let                { Token (TokenRsvp "let"   ) _ $$ }
+  As                 { Token (TokenRsvp "as"    ) _ $$ }
+  Const              { Token (TokenRsvp "const" ) _ $$ }
 
   If                 { Token (TokenRsvp "if"  ) _ $$ }
   Else               { Token (TokenRsvp "else") _ $$ }
@@ -76,6 +87,7 @@ import qualified Data.Set as Set
   Try                { Token (TokenRsvp "try"    ) _ $$ }
   Catch              { Token (TokenRsvp "catch"  ) _ $$ }
   Finally            { Token (TokenRsvp "finally") _ $$ }
+  Throw              { Token (TokenRsvp "throw"  ) _ $$ }
 
   Return             { Token (TokenRsvp "return") _ $$ }
   Break              { Token (TokenRsvp "break" ) _ $$ }
@@ -190,6 +202,12 @@ top_level_stmt
   | function_defn    { TFuncDefn $1 }
   | constructor_defn { TCtor $1 }
   | destructor_defn  { TDtor $1 }
+  | type_defn        { TTypeDefn $1 }
+  | alias_defn       { TAliasDefn $1 }
+  | class_defn       { TClass $1 }
+  | instance_defn    { TInst $1 }
+  | operator_decl    { TOpDecl $1 }
+
 
 
 -- -----------------------------------------------------------------------------
@@ -349,11 +367,13 @@ stmt : stmt_nop    { $1 }
      | stmt_break    { $1 }
      | stmt_continue { $1 }
      | stmt_return   { $1 }
+     | stmt_throw    { $1 }
      | stmt_if       { $1 }
      | stmt_while    { $1 }
      | stmt_do_while { $1 }
      | stmt_for      { $1 }
      | stmt_case     { $1 }
+     | stmt_try_catch { $1 }
 
 
 block :: { Block }
@@ -418,6 +438,10 @@ stmt_return :: { Stmt }
 stmt_return   : Return may_exp ';' { SReturn   ($1 <> $3) $2 }
 
 
+stmt_throw :: { Stmt }
+stmt_throw
+  : Throw exp ';' { SThrow ($1 <> $3) $2}
+
 stmt_if :: { Stmt }
 stmt_if
   : If '(' exp ')' stmt %prec IFX { SIf ($1 <> locOf $5) $3 $5 Nothing }
@@ -473,6 +497,51 @@ case_alt :: { Alt }
 case_alt
   : pat stmt { Alt (locOf $1 <> locOf $2) $1 $2 }
 
+
+
+stmt_try_catch :: { Stmt }
+stmt_try_catch
+  : stmt_try stmt_catch_list may_stmt_finally
+    { case $3 of
+        Nothing
+          | null $2   -> STryCatch (locOf $1) $1 $2 $3
+          | otherwise -> STryCatch (locOf $1 <> locOf $2) $1 $2 $3
+        Just _ -> STryCatch (locOf $1 <> locOf $3) $1 $2 $3
+    }
+
+stmt_try :: { Try }
+stmt_try
+  : Try stmt { Try ($1 <> locOf $2) $2 }
+
+stmt_catch :: { Catch }
+stmt_catch
+  : Catch '(' exp ')' stmt { Catch ($1 <> locOf $5) $3 $5 }
+
+stmt_catch_list0 :: { [Catch] }
+stmt_catch_list0
+  : {- empty -}     { [] }
+  | stmt_catch_list { $1 }
+
+stmt_catch_list :: { [Catch] }
+stmt_catch_list
+  : stmt_catch_list_r { reverse $1 }
+
+stmt_catch_list_r :: { [Catch] }
+stmt_catch_list_r
+  : stmt_catch                   { [$1] }
+  | stmt_catch_list_r stmt_catch { $2 : $1 }
+
+stmt_finally :: { Finally }
+stmt_finally
+  : Finally stmt { Finally ($1 <> locOf $2) $2 }
+
+may_stmt_finally :: { Maybe Finally }
+may_stmt_finally
+  : {- empty -}  { Nothing }
+  | stmt_finally { Just $1 }
+
+
+
 -- -----------------------------------------------------------------------------
 -- | Patterns
 
@@ -496,6 +565,14 @@ eexp
 
 dexp :: { Exp }
 dexp
+  : cexp ':' type { EType (locOf $1 <> locOf $3) $1 $3 }
+  | cexp As  type { EAs (locOf $1 <> locOf $3) $1 $3 }
+  | New cexp      { ENew ($1 <> locOf $2) $2 }
+  | Delete cexp   { EDelete ($1 <> locOf $2) $2 }
+  | cexp { $1 }
+
+cexp :: { Exp }
+cexp
   : exp_op { $1 }
 
 exp_op :: { Exp }
@@ -511,19 +588,13 @@ op_terms_r
 
 op_term :: { OpTerm }
 op_term
-  : cexp    { Operand  (locOf $1) $1 }
-  | op_name { Operator (locOf $1) $1 }
+  : bexp    { Operand  $1 }
+  | op_name { Operator $1 }
 
-
-cexp :: { Exp }
-cexp
-  : bexp ':' type { EType (locOf $1 <> locOf $3) $1 $3 }
-  | bexp As  type { EAs (locOf $1 <> locOf $3) $1 $3 }
-  | bexp { $1 }
 
 bexp :: { Exp }
 bexp
-  : bexp '(' exp_args0 ')' { ECall        (locOf $1 <> $4) $1 $3       }
+  : bexp arguments         { ECall        (locOf $1 <> locOf $2) $1 $2 }
   | bexp '.' var_name      { EMember      (locOf $1 <> locOf $3) $1 $3 }
   | bexp '->' var_name     { EPtrAccess   (locOf $1 <> locOf $3) $1 $3 }
   | bexp '[' exp ']'       { EArrayAccess (locOf $1 <> $4) $1 $3       }
@@ -553,6 +624,11 @@ may_exp
   : {- empty -} { Nothing }
   | exp         { Just $1 }
 
+
+arguments :: { Arguments }
+arguments
+  : '(' exp_args0 ')' { Arguments ($1 <> $3) $2 }
+
 exp_args0 :: { [Exp] }
 exp_args0
   : {- empty -}  { [] }
@@ -577,18 +653,55 @@ type : dtype { $1 }
 dtype :: { Type }
 dtype
   : ctype            { $1 }
-  | ctype kind_annot { TKind (locOf $1 <> locOf $2) $1 $2 }
+  | ctype kind_sig   { TKind (locOf $1 <> locOf $2) $1 $2 }
 
 ctype :: { Type }
 ctype
-  : btype { $1 }
-  | btype '->' ctype { TArr (locOf $1 <> locOf $3) $1 $3 }
+  : type_op            { $1 }
+  | ctype '->' type_op { TArr (locOf $1 <> locOf $3) $1 $3 }
+
+
+type_op :: { Type }
+type_op : type_op_terms { TOp (locOf $1) $1 }
+
+type_op_terms :: { [TyOpTerm] }
+type_op_terms : type_op_terms_r { reverse $1 }
+
+type_op_terms_r :: { [TyOpTerm] }
+type_op_terms_r
+  : type_op_term   { [$1] }
+  | type_op_terms_r type_op_term { $2 : $1 }
+
+type_op_term :: { TyOpTerm }
+type_op_term
+  : btype    { TyOperand  $1 }
+  | op_name  { TyOperator $1 }
 
 btype :: { Type }
 btype
-  : atype { $1 }
-  | btype '(' type_list ')' { TApp (locOf $1 <> $4) $1 $3 }
+  : '&' btype { TRef ($1 <> locOf $2) $2 }
+  | '&&' btype { TRef ($1 <> locOf $2) $2 }
+  | '*'  btype { TPtr ($1 <> locOf $2) $2 }
+  | Const btype { TConst ($1 <> locOf $2) $2 }
+  | btype type_arguments { TApp (locOf $1 <> locOf $2) $1 $2 }
+  | btype '[' ']' { TArray (locOf $1 <> $3) $1 }
+  | btype '[' integer ']' { TArraySized (locOf $1 <> $4) $1 (extractInteger $3) }
+  | atype { $1 }
 
+atype :: { Type }
+atype : var_name      { TVar $1 }
+      | con_name      { TCon $1 }
+      | '(' type ')'  { TParens ($1 <> $3) $2 }
+
+
+type_arguments :: { TypeArguments }
+type_arguments
+  : '(' type_list0 ')' { TypeArguments ($1 <> $3) $2 }
+
+type_list0 :: { [Type] }
+type_list0
+  : {- empty -} { [] }
+  | type_list   { $1 }
 
 type_list :: { [Type] }
 type_list : type_list_r  { reverse $1 }
@@ -598,11 +711,31 @@ type_list_r
   : type                 { [$1] }
   | type_list_r ',' type { $3 : $1 }
 
-atype :: { Type }
-atype : var_name      { TVar $1 }
-      | con_name      { TCon $1 }
-      | '(' type ')'  { TParens ($1 <> $3) $2 }
 
+type_parameter :: { TypeParameter }
+type_parameter
+  : var_name maybe_kind_sig
+    { case $2 of
+        Nothing  -> TypeParameter (locOf $1) $1 $2
+        Just sig -> TypeParameter (locOf $1 <> locOf sig) $1 $2
+    }
+
+type_parameters :: { TypeParameters }
+type_parameters
+  : '(' type_parameter_list0 ')' { TypeParameters ($1 <> $3) $2 }
+
+type_parameter_list0 :: { [TypeParameter] }
+type_parameter_list0
+  : {- empty -}           { [] }
+  | type_parameter_list   { $1 }
+
+type_parameter_list :: { [TypeParameter] }
+type_parameter_list : type_parameter_list_r  { reverse $1 }
+
+type_parameter_list_r :: { [TypeParameter] }
+type_parameter_list_r
+  : type_parameter                           { [$1] }
+  | type_parameter_list_r ',' type_parameter { $3 : $1 }
 
 -- -----------------------------------------------------------------------------
 -- | Kinds
@@ -612,14 +745,17 @@ kind
   : akind           { $1 }
   | kind '->' akind { KArr (locOf $1 <> locOf $3) $1 $3 }
 
-
 akind :: { Kind }
 akind : TYPE { KType $1 }
 
-kind_annot :: { Kind }
-kind_annot
-  : ':' kind { $2 }
+kind_sig :: { KindSig }
+kind_sig
+  : ':' kind { KindSig ($1 <> locOf $2) $2 }
 
+maybe_kind_sig :: { Maybe KindSig }
+maybe_kind_sig
+  : {- empty -} { Nothing }
+  | kind_sig    { Just $1 }
 
 -- -----------------------------------------------------------------------------
 -- | Type Scheme
@@ -664,6 +800,210 @@ pred_list_r
   : pred                 { [$1] }
   | pred_list_r ',' pred { $3 : $1 }
 
+
+------------------------------------------------------------------------
+-- Type Definition
+
+type_defn :: { TypeDefn }
+type_defn
+  : type_decl type_defn_body { TypeDefn (locOf $1 <> locOf $2) $1 $2  }
+
+
+type_decl :: { TypeDecl }
+type_decl
+  : Type con_name maybe_scheme type_parameters { TypeDecl ($1 <> locOf $4) $2 $3 $4 }
+
+
+type_defn_body :: { TyDefnBody }
+type_defn_body
+  : '{' data_defn_list '}' { TyDefnBody ($1 <> $3) $2 }
+
+
+data_defn_list :: { [DataDefn] }
+data_defn_list : data_defn_list_r { reverse $1 }
+
+data_defn_list_r :: { [DataDefn] }
+data_defn_list_r
+  : data_defn                  {    [$1] }
+  | data_defn_list_r data_defn { $2 : $1 }
+
+data_defn :: { DataDefn }
+data_defn
+  : con_name data_fields ';' { DataDefn (locOf $1 <> $3) $1 $2 }
+  | con_name object_fields   { ObjectDefn (locOf $1 <> locOf $2) $1 $2 }
+
+
+--------------------------------------------------------------------
+-- Data notation
+
+data_fields :: { DataFields }
+data_fields
+  : '(' data_field_list0 ')'  { DataFields ($1 <> $3) $2 }
+
+data_field_list0 :: { [DataField] }
+data_field_list0
+  : {- empty -}     { [] }
+  | data_field_list { $1 }
+
+data_field_list :: { [DataField] }
+data_field_list : data_field_list_r { reverse $1 }
+
+data_field_list_r :: { [DataField] }
+data_field_list_r
+  : data_field                       {    [$1] }
+  | data_field_list_r ',' data_field { $3 : $1 }
+
+data_field :: { DataField }
+data_field
+  : type maybe_data_field_default
+    { case $2 of
+        Nothing -> DataField (locOf $1) $1 $2
+        Just d  -> DataField (locOf $1 <> locOf d) $1 $2
+    }
+
+data_field_default :: { DataFieldDefault }
+data_field_default
+  : '=' exp { DataFieldDefault ($1 <> locOf $2) $2 }
+
+maybe_data_field_default :: { Maybe DataFieldDefault }
+maybe_data_field_default
+  : {- empty -}        { Nothing }
+  | data_field_default { Just $1 }
+
+
+--------------------------------------------------------------------
+-- Object notation
+
+object_fields :: { ObjectFields }
+object_fields
+  : '{' object_field_list0 '}'  { ObjectFields ($1 <> $3) $2 }
+
+object_field_list0 :: { [ObjectField] }
+object_field_list0
+  : {- empty -}     { [] }
+  | object_field_list { $1 }
+
+object_field_list :: { [ObjectField] }
+object_field_list
+  : object_field_list_r { reverse $1 }
+
+object_field_list_r :: { [ObjectField] }
+object_field_list_r
+  : object_field                     {    [$1] }
+  | object_field_list_r object_field { $2 : $1 }
+
+object_field :: { ObjectField }
+object_field
+  : var_name type_sig maybe_data_field_default ';'
+    { ObjectField (locOf $1 <> $4) $1 $2 $3 }
+
+
+--------------------------------------------------------------------
+-- Type Alias Definition
+
+alias_defn :: { AliasDefn }
+alias_defn
+  : alias_decl '=' type { AliasDefn (locOf $1 <> locOf $3) $1 $3}
+
+alias_decl :: { AliasDecl }
+alias_decl
+  : Alias con_name maybe_scheme type_parameters { AliasDecl ($1 <> locOf $4) $2 $3 $4 }
+
+-- -----------------------------------------------------------------------------
+-- | Class Definition
+
+class_defn :: { ClassDefn }
+class_defn
+  : class_decl class_body   { ClassDefn (locOf $1 <> locOf $2) $1 $2 }
+
+class_decl :: { ClassDecl }
+class_decl
+  : Class con_name maybe_scheme type_parameters
+    { ClassDecl ($1 <> locOf $4) $2 $3 $4 }
+
+
+class_body :: { ClassBody }
+class_body
+  : '{' class_method_list0 '}' { ClassBody ($1 <> $3) $2 }
+
+class_method :: { ClassMethod }
+class_method
+  : function_decl ';'   { ClassMethod (locOf $1 <> $2)       $1 Nothing   }
+  | function_decl block { ClassMethod (locOf $1 <> locOf $2) $1 (Just $2) } 
+
+class_method_list0 :: { [ClassMethod] }
+class_method_list0
+  : {- empty -}       { [] }
+  | class_method_list { $1 }
+
+class_method_list :: { [ClassMethod] }
+class_method_list
+  : class_method_list_r { reverse $1 }
+
+class_method_list_r :: { [ClassMethod] }
+class_method_list_r
+  : class_method                     {    [$1] }
+  | class_method_list_r class_method { $2 : $1 }
+
+-- -----------------------------------------------------------------------------
+-- | Instance Definition
+
+instance_defn :: { InstDefn }
+instance_defn
+  : instance_decl instance_body { InstDefn (locOf $1 <> locOf $2) $1 $2 }
+
+
+instance_decl :: { InstDecl }
+instance_decl
+  : Inst con_name maybe_scheme type_arguments { InstDecl ($1 <> locOf $4) $2 $3 $4 }
+
+
+instance_body :: { InstBody }
+instance_body
+  : '{' instance_method_list0 '}' { InstBody ($1 <> $3) $2 }
+
+instance_method :: { InstMethod }
+instance_method
+  : function_defn { InstMethod (locOf $1) $1 } 
+
+instance_method_list0 :: { [InstMethod] }
+instance_method_list0
+  : {- empty -}          { [] }
+  | instance_method_list { $1 }
+
+instance_method_list :: { [InstMethod] }
+instance_method_list
+  : instance_method_list_r { reverse $1 }
+
+instance_method_list_r :: { [InstMethod] }
+instance_method_list_r
+  : instance_method                        {    [$1] }
+  | instance_method_list_r instance_method { $2 : $1 }
+
+-- -----------------------------------------------------------------------------
+-- | Operator Declaration
+
+operator_decl :: { OpDecl }
+operator_decl
+  : Operator '(' fixity ',' integer ',' op_name_list ')' ';'
+    { OpDecl ($1 <> $9) $3 (extractInteger $5) $7 }
+
+
+fixity :: { Fixity }
+fixity
+  : Infix   { InfixN $1 }
+  | Infixr  { InfixR $1 }
+  | Infixl  { InfixL $1 }
+  | Prefix  { Prefix $1 }
+  | Postfix { Postfix $1 }
+
+op_name_list :: { [Name] }
+op_name_list : op_name_list_r { reverse $1 }
+
+op_name_list_r :: { [Name] }
+op_name_list_r
+  : op_name                    {    [$1] }
+  | op_name_list_r ',' op_name { $3 : $1 } 
 
 {
 parseError :: [Token] -> a
