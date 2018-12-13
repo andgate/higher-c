@@ -26,6 +26,7 @@ library
       array
     , base <5
     , binary
+    , bytestring
     , containers
     , directory
     , either
@@ -33,6 +34,8 @@ library
     , extra
     , lens
     , ListZipper
+    , llvm-hs ==7.0.1
+    , llvm-hs-pure ==7.0.0
     , filepath
     , mtl
     , prettyprinter
@@ -53,10 +56,13 @@ library
       Language.HigherC.Analysis.Infer
       Language.HigherC.Analysis.Equality
 
+      Language.HigherC.Codegen
+
       Language.HigherC.Syntax.Abstract
       Language.HigherC.Syntax.Builtin
       Language.HigherC.Syntax.Canonical
       Language.HigherC.Syntax.Concrete
+      Language.HigherC.Syntax.Core
       Language.HigherC.Syntax.Location
       Language.HigherC.Syntax.Typed
 

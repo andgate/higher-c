@@ -863,8 +863,8 @@ instance Pretty FuncDefn where
 
 
 instance Pretty FuncDecl where
-  pretty (FuncDecl _ specs n scheme params ts) =
-    pretty specs <+> pretty n <> pretty scheme <> pretty params <> pretty ts
+  pretty (FuncDecl _ specs n scheme params may_ts) =
+    pretty specs <+> pretty n <> pretty scheme <> pretty params <> maybe mempty pretty may_ts
 
 instance Pretty FuncExtern where
   pretty (FuncExtern _ name params ts) =
@@ -880,7 +880,7 @@ instance Pretty FuncSpec where
     RecursiveFunc _ -> "rec"
 
 instance Pretty Arguments where
-  pretty (Arguments _ es) = tupled $ pretty <$> es
+  pretty (Arguments _ es) = tupled (pretty <$> es)
 
 instance Pretty Parameters where
   pretty (Parameters args) =
@@ -1087,7 +1087,7 @@ instance Pretty Type where
       TVar n -> pretty n
       TCon n -> pretty n
 
-      TOp _ terms -> pretty terms
+      TOp _ terms -> hsep (pretty <$> terms)
       TOpPrefix _ op t -> pretty op <> pretty t
       TOpPostfix _ t op -> pretty t <> pretty op
       TOpInfix _ a op b -> pretty a <+> pretty op <+> pretty b
