@@ -52,6 +52,9 @@ instance HasLoc Token where
 instance HasRegion Token where
     region = tokLoc . region
 
+instance Locatable Token where
+  locOf (Token _ _ l) = l
+
 -- -----------------------------------------------------------------------------
 -- Extraction
 
@@ -62,6 +65,10 @@ extractId (Token c _ l) = case c of
   TokenOpId   n -> L l n
   _ -> error "unexpected token"
 
+
+extractRsvp :: Token -> L Text
+extractRsvp (Token (TokenRsvp n) _ l) = L l n
+extractRsvp _ = error "unexcpected token"
 
 extractInteger :: Token -> L Integer
 extractInteger (Token (TokenInteger v) _ l) = L l v
@@ -90,7 +97,6 @@ extractBool _ = error "unexpected token"
 instance Pretty Token where
     pretty t =
       dquotes (pretty (t^.tokText))
-        <+> parens (pretty (t^.tokClass)) 
         <+> "@"
         <> pretty (t^.tokLoc)
 

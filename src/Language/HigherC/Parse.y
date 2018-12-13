@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Language.HigherC.Parse where
 
-import Data.Text (Text)
+import Data.Text (Text, unpack)
 
 import Language.HigherC.Lex
 import Language.HigherC.Lex.Token
@@ -16,6 +16,9 @@ import qualified Data.List.NonEmpty as NE
 
 import Data.Set (Set)
 import qualified Data.Set as Set
+
+import Data.Text.Prettyprint.Doc (pretty)
+import Data.Text.Prettyprint.Doc.Render.Text (putDoc)
 
 }
 
@@ -38,6 +41,7 @@ import qualified Data.Set as Set
   '*'                { Token (TokenRsvp "*") _ $$ }
   '&'                { Token (TokenRsvp "&") _ $$ }
   '&&'               { Token (TokenRsvp "&&") _ $$ }
+  '@'                { Token (TokenRsvp "@") _ $$ }
 
   '('                { Token (TokenRsvp "(") _ $$ }
   ')'                { Token (TokenRsvp ")") _ $$ }
@@ -45,8 +49,9 @@ import qualified Data.Set as Set
   ']'                { Token (TokenRsvp "]") _ $$ }
   '{'                { Token (TokenRsvp "{") _ $$ }
   '}'                { Token (TokenRsvp "}") _ $$ }
-  '<'                { Token (TokenRsvp "<") _ $$ }
-  '>'                { Token (TokenRsvp ">") _ $$ }
+  '<'                { Token (TokenRsvp "<") _ _ }
+  '>'                { Token (TokenRsvp ">") _ _ }
+
 
   TYPE               { Token (TokenRsvp "Type") _ $$ }
   Void               { Token (TokenRsvp "Void") _ $$ }
@@ -111,6 +116,7 @@ import qualified Data.Set as Set
   string             { Token (TokenString  _) _ _ }
   boolean            { Token (TokenBool    _) _ _ }
 
+  eof                { Token TokenEof _ _ }
 
 %nonassoc IFX
 %nonassoc Elif
@@ -156,7 +162,9 @@ con_id :: { L Text }
 con_id : conId { extractId $1 }
 
 op_id :: { L Text }
-op_id  : opId  { extractId $1 }
+op_id  : opId            { extractId   $1 }
+       | '<'             { extractRsvp $1 }
+       | '>'             { extractRsvp $1 }
 
 
 value :: { L Val }
@@ -179,7 +187,7 @@ var_name_list_r
 -- | Top Level
 
 top_level :: { TopLevel }
-top_level : top_level_stmts0 { TopLevel $1 }
+top_level : top_level_stmts0 eof { TopLevel $1 }
 
 top_level_stmts0 :: { [TopLevelStmt] }
 top_level_stmts0
@@ -200,6 +208,7 @@ top_level_stmt
   | import_stmt      { TImport $1 }
   | declaration      { TDecl $1 }
   | function_defn    { TFuncDefn $1 }
+  | function_extern  { TFuncExtern $1 }
   | constructor_defn { TCtor $1 }
   | destructor_defn  { TDtor $1 }
   | type_defn        { TTypeDefn $1 }
@@ -269,6 +278,11 @@ function_decl :: { FuncDecl }
 function_decl : maybe_func_specs var_name maybe_scheme '(' parameters0 ')' maybe_type_sig
               { FuncDecl (maybe (locOf $2) locOf $1 <> maybe $6 locOf $7) $1 $2 $3 $5 $7 }
 
+
+function_extern :: { FuncExtern }
+function_extern
+  : Extern var_name '(' parameters0 ')' type_sig ';'
+    { FuncExtern ($1 <> $7) $2 $4 $6 }
 
 -- | Function Specializers
 maybe_func_specs :: { Maybe FuncSpecs }
@@ -546,10 +560,60 @@ may_stmt_finally
 -- | Patterns
 
 pat :: { Pat }
-pat : pat_var { $1 }
+pat : bpat { $1 }
+
+cpat :: { Pat }
+cpat
+  : pat type_sig { PType (locOf $1 <> locOf $2) $1 $2 }
+  | bpat { $1 }
+
+bpat :: { Pat }
+bpat
+  : var_name '@' bpat                        { PAs  (locOf $1 <> locOf $3) $1 $3 }
+  | con_name '(' pat_list0 ')'               { PCon (locOf $1 <> $4)       $1 $3 }
+  | con_name '{' pat_rec_field_list0 '}'     { PRec (locOf $1 <> $4)       $1 $3 }
+  | apat { $1 }
+
+apat :: { Pat }
+apat
+  : pat_var     { $1 }
+  | '(' pat ')' { PParen ($1 <> $3) $2 }
+  | '_'         { PWild $1 }
 
 pat_var :: { Pat }
 pat_var : var_name { PVar $1 }
+
+
+pat_rec_field :: { PatRecField }
+pat_rec_field
+  : var_name '=' pat { PatRecField (locOf $1 <> locOf $3) $1 $3 }
+
+pat_rec_field_list0 :: { [PatRecField] }
+pat_rec_field_list0
+  : {- empty -}        { [] }
+  | pat_rec_field_list { $1 }
+
+pat_rec_field_list :: { [PatRecField] }
+pat_rec_field_list : pat_rec_field_list_r { reverse $1 }
+
+pat_rec_field_list_r :: { [PatRecField] }
+pat_rec_field_list_r
+  : pat_rec_field                          {    [$1] }
+  | pat_rec_field_list_r ',' pat_rec_field { $3 : $1 }
+
+
+pat_list0 :: { [Pat] }
+pat_list0
+  : {- empty -} { [] }
+  | pat_list    { $1 }
+
+pat_list :: { [Pat] }
+pat_list : pat_list_r { reverse $1 }
+
+pat_list_r :: { [Pat] }
+pat_list_r
+  : pat                {    [$1] }
+  | pat_list_r ',' pat { $3 : $1 }
 
 
 -- -----------------------------------------------------------------------------
@@ -565,7 +629,7 @@ eexp
 
 dexp :: { Exp }
 dexp
-  : cexp ':' type { EType (locOf $1 <> locOf $3) $1 $3 }
+  : cexp type_sig { EType (locOf $1 <> locOf $2) $1 $2 }
   | cexp As  type { EAs (locOf $1 <> locOf $3) $1 $3 }
   | New cexp      { ENew ($1 <> locOf $2) $2 }
   | Delete cexp   { EDelete ($1 <> locOf $2) $2 }
@@ -604,6 +668,7 @@ aexp :: { Exp }
 aexp : exp_var    { $1 }
      | exp_con    { $1 }
      | exp_value  { $1 }
+     | exp_array  { $1 }
      | exp_parens { $1 }
 
 exp_var :: { Exp }
@@ -617,6 +682,10 @@ exp_value : value { mkVal $1 }
 
 exp_parens :: { Exp }
 exp_parens : '(' exp ')' { EParens ($1 <> $3) $2 }
+
+exp_array :: { Exp }
+exp_array
+  : '[' exp_args0 ']' { EArray ($1 <> $3) $2 }
 
 
 may_exp :: { Maybe Exp }
@@ -762,7 +831,7 @@ maybe_kind_sig
 
 scheme :: { Scheme }
 scheme
-  : '<' pred_list0 '>' { Scheme ($1 <> $3) $2 }
+  : '<' pred_list0 '>' { Scheme (locOf $1 <> locOf $3) $2 }
 
 maybe_scheme :: { Maybe Scheme }
 maybe_scheme
@@ -816,8 +885,18 @@ type_decl
 
 type_defn_body :: { TyDefnBody }
 type_defn_body
-  : '{' data_defn_list '}' { TyDefnBody ($1 <> $3) $2 }
+  : '{' data_defn_list0 '}' { TyDefnBody ($1 <> $3) $2 }
+  | ';'                    { TyDefnBody $1 mempty     }
 
+data_defn :: { DataDefn }
+data_defn
+  : con_name data_fields ';' { DataDefn (locOf $1 <> $3) $1 $2 }
+  | con_name object_fields   { ObjectDefn (locOf $1 <> locOf $2) $1 $2 }
+
+data_defn_list0 :: { [DataDefn] }
+data_defn_list0
+  : {- empty -}      { [] }
+  | data_defn_list   { $1 }
 
 data_defn_list :: { [DataDefn] }
 data_defn_list : data_defn_list_r { reverse $1 }
@@ -826,12 +905,6 @@ data_defn_list_r :: { [DataDefn] }
 data_defn_list_r
   : data_defn                  {    [$1] }
   | data_defn_list_r data_defn { $2 : $1 }
-
-data_defn :: { DataDefn }
-data_defn
-  : con_name data_fields ';' { DataDefn (locOf $1 <> $3) $1 $2 }
-  | con_name object_fields   { ObjectDefn (locOf $1 <> locOf $2) $1 $2 }
-
 
 --------------------------------------------------------------------
 -- Data notation
@@ -889,13 +962,16 @@ object_field_list
 
 object_field_list_r :: { [ObjectField] }
 object_field_list_r
-  : object_field                     {    [$1] }
-  | object_field_list_r object_field { $2 : $1 }
+  : object_field                         {    [$1] }
+  | object_field_list_r ',' object_field { $3 : $1 }
 
 object_field :: { ObjectField }
 object_field
-  : var_name type_sig maybe_data_field_default ';'
-    { ObjectField (locOf $1 <> $4) $1 $2 $3 }
+  : var_name type_sig maybe_data_field_default
+    { case $3 of
+        Nothing -> ObjectField (locOf $1 <> locOf $2) $1 $2 $3
+        Just d  -> ObjectField (locOf $1 <> locOf d) $1 $2 $3
+    }
 
 
 --------------------------------------------------------------------
@@ -903,7 +979,7 @@ object_field
 
 alias_defn :: { AliasDefn }
 alias_defn
-  : alias_decl '=' type { AliasDefn (locOf $1 <> locOf $3) $1 $3}
+  : alias_decl '=' type ';' { AliasDefn (locOf $1 <> $4) $1 $3}
 
 alias_decl :: { AliasDecl }
 alias_decl
@@ -1007,5 +1083,11 @@ op_name_list_r
 
 {
 parseError :: [Token] -> a
-parseError _ = error "Parse error"
+parseError [] = error "Parse error"
+parseError (tok:toks) =
+  let locPrefix = (show . pretty . locOf $ tok)
+      tokStr    = unpack (_tokText tok)
+      tokClassStr = (show . pretty . _tokClass $ tok)
+  in error $ "\n" ++ locPrefix ++ ": Parse error on " ++ tokStr ++ " (" ++ tokClassStr ++ ")"
+
 }

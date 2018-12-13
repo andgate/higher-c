@@ -1,36 +1,37 @@
-operator(prefix,  9, { + - * & && } );
-operator(prefix,  9, { ++ -- } );
-operator(postfix, 9, { ++ -- } );
+operator(prefix,  9, +, - );
+operator(prefix,  9, ++, -- );
+operator(postfix, 9, ++, -- );
 
-operator(inifxr, 6, { * / } ); 
-operator(infixr, 5, { + - } );
+operator(infixr, 6, / ); 
+operator(infixr, 5, +, - );
 
 
 type Void();
 
 alias Empty() = Void();
 
-infixr 5 + -;
+id<a>(x: a): a { return x; }
 
-extern "ccall" print(str: *Char() );
+operator(infixr, 5, +, -);
+
+extern print(str: *Char() ): Void A;
 
 type Colors() { Red(); Green(); Blue(); }
 
 type Array(x : Type) {
-  Array(
-    data: Ptr(x) = null,
-    size: I32 = 10,
-    cap: I32 = 100,
-    maxSize: const I32 = 10000,
-  );
+  Array
+    { data: *x = null
+    , size: I32 = 10
+    , cap: I32 = 100
+    , maxSize: const I32 = 10000
+    }
 }
 
-// Immutable list, not that useful
-type const Node(x: Type){
-  data Node {
-    data: x;
-    next: Ptr(Node(x));
-  }
+type Node(x: Type){
+  Node
+    { data: x
+    , next: *Node(x)
+    }
 }
 
 Array()
@@ -40,15 +41,14 @@ Array()
 {}
 
 ~Array()
-  : data(null)
-  , size(0)
-  , cap(0)
-{}
+{
+  delete data;
+}
 
 Array(n: I32)
-  : data(new I32[n*2])
+  : data(new I32[mul(n, 2)])
   , size(n)
-  , cap(n*2)
+  , cap(mul(n,2))
 {}
 
 Array ( other: &Array(x) )
@@ -63,9 +63,9 @@ Array ( other: &Array(x) )
 }
 
 Array ( n: I32, initial: &x )
-  : data(new x[n*2])
+  : data(new x[mul(n, 2)])
   , size(n)
-  , cap(n*2)
+  , cap(mul(n, 2))
 {
   for (int i = 0; i < initialSize; ++i)
     data[i] = initial;
@@ -95,13 +95,13 @@ Array ( data: ptr(x), size: Const(I32) )
 
 ~Array()
 {
-  delete(data, size);
+  delete data;
 }
 
 append<x>(array: Array(x), elem: x)
 {
   if (array.length >= array.capacity)
-     array.resize(capacity*2);
+     array.resize(mul(capacity, 2));
 
   with (array) {
     data[size] = x;
@@ -111,17 +111,17 @@ append<x>(array: Array(x), elem: x)
 
 
 class GetLength(f) {
-  getLength(item: REF(f)): I32;
+  getLength(item: &f): I32;
 }
 
 class SetLength(f) {
-  setLength(thing: Ref(f)): Ref(f); 
+  setLength(thing: &f): Ref(f); 
 }
 
 
 inst GetLength<x>(Array(x))
 {
-  length(arr: REF(Array(x)) -> I32
+  length(arr)
   {
     return arr.size;
   }
@@ -129,7 +129,7 @@ inst GetLength<x>(Array(x))
 
 inst SetLength<x>(Array(x))
 {
-  length(arr: Ref(Array(x), newLength: Const(I32)): Ref(Array(x))
+  length(arr: &Array(x), newLength: const I32): &Array(x)
   {
     // Newer allows arrays to resize intelligently.
     // Basically accepts a pointer and reallocs.
@@ -137,7 +137,7 @@ inst SetLength<x>(Array(x))
     // Any given ptr might be invalidated.
     // If the resize is efficient, the array boundary will
     // simply grow.
-    newer arr.data [newLength];
+    //newer arr.data [newLength];
     arr.size = newLength;
     arr.cap = newLength;
   }
@@ -177,7 +177,7 @@ class Semigroup(m)
   mappend(a: Const(m), b: Const(m)): m;
 }
 
-class Monoid<Semigroup m>(m)
+class Monoid <Semigroup(m)> (m)
 {
   mempty(): m;
 }
@@ -197,31 +197,30 @@ type Maybe(x)
 
 
 // And we can write Maybe to act algebraically.
-impl Semigroup<Semigroup x>(Maybe(x))
+inst Semigroup<Semigroup(x)>(Maybe(x))
 {
-  mappend(a, b)
+  mappend(ma, mb)
   {
-    case(a, b) {
-      Nothing(), _ {
-        return b;
-      Just(_), Nothing() {
-        return a;
-      }
-      Just(x), Just(y) {
-        return Just(x<>y);
+    case(ma) {
+      Nothing() return b;
+      Just(a) {
+        case(mb) {
+          Nothing() { return b;    }
+          Just(b)   { return a<>b; }
+        }
       }
     }
   }
 }
 
-impl Monoid<Monoid x>(Maybe(x))
+inst Monoid<Monoid(x)>( Maybe(x) )
 {
   mempty() { return Just(mempty()); }
 }
 
 
 // Functors are easily expressible
-impl Functor(Maybe(x))
+inst Functor(Maybe(x))
 {
   fmap(f, m)
   {
@@ -237,7 +236,7 @@ impl Functor(Maybe(x))
 /* Simple main function */
 main(): I32
 {
-  let foo([2, 3, 100, 4, 7], 5): Arr(I32);
+  let foo([2, 3, 100, 4, 7], 5): I32[5];
   doStuff(foo);
 
   foo.sort();

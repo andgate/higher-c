@@ -54,16 +54,22 @@ data TopLevel
 data TopLevelStmt
   = TModule Module
   | TImport Import
+
   | TDecl Decl
   | TFuncDefn FuncDefn
   | TFuncExtern FuncExtern
+
   | TCtor  CtorDefn
   | TDtor  DtorDefn
+
   | TTypeDefn TypeDefn
   | TAliasDefn AliasDefn
+
   | TClass ClassDefn
   | TInst InstDefn
+
   | TOpDecl OpDecl
+
 
 -- -----------------------------------------------------------------------------
 -- | Module
@@ -112,6 +118,9 @@ data FuncSpecs = FuncSpecs Loc (NonEmpty FuncSpec)
 data FuncSpec
   = InlineFunc Loc
   | RecursiveFunc Loc
+
+data Arguments
+  = Arguments Loc [Exp]
 
 data Parameters = Parameters [Parameter]
 
@@ -171,7 +180,6 @@ data Stmt
   | SDoWhile Loc Stmt Exp
 
   | SFor Loc (Either (Maybe Exp) Decl) (Maybe Exp) (Maybe Exp) Stmt
-
   | SCase Loc Exp Alts
   | STryCatch Loc Try [Catch] (Maybe Finally)
 
@@ -191,6 +199,11 @@ data SDeclSpecs = SDeclSpecs Loc (NonEmpty SDeclSpec)
 data SDeclSpec
   = StaticDecl Loc
 
+-- Case Alternatives
+data Alts = Alts Loc (NonEmpty Alt)
+
+data Alt
+  = Alt Loc Pat Stmt
 
 -- -----------------------------------------------------------------------------
 -- | Patterns
@@ -198,22 +211,18 @@ data SDeclSpec
 data Pat
   = PVar Name
   | PVal Loc Val
+
   | PAs Loc Name Pat
   | PCon Loc Name [Pat]
-  | PRec Loc Name [RecFieldPat]
+  | PRec Loc Name [PatRecField]
 
-  | PType Loc Pat Type
-
+  | PType Loc Pat TypeSig
   | PParen Loc Pat
   | PWild Loc
 
-data RecFieldPat
-  = PRecField Loc Name Pat
+data PatRecField
+  = PatRecField Loc Name Pat
 
-data Alts = Alts Loc (NonEmpty Alt)
-
-data Alt
-  = Alt Loc Pat Stmt
 
 -- -----------------------------------------------------------------------------
 -- | Expression
@@ -227,29 +236,29 @@ data Exp
   | EOpPrefix  Loc Name Exp
   | EOpPostfix Loc Exp Name
   | EOpInfix   Loc Exp Name Exp
-  | EInstr Loc Instr Exp Exp
+  | EOpInfixL  Loc Exp Name Exp
+  | EOpInfixR  Loc Exp Name Exp
 
   | ECall Loc Exp Arguments
   | EAssign Loc Exp Exp
+  
   | EMember Loc Exp Name
   | EPtrAccess Loc Exp Name
   | EArrayAccess Loc Exp Exp
+  | EArray Loc [Exp]
 
   | ENew Loc Exp
   | EDelete Loc Exp
 
   | EParens Loc Exp
   | EAs Loc Exp Type
-  | EType Loc Exp Type
+  | EType Loc Exp TypeSig
 
 
 data OpTerm
   = Operand Exp
   | Operator Name
 
-
-data Arguments
-  = Arguments Loc [Exp]
 
 
 -- -----------------------------------------------------------------------------
@@ -258,7 +267,13 @@ data Arguments
 data Type
   = TVar Name
   | TCon Name
+
   | TOp Loc [TyOpTerm]
+  | TOpPrefix  Loc Name Exp
+  | TOpPostfix Loc Exp Name
+  | TOpInfix   Loc Exp Name Exp
+  | TOpInfixL  Loc Exp Name Exp
+  | TOpInfixR  Loc Exp Name Exp
 
   | TApp Loc Type TypeArguments
   | TArr Loc Type Type
@@ -272,15 +287,7 @@ data Type
 
   | TParens Loc Type
   | TKind Loc Type KindSig
-  | TLoc Loc Type
 
-
-data Kind
-  = KType Loc
-  | KArr Loc Kind Kind
-
-data KindSig
-  = KindSig Loc Kind
 
 data TyOpTerm
   = TyOperator Name
@@ -290,12 +297,21 @@ data TyOpTerm
 data TypeArguments
   = TypeArguments Loc [Type]
 
-
 data TypeParameters
   = TypeParameters Loc [TypeParameter]
 
 data TypeParameter
   = TypeParameter Loc Name (Maybe KindSig)
+
+-- -----------------------------------------------------------------------------
+-- | Kinds
+
+data Kind
+  = KType Loc
+  | KArr Loc Kind Kind
+
+data KindSig
+  = KindSig Loc Kind
 
 
 -- -----------------------------------------------------------------------------
@@ -326,23 +342,28 @@ data TypeDefn
 data TypeDecl
   = TypeDecl Loc Name (Maybe Scheme) TypeParameters
 
-
+-- Type Definition Body
 data TyDefnBody
   = TyDefnBody Loc [DataDefn]
 
+-- Data Definitions
 data DataDefn
   = DataDefn Loc Name DataFields
   | ObjectDefn Loc Name ObjectFields
 
+
+-- Data Fields
 data DataFields
   = DataFields Loc [DataField]
 
 data DataField
   = DataField Loc Type (Maybe DataFieldDefault)
 
+-- Default value for fields
 data DataFieldDefault
   = DataFieldDefault Loc Exp
 
+-- Object/Record fields
 data ObjectFields
   = ObjectFields Loc [ObjectField]
 
@@ -351,7 +372,6 @@ data ObjectField
 
 
 -- Type Alias Definition
-
 data AliasDefn
   = AliasDefn Loc AliasDecl Type
 
@@ -428,12 +448,18 @@ instance Locatable TopLevel where
 
 instance Locatable TopLevelStmt where
   locOf = \case
-    TModule m   -> locOf m
-    TImport i   -> locOf i
-    TDecl d     -> locOf d
-    TFuncDefn f -> locOf f
-    TCtor  c    -> locOf c
-    TDtor  d    -> locOf d
+    TModule m          -> locOf m
+    TImport i          -> locOf i
+    TDecl d            -> locOf d
+    TFuncDefn f        -> locOf f
+    TFuncExtern f      -> locOf f
+    TCtor  c           -> locOf c
+    TDtor  d           -> locOf d
+    TTypeDefn d        -> locOf d
+    TAliasDefn a       -> locOf a
+    TClass c           -> locOf c
+    TInst i            -> locOf i
+    TOpDecl o          -> locOf o
 
 
 -- Modules
@@ -470,6 +496,9 @@ instance Locatable FuncDefn where
 
 instance Locatable FuncDecl where
   locOf (FuncDecl l _ _ _ _ _) = l
+
+instance Locatable FuncExtern where
+  locOf (FuncExtern l _ _ _) = l
 
 instance Locatable FuncSpecs where
   locOf (FuncSpecs l _) = l
@@ -521,6 +550,7 @@ instance Locatable Stmt where
     SBreak l -> l
     SContinue l -> l
     SReturn l _ -> l
+    SThrow l _ -> l
 
     SIf l _ _ _ -> l
 
@@ -550,23 +580,7 @@ instance Locatable SDeclSpec where
     StaticDecl l -> l
 
 
--- Patterns
-instance Locatable Pat where
-  locOf = \case
-    PVar n -> locOf n
-    PVal l _ -> l
-    PAs l _ _ -> l
-    PCon l _ _ -> l
-    PRec l _ _ -> l
-    PType l _ _ -> l
-    PParen l _ -> l
-    PWild l -> l
-
-
-instance Locatable RecFieldPat where
-  locOf (PRecField l _ _) = l
-
-
+-- Case Alts
 instance Locatable Alts where
   locOf (Alts l _) = l
 
@@ -574,10 +588,52 @@ instance Locatable Alt where
   locOf (Alt l _ _) = l
 
 
+-- Patterns
+instance Locatable Pat where
+  locOf = \case
+    PVar n   -> locOf n
+    PVal l _ -> l
+
+    PAs  l _ _ -> l
+    PCon l _ _ -> l
+    PRec l _ _ -> l
+
+    PType  l _ _ -> l
+    PParen l _ -> l
+    PWild  l -> l
+
+
+instance Locatable PatRecField where
+  locOf (PatRecField l _ _) = l
+
 -- Expressions
 instance Locatable Exp where
   locOf = \case
     EVar n -> locOf n
+    ECon n -> locOf n
+    EVal l _ -> l
+
+    EOp        l _ -> l
+    EOpPrefix  l _ _ -> l
+    EOpPostfix l _ _ -> l
+    EOpInfix   l _ _ _ -> l
+    EOpInfixL  l _ _ _ -> l
+    EOpInfixR  l _ _ _ -> l
+
+    ECall        l _ _ -> l
+    EAssign      l _ _ -> l
+    EMember      l _ _ -> l
+    EPtrAccess   l _ _ -> l
+    EArrayAccess l _ _ -> l
+    EArray       l _ -> l
+
+    ENew    l _ -> l
+    EDelete l _ -> l
+
+    EParens l _   -> l
+    EAs     l _ _ -> l
+    EType   l _ _ -> l
+    
 
 instance Locatable OpTerm where
   locOf = \case
@@ -592,6 +648,30 @@ instance Locatable Arguments where
 instance Locatable Type where
   locOf = \case
     TVar n -> locOf n
+    TCon n -> locOf n
+
+    TOp        l _ -> l
+    TOpPrefix  l _ _ -> l
+    TOpPostfix l _ _ -> l
+    TOpInfix   l _ _ _ -> l
+    TOpInfixL  l _ _ _ -> l
+    TOpInfixR  l _ _ _ -> l
+
+    TApp l _ _ -> l
+    TArr l _ _ -> l
+
+    TRef   l _ -> l
+    TRVal  l _ -> l
+    TPtr   l _ -> l
+    TConst l _ -> l
+    TArray l _ -> l
+
+    TArraySized l _ _ -> l
+
+    TParens l _ -> l
+    TKind l _ _ -> l
+
+
 
 instance Locatable Kind where
   locOf = \case
@@ -603,12 +683,11 @@ instance Locatable KindSig where
 
 instance Locatable TyOpTerm where
   locOf = \case
-    TyOperator n -> locOf n
+    TyOperator  n -> locOf n
     TyOperand  ty -> locOf ty
 
 instance Locatable TypeArguments where
   locOf (TypeArguments l _) = l
-
 
 instance Locatable TypeParameters where
   locOf (TypeParameters l _) = l
@@ -702,8 +781,8 @@ instance Locatable Fixity where
     InfixN  l -> l
     InfixR  l -> l
     InfixL  l -> l
-    Postfix l -> l
     Prefix  l -> l
+    Postfix l -> l
 
 -- -----------------------------------------------------------------------------
 -- | Pretty Instances
@@ -714,7 +793,7 @@ instance Pretty Name where
   pretty (Name n mp _) = case mp of
     Nothing -> pretty n
     Just p -> pretty p <> "::" <> pretty n
-    
+
 
 -- Toplevel
 instance Pretty TopLevel where
@@ -728,21 +807,28 @@ instance Pretty TopLevelStmt where
 
     TDecl decl -> pretty decl
     TFuncDefn fn   -> pretty fn
+    TFuncExtern fn -> pretty fn
 
     TCtor ctor -> pretty ctor
     TDtor dtor -> pretty dtor
 
-    _ -> error "Undefined top level statement encountered"
+    TTypeDefn  d -> pretty d
+    TAliasDefn d -> pretty d
+
+    TClass c -> pretty c
+    TInst  i -> pretty i
+
+    TOpDecl o -> pretty o
+
 
 
 -- Modules
 instance Pretty Module where
   pretty (Module _ mpath mblk) = "module" <+> pretty mpath <+> pretty mblk
 
-instance Pretty Import where
-  pretty (Import _ mpath) =
-    "import" <+> pretty mpath <> ";"
-
+instance Pretty ModulePath where
+  pretty (MPath _ ns) =
+    concatWith (surround dot) [pretty n | n <- NE.toList ns]
 
 instance Pretty ModuleBlock where
   pretty (MBlock _ stmts) =
@@ -751,9 +837,9 @@ instance Pretty ModuleBlock where
          , "}"
          ]
 
-instance Pretty ModulePath where
-  pretty (MPath _ ns) =
-    concatWith (surround dot) [pretty n | n <- NE.toList ns]
+instance Pretty Import where
+  pretty (Import _ mpath) =
+    "import" <+> pretty mpath <> ";"
 
 
 -- Declarations
@@ -777,8 +863,12 @@ instance Pretty FuncDefn where
 
 
 instance Pretty FuncDecl where
-  pretty (FuncDecl _ n specs scheme params ts) =
-    pretty n <> pretty specs <> pretty scheme <> pretty params <> pretty ts
+  pretty (FuncDecl _ specs n scheme params ts) =
+    pretty specs <+> pretty n <> pretty scheme <> pretty params <> pretty ts
+
+instance Pretty FuncExtern where
+  pretty (FuncExtern _ name params ts) =
+    pretty name <> pretty params <> pretty ts <> ";"
 
 
 instance Pretty FuncSpecs where
@@ -789,6 +879,9 @@ instance Pretty FuncSpec where
     InlineFunc _    -> "inline"
     RecursiveFunc _ -> "rec"
 
+instance Pretty Arguments where
+  pretty (Arguments _ es) = tupled $ pretty <$> es
+
 instance Pretty Parameters where
   pretty (Parameters args) =
     tupled (pretty <$> args)
@@ -798,7 +891,7 @@ instance Pretty Parameter where
     pretty n <> ":" <+> pretty mtysig
 
 
--- Constructor definitions
+-- Constructor and Destructors
 instance Pretty CtorDefn where
   pretty (CtorDefn _ decl blk)
     = vsep [ pretty decl
@@ -811,15 +904,6 @@ instance Pretty CtorDecl where
          , indent 2 (pretty inits)
          ]
 
-instance Pretty Inits where
-  pretty (Inits _ inits) = ":" <+> vsep (punctuate "," (pretty <$> NE.toList inits))
-
-
-instance Pretty Initializer where
-  pretty (Init _ n es) =
-    pretty n <> tupled (pretty <$> es)
-
-
 instance Pretty DtorDefn where
   pretty (DtorDefn _ decl blk) =
     vsep [ pretty decl
@@ -830,13 +914,21 @@ instance Pretty DtorDecl where
   pretty (DtorDecl _ n params) =
      "~" <> pretty n <> pretty params
 
+instance Pretty Inits where
+  pretty (Inits _ inits) = ":" <+> vsep (punctuate "," (pretty <$> NE.toList inits))
+
+instance Pretty Initializer where
+  pretty (Init _ n es) =
+    pretty n <> tupled (pretty <$> es)
+ 
+
+-- Statements
 instance Pretty Block where
   pretty (Block _ stmts) =
     vsep [ lbrace
          , indent 4 (vsep $ fmap pretty stmts)
          , rbrace
          ]
-
 
 instance Pretty Stmt where
     pretty = \case
@@ -848,11 +940,12 @@ instance Pretty Stmt where
       SBlock _ blk -> pretty blk
       SWith _ e body ->
         "with (" <> pretty e <> ")" <+> pretty body
-    
+
       SBreak _ -> "break;"
       SContinue _ -> "continue;"
       SReturn _ e -> "return" <+> pretty e <> ";"
-    
+      SThrow _ e -> "throw" <+> pretty e <> ";"
+
       SIf _ p then_branch Nothing ->
         "if (" <> pretty p <> ")" <+> pretty then_branch
 
@@ -860,7 +953,7 @@ instance Pretty Stmt where
         vcat [ "if (" <> pretty p <> ")" <+> pretty then_branch
              , "else" <+> pretty then_branch
              ]
-        
+
       SWhile _ p body ->
 
         vcat [ "do" <+> pretty body
@@ -869,6 +962,7 @@ instance Pretty Stmt where
 
       SDoWhile _ body p ->
         "while (" <> pretty p <> ")" <+> pretty body
+
 
       SFor _ header cond counter body ->
         let pheader = case header of
@@ -898,6 +992,8 @@ instance Pretty Stmt where
              , pretty mf
              ]
 
+
+-- Try/catch/finally
 instance Pretty Try where
   pretty (Try _ stmt) =
     "try" <+> pretty stmt
@@ -911,6 +1007,7 @@ instance Pretty Finally where
     "finally" <+> pretty stmt
 
 
+-- Statement declaration specifiers
 instance Pretty SDeclSpecs where
   pretty (SDeclSpecs _ specs) =
     hsep (pretty <$> NE.toList specs)
@@ -920,12 +1017,7 @@ instance Pretty SDeclSpec where
     StaticDecl _ -> "static"
 
 
-
-instance Pretty Pat where
-  pretty = \case
-    PVar n -> pretty n
-
-
+-- Case Alternatives
 instance Pretty Alts where
   pretty (Alts _ alts) =
     vsep (pretty <$> NE.toList alts)
@@ -935,25 +1027,108 @@ instance Pretty Alt where
     pretty p <+> pretty stmt
 
 
+-- Patterns
+instance Pretty Pat where
+  pretty = \case
+    PVar n -> pretty n
+    PVal _ v -> pretty v
+
+    PAs _ n p -> pretty n <> "@" <> pretty p
+    PCon _ n ps -> pretty n <> tupled (pretty <$> ps)
+    PRec _ n fs -> pretty n <> encloseSep "{" "}" "." (pretty <$> fs)
+
+    PType _ p ts -> pretty p <> pretty ts
+    PParen _ p -> "(" <> pretty p <> ")"
+    PWild _ -> "_"
+
+
+instance Pretty PatRecField where
+  pretty (PatRecField _ n p) = pretty n <+> "=" <+> pretty p
+
+-- Expressions
 instance Pretty Exp where
     pretty = \case
-      -- Terms
       EVar n      -> pretty n
       ECon n      -> pretty n
       EVal _ v      -> pretty v
-      EInstr _ i e1 e2 -> pretty (show i) <+> pretty e1 <+> pretty e2
+
+      EOp _ ops -> hsep (pretty <$> ops)
+      EOpPrefix _ op e -> pretty op <> pretty e
+      EOpPostfix _ e op -> pretty e <> pretty op
+      EOpInfix _ a op b -> pretty a <> pretty op <> pretty b
+      EOpInfixR _ a op b -> pretty a <+> pretty op <+> "(" <> pretty b <> ")"
+      EOpInfixL _ a op b -> "(" <> pretty a <> ")" <+> pretty op <+> pretty b
+
       ECall _ n args -> pretty n <> pretty args
-      EType _ ty e   -> pretty e <+> ":" <+> pretty ty
+      EAssign _ lhs rhs -> pretty lhs <+> "=" <+> pretty rhs
+
+      EMember _ e n -> pretty e <> "." <> pretty n
+      EPtrAccess _ e n -> pretty e <> "->" <> pretty n
+      EArrayAccess _ e i -> pretty e <> "[" <> pretty i <> "]"
+      EArray _ es -> encloseSep "[" "]" "," (pretty <$> es)
+
+      ENew _ e -> "new" <+> pretty e
+      EDelete _ e -> "delete" <+> pretty e
+
+      EParens _ e -> "(" <> pretty e <> ")"
+      EAs _ e t -> pretty e <+> "as" <+> pretty t
+      EType _ e t -> pretty e <> pretty t
 
 
-instance Pretty Arguments where
-  pretty (Arguments _ es) = tupled $ pretty <$> es
+instance Pretty OpTerm where
+  pretty = \case
+    Operand e  -> pretty e
+    Operator n -> pretty n
 
 
+-- Types
 instance Pretty Type where
     pretty = \case
       TVar n -> pretty n
+      TCon n -> pretty n
 
+      TOp _ terms -> pretty terms
+      TOpPrefix _ op t -> pretty op <> pretty t
+      TOpPostfix _ t op -> pretty t <> pretty op
+      TOpInfix _ a op b -> pretty a <+> pretty op <+> pretty b
+      TOpInfixL _ a op b -> "(" <> pretty a <> ")" <+> pretty op <+> pretty b
+      TOpInfixR _ a op b -> pretty a <+> pretty op <+> "(" <> pretty b <> ")"
+
+      TApp _ t args -> pretty t <> pretty args
+      TArr _ a b -> pretty a <+> "->" <+> pretty b
+
+      TRef  _ t ->  "&" <> pretty t
+      TRVal _ t -> "&&" <> pretty t
+      TPtr  _ t ->  "*" <> pretty t
+
+      TConst _ t -> "const" <+> pretty t
+
+      TArray _ t -> pretty t <> "[]"
+      TArraySized _ t (L _ x) -> pretty t <> "[" <> pretty x <> "]"
+
+      TParens _ t -> "(" <> pretty t <> ")"
+      TKind _ t k -> pretty t <> pretty k
+
+
+instance Pretty TyOpTerm where
+  pretty = \case
+    TyOperator n -> pretty n
+    TyOperand  t -> pretty t
+
+instance Pretty TypeArguments where
+  pretty (TypeArguments _ args) =
+    tupled (pretty <$> args)
+
+instance Pretty TypeParameters where
+  pretty (TypeParameters _ params) =
+    tupled (pretty <$> params)
+
+instance Pretty TypeParameter where
+  pretty (TypeParameter _ n mk) =
+    pretty n <> pretty mk
+
+
+-- Kinds
 instance Pretty Kind where
     pretty = \case
       KType _    -> "Type"
@@ -963,6 +1138,7 @@ instance Pretty KindSig where
   pretty (KindSig _ k) = ":" <+> pretty k
 
 
+-- Type Schemes
 instance Pretty Scheme where
   pretty = \case
     Scheme _    [] -> mempty
@@ -973,86 +1149,113 @@ instance Pretty Pred where
     Forall _ n   -> pretty n
     IsIn _ n tys -> pretty n <+> hcat (pretty <$> NE.toList tys)
 
-{-
-instance Pretty DataDef where
-    pretty (DataDef n vs cs) =
-      pretty n <+> hsep (pretty <$> vs) <+> hang 0 (":=" <+> hsep (punctuate (line <> pipe) (pretty <$> cs)))
 
-instance Pretty ConstrDef where
-    pretty  = \case
-      ConstrDef n ts ->
-        pretty n <+> hsep (pretty <$> ts)
+-- Type Definitions
 
-      RecordDef n fs ->
-        pretty n <+> encloseSep lbrace rbrace comma
-                      [ pretty n <+> ":" <+> pretty t | (n, t) <- fs ]
+instance Pretty TypeDefn where
+  pretty (TypeDefn _ decl body) =
+    pretty decl <> pretty body
+
+instance Pretty TypeDecl where
+  pretty (TypeDecl _ name maybe_scheme params) =
+    "type" <+> pretty name <> pretty maybe_scheme <> pretty params
 
 
-instance Pretty AliasDef where
-  pretty (AliasDef n xs t) =
-    pretty n <+> hsep (pretty <$> xs) <+> "=" <+> pretty t
+instance Pretty TyDefnBody where
+  pretty (TyDefnBody _ defs) =
+    vsep [ "{"
+         , indent 4 (vsep (pretty <$> defs))
+         , "}"
+         ]
 
-
-instance Pretty ClassDef where
+instance Pretty DataDefn where
   pretty = \case
-    ClassDef [] n vs ms ->
-      "class" <+> pretty n <+> hsep (pretty <$> vs)
-        <+> "where" <> indent 2 (vsep (pretty <$> ms))
+    DataDefn   _ n fs -> pretty n <> pretty fs
+    ObjectDefn _ n fs -> pretty n <> pretty fs
 
-    ClassDef as n vs ms ->
-      "class" <+> tupled (pretty <$> as) <+> "=>"
-        <+> pretty n <+> hsep (pretty <$> vs)
-        <+> "where" <> indent 2 (vsep (pretty <$> ms))
+instance Pretty DataFields where
+  pretty (DataFields _ fs) =
+    tupled (pretty <$> fs)
+
+instance Pretty DataField where
+  pretty (DataField _ t mdef) =
+    pretty t <+> pretty mdef
+
+instance Pretty ObjectFields where
+  pretty (ObjectFields _ fs) =
+    tupled (pretty <$> fs)
+
+instance Pretty ObjectField where
+  pretty (ObjectField _ n t mdef) =
+    pretty n <> pretty t <+> pretty mdef
+
+instance Pretty DataFieldDefault where
+  pretty (DataFieldDefault _ e) =
+    "=" <+> pretty e
 
 
-instance Pretty InstDef where
-  pretty = \case
-    InstDef [] n vs ds ->
-      pretty n <+> hsep (pretty <$> vs)
-        <+> "where" <> indent 2 (vsep (pretty <$> ds))
+-- Type Alias
+instance Pretty AliasDefn where
+  pretty (AliasDefn _ decl ty) =
+    pretty decl <+> "=" <+> pretty ty
 
-    InstDef as n vs ds ->
-      tupled (pretty <$> as) <+> "=>"
-        <+> pretty n <+> hsep (pretty <$> vs)
-        <+> "where" <> indent 2 (vsep (pretty <$> ds))
+instance Pretty AliasDecl where
+  pretty (AliasDecl _ n may_scheme params) =
+    "alias" <+> pretty n <> pretty may_scheme <> pretty params
+
+
+-- Classes
+instance Pretty ClassDefn where
+  pretty (ClassDefn _ decl body) =
+    pretty decl <+> pretty body
+
+instance Pretty ClassDecl where
+  pretty (ClassDecl _ n may_scheme params) =
+    "class" <+> pretty n <> pretty may_scheme <> pretty params
+
+instance Pretty ClassBody where
+  pretty (ClassBody _ methods) =
+    vsep [ "{"
+         , indent 4 $ vcat (pretty <$> methods)
+         , "}"
+         ]
+
+instance Pretty ClassMethod where
+  pretty (ClassMethod _ decl mblock) =
+    pretty decl <> maybe ";" pretty mblock
+
+
+-- Instances
+
+instance Pretty InstDefn where
+  pretty (InstDefn _ decl body) =
+    pretty decl <> pretty body
+
+instance Pretty InstDecl where
+  pretty (InstDecl _ n may_scheme args) =
+    "inst" <+> pretty n <> pretty may_scheme <> pretty args
+
+instance Pretty InstBody where
+  pretty (InstBody _ methods) =
+    vsep [ "{"
+         , indent 4 $ vsep (pretty <$> methods)
+         , "}"
+         ]
+
+instance Pretty InstMethod where
+  pretty (InstMethod _ defn) = pretty defn
+
+
+-- Operator Declaration
+
+instance Pretty OpDecl where
+  pretty (OpDecl _ fixity (L _ prec) ops) =
+    "operator" <> tupled ([pretty fixity, pretty prec] ++ fmap pretty ops)  <> ";"
 
 instance Pretty Fixity where
-  pretty (Fixity f p ops) =
-    vcat
-      [ "Fixity Declaration"
-      , indent 2 $ vcat
-        [ "Fixity:" <+> pretty (pack $ show f)
-        , "Precedence:" <+> pretty (pack $ show p)
-        , "Operators:" <+> pretty ops
-        ]
-      ]
-
-
-instance Pretty Foreign where
   pretty = \case
-    ForeignImport ft fn hn ty ->
-      vcat
-        [ "Foreign Import:"
-        , indent 2 $ vcat
-            [ "Foreign Type:" <+> pretty ft
-            , "Foreign Name:" <+> pretty fn
-            , "Hawk Name:"    <+> pretty hn
-            , "Type Sig:"     <+> pretty ty
-            ]
-        ]
-
-    ForeignExport ft hn ->
-      vcat
-        [ "Foreign Export:"
-        , indent 2 $ vcat
-          [ "Foreign Type:" <+> pretty ft
-          , "Hawk Name:"    <+> pretty hn
-          ]
-        ]
-
-instance Pretty ForeignType where
-  pretty ForeignC =
-    "ForeignC"
--}
-
-
+    InfixN _ -> "infix"
+    InfixR _ -> "infixr"
+    InfixL _ -> "infixl"
+    Prefix _ -> "prefix"
+    Postfix _ -> "postfix"

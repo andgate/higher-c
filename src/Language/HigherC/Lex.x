@@ -60,6 +60,7 @@ $whiteNoNewline = $white # \n
 @varid = $small $idcharsym*
 @conid = $large $idcharsym*
 @primid = \# $small $idcharsym*
+@opid = $opchar+
 
 @qual = (@conid \.)+
 @qvarid = @qual @varid
@@ -95,7 +96,9 @@ hawk :-
   \_                              { rsvp }
   \~                              { rsvp }
   \*                              { rsvp }
+  \&&                             { rsvp }
   \&                              { rsvp }
+  \@                              { rsvp }
 
   \(                              { rsvp }
   \)                              { rsvp }
@@ -106,11 +109,9 @@ hawk :-
   \<                              { rsvp }
   \>                              { rsvp }
 
-  $opchar                         { \text -> yieldTokAt (TokenOpId text) text }
+  @opid                           { \text -> yieldTokAt (TokenOpId text) text }
 
   "Type"                          { rsvp }
-  "Void"                          { rsvp }
-  "I32"                           { rsvp }
 
   "module"                        { rsvp }
   "import"                        { rsvp }
