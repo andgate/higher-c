@@ -14,13 +14,13 @@ import GHC.Generics
 import Unbound.Generics.LocallyNameless
 import Unbound.Generics.LocallyNameless.Internal.Fold (Fold, toListOf)
 
-import Language.HigherC.Syntax.Builtin
 import Language.HigherC.Syntax.Location
 
 
 import qualified Data.List.NonEmpty            as NE
 import qualified Data.Set                      as Set
-import qualified Language.HigherC.Syntax.Concrete as C
+import qualified Language.HigherC.Syntax.Concrete  as C
+import qualified Language.HigherC.Syntax.Primitive as Prim
 
 
 {-
@@ -58,8 +58,8 @@ data Stmt
 data Exp
   = EVar Var
   | ECon Text
-  | EVal Val
-  | EInstr Instr Exp Exp
+  | EVal (Prim.Value Exp)
+  | EInstr (Prim.Instruction Exp)
   | ECall Exp [Exp]
   | EType Exp Type
   | ELoc  Loc Exp

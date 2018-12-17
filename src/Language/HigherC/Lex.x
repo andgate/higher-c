@@ -59,7 +59,7 @@ $whiteNoNewline = $white # \n
 -- Basic Ids
 @varid = $small $idcharsym*
 @conid = $large $idcharsym*
-@primid = \# $small $idcharsym*
+@primid = \_ \_ $small $idcharsym*
 @opid = $opchar+
 
 @qual = (@conid \.)+
@@ -83,35 +83,29 @@ hawk :-
   
   \"                              { beginString }
   \' .* \'                        { handleChar }
-  
 
-  \\                              { rsvp }
-  \-\>                            { rsvp }
   \:                              { rsvp }
   \:\:                            { rsvp }
   \;                              { rsvp }
   \,                              { rsvp }
   \.                              { rsvp }
-  \=                              { rsvp }
   \_                              { rsvp }
-  \~                              { rsvp }
-  \*                              { rsvp }
-  \&&                             { rsvp }
-  \&                              { rsvp }
   \@                              { rsvp }
 
   \(                              { rsvp }
   \)                              { rsvp }
+  \[\]                            { rsvp }
   \[                              { rsvp }
   \]                              { rsvp }
   \{                              { rsvp }
   \}                              { rsvp }
-  \<                              { rsvp }
-  \>                              { rsvp }
+  
+  -- Vector notation
+  \<\.                            { rsvp }
+  \<\.\>                          { rsvp }
+  
+  @opid                           { op_id }
 
-  @opid                           { \text -> yieldTokAt (TokenOpId text) text }
-
-  "Type"                          { rsvp }
 
   "module"                        { rsvp }
   "import"                        { rsvp }
@@ -157,7 +151,10 @@ hawk :-
   "const"                         { rsvp }
 
   "new"                           { rsvp }
+  "renew"                         { rsvp }
   "delete"                        { rsvp }
+
+  "null"                          { rsvp }
 
   @primid                         { \text -> yieldTokAt (TokenPrimId text) text }
   @conid                          { \text -> yieldTokAt (TokenConId  text) text }
@@ -257,6 +254,10 @@ yieldTok t =
 rsvp :: LexAction
 rsvp text =
   yieldTokAt (TokenRsvp text) text
+
+op_id :: LexAction
+op_id text =
+  yieldTokAt (TokenOpId text) text
 
 
 skipBreak :: LexAction

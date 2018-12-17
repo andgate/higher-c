@@ -13,13 +13,15 @@ module Language.HigherC.Syntax.Concrete
   where
 
 import Language.HigherC.Syntax.Location as X
-import Language.HigherC.Syntax.Builtin  as X
 
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc
+import Data.Typeable (Typeable)
+import GHC.Generics hiding (Prefix, Fixity)
 
 import qualified Data.List.NonEmpty as NE
+import qualified Language.HigherC.Syntax.Primitive as Prim
 
 -- -----------------------------------------------------------------------------
 -- | Names
@@ -29,6 +31,7 @@ data Name
          , namePath :: Maybe ModulePath
          , nameLoc  :: Loc
          }
+  deriving (Show, Generic, Typeable)
 
 
 mkName :: L Text -> Name
@@ -50,6 +53,7 @@ mkQName mp n
 
 data TopLevel
   = TopLevel [TopLevelStmt]
+  deriving (Show, Generic, Typeable)
 
 data TopLevelStmt
   = TModule Module
@@ -69,6 +73,7 @@ data TopLevelStmt
   | TInst InstDefn
 
   | TOpDecl OpDecl
+  deriving (Show, Generic, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -76,15 +81,19 @@ data TopLevelStmt
 
 data Module =
   Module Loc ModulePath ModuleBlock
+  deriving (Show, Generic, Typeable)
 
 data ModulePath =
   MPath Loc (NonEmpty Name)
+  deriving (Show, Generic, Typeable)
 
 data ModuleBlock =
   MBlock Loc [TopLevelStmt]
+  deriving (Show, Generic, Typeable)
 
 data Import =
   Import Loc ModulePath
+  deriving (Show, Generic, Typeable)
 
 -- -----------------------------------------------------------------------------
 -- | Declaration
@@ -93,12 +102,15 @@ data Decl
   = Decl1 Loc DeclHead (Maybe TypeSig)
   | Decl2 Loc DeclHead (Maybe TypeSig) Exp
   | Decl3 Loc DeclHead [Exp] (Maybe TypeSig)
+  deriving (Show, Generic, Typeable)
 
 data DeclHead
   = DeclHead Loc Name
+  deriving (Show, Generic, Typeable)
 
 data TypeSig
   = TypeSig Loc Type
+  deriving (Show, Generic, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -106,26 +118,34 @@ data TypeSig
 
 data FuncDefn
   = FuncDefn Loc FuncDecl Block
+  deriving (Show, Generic, Typeable)
 
 data FuncDecl
   = FuncDecl Loc (Maybe FuncSpecs) Name (Maybe Scheme) Parameters (Maybe TypeSig)
+  deriving (Show, Generic, Typeable)
 
 data FuncExtern
   = FuncExtern Loc Name Parameters TypeSig
+  deriving (Show, Generic, Typeable)
 
 data FuncSpecs = FuncSpecs Loc (NonEmpty FuncSpec)
+  deriving (Show, Generic, Typeable)
 
 data FuncSpec
   = InlineFunc Loc
   | RecursiveFunc Loc
+  deriving (Show, Generic, Typeable)
 
 data Arguments
   = Arguments Loc [Exp]
+  deriving (Show, Generic, Typeable)
 
 data Parameters = Parameters [Parameter]
+  deriving (Show, Generic, Typeable)
 
 data Parameter
   = Parameter Loc Name (Maybe TypeSig)
+  deriving (Show, Generic, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -134,32 +154,39 @@ data Parameter
 -- Constructor Definition
 data CtorDefn =
   CtorDefn Loc CtorDecl Block
+  deriving (Show, Generic, Typeable)
 
 -- Constructor Declaration
 data CtorDecl =
   CtorDecl Loc Name Parameters (Maybe Inits)
+  deriving (Show, Generic, Typeable)
 
 -- Destructor Definition
 data DtorDefn =
   DtorDefn Loc DtorDecl Block
+  deriving (Show, Generic, Typeable)
 
 -- Destructor Declaration
 data DtorDecl =
   DtorDecl Loc Name Parameters
+  deriving (Show, Generic, Typeable)
 
 -- Initializer List
 data Inits =
   Inits Loc (NonEmpty Initializer)
+  deriving (Show, Generic, Typeable)
 
 -- Variable Initializer
 data Initializer =
   Init Loc Name [Exp]
+  deriving (Show, Generic, Typeable)
 
 
 -- -----------------------------------------------------------------------------
 -- | Statement
 
 data Block = Block Loc [Stmt]
+  deriving (Show, Generic, Typeable)
 
 data Stmt
   = SNop Loc
@@ -182,35 +209,43 @@ data Stmt
   | SFor Loc (Either (Maybe Exp) Decl) (Maybe Exp) (Maybe Exp) Stmt
   | SCase Loc Exp Alts
   | STryCatch Loc Try [Catch] (Maybe Finally)
+  deriving (Show, Generic, Typeable)
 
 
 data Try
   = Try Loc Stmt
+  deriving (Show, Generic, Typeable)
 
 data Catch
   = Catch Loc Exp Stmt
+  deriving (Show, Generic, Typeable)
 
 data Finally
   = Finally Loc Stmt
+  deriving (Show, Generic, Typeable)
 
 -- Statement Declaration Specifier
 data SDeclSpecs = SDeclSpecs Loc (NonEmpty SDeclSpec)
+  deriving (Show, Generic, Typeable)
 
 data SDeclSpec
   = StaticDecl Loc
+  deriving (Show, Generic, Typeable)
 
 -- Case Alternatives
 data Alts = Alts Loc (NonEmpty Alt)
+  deriving (Show, Generic, Typeable)
 
 data Alt
   = Alt Loc Pat Stmt
+  deriving (Show, Generic, Typeable)
 
 -- -----------------------------------------------------------------------------
 -- | Patterns
 
 data Pat
   = PVar Name
-  | PVal Loc Val
+  | PVal Loc (Prim.Value Pat)
 
   | PAs Loc Name Pat
   | PCon Loc Name [Pat]
@@ -219,9 +254,11 @@ data Pat
   | PType Loc Pat TypeSig
   | PParen Loc Pat
   | PWild Loc
+  deriving (Show, Generic, Typeable)
 
 data PatRecField
   = PatRecField Loc Name Pat
+  deriving (Show, Generic, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -230,7 +267,8 @@ data PatRecField
 data Exp
   = EVar Name
   | ECon Name
-  | EVal Loc Val
+  | EValue Loc (Prim.Value Exp)
+  | EInstr Loc (Prim.Instruction Exp)
 
   | EOp Loc [OpTerm]
   | EOpPrefix  Loc Name Exp
@@ -241,23 +279,26 @@ data Exp
 
   | ECall Loc Exp Arguments
   | EAssign Loc Exp Exp
-  
+
   | EMember Loc Exp Name
   | EPtrAccess Loc Exp Name
   | EArrayAccess Loc Exp Exp
-  | EArray Loc [Exp]
+  | EVectorAccess Loc Exp Exp
 
   | ENew Loc Exp
+  | ERenew Loc Exp
   | EDelete Loc Exp
 
   | EParens Loc Exp
   | EAs Loc Exp Type
   | EType Loc Exp TypeSig
+  deriving (Show, Generic, Typeable)
 
 
 data OpTerm
   = Operand Exp
   | Operator Name
+  deriving (Show, Generic, Typeable)
 
 
 
@@ -267,6 +308,11 @@ data OpTerm
 data Type
   = TVar Name
   | TCon Name
+  | TApp Loc Type (Maybe Scheme) TypeArguments
+  | TArr Loc Type Type
+
+  -- Primitive type constructors
+  | TPrimCon Loc (Prim.TypeCon Type Exp)
 
   | TOp Loc [TyOpTerm]
   | TOpPrefix  Loc Name Exp
@@ -275,33 +321,28 @@ data Type
   | TOpInfixL  Loc Exp Name Exp
   | TOpInfixR  Loc Exp Name Exp
 
-  | TApp Loc Type TypeArguments
-  | TArr Loc Type Type
-
-  | TRef   Loc Type
-  | TRVal  Loc Type
-  | TPtr   Loc Type
-  | TConst Loc Type
-  | TArray Loc Type
-  | TArraySized Loc Type (L Integer)
-
   | TParens Loc Type
   | TKind Loc Type KindSig
+  deriving (Show, Generic, Typeable)
 
 
 data TyOpTerm
   = TyOperator Name
   | TyOperand Type
+  deriving (Show, Generic, Typeable)
 
 
 data TypeArguments
   = TypeArguments Loc [Type]
+  deriving (Show, Generic, Typeable)
 
 data TypeParameters
   = TypeParameters Loc [TypeParameter]
+  deriving (Show, Generic, Typeable)
 
 data TypeParameter
   = TypeParameter Loc Name (Maybe KindSig)
+  deriving (Show, Generic, Typeable)
 
 -- -----------------------------------------------------------------------------
 -- | Kinds
@@ -309,9 +350,11 @@ data TypeParameter
 data Kind
   = KType Loc
   | KArr Loc Kind Kind
+  deriving (Show, Generic, Typeable)
 
 data KindSig
   = KindSig Loc Kind
+  deriving (Show, Generic, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -319,10 +362,12 @@ data KindSig
 
 data Scheme =
   Scheme Loc [Pred]
+  deriving (Show, Generic, Typeable)
 
 data Pred
   = Forall Loc Name
   | IsIn Loc Name (NonEmpty Type)
+  deriving (Show, Generic, Typeable)
 
 
 -- This helps a little bit
@@ -338,45 +383,56 @@ instance Monoid Scheme where
 
 data TypeDefn
   = TypeDefn Loc TypeDecl TyDefnBody
+  deriving (Show, Generic, Typeable)
 
 data TypeDecl
   = TypeDecl Loc Name (Maybe Scheme) TypeParameters
+  deriving (Show, Generic, Typeable)
 
 -- Type Definition Body
 data TyDefnBody
   = TyDefnBody Loc [DataDefn]
+  deriving (Show, Generic, Typeable)
 
 -- Data Definitions
 data DataDefn
   = DataDefn Loc Name DataFields
   | ObjectDefn Loc Name ObjectFields
+  deriving (Show, Generic, Typeable)
 
 
 -- Data Fields
 data DataFields
   = DataFields Loc [DataField]
+  deriving (Show, Generic, Typeable)
 
 data DataField
   = DataField Loc Type (Maybe DataFieldDefault)
+  deriving (Show, Generic, Typeable)
 
 -- Default value for fields
 data DataFieldDefault
   = DataFieldDefault Loc Exp
+  deriving (Show, Generic, Typeable)
 
 -- Object/Record fields
 data ObjectFields
   = ObjectFields Loc [ObjectField]
+  deriving (Show, Generic, Typeable)
 
 data ObjectField
   = ObjectField Loc Name TypeSig (Maybe DataFieldDefault)
+  deriving (Show, Generic, Typeable)
 
 
 -- Type Alias Definition
 data AliasDefn
   = AliasDefn Loc AliasDecl Type
+  deriving (Show, Generic, Typeable)
 
 data AliasDecl
   = AliasDecl Loc Name (Maybe Scheme) TypeParameters
+  deriving (Show, Generic, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -384,30 +440,38 @@ data AliasDecl
 
 data ClassDefn
   = ClassDefn Loc ClassDecl ClassBody
+  deriving (Show, Generic, Typeable)
 
 data ClassDecl
   = ClassDecl Loc Name (Maybe Scheme) TypeParameters
+  deriving (Show, Generic, Typeable)
 
 data ClassBody
   = ClassBody Loc [ClassMethod]
+  deriving (Show, Generic, Typeable)
 
 data ClassMethod
   = ClassMethod Loc FuncDecl (Maybe Block)
+  deriving (Show, Generic, Typeable)
 
 -- -----------------------------------------------------------------------------
 -- | Instance Definition
 
 data InstDefn
   = InstDefn Loc InstDecl InstBody
+  deriving (Show, Generic, Typeable)
 
 data InstDecl
   = InstDecl Loc Name (Maybe Scheme) TypeArguments
+  deriving (Show, Generic, Typeable)
 
 data InstBody
   = InstBody Loc [InstMethod]
+  deriving (Show, Generic, Typeable)
 
 data InstMethod
   = InstMethod Loc FuncDefn
+  deriving (Show, Generic, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -416,6 +480,7 @@ data InstMethod
 -- A fixity declaration
 data OpDecl
   = OpDecl Loc Fixity (L Integer) [Name]
+  deriving (Show, Generic, Typeable)
 
 -- The kinds of fixity
 data Fixity
@@ -424,13 +489,14 @@ data Fixity
   | InfixR Loc
   | Prefix Loc
   | Postfix Loc
+  deriving (Show, Generic, Typeable)
 
 
 -- -----------------------------------------------------------------------------
 -- | Smart Constructors
 
-mkVal :: L Val -> Exp
-mkVal (L l v) = EVal l v
+mkVal :: L (Prim.Value Exp) -> Exp
+mkVal (L l v) = EValue l v
 
 
 -- -----------------------------------------------------------------------------
@@ -611,7 +677,7 @@ instance Locatable Exp where
   locOf = \case
     EVar n -> locOf n
     ECon n -> locOf n
-    EVal l _ -> l
+    EValue l _ -> l
 
     EOp        l _ -> l
     EOpPrefix  l _ _ -> l
@@ -620,14 +686,15 @@ instance Locatable Exp where
     EOpInfixL  l _ _ _ -> l
     EOpInfixR  l _ _ _ -> l
 
-    ECall        l _ _ -> l
-    EAssign      l _ _ -> l
-    EMember      l _ _ -> l
-    EPtrAccess   l _ _ -> l
-    EArrayAccess l _ _ -> l
-    EArray       l _ -> l
+    ECall         l _ _ -> l
+    EAssign       l _ _ -> l
+    EMember       l _ _ -> l
+    EPtrAccess    l _ _ -> l
+    EArrayAccess  l _ _ -> l
+    EVectorAccess l _ _ -> l
 
     ENew    l _ -> l
+    ERenew  l _ -> l
     EDelete l _ -> l
 
     EParens l _   -> l
@@ -649,6 +716,9 @@ instance Locatable Type where
   locOf = \case
     TVar n -> locOf n
     TCon n -> locOf n
+    TApp l _ _ _ -> l
+
+    TPrimCon l _ -> l
 
     TOp        l _ -> l
     TOpPrefix  l _ _ -> l
@@ -656,17 +726,6 @@ instance Locatable Type where
     TOpInfix   l _ _ _ -> l
     TOpInfixL  l _ _ _ -> l
     TOpInfixR  l _ _ _ -> l
-
-    TApp l _ _ -> l
-    TArr l _ _ -> l
-
-    TRef   l _ -> l
-    TRVal  l _ -> l
-    TPtr   l _ -> l
-    TConst l _ -> l
-    TArray l _ -> l
-
-    TArraySized l _ _ -> l
 
     TParens l _ -> l
     TKind l _ _ -> l
@@ -1050,7 +1109,7 @@ instance Pretty Exp where
     pretty = \case
       EVar n      -> pretty n
       ECon n      -> pretty n
-      EVal _ v      -> pretty v
+      EValue _ v      -> pretty v
 
       EOp _ ops -> hsep (pretty <$> ops)
       EOpPrefix _ op e -> pretty op <> pretty e
@@ -1065,9 +1124,10 @@ instance Pretty Exp where
       EMember _ e n -> pretty e <> "." <> pretty n
       EPtrAccess _ e n -> pretty e <> "->" <> pretty n
       EArrayAccess _ e i -> pretty e <> "[" <> pretty i <> "]"
-      EArray _ es -> encloseSep "[" "]" "," (pretty <$> es)
+      EArrayAccess _ e i -> pretty e <> "<" <> pretty i <> ">"
 
       ENew _ e -> "new" <+> pretty e
+      ERenew _ e -> "renew" <+> pretty e
       EDelete _ e -> "delete" <+> pretty e
 
       EParens _ e -> "(" <> pretty e <> ")"
@@ -1087,24 +1147,17 @@ instance Pretty Type where
       TVar n -> pretty n
       TCon n -> pretty n
 
+      TApp _ t may_scheme args -> pretty t <> pretty may_scheme <> pretty args
+      TArr _ a b -> pretty a <+> "->" <+> pretty b
+
+      TPrimCon _ pc -> pretty pc
+
       TOp _ terms -> hsep (pretty <$> terms)
       TOpPrefix _ op t -> pretty op <> pretty t
       TOpPostfix _ t op -> pretty t <> pretty op
       TOpInfix _ a op b -> pretty a <+> pretty op <+> pretty b
       TOpInfixL _ a op b -> "(" <> pretty a <> ")" <+> pretty op <+> pretty b
       TOpInfixR _ a op b -> pretty a <+> pretty op <+> "(" <> pretty b <> ")"
-
-      TApp _ t args -> pretty t <> pretty args
-      TArr _ a b -> pretty a <+> "->" <+> pretty b
-
-      TRef  _ t ->  "&" <> pretty t
-      TRVal _ t -> "&&" <> pretty t
-      TPtr  _ t ->  "*" <> pretty t
-
-      TConst _ t -> "const" <+> pretty t
-
-      TArray _ t -> pretty t <> "[]"
-      TArraySized _ t (L _ x) -> pretty t <> "[" <> pretty x <> "]"
 
       TParens _ t -> "(" <> pretty t <> ")"
       TKind _ t k -> pretty t <> pretty k

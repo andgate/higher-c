@@ -8,7 +8,7 @@ import Data.Text (Text, unpack)
 import Language.HigherC.Lex
 import Language.HigherC.Lex.Token
 import Language.HigherC.Syntax.Concrete
-import Language.HigherC.Syntax.Builtin
+import qualified Language.HigherC.Syntax.Primitive as Prim
 import Language.HigherC.Syntax.Location
 
 import Data.List.NonEmpty (NonEmpty (..))
@@ -28,34 +28,49 @@ import Data.Text.Prettyprint.Doc.Render.Text (putDoc)
 
 
 %token
-  backslash          { Token (TokenRsvp "\\") _ $$ }
-  '->'               { Token (TokenRsvp "->") _ $$ }
-  ':'                { Token (TokenRsvp ":") _ $$ }
   '::'               { Token (TokenRsvp "::") _ $$ }
+  ':'                { Token (TokenRsvp ":") _ $$ }
   ';'                { Token (TokenRsvp ";") _ $$ }
   ','                { Token (TokenRsvp ",") _ $$ }
   '.'                { Token (TokenRsvp ".") _ $$ }
-  '='                { Token (TokenRsvp "=") _ $$ }
   '_'                { Token (TokenRsvp "_") _ $$ }
-  '~'                { Token (TokenRsvp "~") _ $$ }
-  '*'                { Token (TokenRsvp "*") _ $$ }
-  '&'                { Token (TokenRsvp "&") _ $$ }
-  '&&'               { Token (TokenRsvp "&&") _ $$ }
   '@'                { Token (TokenRsvp "@") _ $$ }
+
 
   '('                { Token (TokenRsvp "(") _ $$ }
   ')'                { Token (TokenRsvp ")") _ $$ }
+  '[]'               { Token (TokenRsvp "[]") _ $$ }
   '['                { Token (TokenRsvp "[") _ $$ }
   ']'                { Token (TokenRsvp "]") _ $$ }
   '{'                { Token (TokenRsvp "{") _ $$ }
   '}'                { Token (TokenRsvp "}") _ $$ }
-  '<'                { Token (TokenRsvp "<") _ _ }
-  '>'                { Token (TokenRsvp ">") _ _ }
 
 
-  TYPE               { Token (TokenRsvp "Type") _ $$ }
-  Void               { Token (TokenRsvp "Void") _ $$ }
-  I32                { Token (TokenRsvp "I32" ) _ $$ }
+
+  '<.>'              { Token (TokenRsvp "<.>") _ $$ }
+  '<.'               { Token (TokenRsvp "<.")  _ $$ }
+
+  '->'               { Token (TokenOpId "->") _ $$ }
+  '='                { Token (TokenOpId "=") _ $$ }
+  '~'                { Token (TokenOpId "~") _ $$ }
+  '<'                { Token (TokenOpId "<") _ _ }
+  '>'                { Token (TokenOpId ">") _ _ }
+  opId               { Token (TokenOpId   _) _ _ }
+
+  TYPE               { Token (TokenConId "Type") _ $$ }
+  VOID               { Token (TokenConId "Void") _ $$ }
+
+  I1                 { Token (TokenConId "I1" ) _ $$ }
+  I8                 { Token (TokenConId "I8" ) _ $$ }
+  I16                { Token (TokenConId "I16" ) _ $$ }
+  I32                { Token (TokenConId "I32" ) _ $$ }
+  I64                { Token (TokenConId "I64" ) _ $$ }
+  I128               { Token (TokenConId "I128" ) _ $$ }
+
+  Fp16                { Token (TokenConId "Fp16" ) _ $$ }
+  Fp32                { Token (TokenConId "Fp32" ) _ $$ }
+  Fp64                { Token (TokenConId "Fp64" ) _ $$ }
+  Fp128               { Token (TokenConId "Fp128" ) _ $$ }
 
   Operator           { Token (TokenRsvp "operator") _ $$ }
   Prefix             { Token (TokenRsvp "prefix") _ $$ }
@@ -70,6 +85,7 @@ import Data.Text.Prettyprint.Doc.Render.Text (putDoc)
   Extern             { Token (TokenRsvp "extern") _ $$ }
 
   New                { Token (TokenRsvp "new"  ) _ $$ }
+  Renew              { Token (TokenRsvp "renew"  ) _ $$ }
   Delete             { Token (TokenRsvp "delete") _ $$ }
 
   Module             { Token (TokenRsvp "module") _ $$ }
@@ -103,12 +119,11 @@ import Data.Text.Prettyprint.Doc.Render.Text (putDoc)
   While              { Token (TokenRsvp "while") _ $$ }
   For                { Token (TokenRsvp   "for") _ $$ }
 
+  Null               { Token (TokenRsvp "null") _ $$ }
+
   varId              { Token (TokenVarId  _) _ _ }
   conId              { Token (TokenConId  _) _ _ }
-  opId               { Token (TokenOpId   _) _ _ }
-
-  primAdd            { Token (TokenPrimId "#add") _ $$ }
-  primSub            { Token (TokenPrimId "#sub") _ $$ }
+  primId             { Token (TokenPrimId _) _ _ }
 
   integer            { Token (TokenInteger _) _ _ }
   double             { Token (TokenDouble  _) _ _ }
@@ -121,6 +136,8 @@ import Data.Text.Prettyprint.Doc.Render.Text (putDoc)
 %nonassoc IFX
 %nonassoc Elif
 %nonassoc Else
+
+%right opId
 
 %%
 
@@ -152,6 +169,9 @@ con_name : con_id { mkName $1 }
 op_name :: { Name }
 op_name  : op_id  { mkName $1 }
 
+op_name_ext :: { Name }
+op_name_ext  : op_id_ext  { mkName $1 }
+
 mod_name :: { Name }
 mod_name : con_name { $1 }
 
@@ -162,17 +182,31 @@ con_id :: { L Text }
 con_id : conId { extractId $1 }
 
 op_id :: { L Text }
-op_id  : opId            { extractId   $1 }
-       | '<'             { extractRsvp $1 }
-       | '>'             { extractRsvp $1 }
+op_id : opId       { extractId   $1 }
 
+op_id_ext :: { L Text }
+op_id_ext 
+  : op_id           { $1 }
+  | '->'            { L $1 "->" }
+  | '='             { L $1 "=" }
+  | '~'             { L $1 "~" }
+  | '<'             { extractRsvp $1 }
+  | '>'             { extractRsvp $1 }
 
-value :: { L Val }
-value : integer  { fmap VInt    (extractInteger $1) }
-      | double   { fmap VFloat  (extractDouble  $1) }
-      | char     { fmap VChar   (extractChar    $1) }
-      | string   { fmap VString (extractString  $1) }
-      | boolean  { fmap VBool   (extractBool    $1) }
+prim_id :: { L Text }
+prim_id : primId { extractId $1 }
+
+value :: { L (Prim.Value Exp) }
+value : Null     { L $1 Prim.VNull }
+      | boolean  { fmap Prim.VBool   (extractBool    $1) } 
+      | integer  { fmap Prim.VInt    (extractInteger $1) }
+      | double   { fmap Prim.VFp     (extractDouble  $1) }
+      | char     { fmap Prim.VChar   (extractChar    $1) }
+      | '[]'     { L $1 (Prim.VVector []) }
+      | '<.>'    { L $1 (Prim.VVector []) }
+      | '['  exp_args0 ']' { L ($1<>$3) (Prim.VArray $2) }
+      | '<.' exp_args0 '>' { L ($1<> locOf $3) (Prim.VVector $2) }
+      | string             { fmap Prim.VString (extractString  $1) }
 
 
 var_name_list :: { [Name] } 
@@ -182,6 +216,7 @@ var_name_list_r :: { [Name] }
 var_name_list_r
   : var_name                 { [$1] }
   | var_name_list_r var_name { $2 : $1 }
+
 
 -- -----------------------------------------------------------------------------
 -- | Top Level
@@ -620,56 +655,52 @@ pat_list_r
 -- | Expressions
 
 exp :: { Exp }
-exp : eexp { $1 }
+exp : dexp { $1 }
 
-eexp :: { Exp }
-eexp
-  : eexp '=' dexp  { EAssign (locOf $1 <> $2) $1 $3 }
-  | dexp { $1 }
 
 dexp :: { Exp }
 dexp
   : cexp type_sig { EType (locOf $1 <> locOf $2) $1 $2 }
-  | cexp As  type { EAs (locOf $1 <> locOf $3) $1 $3 }
-  | New cexp      { ENew ($1 <> locOf $2) $2 }
-  | Delete cexp   { EDelete ($1 <> locOf $2) $2 }
+  | cexp As type  { EAs (locOf $1 <> locOf $3) $1 $3 }
   | cexp { $1 }
 
 cexp :: { Exp }
 cexp
-  : exp_op { $1 }
+  : exp_op(bexp) { $1 }
 
-exp_op :: { Exp }
-exp_op : op_terms { EOp (locOf $1) $1 }
+exp_op(ex) : cexpop(ex) { EOp (locOf $1) $1 }
 
-op_terms :: { [OpTerm] }
-op_terms : op_terms_r { reverse $1 }
+cexpop(ex)
+  : bexpop(ex)                        { $1 }
+  | cexpop(ex) op_name_ext bexpop(ex) { $1 ++ [Operator $2] ++ $3 }
 
-op_terms_r :: { [OpTerm] }
-op_terms_r
-  : op_term   { [$1] }
-  | op_terms_r op_term { $2 : $1 }
+bexpop(ex)
+  : op_name_ext aexpop(ex)   { [Operator $1] ++ $2 }
+  | aexpop(ex)               { $1 }
 
-op_term :: { OpTerm }
-op_term
-  : bexp    { Operand  $1 }
-  | op_name { Operator $1 }
-
+aexpop(ex)
+  : ex op_name_ext     { [Operand $1, Operator $2]  }
+  | ex                 { [Operand $1] }
 
 bexp :: { Exp }
 bexp
-  : bexp arguments         { ECall        (locOf $1 <> locOf $2) $1 $2 }
-  | bexp '.' var_name      { EMember      (locOf $1 <> locOf $3) $1 $3 }
-  | bexp '->' var_name     { EPtrAccess   (locOf $1 <> locOf $3) $1 $3 }
-  | bexp '[' exp ']'       { EArrayAccess (locOf $1 <> $4) $1 $3       }
+  : bexp arguments         { ECall         (locOf $1 <> locOf $2) $1 $2 }
+  | bexp '.' var_name      { EMember       (locOf $1 <> locOf $3) $1 $3 }
+  | bexp '->' var_name     { EPtrAccess    (locOf $1 <> locOf $3) $1 $3 }
+  | bexp '[' exp ']'       { EArrayAccess  (locOf $1 <> $4) $1 $3       }
+  | bexp '<.' exp '>'      { EVectorAccess (locOf $1 <> locOf $4) $1 $3 }
+  | New aexp               { ENew ($1 <> locOf $2) $2 }
+  | Renew aexp             { ERenew ($1 <> locOf $2) $2 }
+  | Delete aexp            { EDelete ($1 <> locOf $2) $2 }
   | aexp                   { $1 }
 
 aexp :: { Exp }
 aexp : exp_var    { $1 }
      | exp_con    { $1 }
      | exp_value  { $1 }
-     | exp_array  { $1 }
+     | exp_instr  { $1 }
      | exp_parens { $1 }
+
 
 exp_var :: { Exp }
 exp_var : var_name { EVar $1 }
@@ -682,10 +713,6 @@ exp_value : value { mkVal $1 }
 
 exp_parens :: { Exp }
 exp_parens : '(' exp ')' { EParens ($1 <> $3) $2 }
-
-exp_array :: { Exp }
-exp_array
-  : '[' exp_args0 ']' { EArray ($1 <> $3) $2 }
 
 
 may_exp :: { Maybe Exp }
@@ -713,54 +740,61 @@ exp_args_r
   | exp_args_r ',' exp { $3 : $1 }
 
 
+exp_instr :: { Exp }
+exp_instr
+  : prim_id '(' exp ',' exp ')' { EInstr (locOf $1 <> $6) (Prim.readPrimInstr $3 $5 (unL $1)) }
+
+
+
 -- -----------------------------------------------------------------------------
 -- | Types
 
 type :: { Type }
-type : dtype { $1 }
+type : etype { $1 }
 
-dtype :: { Type }
-dtype
+-- Kind signature
+etype :: { Type }
+etype
   : ctype            { $1 }
   | ctype kind_sig   { TKind (locOf $1 <> locOf $2) $1 $2 }
 
+-- Complex Constructors (that group operators)
 ctype :: { Type }
 ctype
-  : type_op            { $1 }
-  | ctype '->' type_op { TArr (locOf $1 <> locOf $3) $1 $3 }
+  : ctype '->' type_op(btype) { TArr (locOf $1 <> locOf $3) $1 $3 }
+  | type_op(btype)            { $1 }
 
 
-type_op :: { Type }
-type_op : type_op_terms { TOp (locOf $1) $1 }
+type_op(ty) : ctyop(ty) { TOp (locOf $1) $1 }
 
-type_op_terms :: { [TyOpTerm] }
-type_op_terms : type_op_terms_r { reverse $1 }
+ctyop(ty)
+  : btyop(ty)                       { $1 }
+  | ctyop(ty) op_name_ext btyop(ty) { $1 ++ [TyOperator $2] ++ $3 }
 
-type_op_terms_r :: { [TyOpTerm] }
-type_op_terms_r
-  : type_op_term   { [$1] }
-  | type_op_terms_r type_op_term { $2 : $1 }
+btyop(ty)
+  : op_name_ext atyop(ty)   { [TyOperator $1] ++ $2 }
+  | atyop(ty)               { $1 }
 
-type_op_term :: { TyOpTerm }
-type_op_term
-  : btype    { TyOperand  $1 }
-  | op_name  { TyOperator $1 }
+atyop(ty)
+  : ty op_name_ext     { [TyOperand $1, TyOperator $2]  }
+  | ty                 { [TyOperand $1] }
+
 
 btype :: { Type }
 btype
-  : '&' btype { TRef ($1 <> locOf $2) $2 }
-  | '&&' btype { TRef ($1 <> locOf $2) $2 }
-  | '*'  btype { TPtr ($1 <> locOf $2) $2 }
-  | Const btype { TConst ($1 <> locOf $2) $2 }
-  | btype type_arguments { TApp (locOf $1 <> locOf $2) $1 $2 }
-  | btype '[' ']' { TArray (locOf $1 <> $3) $1 }
-  | btype '[' integer ']' { TArraySized (locOf $1 <> $4) $1 (extractInteger $3) }
+  : type_con_const(btype)    { TPrimCon (locOf $1) $1 }
+  | type_con_array(btype)    { TPrimCon (locOf $1) $1 }
+  | type_con_vector(btype)   { TPrimCon (locOf $1) $1 }
+  | atype maybe_scheme type_arguments { TApp (locOf $1 <> locOf $3) $1 $2 $3 }
   | atype { $1 }
 
 atype :: { Type }
-atype : var_name      { TVar $1 }
-      | con_name      { TCon $1 }
-      | '(' type ')'  { TParens ($1 <> $3) $2 }
+atype : var_name        { TVar $1 }
+      | con_name        { TCon $1 }
+      | type_con_void   { TPrimCon (locOf $1) $1 }
+      | type_con_int    { TPrimCon (locOf $1) $1 }
+      | type_con_fp     { TPrimCon (locOf $1) $1 }
+      | '(' type ')'    { TParens ($1 <> $3) $2 }
 
 
 type_arguments :: { TypeArguments }
@@ -805,6 +839,41 @@ type_parameter_list_r :: { [TypeParameter] }
 type_parameter_list_r
   : type_parameter                           { [$1] }
   | type_parameter_list_r ',' type_parameter { $3 : $1 }
+
+-- -----------------------------------------------------------------------------
+-- | Primitive Type Constructors
+
+type_con_void :: { Prim.TypeCon Type Exp }
+type_con_void
+  : VOID   { Prim.TVoid $1 }
+
+type_con_int :: { Prim.TypeCon Type Exp }
+type_con_int
+  : I1     { Prim.TInt $1 1   }
+  | I8     { Prim.TInt $1 8   }
+  | I16    { Prim.TInt $1 16  }
+  | I32    { Prim.TInt $1 32  }
+  | I64    { Prim.TInt $1 64  }
+  | I128   { Prim.TInt $1 128 }
+
+type_con_fp :: { Prim.TypeCon Type Exp }
+type_con_fp
+  : Fp16    { Prim.TFp $1 16  }
+  | Fp32    { Prim.TFp $1 32  }
+  | Fp64    { Prim.TFp $1 64  }
+  | Fp128   { Prim.TFp $1 128 }
+
+
+type_con_array(ty)
+  : ty '[]'        { Prim.TArray (locOf $1 <> $2) $1 }
+  | ty '[' exp ']' { Prim.TArraySized (locOf $1 <> $4) $1 $3}
+
+type_con_vector(ty)
+  : ty '<.>'        { Prim.TVector (locOf $1 <> $2) $1 }
+  | ty '<.' exp '>' { Prim.TVectorSized (locOf $1 <> locOf $4) $1 $3 }
+
+type_con_const(ty)
+  : Const ty { Prim.TConst ($1 <> locOf $2) $2 }
 
 -- -----------------------------------------------------------------------------
 -- | Kinds

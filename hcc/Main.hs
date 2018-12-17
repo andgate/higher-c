@@ -74,6 +74,10 @@ import Language.HigherC.Lex (lex)
 import Language.HigherC.Lex.Error
 import Language.HigherC.Syntax.Concrete (TopLevel (TopLevel))
 
+import qualified Language.LowerC.Syntax  as LC
+import qualified Language.LowerC.Syntax.Primitive as Prim
+
+import TestModule
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -144,6 +148,8 @@ main = do
   when (optShowVersion opts)
        (putStrLn $ "hcc version " ++ (showVersion version))
 
+  writeTestModule
+
   esrcs <- runExceptT (parseInputs (optInput opts))
   case esrcs of
     Left errs  -> undefined
@@ -173,4 +179,6 @@ parseInput fp = do
   liftIO $ putDoc (vsep $ pretty <$> toks)
 
   let toplevel = parseTopLevel toks
+
   return (Src fp toplevel)
+

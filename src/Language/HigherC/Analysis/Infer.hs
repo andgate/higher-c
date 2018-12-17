@@ -7,7 +7,7 @@ import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Language.HigherC.Analysis.Equality
 import Language.HigherC.Syntax.Abstract
-import Language.HigherC.Syntax.Builtin
+import qualified Language.HigherC.Syntax.Primitive as Prim
 import Language.HigherC.Syntax.Location
 import Unbound.Generics.LocallyNameless
 

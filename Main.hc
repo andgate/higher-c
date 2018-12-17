@@ -6,6 +6,65 @@ operator(infixr, 6, / );
 operator(infixr, 5, +, - );
 
 
+class Addition(a, b, c) {
+  inline (+)(x: a, y: b) c;
+  const inline (+)(x: const a, y: const b): c;
+}
+
+instance Addition(I32, I32, I32) {
+  (+)(x, y)
+  {
+    return __add(x, y);
+  }
+}
+
+instance Addition(F32, F32, F32) {
+  (+)(x, y)
+  {
+    return __addf(x, y);
+  }
+}
+
+instance Addition(I32, F32, F32) {
+  (+)(x, y)
+  {
+    return __addf(x as F32, y);
+  }
+}
+
+instance Addition(F32, I32, F32) {
+  (+)(x, y)
+  {
+    return __addf(x, y as F32);
+  }
+}
+
+instance Addition(I32<>, I32<>, I32<> ) {
+  (+)(x, y) {
+    __add(*x, *y);
+  }
+}
+
+instance Addition<n: Nat>(I32<n>, I32<n>, I32<n>)) {
+  (+)(x, y) {
+    __add(x, y);
+  }
+}
+
+class Subtraction(a, b, c) {
+  inline (-)(x: a, y: b): c;
+}
+
+class Multiplication(a, b, c) {
+  inline (-)(x  a, y: b): c;
+}
+
+class Division(a, b, c) {
+  inline (-)(x: a, y: b): c;
+}
+
+
+
 type Void();
 
 alias Empty() = Void();
