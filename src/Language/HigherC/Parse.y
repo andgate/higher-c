@@ -8,8 +8,8 @@ import Data.Text (Text, unpack)
 import Language.HigherC.Lex
 import Language.HigherC.Lex.Token
 import Language.HigherC.Syntax.Concrete
-import qualified Language.HigherC.Syntax.Primitive as Prim
-import Language.HigherC.Syntax.Location
+import qualified Language.HigherC.Syntax.Extra.Primitive as Prim
+import Language.HigherC.Syntax.Extra.Location
 
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
@@ -22,7 +22,7 @@ import Data.Text.Prettyprint.Doc.Render.Text (putDoc)
 
 }
 
-%name parseTopLevel top_level
+%name parseObject object
 %tokentype { Token }
 %error { parseError }
 
@@ -219,50 +219,66 @@ var_name_list_r
 
 
 -- -----------------------------------------------------------------------------
--- | Top Level
+-- | Syntax Object
 
-top_level :: { TopLevel }
-top_level : top_level_stmts0 eof { TopLevel $1 }
+object :: { Object }
+object
+  : object_base        { $1 }
+  | object object_base { $1 <> $2 }
 
-top_level_stmts0 :: { [TopLevelStmt] }
-top_level_stmts0
+object_base :: { Object }
+object_base
+  : module_stmts  { Object Nothing $1 []   []   []   }
+  | module_defn   { Object Nothing [] [$1] []   []   }
+  | import_stmt   { Object Nothing [] []   [$1] []   }
+  | operator_decl { Object Nothing [] []   []   [$1] }
+
+module_defn :: { Module }
+module_defn
+  : Module mod_path '{' module_body '}' {  ($4){ modName = $2, modLoc = $1 <> $5 } }
+
+module_body :: { Module }
+module_body
+  : module_base             { $1 }
+  | module_body module_base { $1 <> $2 }
+
+module_base :: { Module }
+module_base
+  : module_stmts  { Module rootModPath mempty $1 []   []   []   }
+  | module_defn   { Module rootModPath mempty [] [$1] []   []   }
+  | import_stmt   { Module rootModPath mempty [] []   [$1] []   }
+  | operator_decl { Module rootModPath mempty [] []   []   [$1] }
+
+module_stmts0 :: { [ModuleStmt] }
+module_stmts0
   : {- empty -}     { [] }
-  | top_level_stmts { $1 }
+  | module_stmts    { $1 }
 
-top_level_stmts :: { [TopLevelStmt] }
-top_level_stmts : top_level_stmts_r { reverse $1 }
+module_stmts :: { [ModuleStmt] }
+module_stmts : module_stmts_r { reverse $1 }
 
-top_level_stmts_r :: { [TopLevelStmt] }
-top_level_stmts_r
-  : top_level_stmt { [$1] }
-  | top_level_stmts_r top_level_stmt { $2 : $1 }
+module_stmts_r :: { [ModuleStmt] }
+module_stmts_r
+  : module_stmt { [$1] }
+  | module_stmts_r module_stmt { $2 : $1 }
 
-top_level_stmt :: { TopLevelStmt }
-top_level_stmt
-  : module_defn      { TModule $1 }
-  | import_stmt      { TImport $1 }
-  | declaration      { TDecl $1 }
-  | function_defn    { TFuncDefn $1 }
-  | function_extern  { TFuncExtern $1 }
-  | constructor_defn { TCtor $1 }
-  | destructor_defn  { TDtor $1 }
-  | type_defn        { TTypeDefn $1 }
-  | alias_defn       { TAliasDefn $1 }
-  | class_defn       { TClass $1 }
-  | instance_defn    { TInst $1 }
-  | operator_decl    { TOpDecl $1 }
+module_stmt :: { ModuleStmt }
+module_stmt
+  : declaration      { MDecl $1 }
+  | function_defn    { MFuncDefn $1 }
+  | function_extern  { MFuncExtern $1 }
+  | constructor_defn { MCtor $1 }
+  | destructor_defn  { MDtor $1 }
+  | type_defn        { MTypeDefn $1 }
+  | alias_defn       { MAliasDefn $1 }
+  | class_defn       { MClass $1 }
+  | instance_defn    { MInst $1 }
 
 
 
 -- -----------------------------------------------------------------------------
 -- | Module Definition
 
-module_defn :: { Module }
-module_defn : Module mod_path module_block { Module ($1 <> locOf $3) $2 $3 }
-
-
-module_block :: { ModuleBlock }
-module_block : '{' top_level_stmts0 '}' { MBlock ($1 <> $3) $2 }
 
 mod_path :: { ModulePath }
 mod_path   : mod_path_r              { MPath (locOf $1) (NE.fromList $ reverse $1) }

@@ -53,27 +53,29 @@ library
 
   exposed-modules:
       Language.HigherC.Analysis.Namecheck
-      Language.HigherC.Analysis.Infer
-      Language.HigherC.Analysis.Equality
+      Language.HigherC.Analysis.TypeCheck
 
-      Language.HigherC.Syntax.Abstract
-      Language.HigherC.Syntax.Canonical
-      Language.HigherC.Syntax.Concrete
-      Language.HigherC.Syntax.Location
-      Language.HigherC.Syntax.Primitive
-      Language.HigherC.Syntax.Typed
+      Language.HigherC.Compile
 
       Language.HigherC.Lex
       Language.HigherC.Lex.Error
       Language.HigherC.Lex.State
       Language.HigherC.Lex.Token
-      
+
       Language.HigherC.Parse
       Language.HigherC.Parse.Error
 
-      Language.LowerC.Codegen
+--      Language.HigherC.Syntax.Abstract
+      Language.HigherC.Syntax.Concrete
+      Language.HigherC.Syntax.Extra.Location
+      Language.HigherC.Syntax.Extra.Primitive
+      Language.HigherC.Syntax.Typed
+
+     -- Language.HigherC.Transform.Rename
+      
       Language.LowerC.Syntax
-      Language.LowerC.Syntax.Primitive
+      Language.LowerC.Syntax.Extra.Primitive
+      Language.LowerC.Transform.Codegen
       
   
   other-modules:
@@ -103,4 +105,5 @@ executable hcc
     , transformers
 
   other-modules:
+    TestModule
     Paths_language_higher_c

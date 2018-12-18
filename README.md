@@ -1,6 +1,15 @@
 # Higher-C Compiler Toolchain
 
-This is a WIP
+This is something I'm working on over Christmas break.
+
+## Building the test program
+
+Exectute the following commands
+
+```bash
+cabal new-run hcc
+clang test.ll -o test.exe
+```
 
 ## Building with Cabal New
 

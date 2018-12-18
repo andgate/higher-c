@@ -9,7 +9,7 @@ import Data.Text (Text, pack)
 import Data.Map.Strict (Map)
 import Data.Set (Set)
 import Language.HigherC.Syntax.Concrete
-import Language.HigherC.Syntax.Location
+import Language.HigherC.Syntax.Extra.Location
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set

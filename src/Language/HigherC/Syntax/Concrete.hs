@@ -12,7 +12,7 @@ module Language.HigherC.Syntax.Concrete
   )
   where
 
-import Language.HigherC.Syntax.Location as X
+import Language.HigherC.Syntax.Extra.Location as X
 
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Text (Text)
@@ -21,7 +21,7 @@ import Data.Typeable (Typeable)
 import GHC.Generics hiding (Prefix, Fixity)
 
 import qualified Data.List.NonEmpty as NE
-import qualified Language.HigherC.Syntax.Primitive as Prim
+import qualified Language.HigherC.Syntax.Extra.Primitive as Prim
 
 -- -----------------------------------------------------------------------------
 -- | Names
@@ -49,47 +49,65 @@ mkQName mp n
 
 
 -- -----------------------------------------------------------------------------
--- | Toplevel Constructs
+-- | Object/Module System
 
-data TopLevel
-  = TopLevel [TopLevelStmt]
+
+data Object 
+  = Object
+    { objFile    :: Maybe FilePath
+    , objBody    :: [ModuleStmt]
+    , objSubs    :: [Module]
+    , objImports :: [Import]
+    , objOps     :: [OpDecl]
+    }
   deriving (Show, Generic, Typeable)
 
-data TopLevelStmt
-  = TModule Module
-  | TImport Import
+instance Semigroup Object where
+  (<>) (Object fp body1 subs1 imps1 ops1) (Object _ body2 subs2 imps2 ops2)
+    = Object fp (body1 <> body2) (subs1 <> subs2) (imps1 <> imps2) (ops1 <> ops2)
 
-  | TDecl Decl
-  | TFuncDefn FuncDefn
-  | TFuncExtern FuncExtern
 
-  | TCtor  CtorDefn
-  | TDtor  DtorDefn
-
-  | TTypeDefn TypeDefn
-  | TAliasDefn AliasDefn
-
-  | TClass ClassDefn
-  | TInst InstDefn
-
-  | TOpDecl OpDecl
+data Module
+  = Module
+    { modName    :: ModulePath
+    , modLoc     :: Loc
+    , modBody    :: [ModuleStmt]
+    , modSubs    :: [Module]
+    , modImports :: [Import]
+    , modOps     :: [OpDecl]
+    }
   deriving (Show, Generic, Typeable)
 
+instance Semigroup Module where
+  (<>) (Module mp l1 block1 subs1 imps1 ops1) (Module _ l2 block2 subs2 imps2 ops2)
+    = Module mp (l1 <> l2) (block1 <> block2) (subs1 <> subs2) (imps1 <> imps2) (ops1 <> ops2)
 
--- -----------------------------------------------------------------------------
--- | Module
 
-data Module =
-  Module Loc ModulePath ModuleBlock
+data ModuleStmt
+  = MDecl Decl
+  | MFuncDefn FuncDefn
+  | MFuncExtern FuncExtern
+
+  | MCtor  CtorDefn
+  | MDtor  DtorDefn
+
+  | MTypeDefn TypeDefn
+  | MAliasDefn AliasDefn
+
+  | MClass ClassDefn
+  | MInst InstDefn
+
+  | MOpDecl OpDecl
   deriving (Show, Generic, Typeable)
+
 
 data ModulePath =
   MPath Loc (NonEmpty Name)
   deriving (Show, Generic, Typeable)
 
-data ModuleBlock =
-  MBlock Loc [TopLevelStmt]
-  deriving (Show, Generic, Typeable)
+rootModPath :: ModulePath
+rootModPath
+  = MPath mempty (NE.fromList [Name mempty Nothing mempty])
 
 data Import =
   Import Loc ModulePath
@@ -507,36 +525,36 @@ mkVal (L l v) = EValue l v
 instance Locatable Name where
   locOf (Name _ mp l) = maybe l locOf mp <> l
 
+-- Objects
 
--- Toplevel
-instance Locatable TopLevel where
-  locOf (TopLevel stmts) = locOf stmts
-
-instance Locatable TopLevelStmt where
-  locOf = \case
-    TModule m          -> locOf m
-    TImport i          -> locOf i
-    TDecl d            -> locOf d
-    TFuncDefn f        -> locOf f
-    TFuncExtern f      -> locOf f
-    TCtor  c           -> locOf c
-    TDtor  d           -> locOf d
-    TTypeDefn d        -> locOf d
-    TAliasDefn a       -> locOf a
-    TClass c           -> locOf c
-    TInst i            -> locOf i
-    TOpDecl o          -> locOf o
+instance Locatable Object where
+  locOf (Object mfp body mods imps ops) =
+    case mfp of
+      Nothing -> l
+      Just fp -> l { _locPath = fp }
+    where
+      l = mconcat $ (locOf <$> body) ++ (locOf <$> mods) ++ (locOf <$> imps) ++ (locOf <$> ops)
 
 
--- Modules
 instance Locatable Module where
-  locOf (Module l _ _) = l
+  locOf (Module _ l _ _ _ _) = l
+
+
+instance Locatable ModuleStmt where
+  locOf = \case
+    MDecl d            -> locOf d
+    MFuncDefn f        -> locOf f
+    MFuncExtern f      -> locOf f
+    MCtor  c           -> locOf c
+    MDtor  d           -> locOf d
+    MTypeDefn d        -> locOf d
+    MAliasDefn a       -> locOf a
+    MClass c           -> locOf c
+    MInst i            -> locOf i
+    MOpDecl o          -> locOf o
 
 instance Locatable ModulePath where
   locOf (MPath l _) = l
-
-instance Locatable ModuleBlock where
-  locOf (MBlock l _) = l
 
 instance Locatable Import where
   locOf (Import l _) = l
@@ -854,47 +872,51 @@ instance Pretty Name where
     Just p -> pretty p <> "::" <> pretty n
 
 
--- Toplevel
-instance Pretty TopLevel where
-  pretty (TopLevel stmts) =
-    vcat (pretty <$> stmts)
-
-instance Pretty TopLevelStmt where
-  pretty = \case
-    TModule m -> pretty m
-    TImport i -> pretty i
-
-    TDecl decl -> pretty decl
-    TFuncDefn fn   -> pretty fn
-    TFuncExtern fn -> pretty fn
-
-    TCtor ctor -> pretty ctor
-    TDtor dtor -> pretty dtor
-
-    TTypeDefn  d -> pretty d
-    TAliasDefn d -> pretty d
-
-    TClass c -> pretty c
-    TInst  i -> pretty i
-
-    TOpDecl o -> pretty o
+-- Source Objects
+instance Pretty Object where
+  pretty (Object _ stmt mods imps ops) =
+    vcat [ vcat $ pretty <$> imps
+         , vcat $ pretty <$> ops
+         , vcat $ pretty <$> stmt
+         , vcat $ pretty <$> mods
+         ]
 
 
 
--- Modules
+-- Source Modules
 instance Pretty Module where
-  pretty (Module _ mpath mblk) = "module" <+> pretty mpath <+> pretty mblk
+  pretty (Module mpath _ stmts mods imps ops) =
+    vcat [ "module" <+> pretty mpath <+> "{"
+         , indent 4 $ vcat $
+             (pretty <$> imps)
+             ++ (pretty <$> ops)
+             ++ (pretty <$> stmts)
+             ++ (pretty <$> mods)
+         , "}"
+         ]
+
+
+instance Pretty ModuleStmt where
+  pretty = \case
+    MDecl decl -> pretty decl
+    MFuncDefn fn   -> pretty fn
+    MFuncExtern fn -> pretty fn
+
+    MCtor ctor -> pretty ctor
+    MDtor dtor -> pretty dtor
+
+    MTypeDefn  d -> pretty d
+    MAliasDefn d -> pretty d
+
+    MClass c -> pretty c
+    MInst  i -> pretty i
+
+    MOpDecl o -> pretty o
+
 
 instance Pretty ModulePath where
   pretty (MPath _ ns) =
     concatWith (surround dot) [pretty n | n <- NE.toList ns]
-
-instance Pretty ModuleBlock where
-  pretty (MBlock _ stmts) =
-    vcat [ "{"
-         , indent 4 (vsep $ fmap pretty stmts)
-         , "}"
-         ]
 
 instance Pretty Import where
   pretty (Import _ mpath) =

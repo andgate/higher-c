@@ -1,11 +1,12 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Language.LowerC.Syntax where
 
 import Data.Text (Text, unpack)
 import Data.Word
 
-import Language.HigherC.Syntax.Location
-import qualified Language.LowerC.Syntax.Primitive as Prim
+import Language.HigherC.Syntax.Extra.Location
+import qualified Language.LowerC.Syntax.Extra.Primitive as Prim
 
 data Name
   = Name Loc Text
@@ -36,11 +37,20 @@ data Global
 data Func
   = Func FuncDecl [Stmt]
 
+-- has var args lol
 data FuncDecl
   = FuncDecl Name [Parameter] Type
 
 data Extern
-  = Extern Name [Parameter] Type
+  = Extern [ExternSpec] Name [Parameter] Type
+
+data ExternSpec
+  = ExternVarArg
+  | ExternSomeSpec
+  deriving (Eq, Ord)
+
+isVarArg :: [ExternSpec] -> Bool
+isVarArg = any (== ExternVarArg)
 
 data Parameter
   = Parameter Name Type
@@ -62,7 +72,8 @@ data Exp
   = EVar Type Name
   | EAssign Type Name Exp
   
-  | EVal   (Prim.Value Type)
+  | EPtr Type Exp
+  | EVal (Prim.Value Type)
   | EInstr Instr
   
   | ECall Type Name [Exp]
@@ -81,13 +92,31 @@ data Instr
 data Type
   = TCon Name
   | TFun [Type] Type
+  | TFunVarArg [Type] Type
   | TVoid
+  | TBool
   | TInt Integer
   | TFp  Integer
   | TChar
+  | TString
   | TPtr Type
   | TArray Type
   | TArraySized Type Integer
+
+
+class HasType a where
+  typeOf :: a -> Type
+
+instance HasType (Prim.Value Type) where
+  typeOf = \case
+    Prim.VNull ty -> ty
+    Prim.VBool _ -> TBool
+    Prim.VInt bits _ -> TInt bits
+    Prim.VFp bits _ -> TFp bits
+    Prim.VChar _ -> TChar
+    Prim.VArray ty vs -> TArraySized ty (toInteger $ length vs)
+    Prim.VString cs -> TArraySized (TInt 8) (toInteger $ length cs)
+    Prim.VInstr ty _ -> ty
 
 
 isVoid :: Type -> Bool

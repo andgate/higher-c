@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, DeriveDataTypeable, LambdaCase #-}
-module Language.HigherC.Syntax.Primitive where
+module Language.HigherC.Syntax.Extra.Primitive where
 
 import Data.Binary
 import Data.Data
 import Data.Text (Text, pack)
 import Data.Text.Prettyprint.Doc
 import GHC.Generics (Generic)
-import Language.HigherC.Syntax.Location
+import Language.HigherC.Syntax.Extra.Location
 
 
 -- -----------------------------------------------------------------------------

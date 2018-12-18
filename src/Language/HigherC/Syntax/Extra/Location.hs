@@ -5,7 +5,7 @@
             , TemplateHaskell
             , DeriveDataTypeable
   #-}
-module Language.HigherC.Syntax.Location where
+module Language.HigherC.Syntax.Extra.Location where
 
 import Control.Lens
 import Data.Binary

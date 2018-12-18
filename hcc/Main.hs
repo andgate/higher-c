@@ -58,24 +58,15 @@ import Prelude hiding (lex)
 import Paths_language_higher_c
 
 import Control.Monad
-import Control.Monad.Except
-import Data.Functor.Identity
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text (putDoc)
 import Data.Version
 import System.Console.GetOpt
 import System.Environment
 
-import Language.HigherC.Parse (parseTopLevel)
-import Language.HigherC.Parse.Error
-import Language.HigherC.Lex (lex)
-import Language.HigherC.Lex.Error
-import Language.HigherC.Syntax.Concrete (TopLevel (TopLevel))
-
-import qualified Language.LowerC.Syntax  as LC
-import qualified Language.LowerC.Syntax.Primitive as Prim
+import Language.HigherC.Compile (readObject)
+import Language.HigherC.Syntax.Concrete (Object)
 
 import TestModule
 
@@ -150,35 +141,6 @@ main = do
 
   writeTestModule
 
-  esrcs <- runExceptT (parseInputs (optInput opts))
-  case esrcs of
-    Left errs  -> undefined
-    Right srcs -> putDoc $ vsep (pretty <$> srcs)
+  obj <- mapM readObject (optInput opts)
   print opts
   return ()
-
-
-data Src = Src FilePath TopLevel
-
-instance Pretty Src where
-  pretty (Src fp toplevel) =
-    vsep [ "Filepath:" <+> pretty fp
-         , pretty toplevel
-         ]
-
-
-parseInputs :: [FilePath] -> ExceptT ParseError IO [Src]
-parseInputs = mapM parseInput
-
-
-parseInput :: FilePath -> ExceptT ParseError IO Src
-parseInput fp = do
-  txt <- liftIO $ T.readFile fp
-  let lexResult = withExcept PLexErr (lex fp txt)
-  toks <- mapExceptT (return . runIdentity) lexResult
-  liftIO $ putDoc (vsep $ pretty <$> toks)
-
-  let toplevel = parseTopLevel toks
-
-  return (Src fp toplevel)
-

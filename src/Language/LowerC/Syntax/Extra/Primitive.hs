@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, DeriveDataTypeable, LambdaCase #-}
-module Language.LowerC.Syntax.Primitive where
+module Language.LowerC.Syntax.Extra.Primitive where
 
 import Data.Binary
 import Data.Data
@@ -20,7 +20,7 @@ data Value t
   | VArray t [Value t] -- Can contain a list of other values
   | VVector [Value t]  -- Can contain a list of ints or floats
   | VString [Char] -- supposes 8 bit char strings
-  | VInstr (Instruction t) -- Constant expressions just support instructions
+  | VInstr t (Instruction t) -- Constant expressions just support instructions
   deriving (Show, Generic, Typeable)
 
 
@@ -83,7 +83,7 @@ instance (Pretty t) => Pretty (Value t) where
     VChar c -> pretty c
     VArray _ vs -> hsep (pretty <$> vs)
     VString cs -> pretty cs
-    VInstr i -> pretty i 
+    VInstr _ i -> pretty i 
 
 
 instance Pretty t => Pretty (TypeCon t) where

@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE RecordWildCards #-}
-module Language.LowerC.Codegen where
+module Language.LowerC.Transform.Codegen where
 
 import Control.Monad
 import Control.Monad.Fix
@@ -24,7 +24,7 @@ import LLVM.IRBuilder.Module
 import LLVM.IRBuilder.Monad
 
 import qualified Language.LowerC.Syntax as LC
-import qualified Language.LowerC.Syntax.Primitive as Prim
+import qualified Language.LowerC.Syntax.Extra.Primitive as Prim
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.IRBuilder.Instruction as I
 import qualified LLVM.AST.Float as F
@@ -81,15 +81,18 @@ genFuncParam (LC.Parameter n ty)
 genFuncBody :: (MonadFix m, MonadIRBuilder m) => [LC.Stmt] -> [Operand] -> m ()
 genFuncBody stmts ops = do
   let genStmt' stmt = genStmt stmt ops
-  block
+  block `named` "entry"
   mapM_ genStmt' stmts
 
 genStmt :: (MonadFix m, MonadIRBuilder m) => LC.Stmt -> [Operand] -> m ()
 genStmt stmt ops = case stmt of
   LC.SNop -> return ()
   LC.SExp e -> void $ genExp e
+
   LC.SLet ty n e -> do
-    --genExp e `named` (name2sbs n)
+    init <- genExp e
+    ptr <- (I.alloca (genType ty) Nothing 1) `named` (name2sbs n)
+    I.store ptr 1 init
     return ()
 
 
@@ -131,7 +134,25 @@ genExp = \case
     I.store lref 1 e'
     return lref
   
-  LC.EVal v -> return $ ConstantOperand $ genValue v
+  LC.EVal v@(Prim.VString str) -> do
+    let str_type = genType $ LC.TArraySized LC.TChar (toInteger $ length str)
+        ptr_type = genType $ LC.TPtr LC.TChar
+    str <- I.alloca str_type Nothing 1
+    ptr <- I.alloca ptr_type Nothing 1
+    I.store str 1 (ConstantOperand $ genValue v)
+    cast_result <- I.bitcast str (genType $ LC.TPtr LC.TChar)
+    I.store ptr 1 cast_result
+    val <- I.load ptr 1
+    return val
+
+  LC.EVal v -> return (ConstantOperand $ genValue v)
+
+  LC.EPtr ty e -> do
+    e' <- genExp e
+    ptr <- I.alloca (genType ty) Nothing 1
+    I.store ptr 1 e'
+    return ptr
+
   LC.EInstr i -> genInstr i
 
   LC.ECall ty n args -> do 
@@ -145,10 +166,12 @@ genExp = \case
 
 
 genExtern :: MonadModuleBuilder m => LC.Extern -> m Operand
-genExtern (LC.Extern name params ty)
-  = extern name' params' (genType ty)
+genExtern (LC.Extern specs name params ty)
+  | isVarArg = externVarArgs name' params' (genType ty)
+  | otherwise = extern name' params' (genType ty)
   where
     name' = name2name name
+    isVarArg = LC.isVarArg specs
     params' = [genType ty | (LC.Parameter name ty) <- params]
 
 
@@ -201,7 +224,8 @@ genValue = \case
   Prim.VArray t vals -> C.Array (genType t) (genValue <$> vals)
   Prim.VVector vals  -> C.Vector (genValue <$> vals)
   Prim.VString str   -> C.Array IR.i8 (genChar <$> str)
-  Prim.VInstr  i     -> genPrimInstr i
+
+  Prim.VInstr _ i     -> genPrimInstr i
 
 
 genChar :: Char -> C.Constant
@@ -277,6 +301,9 @@ genType = \case
 
   LC.TFun args ret ->
     IR.FunctionType (genType ret) (genType <$> args) False
+  
+  LC.TFunVarArg args ret ->
+    IR.FunctionType (genType ret) (genType <$> args) True
 
   -- Type Primitives
   LC.TInt 1   -> IR.i1
@@ -292,6 +319,7 @@ genType = \case
   LC.TFp 128 -> IR.fp128
 
   LC.TChar   -> IR.i8
+  LC.TString -> IR.ptr IR.i8
 
   LC.TCon n -> IR.NamedTypeReference (name2name n)
 
