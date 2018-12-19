@@ -1,5 +1,6 @@
 {-# LANGUAGE  DeriveGeneric
             , DeriveDataTypeable
+            , RecordWildCards
             , FlexibleContexts
             , OverloadedStrings
             , LambdaCase
@@ -15,7 +16,7 @@ module Language.HigherC.Syntax.Concrete
 import Language.HigherC.Syntax.Extra.Location as X
 
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Text (Text)
+import Data.Text (Text, unpack, intercalate)
 import Data.Text.Prettyprint.Doc
 import Data.Typeable (Typeable)
 import GHC.Generics hiding (Prefix, Fixity)
@@ -31,8 +32,13 @@ data Name
          , namePath :: Maybe ModulePath
          , nameLoc  :: Loc
          }
-  deriving (Show, Generic, Typeable)
+  deriving (Generic, Typeable)
 
+instance Show Name where
+  show (Name txt maybe_path _)
+    = case maybe_path of
+        Nothing -> unpack txt
+        Just path -> show path ++ "::" ++ unpack txt
 
 mkName :: L Text -> Name
 mkName (L l n) =
@@ -46,6 +52,7 @@ mkQName mp n
     , namePath = Just mp
     , nameLoc = locOf mp <> locOf n
     }
+
 
 
 -- -----------------------------------------------------------------------------
@@ -83,6 +90,26 @@ instance Semigroup Module where
     = Module mp (l1 <> l2) (block1 <> block2) (subs1 <> subs2) (imps1 <> imps2) (ops1 <> ops2)
 
 
+extractModulePaths :: Object -> [ModulePath]
+extractModulePaths = map modName . objModulesRec
+
+objModulesRec :: Object -> [Module]
+objModulesRec Object{..}
+  = objSubs <> mconcat (modModulesRec <$> objSubs)
+
+modModulesRec :: Module -> [Module]
+modModulesRec Module{..}
+  = modSubs <> mconcat (modModulesRec <$> modSubs)
+
+
+objImportsRec :: Object -> [Import]
+objImportsRec Object{..}
+  = objImports ++ mconcat (map modImportsRec objSubs)
+
+modImportsRec :: Module -> [Import]
+modImportsRec Module{..}
+  = modImports ++ mconcat (map modImportsRec modSubs)
+
 data ModuleStmt
   = MDecl Decl
   | MFuncDefn FuncDefn
@@ -102,16 +129,40 @@ data ModuleStmt
 
 
 data ModulePath =
-  MPath Loc (NonEmpty Name)
-  deriving (Show, Generic, Typeable)
+  MPath Loc (NonEmpty Text)
+  deriving (Generic, Typeable)
+
+instance Show ModulePath where
+  show (MPath _ txts)
+    = unpack $ intercalate "." (NE.toList txts)
+
+instance Eq ModulePath where
+  (==) (MPath _ a) (MPath _ b)
+    = a == b
+
+instance Ord ModulePath where
+  compare (MPath _ a) (MPath _ b)
+    = a `compare` b
+
+unpackPath :: ModulePath -> Text
+unpackPath (MPath _ path)
+  = intercalate "." $ NE.toList path
+
 
 rootModPath :: ModulePath
 rootModPath
-  = MPath mempty (NE.fromList [Name mempty Nothing mempty])
+  = MPath mempty (NE.fromList [""])
+
 
 data Import =
   Import Loc ModulePath
-  deriving (Show, Generic, Typeable)
+  deriving (Generic, Typeable)
+
+instance Show Import where
+  show (Import _ mpath) = show mpath
+
+unpackImport :: Import -> Text
+unpackImport (Import _ mpath) = unpackPath mpath
 
 -- -----------------------------------------------------------------------------
 -- | Declaration

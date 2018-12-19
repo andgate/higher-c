@@ -103,6 +103,10 @@ stretch a n = mkRegion p1 p2
 -- -----------------------------------------------------------------------------
 -- Helper Instances
 
+instance (Semigroup a) => Semigroup (L a) where
+    (<>) (L lx x) (L ly y)
+      = L (lx<>ly) (x <> y)
+
 instance Semigroup Loc where
     (<>) (Loc fp r1) (Loc _ r2)
       = Loc fp (r1 <> r2)

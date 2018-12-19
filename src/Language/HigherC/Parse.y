@@ -142,7 +142,7 @@ import Data.Text.Prettyprint.Doc.Render.Text (putDoc)
 %%
 
 -- -----------------------------------------------------------------------------
--- | Names and Values
+-- | Names
 
 name :: { Name }
 name : var_name { $1 }
@@ -166,20 +166,25 @@ var_name : var_id { mkName $1 }
 con_name :: { Name }
 con_name : con_id { mkName $1 }
 
+mod_name :: { Name }
+mod_name : con_name { $1 }
+
 op_name :: { Name }
 op_name  : op_id  { mkName $1 }
 
 op_name_ext :: { Name }
 op_name_ext  : op_id_ext  { mkName $1 }
 
-mod_name :: { Name }
-mod_name : con_name { $1 }
 
+-- Text Identifiers
 var_id :: { L Text }
 var_id : varId { extractId $1 }
 
 con_id :: { L Text }
 con_id : conId { extractId $1 }
+
+mod_id :: { L Text }
+mod_id : con_id { $1 }
 
 op_id :: { L Text }
 op_id : opId       { extractId   $1 }
@@ -195,6 +200,10 @@ op_id_ext
 
 prim_id :: { L Text }
 prim_id : primId { extractId $1 }
+
+
+-- -----------------------------------------------------------------------------
+-- | Values
 
 value :: { L (Prim.Value Exp) }
 value : Null     { L $1 Prim.VNull }
@@ -279,13 +288,14 @@ module_stmt
 -- -----------------------------------------------------------------------------
 -- | Module Definition
 
-
 mod_path :: { ModulePath }
-mod_path   : mod_path_r              { MPath (locOf $1) (NE.fromList $ reverse $1) }
+mod_path
+  : mod_path_text { MPath (locOf $1) (NE.fromList $ unL $1) }
 
-mod_path_r :: { [Name] }
-mod_path_r : mod_name                { [$1] }
-           | mod_path_r '.' mod_name { $3 : $1 }
+mod_path_text :: { L [Text] }
+mod_path_text
+  : mod_id                   { fmap pure $1       }
+  | mod_path_text '.' mod_id { $1 <> (fmap pure $3) }  -- Challenge: Use massive module names, break compiler.
 
 
 -- -----------------------------------------------------------------------------
