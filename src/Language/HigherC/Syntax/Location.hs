@@ -5,9 +5,10 @@
             , TemplateHaskell
             , DeriveDataTypeable
   #-}
-module Language.HigherC.Syntax.Extra.Location where
+module Language.HigherC.Syntax.Location where
 
 import Control.Lens
+import Control.Lens.Plated
 import Data.Binary
 import Data.Data
 import Data.Foldable
@@ -23,7 +24,6 @@ data L a = L { unLoc :: Loc
              , unL   :: a
              }
   deriving (Eq, Read, Show, Data, Typeable, Generic)
-
 
 instance Functor L where
   fmap f (L l a) = L l (f a) 
@@ -68,6 +68,10 @@ instance Ord Position where
 makeClassy ''Loc
 makeClassy ''Region
 makeClassy ''Position
+
+instance Plated Loc
+instance Plated Region
+instance Plated Position
 
 -- -----------------------------------------------------------------------------
 -- Classy Instances  

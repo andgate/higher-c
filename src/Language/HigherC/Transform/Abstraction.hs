@@ -5,8 +5,10 @@
            , ScopedTypeVariables
            , ExistentialQuantification
   #-}
-module Language.HigherC.Rename where
+module Language.HigherC.Transform.Abstraction where
 
+
+{-
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.List.NonEmpty ( NonEmpty(..) )
@@ -110,3 +112,5 @@ renamePatBind (S.PatBind p t) = do
   (v, ty) <- renamePat p
   t'      <- renameTerm t
   return (v, TAnn t' ty)
+
+-}

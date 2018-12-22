@@ -5,8 +5,8 @@ module Language.LowerC.Syntax where
 import Data.Text (Text, unpack)
 import Data.Word
 
-import Language.HigherC.Syntax.Extra.Location
-import qualified Language.LowerC.Syntax.Extra.Primitive as Prim
+import Language.HigherC.Syntax.Location
+import qualified Language.LowerC.Syntax.Primitive as Prim
 
 data Name
   = Name Loc Text

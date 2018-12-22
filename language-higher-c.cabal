@@ -65,16 +65,20 @@ library
       Language.HigherC.Parse
       Language.HigherC.Parse.Error
 
---      Language.HigherC.Syntax.Abstract
+      Language.HigherC.Syntax.Abstract
       Language.HigherC.Syntax.Concrete
-      Language.HigherC.Syntax.Extra.Location
-      Language.HigherC.Syntax.Extra.Primitive
-      Language.HigherC.Syntax.Typed
+      Language.HigherC.Syntax.Concrete.Primitive
+      Language.HigherC.Syntax.Location
 
-     -- Language.HigherC.Transform.Rename
+      Language.HigherC.Transform.Abstraction
+      Language.HigherC.Transform.Canonicalize
+      Language.HigherC.Transform.Desugar
+      Language.HigherC.Transform.Monomorphize
+      Language.HigherC.Transform.Reassociate
+      Language.HigherC.Transform.Specialize
       
       Language.LowerC.Syntax
-      Language.LowerC.Syntax.Extra.Primitive
+      Language.LowerC.Syntax.Primitive
       Language.LowerC.Transform.Codegen
       
   

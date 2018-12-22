@@ -13,7 +13,7 @@ import Data.Binary hiding (encode)
 import Data.Data
 import Data.Text (Text, pack)
 import GHC.Generics (Generic)
-import Language.HigherC.Syntax.Extra.Location
+import Language.HigherC.Syntax.Location
 import Data.Text.Prettyprint.Doc
 
 -- -----------------------------------------------------------------------------

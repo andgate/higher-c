@@ -2,7 +2,7 @@
 module Language.HigherC.Lex.Error where
 
 import Language.HigherC.Lex.Token
-import Language.HigherC.Syntax.Extra.Location
+import Language.HigherC.Syntax.Location
 import Data.Text (Text, pack)
 import Data.Text.Prettyprint.Doc
 

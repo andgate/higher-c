@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, DeriveDataTypeable, LambdaCase #-}
-module Language.LowerC.Syntax.Extra.Primitive where
+module Language.LowerC.Syntax.Primitive where
 
 import Data.Binary
 import Data.Data

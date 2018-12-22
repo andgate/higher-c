@@ -1,12 +1,13 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, DeriveDataTypeable, LambdaCase #-}
-module Language.HigherC.Syntax.Extra.Primitive where
+module Language.HigherC.Syntax.Concrete.Primitive where
 
+import Control.Lens.Plated
 import Data.Binary
 import Data.Data
 import Data.Text (Text, pack)
 import Data.Text.Prettyprint.Doc
 import GHC.Generics (Generic)
-import Language.HigherC.Syntax.Extra.Location
+import Language.HigherC.Syntax.Location
 
 
 -- -----------------------------------------------------------------------------
@@ -21,7 +22,7 @@ data Value e
   | VArray [e] -- Can contain a list of other values
   | VVector [e] -- SIMD optimized list of integers or floats
   | VString [Char] -- Only store a string as an 8-bit char
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 data TypeCon t e
@@ -36,7 +37,7 @@ data TypeCon t e
   | TRef   Loc t
   | TRVal  Loc t
   | TConst Loc t
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 data Instruction a
@@ -64,7 +65,7 @@ data Instruction a
   | NLtEq a a
   | NGt a a
   | NGtEq a a
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 intInstrs :: a -> a -> [Instruction a]
@@ -106,6 +107,13 @@ instance (Locatable t, Locatable e) => Locatable (TypeCon t e) where
     TRef l _ -> l
     TRVal l _ -> l
     TConst l _ -> l
+
+
+-- Plated ---------------------------------------------------------------------
+
+instance (Data e) => Plated (Value e)
+instance (Data t, Data e) => Plated (TypeCon t e)
+instance (Data e) => Plated (Instruction e)
 
 -- Pretty ---------------------------------------------------------------------
 

@@ -7,7 +7,7 @@ import qualified LLVM.Context as LLVM
 
 import Language.LowerC.Transform.Codegen (genObject)
 import Language.LowerC.Syntax
-import qualified Language.LowerC.Syntax.Extra.Primitive as Prim
+import qualified Language.LowerC.Syntax.Primitive as Prim
 
 
 writeTestModule :: IO ()

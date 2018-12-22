@@ -13,16 +13,18 @@ module Language.HigherC.Syntax.Concrete
   )
   where
 
-import Language.HigherC.Syntax.Extra.Location as X
+import Language.HigherC.Syntax.Location as X
 
+import Control.Lens.Plated
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Text (Text, unpack, intercalate)
 import Data.Text.Prettyprint.Doc
+import Data.Data (Data)
 import Data.Typeable (Typeable)
 import GHC.Generics hiding (Prefix, Fixity)
 
 import qualified Data.List.NonEmpty as NE
-import qualified Language.HigherC.Syntax.Extra.Primitive as Prim
+import qualified Language.HigherC.Syntax.Concrete.Primitive as Prim
 
 -- -----------------------------------------------------------------------------
 -- | Names
@@ -32,13 +34,24 @@ data Name
          , namePath :: Maybe ModulePath
          , nameLoc  :: Loc
          }
-  deriving (Generic, Typeable)
+  deriving (Generic, Data, Typeable)
+
+
+instance Eq Name where
+  (==) (Name n1 path1 _) (Name n2 path2 _)
+    = n1 == n2 && path1 == path2
+
+instance Ord Name where
+  compare (Name a _ _) (Name b _ _)
+    = a `compare` b
 
 instance Show Name where
   show (Name txt maybe_path _)
     = case maybe_path of
         Nothing -> unpack txt
         Just path -> show path ++ "::" ++ unpack txt
+
+
 
 mkName :: L Text -> Name
 mkName (L l n) =
@@ -54,65 +67,119 @@ mkQName mp n
     }
 
 
+-- -----------------------------------------------------------------------------
+-- | Compilation Object Interfaces
+
+data IObject 
+  = IObject
+    { iobjFile    :: [FilePath]
+    , iobjBody    :: [InterfaceStmt]
+    }
+  deriving (Show, Generic, Data, Typeable)
+
+instance Semigroup IObject where
+  (<>) (IObject files1 body1) (IObject files2 body2)
+    = IObject (files1 <> files2) (body1 <> body2)
+
+instance Monoid IObject where
+  mempty = (IObject mempty mempty)
+
 
 -- -----------------------------------------------------------------------------
--- | Object/Module System
+-- | Compilation Interfaces
 
+data Interface
+  = Interface
+    { iName    :: ModulePath
+    , iLoc     :: Loc
+    , iBody    :: [InterfaceStmt]
+    }
+  deriving (Show, Generic, Data, Typeable)
+
+
+data InterfaceStmt
+  = IInterface Interface
+  | IImport Import
+
+  | IVarDefn VarDefn
+  | IVarDecl VarDecl
+
+  | IFuncDefn FuncDefn
+  | IFuncDecl   FuncDecl
+
+  | IFuncExtern FuncExtern
+
+  | ICtorDecl  CtorDecl
+  | ICtorDefn  CtorDefn
+
+  | IDtorDecl  DtorDecl
+  | IDtorDefn  DtorDefn
+
+  | ITypeDefn  TypeDefn
+  | IAliasDefn AliasDefn
+
+  | IClass ClassDefn
+  | IInst InstDefn
+
+  | IOpDecl OpDecl
+  deriving (Show, Generic, Data, Typeable)
+
+
+-- -----------------------------------------------------------------------------
+-- | Searching inside of interfaces and iobjects
+
+class HasInterfaceStmts i where
+  getInterfaceStmts :: i -> [InterfaceStmt]
+
+instance HasInterfaceStmts IObject where
+  getInterfaceStmts IObject{..} = iobjBody
+
+instance HasInterfaceStmts Interface where
+  getInterfaceStmts Interface{..} = iBody
+
+
+findInterfaces :: HasInterfaceStmts a => a -> [Interface]
+findInterfaces a = [i | IInterface i <- getInterfaceStmts a]
+
+findInterfaceImports :: HasInterfaceStmts a => a -> [Import]
+findInterfaceImports a = [i | IImport i <- getInterfaceStmts a]
+
+
+-- -----------------------------------------------------------------------------
+-- | Compilation Objects
 
 data Object 
   = Object
-    { objFile    :: Maybe FilePath
+    { objFiles    :: [FilePath]
     , objBody    :: [ModuleStmt]
-    , objSubs    :: [Module]
-    , objImports :: [Import]
-    , objOps     :: [OpDecl]
     }
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 instance Semigroup Object where
-  (<>) (Object fp body1 subs1 imps1 ops1) (Object _ body2 subs2 imps2 ops2)
-    = Object fp (body1 <> body2) (subs1 <> subs2) (imps1 <> imps2) (ops1 <> ops2)
+  (<>) (Object files1 body1) (Object files2 body2)
+    = Object (files1 <> files2) (body1 <> body2)
 
+instance Monoid Object where
+  mempty = (Object mempty mempty)
+
+
+-- -----------------------------------------------------------------------------
+-- | Compilation Modules
 
 data Module
   = Module
     { modName    :: ModulePath
     , modLoc     :: Loc
     , modBody    :: [ModuleStmt]
-    , modSubs    :: [Module]
-    , modImports :: [Import]
-    , modOps     :: [OpDecl]
     }
-  deriving (Show, Generic, Typeable)
-
-instance Semigroup Module where
-  (<>) (Module mp l1 block1 subs1 imps1 ops1) (Module _ l2 block2 subs2 imps2 ops2)
-    = Module mp (l1 <> l2) (block1 <> block2) (subs1 <> subs2) (imps1 <> imps2) (ops1 <> ops2)
-
-
-extractModulePaths :: Object -> [ModulePath]
-extractModulePaths = map modName . objModulesRec
-
-objModulesRec :: Object -> [Module]
-objModulesRec Object{..}
-  = objSubs <> mconcat (modModulesRec <$> objSubs)
-
-modModulesRec :: Module -> [Module]
-modModulesRec Module{..}
-  = modSubs <> mconcat (modModulesRec <$> modSubs)
-
-
-objImportsRec :: Object -> [Import]
-objImportsRec Object{..}
-  = objImports ++ mconcat (map modImportsRec objSubs)
-
-modImportsRec :: Module -> [Import]
-modImportsRec Module{..}
-  = modImports ++ mconcat (map modImportsRec modSubs)
+  deriving (Show, Generic, Data, Typeable)
 
 data ModuleStmt
-  = MDecl Decl
-  | MFuncDefn FuncDefn
+  = MModule Module
+  | MImport Import
+  
+  | MVarDefn    VarDefn
+  | MFuncDefn   FuncDefn
   | MFuncExtern FuncExtern
 
   | MCtor  CtorDefn
@@ -125,12 +192,15 @@ data ModuleStmt
   | MInst InstDefn
 
   | MOpDecl OpDecl
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
+
+-- -----------------------------------------------------------------------------
+-- | Module Paths
 
 data ModulePath =
   MPath Loc (NonEmpty Text)
-  deriving (Generic, Typeable)
+  deriving (Generic, Data, Typeable)
 
 instance Show ModulePath where
   show (MPath _ txts)
@@ -153,10 +223,46 @@ rootModPath :: ModulePath
 rootModPath
   = MPath mempty (NE.fromList [""])
 
+-- -----------------------------------------------------------------------------
+-- | Searching inside of modules and objects
+
+class HasModuleStmts m where
+  getModuleStmts :: m -> [ModuleStmt]
+
+instance HasModuleStmts Object where
+  getModuleStmts Object{..} = objBody
+
+instance HasModuleStmts Module where
+  getModuleStmts Module{..} = modBody
+
+findModules :: HasModuleStmts a => a -> [Module]
+findModules a = [m | MModule m <- getModuleStmts a]
+
+findModulesRec :: HasModuleStmts a => a -> [Module]
+findModulesRec a = mods <> rest
+  where
+    mods = findModules a
+    rest = concatMap findModulesRec mods
+
+
+findModuleImports :: HasModuleStmts a => a -> [Import]
+findModuleImports a = [i | MImport i <- getModuleStmts a]
+
+findModuleImportsRec :: HasModuleStmts a => a -> [Import]
+findModuleImportsRec a 
+  = mconcat [findModuleImports m | m <- findModulesRec a]
+
+
+findModuleDefnPaths :: HasModuleStmts a => a -> [ModulePath]
+findModuleDefnPaths a
+  = modName <$> findModulesRec a
+
+-- -----------------------------------------------------------------------------
+-- | Imports
 
 data Import =
   Import Loc ModulePath
-  deriving (Generic, Typeable)
+  deriving (Generic, Data, Typeable)
 
 instance Show Import where
   show (Import _ mpath) = show mpath
@@ -164,22 +270,21 @@ instance Show Import where
 unpackImport :: Import -> Text
 unpackImport (Import _ mpath) = unpackPath mpath
 
+
 -- -----------------------------------------------------------------------------
--- | Declaration
+-- | Variable Definition
 
-data Decl
-  = Decl1 Loc DeclHead (Maybe TypeSig)
-  | Decl2 Loc DeclHead (Maybe TypeSig) Exp
-  | Decl3 Loc DeclHead [Exp] (Maybe TypeSig)
-  deriving (Show, Generic, Typeable)
+data VarDefn
+  = VarDefn Loc VarDecl (Maybe Exp)
+  deriving (Show, Generic, Data, Typeable)
 
-data DeclHead
-  = DeclHead Loc Name
-  deriving (Show, Generic, Typeable)
+data VarDecl
+  = VarDecl Loc Name (Maybe TypeSig)
+  deriving (Show, Generic, Data, Typeable)
 
 data TypeSig
   = TypeSig Loc Type
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -187,34 +292,34 @@ data TypeSig
 
 data FuncDefn
   = FuncDefn Loc FuncDecl Block
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data FuncDecl
   = FuncDecl Loc (Maybe FuncSpecs) Name (Maybe Scheme) Parameters (Maybe TypeSig)
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data FuncExtern
   = FuncExtern Loc Name Parameters TypeSig
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data FuncSpecs = FuncSpecs Loc (NonEmpty FuncSpec)
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data FuncSpec
   = InlineFunc Loc
   | RecursiveFunc Loc
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data Arguments
   = Arguments Loc [Exp]
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data Parameters = Parameters [Parameter]
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data Parameter
   = Parameter Loc Name (Maybe TypeSig)
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -223,44 +328,44 @@ data Parameter
 -- Constructor Definition
 data CtorDefn =
   CtorDefn Loc CtorDecl Block
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 -- Constructor Declaration
 data CtorDecl =
   CtorDecl Loc Name Parameters (Maybe Inits)
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 -- Destructor Definition
 data DtorDefn =
   DtorDefn Loc DtorDecl Block
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 -- Destructor Declaration
 data DtorDecl =
   DtorDecl Loc Name Parameters
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 -- Initializer List
 data Inits =
   Inits Loc (NonEmpty Initializer)
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 -- Variable Initializer
 data Initializer =
   Init Loc Name [Exp]
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
 -- | Statement
 
 data Block = Block Loc [Stmt]
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data Stmt
   = SNop Loc
   | SExp Loc Exp
-  | SDecl Loc (Maybe SDeclSpecs) Decl
+  | SLet Loc (Maybe SLetSpecs) VarDefn
 
   | SBlock Loc Block
   | SWith Loc Exp Stmt
@@ -275,39 +380,39 @@ data Stmt
   | SWhile Loc Exp Stmt
   | SDoWhile Loc Stmt Exp
 
-  | SFor Loc (Either (Maybe Exp) Decl) (Maybe Exp) (Maybe Exp) Stmt
+  | SFor Loc (Either (Maybe Exp) VarDefn) (Maybe Exp) (Maybe Exp) Stmt
   | SCase Loc Exp Alts
   | STryCatch Loc Try [Catch] (Maybe Finally)
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 data Try
   = Try Loc Stmt
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data Catch
   = Catch Loc Exp Stmt
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data Finally
   = Finally Loc Stmt
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 -- Statement Declaration Specifier
-data SDeclSpecs = SDeclSpecs Loc (NonEmpty SDeclSpec)
-  deriving (Show, Generic, Typeable)
+data SLetSpecs = SLetSpecs Loc (NonEmpty SLetSpec)
+  deriving (Show, Generic, Data, Typeable)
 
-data SDeclSpec
+data SLetSpec
   = StaticDecl Loc
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 -- Case Alternatives
 data Alts = Alts Loc (NonEmpty Alt)
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data Alt
   = Alt Loc Pat Stmt
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 -- -----------------------------------------------------------------------------
 -- | Patterns
@@ -323,11 +428,11 @@ data Pat
   | PType Loc Pat TypeSig
   | PParen Loc Pat
   | PWild Loc
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data PatRecField
   = PatRecField Loc Name Pat
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -361,13 +466,13 @@ data Exp
   | EParens Loc Exp
   | EAs Loc Exp Type
   | EType Loc Exp TypeSig
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 data OpTerm
   = Operand Exp
   | Operator Name
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 
@@ -392,26 +497,26 @@ data Type
 
   | TParens Loc Type
   | TKind Loc Type KindSig
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 data TyOpTerm
   = TyOperator Name
   | TyOperand Type
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 data TypeArguments
   = TypeArguments Loc [Type]
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data TypeParameters
   = TypeParameters Loc [TypeParameter]
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data TypeParameter
   = TypeParameter Loc Name (Maybe KindSig)
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 -- -----------------------------------------------------------------------------
 -- | Kinds
@@ -419,11 +524,11 @@ data TypeParameter
 data Kind
   = KType Loc
   | KArr Loc Kind Kind
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data KindSig
   = KindSig Loc Kind
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -431,12 +536,12 @@ data KindSig
 
 data Scheme =
   Scheme Loc [Pred]
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data Pred
   = Forall Loc Name
   | IsIn Loc Name (NonEmpty Type)
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 -- This helps a little bit
@@ -452,56 +557,56 @@ instance Monoid Scheme where
 
 data TypeDefn
   = TypeDefn Loc TypeDecl TyDefnBody
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data TypeDecl
   = TypeDecl Loc Name (Maybe Scheme) TypeParameters
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 -- Type Definition Body
 data TyDefnBody
   = TyDefnBody Loc [DataDefn]
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 -- Data Definitions
 data DataDefn
   = DataDefn Loc Name DataFields
   | ObjectDefn Loc Name ObjectFields
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 -- Data Fields
 data DataFields
   = DataFields Loc [DataField]
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data DataField
   = DataField Loc Type (Maybe DataFieldDefault)
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 -- Default value for fields
 data DataFieldDefault
   = DataFieldDefault Loc Exp
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 -- Object/Record fields
 data ObjectFields
   = ObjectFields Loc [ObjectField]
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data ObjectField
   = ObjectField Loc Name TypeSig (Maybe DataFieldDefault)
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 -- Type Alias Definition
 data AliasDefn
   = AliasDefn Loc AliasDecl Type
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data AliasDecl
   = AliasDecl Loc Name (Maybe Scheme) TypeParameters
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -509,38 +614,38 @@ data AliasDecl
 
 data ClassDefn
   = ClassDefn Loc ClassDecl ClassBody
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data ClassDecl
   = ClassDecl Loc Name (Maybe Scheme) TypeParameters
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data ClassBody
   = ClassBody Loc [ClassMethod]
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data ClassMethod
   = ClassMethod Loc FuncDecl (Maybe Block)
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 -- -----------------------------------------------------------------------------
 -- | Instance Definition
 
 data InstDefn
   = InstDefn Loc InstDecl InstBody
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data InstDecl
   = InstDecl Loc Name (Maybe Scheme) TypeArguments
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data InstBody
   = InstBody Loc [InstMethod]
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 data InstMethod
   = InstMethod Loc FuncDefn
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -549,7 +654,7 @@ data InstMethod
 -- A fixity declaration
 data OpDecl
   = OpDecl Loc Fixity (L Integer) [Name]
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 -- The kinds of fixity
 data Fixity
@@ -558,7 +663,7 @@ data Fixity
   | InfixR Loc
   | Prefix Loc
   | Postfix Loc
-  deriving (Show, Generic, Typeable)
+  deriving (Show, Generic, Data, Typeable)
 
 
 -- -----------------------------------------------------------------------------
@@ -578,22 +683,23 @@ instance Locatable Name where
 
 -- Objects
 
+{-
 instance Locatable Object where
-  locOf (Object mfp body mods imps ops) =
+  locOf (Object fps body) =
     case mfp of
       Nothing -> l
       Just fp -> l { _locPath = fp }
     where
       l = mconcat $ (locOf <$> body) ++ (locOf <$> mods) ++ (locOf <$> imps) ++ (locOf <$> ops)
-
+-}
 
 instance Locatable Module where
-  locOf (Module _ l _ _ _ _) = l
+  locOf (Module _ l _) = l
 
 
 instance Locatable ModuleStmt where
   locOf = \case
-    MDecl d            -> locOf d
+    MVarDefn d         -> locOf d
     MFuncDefn f        -> locOf f
     MFuncExtern f      -> locOf f
     MCtor  c           -> locOf c
@@ -612,14 +718,14 @@ instance Locatable Import where
 
 
 -- Declarations
-instance Locatable Decl where
-  locOf = \case
-    Decl1 l _ _   -> l
-    Decl2 l _ _ _ -> l
-    Decl3 l _ _ _ -> l
+instance Locatable VarDefn where
+  locOf (VarDefn l _ _) = l
 
-instance Locatable DeclHead where
-  locOf (DeclHead l _) = l
+instance Locatable VarDecl where
+  locOf (VarDecl l _ _) = l
+
+
+-- Type signature
 
 instance Locatable TypeSig where
   locOf (TypeSig l _) = l
@@ -677,7 +783,7 @@ instance Locatable Stmt where
   locOf = \case
     SNop l -> l
     SExp l _ -> l
-    SDecl l _ _ -> l
+    SLet l _ _ -> l
 
     SBlock l _ -> l
     SWith l _ _ -> l
@@ -707,10 +813,10 @@ instance Locatable Finally where
   locOf (Finally l _) = l
 
 
-instance Locatable SDeclSpecs where
-  locOf (SDeclSpecs l _) = l
+instance Locatable SLetSpecs where
+  locOf (SLetSpecs l _) = l
 
-instance Locatable SDeclSpec where
+instance Locatable SLetSpec where
   locOf = \case
     StaticDecl l -> l
 
@@ -912,9 +1018,9 @@ instance Locatable Fixity where
     Prefix  l -> l
     Postfix l -> l
 
+
 -- -----------------------------------------------------------------------------
 -- | Pretty Instances
-
 
 -- Names
 instance Pretty Name where
@@ -925,31 +1031,23 @@ instance Pretty Name where
 
 -- Source Objects
 instance Pretty Object where
-  pretty (Object _ stmt mods imps ops) =
-    vcat [ vcat $ pretty <$> imps
-         , vcat $ pretty <$> ops
-         , vcat $ pretty <$> stmt
-         , vcat $ pretty <$> mods
-         ]
+  pretty (Object _ stmts) =
+    vcat (pretty <$> stmts)
 
 
 
 -- Source Modules
 instance Pretty Module where
-  pretty (Module mpath _ stmts mods imps ops) =
+  pretty (Module mpath _ stmts) =
     vcat [ "module" <+> pretty mpath <+> "{"
-         , indent 4 $ vcat $
-             (pretty <$> imps)
-             ++ (pretty <$> ops)
-             ++ (pretty <$> stmts)
-             ++ (pretty <$> mods)
+         , indent 4 $ vcat (pretty <$> stmts)
          , "}"
          ]
 
 
 instance Pretty ModuleStmt where
   pretty = \case
-    MDecl decl -> pretty decl
+    MVarDefn defn -> pretty defn
     MFuncDefn fn   -> pretty fn
     MFuncExtern fn -> pretty fn
 
@@ -975,15 +1073,18 @@ instance Pretty Import where
 
 
 -- Declarations
-instance Pretty Decl where
-  pretty = \case
-    Decl1 _ h msig        -> pretty h <> pretty msig <> ";"
-    Decl2 _ h msig body   -> pretty h <> pretty msig <+> "=" <+> pretty body <> ";"
-    Decl3 _ h inits msig  -> pretty h <> tupled (pretty <$> inits) <> pretty msig <> ";"
+instance Pretty VarDefn where
+  pretty (VarDefn _ decl Nothing)
+    = pretty decl <> ";"
+  pretty (VarDefn _ decl (Just body))
+    = pretty decl <+> "=" <+> pretty body <> ";"
 
-instance Pretty DeclHead where
-  pretty (DeclHead _ n) = "let" <> pretty n
+instance Pretty VarDecl where
+  pretty (VarDecl _ n msig)
+    = "let" <> pretty n <> pretty msig
 
+
+-- Type Signatures
 instance Pretty TypeSig where
   pretty (TypeSig _ ty) = ":" <+> pretty ty
 
@@ -1066,7 +1167,7 @@ instance Pretty Stmt where
     pretty = \case
       SNop _ -> ";"
       SExp _ e -> pretty e <> ";"
-      SDecl _ specs decl ->
+      SLet _ specs decl ->
         pretty specs <+> pretty decl
     
       SBlock _ blk -> pretty blk
@@ -1140,11 +1241,11 @@ instance Pretty Finally where
 
 
 -- Statement declaration specifiers
-instance Pretty SDeclSpecs where
-  pretty (SDeclSpecs _ specs) =
+instance Pretty SLetSpecs where
+  pretty (SLetSpecs _ specs) =
     hsep (pretty <$> NE.toList specs)
 
-instance Pretty SDeclSpec where
+instance Pretty SLetSpec where
   pretty = \case
     StaticDecl _ -> "static"
 

@@ -25,7 +25,7 @@ import Data.Word (Word8)
 import Language.HigherC.Lex.Error
 import Language.HigherC.Lex.State
 import Language.HigherC.Lex.Token
-import Language.HigherC.Syntax.Extra.Location
+import Language.HigherC.Syntax.Location
 import System.FilePath (FilePath)
 
 import qualified Data.Map            as Map

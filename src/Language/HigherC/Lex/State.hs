@@ -2,7 +2,7 @@
 module Language.HigherC.Lex.State where
 
 import Control.Lens
-import Language.HigherC.Syntax.Extra.Location
+import Language.HigherC.Syntax.Location
 import Language.HigherC.Lex.Token (Token)
 
 data LexState =

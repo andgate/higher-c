@@ -24,7 +24,7 @@ import LLVM.IRBuilder.Module
 import LLVM.IRBuilder.Monad
 
 import qualified Language.LowerC.Syntax as LC
-import qualified Language.LowerC.Syntax.Extra.Primitive as Prim
+import qualified Language.LowerC.Syntax.Primitive as Prim
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.IRBuilder.Instruction as I
 import qualified LLVM.AST.Float as F

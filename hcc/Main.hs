@@ -60,18 +60,26 @@ import Paths_language_higher_c
 import Control.Monad
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
+import Data.Text.Prettyprint.Doc (Pretty(..))
 import Data.Text.Prettyprint.Doc.Render.Text (putDoc)
 import Data.Version
 import System.Console.GetOpt
 import System.Environment
 
-import Language.HigherC.Compile (readObject)
+import Language.HigherC.Compile (readObject, buildObjectGraph, computeBuildOrder)
 import Language.HigherC.Syntax.Concrete (Object)
 
 import TestModule
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+
+
+import Data.Tree (drawTree)
+import Data.Graph (scc)
+
+import qualified Data.Graph as G
+
 
 
 data Flag
@@ -141,6 +149,19 @@ main = do
 
   writeTestModule
 
-  obj <- mapM readObject (optInput opts)
+  objs <- mapM readObject (optInput opts)
+  let g = buildObjectGraph objs
+  mapM_ (putDoc . pretty) objs
+  putStrLn ""
+  putStrLn (show g)
+  mapM_ (putStrLn . drawTree . fmap show) (scc g)
+
+  let buildOrder = computeBuildOrder g objs
+  let gBuild = buildObjectGraph buildOrder
+
+  mapM_ (putStrLn . drawTree . fmap show) (G.components gBuild)
+
+  mapM_ (putDoc . pretty) buildOrder
+
   print opts
   return ()

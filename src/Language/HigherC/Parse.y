@@ -8,8 +8,8 @@ import Data.Text (Text, unpack)
 import Language.HigherC.Lex
 import Language.HigherC.Lex.Token
 import Language.HigherC.Syntax.Concrete
-import qualified Language.HigherC.Syntax.Extra.Primitive as Prim
-import Language.HigherC.Syntax.Extra.Location
+import qualified Language.HigherC.Syntax.Concrete.Primitive as Prim
+import Language.HigherC.Syntax.Location
 
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
@@ -22,7 +22,8 @@ import Data.Text.Prettyprint.Doc.Render.Text (putDoc)
 
 }
 
-%name parseObject object
+%name parseObject object_file
+%name parseIObject iobject_file
 %tokentype { Token }
 %error { parseError }
 
@@ -123,6 +124,9 @@ import Data.Text.Prettyprint.Doc.Render.Text (putDoc)
 
   varId              { Token (TokenVarId  _) _ _ }
   conId              { Token (TokenConId  _) _ _ }
+
+
+  Interface          { Token (TokenPrimId "__interface") _ $$ }
   primId             { Token (TokenPrimId _) _ _ }
 
   integer            { Token (TokenInteger _) _ _ }
@@ -228,35 +232,72 @@ var_name_list_r
 
 
 -- -----------------------------------------------------------------------------
--- | Syntax Object
+-- | Syntax Interface Objects
+
+iobject_file :: { IObject }
+iobject_file
+  : iobject eof { $1 }
+
+iobject :: { IObject }
+iobject : interface_stmts0   { IObject [] $1 }
+
+interface_defn :: { Interface }
+interface_defn
+  : Interface mod_path '{' interface_stmts0 '}' {  Interface $2 ($1 <> $5) $4 }
+
+interface_stmts0 :: { [InterfaceStmt] }
+interface_stmts0
+  : {- empty -}     { [] }
+  | interface_stmts { $1 }
+
+interface_stmts :: { [InterfaceStmt] }
+interface_stmts : interface_stmts_r { reverse $1 }
+
+interface_stmts_r :: { [InterfaceStmt] }
+interface_stmts_r
+  : interface_stmt                   {    [$1] }
+  | interface_stmts_r interface_stmt { $2 : $1 }
+
+interface_stmt :: { InterfaceStmt }
+interface_stmt
+  : interface_defn     { IInterface $1 }
+  | import_stmt        { IImport $1 }
+
+  | variable_defn      { IVarDefn $1 }
+  | function_defn      { IFuncDefn $1 }
+  | function_decl      { IFuncDecl $1 }
+  | function_extern    { IFuncExtern $1 }
+  
+  | constructor_decl   { ICtorDecl $1 }
+  | constructor_defn   { ICtorDefn $1 }
+
+  | destructor_decl    { IDtorDecl $1 }
+  | destructor_defn    { IDtorDefn $1 }
+  
+  | type_defn          { ITypeDefn $1 }
+  | alias_defn         { IAliasDefn $1 }
+  
+  | class_defn         { IClass $1 }
+  | instance_defn      { IInst $1 }
+
+  | operator_decl      { IOpDecl $1 }
+
+
+-- -----------------------------------------------------------------------------
+-- | Syntax Objects
+
+object_file :: { Object }
+object_file
+  : object eof { $1 }
 
 object :: { Object }
-object
-  : object_base        { $1 }
-  | object object_base { $1 <> $2 }
+object : module_stmts0   { Object [] $1 }
 
-object_base :: { Object }
-object_base
-  : module_stmts  { Object Nothing $1 []   []   []   }
-  | module_defn   { Object Nothing [] [$1] []   []   }
-  | import_stmt   { Object Nothing [] []   [$1] []   }
-  | operator_decl { Object Nothing [] []   []   [$1] }
 
 module_defn :: { Module }
 module_defn
-  : Module mod_path '{' module_body '}' {  ($4){ modName = $2, modLoc = $1 <> $5 } }
+  : Module mod_path '{' module_stmts0 '}' {  Module $2 ($1 <> $5) $4 }
 
-module_body :: { Module }
-module_body
-  : module_base             { $1 }
-  | module_body module_base { $1 <> $2 }
-
-module_base :: { Module }
-module_base
-  : module_stmts  { Module rootModPath mempty $1 []   []   []   }
-  | module_defn   { Module rootModPath mempty [] [$1] []   []   }
-  | import_stmt   { Module rootModPath mempty [] []   [$1] []   }
-  | operator_decl { Module rootModPath mempty [] []   []   [$1] }
 
 module_stmts0 :: { [ModuleStmt] }
 module_stmts0
@@ -273,15 +314,23 @@ module_stmts_r
 
 module_stmt :: { ModuleStmt }
 module_stmt
-  : declaration      { MDecl $1 }
+  : module_defn      { MModule $1 }
+  | import_stmt      { MImport $1 }
+
+  | variable_defn    { MVarDefn $1 }
   | function_defn    { MFuncDefn $1 }
   | function_extern  { MFuncExtern $1 }
+  
   | constructor_defn { MCtor $1 }
   | destructor_defn  { MDtor $1 }
+  
   | type_defn        { MTypeDefn $1 }
   | alias_defn       { MAliasDefn $1 }
+  
   | class_defn       { MClass $1 }
   | instance_defn    { MInst $1 }
+
+  | operator_decl    { MOpDecl $1 }
 
 
 
@@ -306,27 +355,31 @@ import_stmt : Import mod_path ';' { Import ($1 <> $3) $2 }
 
 
 -- -----------------------------------------------------------------------------
--- | Declaration
+-- | Variable Definition
 
--- Let-bound variable declarations
-declaration :: { Decl }
-declaration
-  : decl_head maybe_type_sig ';'                   { Decl1 (locOf $1 <> $3) $1 $2 }
-  | decl_head maybe_type_sig '=' exp ';'           { Decl2 (locOf $1 <> $5) $1 $2 $4 }
-  | decl_head '(' exp_args0 ')' maybe_type_sig ';' { Decl3 (locOf $1 <> $6) $1 $3 $5 }
+-- Let-bound variable definitions
+variable_defn :: { VarDefn }
+variable_defn
+  : variable_decl ';'            { VarDefn (locOf $1 <> $2) $1 Nothing }
+  | variable_decl '=' exp ';'    { VarDefn (locOf $1 <> $4) $1 (Just $3) }
 
-decl_head :: { DeclHead }
-decl_head
-  : Let name  { DeclHead ($1 <> locOf $2) $2 }
+variable_decl :: { VarDecl }
+variable_decl
+  : Let name maybe_type_sig { VarDecl ($1 <> maybe (locOf $2) locOf $3) $2 $3 }
+
+
+-- -----------------------------------------------------------------------------
+-- | Type Signatures
+
+type_sig :: { TypeSig }
+type_sig
+  : ':' type    { TypeSig ($1 <> locOf $2) $2 }
 
 maybe_type_sig :: { Maybe TypeSig }
 maybe_type_sig
   : {- empty -}  { Nothing }
   | type_sig     { Just $1 }
 
-type_sig :: { TypeSig }
-type_sig
-  : ':' type    { TypeSig ($1 <> locOf $2) $2 }
 
 
 -- -----------------------------------------------------------------------------
@@ -434,21 +487,21 @@ initializer
 -- | Statements
 
 stmt :: { Stmt }
-stmt : stmt_nop    { $1 }
-     | stmt_exp      { $1 }
-     | stmt_decl     { $1 }
-     | stmt_block    { $1 }
-     | stmt_with     { $1 }
-     | stmt_break    { $1 }
-     | stmt_continue { $1 }
-     | stmt_return   { $1 }
-     | stmt_throw    { $1 }
-     | stmt_if       { $1 }
-     | stmt_while    { $1 }
-     | stmt_do_while { $1 }
-     | stmt_for      { $1 }
-     | stmt_case     { $1 }
-     | stmt_try_catch { $1 }
+stmt : stmt_nop           { $1 }
+     | stmt_exp           { $1 }
+     | stmt_let           { $1 }
+     | stmt_block         { $1 }
+     | stmt_with          { $1 }
+     | stmt_break         { $1 }
+     | stmt_continue      { $1 }
+     | stmt_return        { $1 }
+     | stmt_throw         { $1 }
+     | stmt_if            { $1 }
+     | stmt_while         { $1 }
+     | stmt_do_while      { $1 }
+     | stmt_for           { $1 }
+     | stmt_case          { $1 }
+     | stmt_try_catch     { $1 }
 
 
 block :: { Block }
@@ -470,29 +523,29 @@ stmt_exp :: { Stmt }
 stmt_exp
   : exp ';' { SExp (locOf $1 <> $2) $1 }
 
-stmt_decl :: { Stmt }
-stmt_decl
-  : maybe_stmt_decl_specs declaration { SDecl (maybe (locOf $2) locOf $1 <> locOf $2) $1 $2 }
+stmt_let :: { Stmt }
+stmt_let
+  : maybe_stmt_let_specs variable_defn { SLet (maybe (locOf $2) locOf $1 <> locOf $2) $1 $2 }
 
 
-maybe_stmt_decl_specs :: { Maybe SDeclSpecs }
-maybe_stmt_decl_specs
+maybe_stmt_let_specs :: { Maybe SLetSpecs }
+maybe_stmt_let_specs
   : {- empty -}      { Nothing }
-  | stmt_decl_specs { Just $1 }
+  | stmt_let_specs { Just $1 }
 
-stmt_decl_specs :: { SDeclSpecs }
-stmt_decl_specs : stmt_decl_specs_list { SDeclSpecs (locOf $1) (NE.fromList $1) }
+stmt_let_specs :: { SLetSpecs }
+stmt_let_specs : stmt_let_specs_list { SLetSpecs (locOf $1) (NE.fromList $1) }
 
-stmt_decl_specs_list :: { [SDeclSpec] }
-stmt_decl_specs_list : stmt_decl_specs_list_r { reverse $1 }
+stmt_let_specs_list :: { [SLetSpec] }
+stmt_let_specs_list : stmt_let_specs_list_r { reverse $1 }
 
-stmt_decl_specs_list_r :: { [SDeclSpec] }
-stmt_decl_specs_list_r
-  : stmt_decl_spec                       { [$1] }
-  | stmt_decl_specs_list_r stmt_decl_spec { $2 : $1 }
+stmt_let_specs_list_r :: { [SLetSpec] }
+stmt_let_specs_list_r
+  : stmt_let_spec                       { [$1] }
+  | stmt_let_specs_list_r stmt_let_spec { $2 : $1 }
 
-stmt_decl_spec :: { SDeclSpec }
-stmt_decl_spec
+stmt_let_spec :: { SLetSpec }
+stmt_let_spec
   : Static { StaticDecl $1 }
 
 
@@ -547,10 +600,10 @@ stmt_for :: { Stmt }
 stmt_for
   : For '(' for_init may_exp ';' may_exp ')' stmt { SFor ($1 <> locOf $8) $3 $4 $6 $8 }
 
-for_init :: { Either (Maybe Exp) Decl }
+for_init :: { Either (Maybe Exp) VarDefn }
 for_init
   : may_exp ';'           { Left $1 }
-  | declaration           { Right $1 }
+  | variable_defn         { Right $1 }
 
 
 stmt_case :: { Stmt }

@@ -1,13 +1,14 @@
 {-# Language GeneralizedNewtypeDeriving, LambdaCase #-}
 module Language.HigherC.Analysis.TypeCheck where
 
+{-
 import Control.Monad.Reader
 import Control.Monad.Except
 import Data.Map.Strict (Map)
 import Data.Text (Text)
 import Language.HigherC.Syntax.Abstract
-import qualified Language.HigherC.Syntax.Extra.Primitive as Prim
-import Language.HigherC.Syntax.Extra.Location
+import qualified Language.HigherC.Syntax.Concrete.Primitive as Prim
+import Language.HigherC.Syntax.Location
 import Unbound.Generics.LocallyNameless
 
 
@@ -37,7 +38,7 @@ newtype Tc a = Tc { unTc :: ReaderT TcEnv (ExceptT TcError FreshM) a}
            , MonadError TcError
            , Fresh
            )
-{-
+
 
 runTc :: TcEnv -> Tc a -> Either TcError a
 runTc env tc = runFreshM $ runExceptT $ runReaderT (unTc tc) env

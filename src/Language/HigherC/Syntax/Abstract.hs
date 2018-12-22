@@ -7,6 +7,7 @@
   #-}
 module Language.HigherC.Syntax.Abstract where
 
+{-
 import Data.Text (Text, pack)
 import Data.Text.Prettyprint.Doc
 import Data.Typeable (Typeable)
@@ -23,14 +24,13 @@ import qualified Language.HigherC.Syntax.Concrete  as C
 import qualified Language.HigherC.Syntax.Extra.Primitive as Prim
 
 
-{-
+
 data Module
   = Module
     { modSubs  :: [Module]
     , modNames :: [Text]
     , modFns   :: Bind (Rec [(Var, Embed Term)]) Term
     }
--}
 
 type Var = Name Exp
 type TVar = Name Type
@@ -85,7 +85,7 @@ data Kind
 --------------------------------------------------------------------------------------------------
 -- Smart Constructors
 
-{-
+
 evar :: String -> Exp
 evar = EVar . string2Name
 

@@ -1,0 +1,4 @@
+
+module C {
+  import B;
+}
