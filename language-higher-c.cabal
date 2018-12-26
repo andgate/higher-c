@@ -52,7 +52,10 @@ library
       alex ==3.2.4, happy==1.19.9
 
   exposed-modules:
+      Data.Trie
+
       Language.HigherC.Analysis.Namecheck
+      Language.HigherC.Analysis.Namecheck.Scope
       Language.HigherC.Analysis.TypeCheck
 
       Language.HigherC.Compile

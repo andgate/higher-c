@@ -58,6 +58,7 @@ import Prelude hiding (lex)
 import Paths_language_higher_c
 
 import Control.Monad
+import Control.Monad.Except
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text.Prettyprint.Doc (Pretty(..))
@@ -66,7 +67,7 @@ import Data.Version
 import System.Console.GetOpt
 import System.Environment
 
-import Language.HigherC.Compile (readObject, buildObjectGraph, computeBuildOrder)
+import Language.HigherC.Compile (readObject, buildObjects)
 import Language.HigherC.Syntax.Concrete (Object)
 
 import TestModule
@@ -139,29 +140,23 @@ compilerOpts argv =
   where
     header = "Usage: hcc [options] file..."
 
-
 main :: IO ()
 main = do
   argv <- getArgs
   opts <- compilerOpts argv
+  print opts
+
   when (optShowVersion opts)
        (putStrLn $ "hcc version " ++ (showVersion version))
 
   writeTestModule
 
   objs <- mapM readObject (optInput opts)
-  let g = buildObjectGraph objs
-  mapM_ (putDoc . pretty) objs
-  putStrLn ""
-  putStrLn (show g)
-  mapM_ (putStrLn . drawTree . fmap show) (scc g)
+  buildRes <- runExceptT $ buildObjects objs []
 
-  let buildOrder = computeBuildOrder g objs
-  let gBuild = buildObjectGraph buildOrder
+  -- Report errors
+  case buildRes of
+    Left err -> putDoc (pretty err)
+    Right _  -> return ()
 
-  mapM_ (putStrLn . drawTree . fmap show) (G.components gBuild)
-
-  mapM_ (putDoc . pretty) buildOrder
-
-  print opts
   return ()

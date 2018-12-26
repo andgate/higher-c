@@ -137,13 +137,29 @@ instance HasInterfaceStmts IObject where
 instance HasInterfaceStmts Interface where
   getInterfaceStmts Interface{..} = iBody
 
+instance HasInterfaceStmts i => HasInterfaceStmts [i] where
+  getInterfaceStmts = concatMap getInterfaceStmts
+
+
+
+getAllInterfaceStmts :: HasInterfaceStmts a => a -> [InterfaceStmt]
+getAllInterfaceStmts a = stmts <> mconcat [getAllInterfaceStmts i | IInterface i <- stmts]
+  where
+    stmts = getInterfaceStmts a
 
 findInterfaces :: HasInterfaceStmts a => a -> [Interface]
-findInterfaces a = [i | IInterface i <- getInterfaceStmts a]
+findInterfaces a = [i | IInterface i <- getAllInterfaceStmts a]
 
 findInterfaceImports :: HasInterfaceStmts a => a -> [Import]
 findInterfaceImports a = [i | IImport i <- getInterfaceStmts a]
 
+findInterfaceImportPaths :: HasInterfaceStmts a => a -> [Import]
+findInterfaceImportPaths a = [i | IImport i <- getInterfaceStmts a]
+
+
+unpackInterfacePath :: Interface -> Text
+unpackInterfacePath Interface{..}
+  = unpackPath iName
 
 -- -----------------------------------------------------------------------------
 -- | Compilation Objects
@@ -214,14 +230,15 @@ instance Ord ModulePath where
   compare (MPath _ a) (MPath _ b)
     = a `compare` b
 
+
 unpackPath :: ModulePath -> Text
 unpackPath (MPath _ path)
   = intercalate "." $ NE.toList path
 
-
 rootModPath :: ModulePath
 rootModPath
   = MPath mempty (NE.fromList [""])
+
 
 -- -----------------------------------------------------------------------------
 -- | Searching inside of modules and objects
@@ -235,27 +252,27 @@ instance HasModuleStmts Object where
 instance HasModuleStmts Module where
   getModuleStmts Module{..} = modBody
 
-findModules :: HasModuleStmts a => a -> [Module]
-findModules a = [m | MModule m <- getModuleStmts a]
-
-findModulesRec :: HasModuleStmts a => a -> [Module]
-findModulesRec a = mods <> rest
+getAllModuleStmts :: HasModuleStmts a => a -> [ModuleStmt]
+getAllModuleStmts a = stmts <> mconcat [getAllModuleStmts m | MModule m <- stmts]
   where
-    mods = findModules a
-    rest = concatMap findModulesRec mods
+    stmts = getModuleStmts a
 
+findModules :: HasModuleStmts a => a -> [Module]
+findModules a = mconcat [m : findModules m | MModule m <- getModuleStmts a]
+
+findSubmodules :: HasModuleStmts a => a -> [Module]
+findSubmodules a = [m | MModule m <- getModuleStmts a]
 
 findModuleImports :: HasModuleStmts a => a -> [Import]
-findModuleImports a = [i | MImport i <- getModuleStmts a]
+findModuleImports a = [i | MImport i <- getAllModuleStmts a]
 
-findModuleImportsRec :: HasModuleStmts a => a -> [Import]
-findModuleImportsRec a 
-  = mconcat [findModuleImports m | m <- findModulesRec a]
+findModuleSurfaceImports :: HasModuleStmts a => a -> [Import]
+findModuleSurfaceImports a = [i | MImport i <- getModuleStmts a]
 
 
 findModuleDefnPaths :: HasModuleStmts a => a -> [ModulePath]
 findModuleDefnPaths a
-  = modName <$> findModulesRec a
+  = modName <$> findModules a
 
 -- -----------------------------------------------------------------------------
 -- | Imports
@@ -699,6 +716,8 @@ instance Locatable Module where
 
 instance Locatable ModuleStmt where
   locOf = \case
+    MModule m          -> locOf m
+    MImport i          -> locOf i
     MVarDefn d         -> locOf d
     MFuncDefn f        -> locOf f
     MFuncExtern f      -> locOf f
@@ -1047,6 +1066,9 @@ instance Pretty Module where
 
 instance Pretty ModuleStmt where
   pretty = \case
+    MModule m -> pretty m
+    MImport i -> pretty i
+
     MVarDefn defn -> pretty defn
     MFuncDefn fn   -> pretty fn
     MFuncExtern fn -> pretty fn
@@ -1121,7 +1143,7 @@ instance Pretty Parameters where
 
 instance Pretty Parameter where
   pretty (Parameter _ n mtysig) =
-    pretty n <> ":" <+> pretty mtysig
+    pretty n <> pretty mtysig
 
 
 -- Constructor and Destructors

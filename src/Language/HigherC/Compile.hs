@@ -1,25 +1,31 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 module Language.HigherC.Compile where
 
 import Prelude hiding (lex)
 
 
 import Control.Monad.Except
+import Control.Monad.IO.Class
 import Data.Foldable
 import Data.Functor.Identity
 import Data.Graph (Graph, Edge, Vertex)
 import Data.HashMap.Strict (HashMap, (!))
 import Data.IntMap.Strict (IntMap)
 import Data.List hiding (concatMap)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Map.Strict (Map)
-import Data.Tree (foldTree)
+import Data.Tree (Tree, foldTree)
 import Data.Set (Set)
 import Data.Text (Text)
 import qualified Data.Text.IO as T
 
-import Language.HigherC.Parse (parseObject)
+import Language.HigherC.Analysis.Namecheck (namecheck, NameError)
+
+import Language.HigherC.Parse (parseObject, parseIObject)
 import Language.HigherC.Parse.Error
 import Language.HigherC.Lex (lex)
 import Language.HigherC.Lex.Error
@@ -30,10 +36,10 @@ import Data.Text.Prettyprint.Doc
 import Data.Text.Prettyprint.Doc.Render.Text (putDoc)
 
 import qualified Data.Graph          as G
-
-import qualified Data.IntMap.Strict  as IMap
 import qualified Data.HashMap.Strict as HMap
+import qualified Data.IntMap.Strict  as IMap
 import qualified Data.Map.Strict     as Map
+import qualified Data.List.NonEmpty  as NE
 import qualified Data.Set            as Set
 import qualified Data.Text           as T
 import qualified Data.Tree           as Tree
@@ -41,7 +47,14 @@ import qualified Data.Tree           as Tree
 
 data CompileError
   = ModuleNameCollision C.ModulePath [C.ModulePath]
+  | CompileNameError (NonEmpty NameError)
   | ModuleNotFound C.Import
+
+instance Pretty CompileError where
+  pretty = \case
+    ModuleNameCollision _ _ -> undefined
+    CompileNameError errs -> undefined
+    ModuleNotFound _ -> undefined
 
 
 readObject :: FilePath -> IO C.Object
@@ -57,10 +70,47 @@ readObject objFp = do
       error "Could not complete lexical analysis"
 
     Right toks -> do
-      -- putDoc (vsep $ pretty <$> toks)
       let obj = (parseObject toks) { C.objFiles = [objFp] }
-      -- putDoc $ pretty obj
       return obj
+
+
+-- -----------------------------------------------------------------------------
+-- | Object Compilation
+
+buildObjects :: (MonadError CompileError m, MonadIO m)
+             =>  [C.Object] -> [C.IObject] -> m ()
+buildObjects objs iobjs
+  = foldM_ go iobj_map build_order
+  where
+    iobj_map :: HashMap Text C.Interface
+    iobj_map = HMap.fromList [ (C.unpackInterfacePath i, i) | i <- C.findInterfaces iobjs ]
+
+    obj_graph :: Graph
+    obj_graph = buildObjectGraph objs
+
+    build_order = computeBuildOrder obj_graph objs
+
+    go :: (MonadError CompileError m, MonadIO m)
+       => HashMap Text C.Interface -> C.Object -> m (HashMap Text C.Interface)
+    go iobj_map obj = do
+      iobj <- buildObject obj iobj_map
+      let insertInterface i m' = HMap.insert (C.unpackInterfacePath i) i m'
+          iobj_map' = foldr insertInterface iobj_map (C.findInterfaces iobj)
+      return iobj_map'
+
+
+buildObject :: (MonadError CompileError m, MonadIO m)
+            => C.Object -> HashMap Text C.Interface -> m C.IObject
+buildObject obj iobj_map = do
+  -- Run name checking
+  let nameErrs = namecheck obj iobj_map
+  when (not $ null $ nameErrs)
+       (throwError $ CompileNameError $ NE.fromList $ nameErrs)
+  -- reassociateObject obj import_dict
+  liftIO $ do
+    putDoc $ pretty obj
+    putStrLn "\n"
+  return undefined
 
 
 computeBuildOrder :: Graph -> [C.Object] -> [C.Object]
@@ -140,7 +190,7 @@ checkImportsOf :: Set Text -> C.Object -> [CompileError]
 checkImportsOf dict obj
   = errs
     where
-      import_paths = C.findModuleImportsRec obj
+      import_paths = C.findModuleImports obj
       invalid_paths = filter isMissing import_paths
       isMissing (C.Import _ mp) = C.unpackPath mp `Set.notMember` dict
       errs = ModuleNotFound <$> invalid_paths
@@ -174,7 +224,7 @@ moduleDictOf objs =
     insertModule m = HMap.insert (C.unpackPath $ C.modName m) m
 
     all_modules :: [C.Module]
-    all_modules = concatMap C.findModulesRec objs
+    all_modules = concatMap C.findModules objs
 
 
 -- | Find graph edges
@@ -190,11 +240,12 @@ findEdgesOf :: HashMap Text Vertex -- Map from module names to their vertices
             -> [Edge]
 findEdgesOf dict (key, obj) = import_edges
   where
-    import_paths = C.unpackImport <$> C.findModuleImportsRec obj
+    import_paths = C.unpackImport <$> C.findModuleImports obj
     import_verts = map (dict !) import_paths
     import_edges = map (key, ) import_verts
-{-
 
+
+{-
 data BuildEnv
   = BuildEnv
     { envMods    :: [C.Module]
