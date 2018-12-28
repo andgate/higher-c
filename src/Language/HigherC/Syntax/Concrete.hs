@@ -166,18 +166,10 @@ unpackInterfacePath Interface{..}
 
 data Object 
   = Object
-    { objFiles    :: [FilePath]
-    , objBody    :: [ModuleStmt]
+    { objFilepath  :: FilePath
+    , objBody      :: [ModuleStmt]
     }
   deriving (Show, Generic, Data, Typeable)
-
-instance Semigroup Object where
-  (<>) (Object files1 body1) (Object files2 body2)
-    = Object (files1 <> files2) (body1 <> body2)
-
-instance Monoid Object where
-  mempty = (Object mempty mempty)
-
 
 -- -----------------------------------------------------------------------------
 -- | Compilation Modules
@@ -273,6 +265,10 @@ findModuleSurfaceImports a = [i | MImport i <- getModuleStmts a]
 findModuleDefnPaths :: HasModuleStmts a => a -> [ModulePath]
 findModuleDefnPaths a
   = modName <$> findModules a
+
+unpackModulePath :: Module -> Text
+unpackModulePath (Module n _ _)
+  = unpackPath n
 
 -- -----------------------------------------------------------------------------
 -- | Imports

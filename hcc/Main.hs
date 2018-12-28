@@ -67,7 +67,7 @@ import Data.Version
 import System.Console.GetOpt
 import System.Environment
 
-import Language.HigherC.Compile (readObject, buildObjects)
+import Language.HigherC.Compile (readObject, build)
 import Language.HigherC.Syntax.Concrete (Object)
 
 import TestModule
@@ -152,7 +152,7 @@ main = do
   writeTestModule
 
   objs <- mapM readObject (optInput opts)
-  buildRes <- runExceptT $ buildObjects objs []
+  buildRes <- runExceptT $ build objs []
 
   -- Report errors
   case buildRes of

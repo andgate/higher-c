@@ -24,6 +24,7 @@ import Data.Text (Text)
 import qualified Data.Text.IO as T
 
 import Language.HigherC.Analysis.Namecheck (namecheck, NameError)
+import Language.HigherC.Analysis.Namecheck.Scope (InterfaceTable, buildInterfaceTable)
 
 import Language.HigherC.Parse (parseObject, parseIObject)
 import Language.HigherC.Parse.Error
@@ -70,20 +71,20 @@ readObject objFp = do
       error "Could not complete lexical analysis"
 
     Right toks -> do
-      let obj = (parseObject toks) { C.objFiles = [objFp] }
+      let obj = (parseObject toks) { C.objFilepath = objFp }
       return obj
 
 
 -- -----------------------------------------------------------------------------
 -- | Object Compilation
 
-buildObjects :: (MonadError CompileError m, MonadIO m)
+build :: (MonadError CompileError m, MonadIO m)
              =>  [C.Object] -> [C.IObject] -> m ()
-buildObjects objs iobjs
-  = foldM_ go iobj_map build_order
+build objs iobjs
+  = foldM_ go paths build_order
   where
-    iobj_map :: HashMap Text C.Interface
-    iobj_map = HMap.fromList [ (C.unpackInterfacePath i, i) | i <- C.findInterfaces iobjs ]
+    paths :: InterfaceTable
+    paths = buildInterfaceTable iobjs
 
     obj_graph :: Graph
     obj_graph = buildObjectGraph objs
@@ -91,38 +92,34 @@ buildObjects objs iobjs
     build_order = computeBuildOrder obj_graph objs
 
     go :: (MonadError CompileError m, MonadIO m)
-       => HashMap Text C.Interface -> C.Object -> m (HashMap Text C.Interface)
-    go iobj_map obj = do
-      iobj <- buildObject obj iobj_map
-      let insertInterface i m' = HMap.insert (C.unpackInterfacePath i) i m'
-          iobj_map' = foldr insertInterface iobj_map (C.findInterfaces iobj)
-      return iobj_map'
+       => InterfaceTable -> [C.Object] -> m InterfaceTable
+    go itable objs = do
+      iobjs <- buildObjects objs itable
+      let insertInterface i dir = HMap.insert (C.unpackInterfacePath i) i itable
+          itable' = foldr insertInterface itable (C.findInterfaces iobjs)
+      return itable'
 
 
-buildObject :: (MonadError CompileError m, MonadIO m)
-            => C.Object -> HashMap Text C.Interface -> m C.IObject
-buildObject obj iobj_map = do
+buildObjects :: (MonadError CompileError m, MonadIO m)
+             => [C.Object] -> InterfaceTable -> m [C.IObject]
+buildObjects objs itable = do
   -- Run name checking
-  let nameErrs = namecheck obj iobj_map
+  let (objs', nameErrs) = namecheck objs itable
   when (not $ null $ nameErrs)
        (throwError $ CompileNameError $ NE.fromList $ nameErrs)
   -- reassociateObject obj import_dict
   liftIO $ do
-    putDoc $ pretty obj
+    putDoc $ vcat (pretty <$> objs)
     putStrLn "\n"
   return undefined
 
 
-computeBuildOrder :: Graph -> [C.Object] -> [C.Object]
+computeBuildOrder :: Graph -> [C.Object] -> [[C.Object]]
 computeBuildOrder g objs
-  = buildOrder
+  = componentObjects
   where
-    buildOrder = mconcat <$> componentObjects
-
     componentObjects :: [[C.Object]]
-    componentObjects = do
-      vs <- componentVerts
-      return (lookupObj <$> vs)
+    componentObjects = map (map lookupObj) componentVerts
     
     componentVerts :: [[Vertex]]
     componentVerts = Tree.flatten <$> G.scc g
